@@ -1,0 +1,51 @@
+.curtain-stage {
+    position: fixed;
+    inset: 0;
+    background: black;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  
+  .projector-beam {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2), transparent 70%);
+    border-radius: 50%;
+    filter: blur(60px);
+    animation: lightExpand 5s ease-in-out forwards;
+  }
+  
+  @keyframes lightExpand {
+    0% {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(2);
+    }
+  }
+  
+  .curtain-image {
+    width: 360px;
+    height: 720px;
+    object-fit: contain;
+    border-radius: 12px;
+    z-index: 10;
+    transition: transform 6s ease-in-out, opacity 4s ease-in-out, filter 6s ease-in-out;
+    transform: translateY(0%);
+    opacity: 1;
+    filter: none;
+  }
+  
+  .lifted {
+    transform: translateY(-100%) scale(1.05);
+    opacity: 0;
+    filter: blur(30px);
+  }
+  
