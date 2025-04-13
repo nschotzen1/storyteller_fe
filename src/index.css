@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Space Mono', monospace;
+}
+
+.flip-card, .flip-card * {
+  transform: translateZ(0);
+}
+
+.flip-card, .flip-card-inner, .flip-card-front, .flip-card-back {
+  outline: 1px solid red;
+}
+
+.flip-card,
+.flip-card-inner,
+.flip-card-front,
+.flip-card-back {
+  outline: 1px solid red;
+  background-color: rgba(0, 0, 0, 0.01); /* prevents layout collapse by browser compositor */
+}
