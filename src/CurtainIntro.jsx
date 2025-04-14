@@ -20,7 +20,8 @@ const CurtainIntro = ({ onReveal }) => {
   };
 
   return (
-    <div className="curtain-stage" onClick={handleClick}>
+    <div className={`curtain-stage ${lift ? 'lifting' : ''}`} onClick={handleClick}>
+
       {lightOn && <div className="projector-beam" />}
       <img
         src="/tapestries/curtain.png"
