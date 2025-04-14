@@ -27,6 +27,11 @@ const Input = ({ className, ...props }) => (
 const messagesSeed = [
   { id: 1, sender: "system", text: "Are you there?", delay: 1000 },
   { id: 2, sender: "system", text: "I wasn’t sure this channel still worked.", delay: 3000 },
+  { id: 1, sender: "system", text: "Are you there?", delay: 1000 },
+  { id: 1, sender: "system", text: "Are you there?", delay: 1000 },
+  { id: 1, sender: "system", text: "Are you there?", delay: 1000 },
+  { id: 1, sender: "system", text: "Are you there?", delay: 1000 },
+  { id: 1, sender: "system", text: "Are you there?", delay: 1000 },
 ];
 
 const MysteryMessenger = () => {

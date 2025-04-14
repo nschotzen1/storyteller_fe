@@ -1,25 +1,26 @@
 import './index.css';
 import './FlipCard.css';
+import './CurtainIntro.css';
+
 import React, { useState } from 'react';
-import MysteryMessenger from './MysteryMessenger';
-import TapestryIntro from './TapestryIntro';
+import MysteryMessenger from './Messanger';
+import CurtainIntro from './CurtainIntro';
 
 function App() {
+  const [curtainLifted, setCurtainLifted] = useState(false);
   const [flipped, setFlipped] = useState(false);
 
-  const handleFlip = () => {
-    if (!flipped) setFlipped(true);
-  };
-
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
+    <div className="w-full h-full bg-black flex items-center justify-center">
       <div className="relative w-[360px] h-[720px] bg-black isolate overflow-hidden">
+
+        {/* ✨ Card is always mounted */}
         <div className="flip-card w-full h-full z-10">
           <div className={`flip-card-inner ${flipped ? 'flipped' : ''}`}>
-            <div className="flip-card-front" onClick={handleFlip}>
+            <div className="flip-card-front" onClick={() => setFlipped(true)}>
               <img
                 src="/tapestries/intro.png"
-                alt="Relic"
+                alt="Initial Card"
                 className="w-full h-full object-contain rounded-xl shadow-xl"
               />
             </div>
@@ -29,8 +30,10 @@ function App() {
           </div>
         </div>
 
-        {/* Always rendered, visually animated out */}
-        <TapestryIntro />
+        {/* 🧵 Curtain overlays card */}
+        {!curtainLifted && (
+          <CurtainIntro onReveal={() => setCurtainLifted(true)} />
+        )}
       </div>
     </div>
   );
