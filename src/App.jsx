@@ -14,9 +14,10 @@ function App() {
     <div className="w-full h-full bg-black flex items-center justify-center">
       <div className="relative w-[360px] h-[720px] bg-black isolate overflow-hidden">
 
-        {/* ✨ Card is always mounted */}
+        {/* ✨ Flip card is always mounted */}
         <div className="flip-card w-full h-full z-10">
           <div className={`flip-card-inner ${flipped ? 'flipped' : ''}`}>
+            {/* Front side of the card */}
             <div className="flip-card-front" onClick={() => setFlipped(true)}>
               <img
                 src="/tapestries/intro.png"
@@ -24,13 +25,15 @@ function App() {
                 className="w-full h-full object-contain rounded-xl shadow-xl"
               />
             </div>
+
+            {/* Back side of the card (chat) */}
             <div className="flip-card-back">
-              <MysteryMessenger />
+            <MysteryMessenger start={flipped} />
             </div>
           </div>
         </div>
 
-        {/* 🧵 Curtain overlays card */}
+        {/* 🧵 Curtain overlays the card only until it's lifted */}
         {!curtainLifted && (
           <CurtainIntro onReveal={() => setCurtainLifted(true)} />
         )}
