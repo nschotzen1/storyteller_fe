@@ -22,25 +22,26 @@ const Input = ({ className, ...props }) => (
   />
 );
 
-// Message seeding
 const messagesSeed = [
   { id: 1, sender: "system", text: "Are you there?", delay: 1000 },
   { id: 2, sender: "system", text: "I wasn’t sure this channel still worked.", delay: 3000 },
   { id: 3, sender: "system", text: "Can you hear me?", delay: 2000 },
 ];
 
-const MysteryMessenger = () => {
+const MysteryMessenger = ({ start }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
+    if (!start) return; // ✅ Don't start revealing messages until flipped
+
     let index = 0;
 
     const revealMessages = () => {
       const message = messagesSeed[index];
-      if (!message) return; // stop safely if out of bounds
+      if (!message) return;
 
       setIsTyping(true);
 
@@ -58,7 +59,7 @@ const MysteryMessenger = () => {
     };
 
     revealMessages();
-  }, []);
+  }, [start]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -144,4 +145,3 @@ const MysteryMessenger = () => {
 };
 
 export default MysteryMessenger;
-// This component is a simple chat interface with a typing animation and message history.

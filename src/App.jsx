@@ -28,7 +28,7 @@ function App() {
 
             {/* Back side of the card (chat) */}
             <div className="flip-card-back">
-              <MysteryMessenger />
+            <MysteryMessenger start={flipped} />
             </div>
           </div>
         </div>
