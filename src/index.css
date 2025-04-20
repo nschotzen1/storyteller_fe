@@ -4,8 +4,10 @@
 
 body {
   font-family: 'Space Mono', monospace;
+  background-color: black;
 }
 
+/* Entry fade effect */
 .fade-wrapper {
   opacity: 0;
   animation: fadeUp 5s ease-out forwards;
@@ -22,6 +24,7 @@ body {
   }
 }
 
+/* Spotlight animation (optional) */
 .spotlight {
   width: 300px;
   height: 300px;
@@ -43,21 +46,34 @@ body {
   }
 }
 
-
-.filmstrip {
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.03),
-    rgba(255, 255, 255, 0.03) 2px,
-    transparent 2px,
-    transparent 4px
-  );
-  border-left: 4px solid rgba(255,255,255,0.1);
-  border-right: 4px solid rgba(255,255,255,0.1);
+/* Film grain texture layer */
+.chat-grain {
+  background-image: url('/textures/film_grain.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.1;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  filter: brightness(0.9) contrast(1.1);
 }
 
-.film-frame {
-  border-top: 1px dashed rgba(255,255,255,0.1);
-  border-bottom: 1px dashed rgba(255,255,255,0.1);
-  margin-bottom: 8px;
+/* Radial vignette edge shading */
+.chat-vignette {
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.75));
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Optional retro card framing if needed elsewhere */
+.card-frame {
+  position: relative;
+  background-color: #1a120a;
+  border-radius: 1rem;
+  overflow: hidden;
 }

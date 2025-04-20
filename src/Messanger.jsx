@@ -2,23 +2,25 @@ import React, { useState, useEffect, useRef } from "react";
 import { Send } from "lucide-react";
 import { motion } from "framer-motion";
 
-// Fallback styled components
-const Card = ({ children, className }) => (
-  <div className={`rounded-2xl bg-black/30 backdrop-blur-lg shadow-2xl border border-white/10 ${className}`}>
-    {children}
-  </div>
-);
-
-const CardContent = ({ children, className }) => (
-  <div className={`p-4 overflow-y-auto flex flex-col gap-3 filmstrip ${className}`}>
-    {children}
-  </div>
+const MessageBubble = ({ text, sender }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5 }}
+    className={`max-w-[80%] px-4 py-3 rounded-md text-sm font-mono shadow-lg ${
+      sender === "system"
+        ? "bg-white/10 text-yellow-100 self-start"
+        : "bg-yellow-100 text-black self-end"
+    }`}
+  >
+    {text}
+  </motion.div>
 );
 
 const Input = ({ className, ...props }) => (
   <input
     {...props}
-    className={`px-4 py-2 rounded-md bg-black/60 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full ${className}`}
+    className={`px-4 py-2 rounded-md bg-black/60 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-yellow-400 w-full font-mono ${className}`}
   />
 );
 
@@ -28,43 +30,34 @@ const messagesSeed = [
   { id: 3, sender: "system", text: "Can you hear me?", delay: 2000 },
 ];
 
-const MysteryMessenger = ({ start }) => {
+const MysteryMessenger = ({ start = true }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
-    if (!start) return; // ✅ Don't start revealing messages until flipped
-
+    if (!start) return;
     let index = 0;
-
     const revealMessages = () => {
       const message = messagesSeed[index];
       if (!message) return;
 
       setIsTyping(true);
-
       setTimeout(() => {
         setMessages((prev) => [...prev, message]);
         setIsTyping(false);
         index++;
-
-        const nextMessage = messagesSeed[index];
-        if (nextMessage) {
-          const delay = nextMessage.delay || 2000;
-          setTimeout(revealMessages, delay);
+        if (messagesSeed[index]) {
+          setTimeout(revealMessages, messagesSeed[index].delay || 2000);
         }
-      }, 1500);
+      }, 1400);
     };
-
     revealMessages();
   }, [start]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const sendMessage = () => {
@@ -74,39 +67,25 @@ const MysteryMessenger = ({ start }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 font-mono text-white flex items-center justify-center relative px-4">
-      <div className="absolute top-6 left-6 text-indigo-400 text-xl tracking-wide opacity-80">
-        ✦ Storylink
-      </div>
+    <motion.div
+      className="relative min-h-screen w-full bg-black text-white font-mono flex items-center justify-center overflow-hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 3.5, delay: 2 }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1a120a] via-[#30231c] to-black opacity-95 z-0"></div>
+      <div className="absolute inset-0 bg-[url('/textures/film_grain.png')] bg-cover bg-center opacity-10 z-0 pointer-events-none mix-blend-soft-light"></div>
+      <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-black/80 z-10 pointer-events-none"></div>
 
-      <Card className="w-full max-w-md h-[550px] flex flex-col">
-        <CardContent className="flex-1 overflow-y-auto">
-          {messages.map((msg, idx) => (
-            msg && (
-              <motion.div
-                key={msg.id + '-' + idx}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className={`film-frame text-sm px-4 py-3 rounded-md border shadow ${
-                  msg.sender === "system"
-                    ? "bg-white/10 text-indigo-200 self-start border-white/10"
-                    : "bg-indigo-500 text-white self-end ml-auto border-indigo-300"
-                }`}
-              >
-                {msg.text}
-              </motion.div>
-            )
+      <div className="z-20 w-full max-w-md h-[600px] border border-yellow-900 rounded-xl bg-black/20 backdrop-blur-md flex flex-col overflow-hidden shadow-2xl">
+        <div className="flex-1 p-6 overflow-y-auto flex flex-col gap-4 relative">
+          {messages.map((msg) => (
+            <MessageBubble key={msg.id} text={msg.text} sender={msg.sender} />
           ))}
+          {isTyping && <div className="text-yellow-200 animate-pulse ml-1">▍</div>}
           <div ref={scrollRef} />
-          {isTyping && (
-            <div className="flex gap-1 mt-2 ml-1 text-indigo-300 text-xs animate-pulse">
-              <span>•</span><span>•</span><span>•</span>
-            </div>
-          )}
-        </CardContent>
-
-        <div className="flex items-center border-t border-white/10 p-3 gap-2">
+        </div>
+        <div className="p-4 border-t border-yellow-900 bg-black/30 flex items-center gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -115,32 +94,12 @@ const MysteryMessenger = ({ start }) => {
           />
           <Send
             size={20}
-            className="text-indigo-400 cursor-pointer hover:text-white transition"
+            className="text-yellow-300 cursor-pointer hover:text-white transition"
             onClick={sendMessage}
           />
         </div>
-      </Card>
-
-      {/* Typing animation CSS */}
-      <style>{`
-        .filmstrip {
-          background: repeating-linear-gradient(
-            to bottom,
-            rgba(255, 255, 255, 0.03),
-            rgba(255, 255, 255, 0.03) 2px,
-            transparent 2px,
-            transparent 4px
-          );
-          border-left: 4px solid rgba(255,255,255,0.1);
-          border-right: 4px solid rgba(255,255,255,0.1);
-        }
-
-        .film-frame {
-          border-top: 1px dashed rgba(255,255,255,0.1);
-          border-bottom: 1px dashed rgba(255,255,255,0.1);
-        }
-      `}</style>
-    </div>
+      </div>
+    </motion.div>
   );
 };
 
