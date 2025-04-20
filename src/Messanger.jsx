@@ -67,13 +67,16 @@ const MysteryMessenger = ({ start = true }) => {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-black text-white font-mono flex items-center justify-center overflow-hidden">
-      {/* Projector Frame */}
+    <motion.div
+      className="relative min-h-screen w-full bg-black text-white font-mono flex items-center justify-center overflow-hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 3.5, delay: 2 }}
+    >
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a120a] via-[#30231c] to-black opacity-95 z-0"></div>
       <div className="absolute inset-0 bg-[url('/textures/film_grain.png')] bg-cover bg-center opacity-10 z-0 pointer-events-none mix-blend-soft-light"></div>
       <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-black/80 z-10 pointer-events-none"></div>
 
-      {/* Chat Container */}
       <div className="z-20 w-full max-w-md h-[600px] border border-yellow-900 rounded-xl bg-black/20 backdrop-blur-md flex flex-col overflow-hidden shadow-2xl">
         <div className="flex-1 p-6 overflow-y-auto flex flex-col gap-4 relative">
           {messages.map((msg) => (
@@ -96,7 +99,7 @@ const MysteryMessenger = ({ start = true }) => {
           />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

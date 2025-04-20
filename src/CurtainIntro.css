@@ -9,6 +9,8 @@
     cursor: pointer;
     pointer-events: auto;
     background: transparent; /* <- fix: remove black cover */
+    animation: subtlePulse 6s ease-in-out infinite;
+
   }
   
   .projector-beam {
@@ -18,9 +20,15 @@
     background: radial-gradient(circle at center, rgba(255, 255, 255, 0.15), transparent 70%);
     border-radius: 50%;
     filter: blur(80px);
-    animation: lightExpand 5s ease-in-out forwards;
+    animation: lightExpand 5s ease-in-out forwards, glowPulse 3s ease-in-out infinite;
     z-index: 1;
   }
+  
+  @keyframes glowPulse {
+    0%, 100% { opacity: 0.15; transform: scale(1); }
+    50% { opacity: 0.3; transform: scale(1.1); }
+  }
+  
   
   @keyframes lightExpand {
     0% {
@@ -32,6 +40,12 @@
       transform: scale(2);
     }
   }
+
+  @keyframes subtlePulse {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.08); }
+  }
+  
   
   .curtain-image {
     width: 100%;
@@ -48,7 +62,8 @@
   .lifted {
     transform: translateY(-100%) scale(1.05);
     opacity: 0;
-    filter: blur(35px);
+    filter: blur(45px);
+    transition-duration: 7s;
   }
 
   .curtain-stage.lifting {

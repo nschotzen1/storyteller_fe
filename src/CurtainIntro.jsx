@@ -6,22 +6,20 @@ const CurtainIntro = ({ onReveal }) => {
   const [lift, setLift] = useState(false);
   const [hide, setHide] = useState(false);
 
-  // Light fades in after short delay
   useEffect(() => {
     const timeout = setTimeout(() => setLightOn(true), 1000);
     return () => clearTimeout(timeout);
   }, []);
 
-  // Only triggered by user click
   const handleClick = () => {
     if (lift || hide) return;
 
     setLift(true);
 
     setTimeout(() => {
-      setHide(true);        // Actually remove curtain from DOM
-      if (onReveal) onReveal(); // Flip card only after curtain is gone
-    }, 6500); // Match your animation
+      setHide(true);
+      if (onReveal) onReveal();
+    }, 7000);
   };
 
   if (hide) return null;
