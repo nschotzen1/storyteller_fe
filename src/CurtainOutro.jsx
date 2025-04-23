@@ -1,23 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import './CurtainIntro.css'; // reuse the same CSS for symmetry
+import './CurtainIntro.css';
 
-const CurtainOutro = () => {
-  const [drop, setDrop] = useState(false);
+const CurtainOutro = ({ onDropComplete }) => {
+  const [dropStarted, setDropStarted] = useState(false);
+  const [expand, setExpand] = useState(false);
 
   useEffect(() => {
-    const timeout = setTimeout(() => setDrop(true), 100); // small delay to start animation
-    return () => clearTimeout(timeout);
-  }, []);
+    const t1 = setTimeout(() => setDropStarted(true), 100);      // Start drop
+    const t2 = setTimeout(() => onDropComplete?.(), 2800);       // Notify App to expand container
+    const t3 = setTimeout(() => setExpand(true), 3000);          // Begin curtain horizontal growth
 
-  if (!drop) return null;
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [onDropComplete]);
 
   return (
-    <div className="curtain-stage lifting">
+    <div className={`curtain-stage lifting ${expand ? 'widescreen' : ''}`}>
       <div className="projector-beam" />
       <img
         src="/tapestries/curtain.png"
         alt="Curtain"
-        className="curtain-image drop" // add .drop override in css
+        className={`curtain-image ${dropStarted ? 'drop' : ''}`}
       />
     </div>
   );

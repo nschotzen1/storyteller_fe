@@ -58,7 +58,7 @@ const Input = ({ className, ...props }) => (
   />
 );
 
-const MysteryMessenger = ({ start = true }) => {
+const MysteryMessenger = ({ start = true, onCurtainDropComplete }) => {
   const [messages, setMessages] = useState([]);
   const [chatEnded, setChatEnded] = useState(false);
   const [showCurtainOutro, setShowCurtainOutro] = useState(false);
@@ -223,7 +223,7 @@ const MysteryMessenger = ({ start = true }) => {
         </div>
       </div>
 
-      {showCurtainOutro && <CurtainOutro />}
+      {showCurtainOutro && <CurtainOutro onDropComplete={onCurtainDropComplete} />}
     </motion.div>
   );
 };
