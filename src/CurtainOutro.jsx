@@ -17,16 +17,19 @@ const CurtainOutro = ({ onDropComplete }) => {
     };
   }, [onDropComplete]);
 
-  return (
-    <div className={`curtain-stage lifting ${expand ? 'widescreen' : ''}`}>
-      <div className="projector-beam" />
-      <img
-        src="/tapestries/curtain.png"
-        alt="Curtain"
-        className={`curtain-image ${dropStarted ? 'drop' : ''}`}
-      />
-    </div>
-  );
+  if (!dropStarted) return null;
+
+return (
+  <div className={`curtain-stage lifting ${expand ? 'widescreen' : ''}`}>
+    <div className="projector-beam" />
+    <img
+      src="/tapestries/curtain.png"
+      alt="Curtain"
+      className="curtain-image drop"
+    />
+  </div>
+);
+
 };
 
 export default CurtainOutro;
