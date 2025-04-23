@@ -137,3 +137,23 @@ body {
     filter: blur(6px) grayscale(100%);
   }
 }
+
+@keyframes fadeInSlow {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(1.02);
+  }
+  60% {
+    opacity: 0.2;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-fadeInSlow {
+  animation: fadeInSlow 5s ease-in-out forwards;
+}
+

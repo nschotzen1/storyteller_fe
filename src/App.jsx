@@ -10,11 +10,13 @@ function App() {
   const [curtainLifted, setCurtainLifted] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [curtainShouldExpand, setCurtainShouldExpand] = useState(false);
+  const [showTimecard, setShowTimecard] = useState(false);
 
   return (
     
     <div className="w-full h-full bg-black flex items-center justify-center">
-      <div className={`relative h-[720px] bg-black isolate overflow-hidden transition-all duration-1000 ${
+      <div className={`relative h-[720px] bg-black isolate overflow-hidden transition-all transition-all duration-[3000ms] ease-in-out
+ ${
         curtainShouldExpand ? 'w-full max-w-screen-xl' : 'w-[360px]'
     }`}>
 
@@ -32,12 +34,23 @@ function App() {
 
             {/* Back side of the card (chat) */}
             <div className="flip-card-back">
-            <MysteryMessenger
-              start={flipped}
-              onCurtainDropComplete={() => setCurtainShouldExpand(true)}
-            />
+                <MysteryMessenger
+                  start={flipped}
+                  onCurtainDropComplete={() => { 
+                    setCurtainShouldExpand(true); 
+                    setTimeout(() => setShowTimecard(true), 4000); 
+                  }}
+                />
 
-            </div>
+                {showTimecard && (
+                  <div className="absolute inset-0 z-50 flex items-center justify-center text-white text-center animate-fadeInSlow pointer-events-none">
+                    <h1 className="text-4xl md:text-6xl font-[Cinzel] tracking-wide drop-shadow-lg">
+                      A few days later…
+                    </h1>
+                  </div>
+                )}
+              </div>
+
           </div>
         </div>
 
