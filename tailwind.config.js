@@ -4,7 +4,10 @@ module.exports = {
     extend: {
       fontFamily: {
         mono: ['"Space Mono"', "monospace"],
+        fell: ['"IM Fell English"', 'serif']
       },
+      
+      
       // animation: {
       //   cardFadeIn: 'cardFadeIn 5s ease-out',
       // },

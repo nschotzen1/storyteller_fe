@@ -77,3 +77,63 @@ body {
   border-radius: 1rem;
   overflow: hidden;
 }
+
+.wax-seal {
+  transition: all 0.5s ease-in-out;
+  transform-origin: center;
+}
+.group:hover .wax-seal {
+  transform: rotate(15deg) scale(1.1);
+  filter: drop-shadow(0 0 5px crimson);
+}
+
+
+@keyframes inkFade {
+  0% {
+    opacity: 1;
+    filter: none;
+  }
+  40% {
+    filter: blur(2px) saturate(120%);
+  }
+  70% {
+    filter: blur(4px) grayscale(0.7);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(8px) grayscale(1);
+  }
+}
+
+.fade-rain {
+  animation: inkFade 5s ease-in-out forwards;
+}
+
+/* Dropwise smudging animation using keyframe stagger simulation */
+.smudge-message {
+  opacity: 1;
+  filter: none;
+  animation: smudgeInk 8s ease-in-out forwards;
+  animation-delay: calc(0.5s + (var(--i) * 0.3s));
+}
+
+@keyframes smudgeInk {
+  0% {
+    opacity: 1;
+    filter: none;
+  }
+  20% {
+    filter: blur(1px);
+  }
+  50% {
+    filter: blur(2px) grayscale(40%);
+  }
+  90% {
+    opacity: 0.2;
+    filter: blur(4px) grayscale(90%);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(6px) grayscale(100%);
+  }
+}
