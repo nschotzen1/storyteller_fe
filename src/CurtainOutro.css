@@ -12,3 +12,25 @@
     animation: slideDown 2.5s ease-in-out forwards;
   }
   
+
+  .curtain-image.drop {
+    transform: translateY(-100%);
+    opacity: 0;
+    filter: blur(45px);
+    transition: none;
+    animation: dropCurtain 7s ease-in-out forwards;
+  }
+  
+  @keyframes dropCurtain {
+    0% {
+      transform: translateY(-100%) scale(1.05);
+      opacity: 0;
+      filter: blur(45px);
+    }
+    100% {
+      transform: translateY(0%) scale(1);
+      opacity: 1;
+      filter: none;
+    }
+  }
+  

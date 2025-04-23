@@ -1,14 +1,26 @@
+import React, { useEffect, useState } from 'react';
+import './CurtainIntro.css'; // reuse the same CSS for symmetry
+
 const CurtainOutro = () => {
-    return (
-      <div className="curtain-outro fixed inset-0 bg-black flex items-end justify-center z-50 animate-slideDown">
-        <img
-          src="/tapestries/curtain.png"
-          alt="Curtain"
-          className="w-full max-h-full object-cover"
-        />
-      </div>
-    );
-  };
-  
-  export default CurtainOutro;
-  
+  const [drop, setDrop] = useState(false);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDrop(true), 100); // small delay to start animation
+    return () => clearTimeout(timeout);
+  }, []);
+
+  if (!drop) return null;
+
+  return (
+    <div className="curtain-stage lifting">
+      <div className="projector-beam" />
+      <img
+        src="/tapestries/curtain.png"
+        alt="Curtain"
+        className="curtain-image drop" // add .drop override in css
+      />
+    </div>
+  );
+};
+
+export default CurtainOutro;
