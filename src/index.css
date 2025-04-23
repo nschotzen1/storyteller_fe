@@ -157,3 +157,44 @@ body {
   animation: fadeInSlow 5s ease-in-out forwards;
 }
 
+
+.iris-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: transparent;
+}
+
+.iris-circle {
+  width: 20px;
+  height: 20px;
+  background: black;
+  border-radius: 50%;
+  animation: irisExpand 6s ease-in-out forwards;
+  opacity: 0.95;
+  z-index: 999;
+}
+
+
+@keyframes irisExpand {
+  0% {
+    width: 20px;
+    height: 20px;
+    opacity: 0.9;
+  }
+  50% {
+    width: 500px;
+    height: 500px;
+  }
+  100% {
+    width: 4000px;
+    height: 4000px;
+    opacity: 1;
+  }
+}
+
+
