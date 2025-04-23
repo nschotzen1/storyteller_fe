@@ -77,3 +77,12 @@ body {
   border-radius: 1rem;
   overflow: hidden;
 }
+
+.wax-seal {
+  transition: all 0.5s ease-in-out;
+  transform-origin: center;
+}
+.group:hover .wax-seal {
+  transform: rotate(15deg) scale(1.1);
+  filter: drop-shadow(0 0 5px crimson);
+}
