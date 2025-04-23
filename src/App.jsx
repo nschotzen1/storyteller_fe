@@ -11,6 +11,8 @@ function App() {
   const [flipped, setFlipped] = useState(false);
   const [curtainShouldExpand, setCurtainShouldExpand] = useState(false);
   const [showTimecard, setShowTimecard] = useState(false);
+  const [showCircleFade, setShowCircleFade] = useState(false);
+
 
   return (
     
@@ -38,7 +40,9 @@ function App() {
                   start={flipped}
                   onCurtainDropComplete={() => { 
                     setCurtainShouldExpand(true); 
-                    setTimeout(() => setShowTimecard(true), 4000); 
+                    setTimeout(() => setShowTimecard(true), 4000);
+                    setTimeout(() => setShowCircleFade(true), 7000); // 3s after the text
+
                   }}
                 />
 
@@ -49,6 +53,12 @@ function App() {
                     </h1>
                   </div>
                 )}
+                {showCircleFade && (
+                <div className="iris-mask pointer-events-none absolute inset-0 z-60">
+                  <div className="iris-circle" />
+                </div>
+                )}
+
               </div>
 
           </div>
