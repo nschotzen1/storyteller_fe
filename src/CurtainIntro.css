@@ -91,4 +91,37 @@
       filter: none;
     }
   }
+
+  .curtain-stage {
+    /* existing styles... */
+    transition: width 2.5s ease-in-out, max-width 2.5s ease-in-out;
+  }
+  
+  .curtain-stage.widescreen {
+    max-width: 100%;
+    width: 100%;
+  }
+  
+  .curtain-image.drop {
+    animation: dropCurtainFadeWide 3s ease-in-out forwards;
+  }
+  
+  @keyframes dropCurtainFadeWide {
+    0% {
+      transform: translateY(-100%) scale(1.05);
+      opacity: 0;
+      filter: blur(45px);
+    }
+    50% {
+      transform: translateY(0%) scale(1.02);
+      opacity: 0.6;
+      filter: blur(20px);
+    }
+    100% {
+      transform: translateY(0%) scale(1.2);
+      opacity: 1;
+      filter: none;
+    }
+  }
+  
   

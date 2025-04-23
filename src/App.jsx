@@ -9,11 +9,14 @@ import CurtainIntro from './CurtainIntro';
 function App() {
   const [curtainLifted, setCurtainLifted] = useState(false);
   const [flipped, setFlipped] = useState(false);
+  const [curtainShouldExpand, setCurtainShouldExpand] = useState(false);
 
   return (
     
     <div className="w-full h-full bg-black flex items-center justify-center">
-      <div className="relative w-[360px] h-[720px] bg-black isolate overflow-hidden">
+      <div className={`relative h-[720px] bg-black isolate overflow-hidden transition-all duration-1000 ${
+        curtainShouldExpand ? 'w-full max-w-screen-xl' : 'w-[360px]'
+    }`}>
 
         {/* ✨ Flip card is always mounted */}
         <div className="flip-card w-full h-full z-10">
@@ -29,7 +32,11 @@ function App() {
 
             {/* Back side of the card (chat) */}
             <div className="flip-card-back">
-            <MysteryMessenger start={flipped} />
+            <MysteryMessenger
+              start={flipped}
+              onCurtainDropComplete={() => setCurtainShouldExpand(true)}
+            />
+
             </div>
           </div>
         </div>
