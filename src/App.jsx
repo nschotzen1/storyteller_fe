@@ -15,6 +15,10 @@ function App() {
   const [showTimecard, setShowTimecard] = useState(false);
   const [showCircleFade, setShowCircleFade] = useState(false);
   const [locationLineVisible, setLocationLineVisible] = useState(false);
+  const [shouldFadeText, setShouldFadeText] = useState(false);
+  const [hasFadedOut, setHasFadedOut] = useState(false);
+
+
 
   // ✨ Trigger second line after timecard shows
   useEffect(() => {
@@ -23,6 +27,18 @@ function App() {
       return () => clearTimeout(timeout);
     }
   }, [showTimecard]);
+
+  useEffect(() => {
+    if (showCircleFade) {
+      const timeout = setTimeout(() => {
+        setShowTimecard(false);
+        setLocationLineVisible(false);
+      }, 11000); // 2.5 seconds after the iris begins (or longer if needed)
+  
+      return () => clearTimeout(timeout);
+    }
+  }, [showCircleFade]);
+  
 
   
 
@@ -52,13 +68,19 @@ function App() {
                 onCurtainDropComplete={() => {
                   setCurtainShouldExpand(true);
                 
-                  setTimeout(() => setShowTimecard(true), 4000);          // Show line 1
-                  setTimeout(() => setLocationLineVisible(true), 5500);   // Show line 2
+                  setTimeout(() => setShowTimecard(true), 4000); // Line 1
+                  setTimeout(() => setLocationLineVisible(true), 5500); // Line 2
                 
-                  setTimeout(() => setShowCircleFade(true), 8500);        // Iris begins
-                                                           // Fade out both
+                  setTimeout(() => setShowCircleFade(true), 8500); // Iris
+                  setTimeout(() => setShouldFadeText(true), 11500); // Start fade
+                  setTimeout(() => {
+                    setHasFadedOut(true); // Final unmount
+                    setShowTimecard(false);
+                    setLocationLineVisible(false);
+                    setShouldFadeText(false);
+                  }, 14000);
+                
                 }}
-                
               />
 
             
@@ -73,38 +95,24 @@ function App() {
         </div>
 
         <AnimatePresence>
-  {showTimecard && (
-    <motion.div
-      initial={{ opacity: 1 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ delay: 8.5, duration: 2 }}
-      onAnimationComplete={() => setShowTimecard(false)}
-      className="absolute inset-0 z-[70] flex flex-col items-center justify-center text-white text-center pointer-events-none space-y-4"
-    >
-      <motion.h1
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 2 }}
-        className="text-4xl md:text-6xl font-[Cinzel] tracking-wide drop-shadow-lg"
-      >
-        A few days later…
-      </motion.h1>
+        {showTimecard && !hasFadedOut && (
+  <motion.div
+    initial={{ opacity: 1 }}
+    animate={{ opacity: shouldFadeText ? 0 : 1 }}
+    transition={{ duration: 2 }}
+    className="absolute inset-0 z-[70] flex flex-col items-center justify-center text-white text-center pointer-events-none space-y-4"
+  >
+    <h1 className="text-4xl md:text-6xl font-[Cinzel] tracking-wide drop-shadow-lg">
+      A few days later…
+    </h1>
+    {locationLineVisible && (
+      <p className="text-xl md:text-2xl font-mono text-yellow-100/90">
+        in the outskirts of the sun-streaked streets of San Juan
+      </p>
+    )}
+  </motion.div>
+)}
 
-      {locationLineVisible && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 2 }}
-          className="text-xl md:text-2xl font-mono text-yellow-100/90"
-        >
-          in the outskirts of the sun-streaked streets of San Juan
-        </motion.p>
-      )}
-      </motion.div>
-      )}
       </AnimatePresence>
 
 
