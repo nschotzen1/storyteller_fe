@@ -2,8 +2,9 @@ import './index.css';
 import './FlipCard.css';
 import './CurtainIntro.css';
 
+import { motion, AnimatePresence } from 'framer-motion';
+
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import MysteryMessenger from './Messanger';
 import CurtainIntro from './CurtainIntro';
 
@@ -22,6 +23,8 @@ function App() {
       return () => clearTimeout(timeout);
     }
   }, [showTimecard]);
+
+  
 
   return (
     <div className="w-full h-full bg-black flex items-center justify-center">
@@ -53,10 +56,7 @@ function App() {
                   setTimeout(() => setLocationLineVisible(true), 5500);   // Show line 2
                 
                   setTimeout(() => setShowCircleFade(true), 8500);        // Iris begins
-                  setTimeout(() => {
-                    setShowTimecard(false);
-                    setLocationLineVisible(false);
-                  }, 15500);                                              // Fade out both
+                                                           // Fade out both
                 }}
                 
               />
@@ -72,28 +72,41 @@ function App() {
           </div>
         </div>
 
-        {showTimecard && (
-          <motion.div
-            initial={{ opacity: 1 }}
-            animate={{ opacity: showCircleFade ? 0 : 1 }}
-            transition={{ delay: 4, duration: 2 }}
-            className="absolute inset-0 z-[70] flex flex-col items-center justify-center text-white text-center pointer-events-none space-y-4"
-          >
-            <h1 className="text-4xl md:text-6xl font-[Cinzel] tracking-wide drop-shadow-lg">
-              A few days later…
-            </h1>
-            {locationLineVisible && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 2 }}
-                className="text-xl md:text-2xl font-mono text-yellow-100/90"
-              >
-                in the outskirts of the sun-streaked streets of San Juan
-              </motion.p>
-            )}
-          </motion.div>
-)}
+        <AnimatePresence>
+  {showTimecard && (
+    <motion.div
+      initial={{ opacity: 1 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ delay: 8.5, duration: 2 }}
+      onAnimationComplete={() => setShowTimecard(false)}
+      className="absolute inset-0 z-[70] flex flex-col items-center justify-center text-white text-center pointer-events-none space-y-4"
+    >
+      <motion.h1
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 2 }}
+        className="text-4xl md:text-6xl font-[Cinzel] tracking-wide drop-shadow-lg"
+      >
+        A few days later…
+      </motion.h1>
+
+      {locationLineVisible && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 2 }}
+          className="text-xl md:text-2xl font-mono text-yellow-100/90"
+        >
+          in the outskirts of the sun-streaked streets of San Juan
+        </motion.p>
+      )}
+      </motion.div>
+      )}
+      </AnimatePresence>
+
 
 
         {/* 🧵 Curtain overlays the card only until it's lifted */}
