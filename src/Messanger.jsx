@@ -80,6 +80,40 @@ const MysteryMessenger = ({ start = true, onCurtainDropComplete }) => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+  if (!start) return;
+
+  let currentText = "";
+  let index = 0;
+  setIsTyping(true);
+
+  const audio = new Audio("/audio/typewriter-narration.mp3");
+
+  // ⏳ Start audio playback after 2 seconds
+  setTimeout(() => {
+    audio.play().catch(err => console.warn("Voice playback failed:", err));
+  }, 2000);
+
+  const interval = setInterval(() => {
+    currentText += typewriterIntro[index];
+    index++;
+
+    if (index >= typewriterIntro.length) {
+      clearInterval(interval);
+      setIsTyping(false);
+    }
+
+    setMessages([{ id: 0, sender: "system", text: currentText }]);
+  }, 30);
+
+  return () => {
+    clearInterval(interval);
+    audio.pause();
+    audio.currentTime = 0;
+  };
+}, [start]);
+
+
   const typewriterIntro = `We are pleased to inform you that the typewriter, as discussed, is ready for dispatch. The society spares no expense in ensuring that our esteemed members receive only the finest instruments for their craft. We trust you are still expecting it? Of course you are. Just a quick confirmation before we proceed. Where shall we send it?`;
 
   useEffect(() => {
