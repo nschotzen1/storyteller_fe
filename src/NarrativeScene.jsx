@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import React, { useState, useEffect } from 'react';
 import PlayerInput from './PlayerInput';
+import GMNotebook from './GMNotebook';
 
 const classMap = {
   font: {
@@ -37,9 +38,9 @@ const exampleRolls = [
   },
 ];
 
-
 const NarrativeScene = ({ visible }) => {
   const [visibleLines, setVisibleLines] = useState([]);
+  const [showNotebook, setShowNotebook] = useState(false);
 
   const fullScript = [
     { text: "It's been a few days since that strange messaging correspondence...", font: "mono", size: "lg", color: "text-white", delay: 0 },
@@ -48,6 +49,7 @@ const NarrativeScene = ({ visible }) => {
     { text: "You turn the key to your apartment.", font: "mono", size: "lg", color: "text-white", delay: 9000 },
   ];
 
+  // 👇 FIRST: seed the script into visibleLines
   useEffect(() => {
     if (!visible) return;
 
@@ -64,29 +66,40 @@ const NarrativeScene = ({ visible }) => {
     return () => timeouts.forEach(clearTimeout);
   }, [visible]);
 
+  // 👇 SECOND: type word-by-word
   useEffect(() => {
     if (!visibleLines.length) return;
 
     const interval = setInterval(() => {
       setVisibleLines(prevLines => {
-        return prevLines.map(line => {
+        return prevLines.map((line) => {
           if (line.wordsRevealed === undefined) return line;
 
           const totalWords = line.text.split(' ').length;
-          if (line.wordsRevealed < totalWords) {
-            return { ...line, wordsRevealed: line.wordsRevealed + 1 };
-          } else {
-            return { ...line, wordsRevealed: undefined }; // Done revealing
-          }
+          return line.wordsRevealed < totalWords
+            ? { ...line, wordsRevealed: line.wordsRevealed + 1 }
+            : { ...line, wordsRevealed: undefined };
         });
       });
-    }, 80); // Typing speed here (ms)
+    }, 80);
 
     return () => clearInterval(interval);
   }, [visibleLines.length]);
 
+  // 👇 THIRD: trigger notebook appearance after 3rd line finishes
+  useEffect(() => {
+    if (visibleLines.length > 2) {
+      const thirdLine = visibleLines[2];
+      if (thirdLine && thirdLine.wordsRevealed === 2 && !showNotebook) {
+        setShowNotebook(true);
+      }
+    }
+  }, [visibleLines, showNotebook]);
+
   return (
     <div className="relative w-full h-full letterbox vignette">
+      
+      {/* ✍️ Narration Lines (Top Left) */}
       <div className="absolute top-10 left-10 z-[80] text-left space-y-4 max-w-xl pointer-events-none">
         {visibleLines.map((entry, idx) => {
           const fontClass = classMap.font[entry.font] || 'font-mono';
@@ -110,7 +123,12 @@ const NarrativeScene = ({ visible }) => {
           );
         })}
       </div>
-        
+
+      {/* 📒 GM Notebook (Top Right) */}
+      <GMNotebook rolls={exampleRolls} />
+
+
+      {/* 👤 Player Input (Bottom Left) */}
       <PlayerInput />
     </div>
   );
