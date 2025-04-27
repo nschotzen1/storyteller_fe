@@ -268,3 +268,11 @@ body {
   background-size: contain;
   background-repeat: repeat;
 }
+
+
+.bg-paper-grid {
+  background-image: url('/textures/paper_texture_rugged.jpg'), url('/textures/math_notebook_grid.png');
+  background-size: cover, contain;
+  background-repeat: no-repeat, repeat;
+  background-blend-mode: multiply;
+}
