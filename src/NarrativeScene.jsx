@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import PlayerInput from './PlayerInput';
 import GMNotebook from './GMNotebook';
 
+const SERVER = 'http://localhost:5001'; // <- Your backend domain
+
 const classMap = {
   font: {
     mono: 'font-mono',
@@ -21,41 +23,42 @@ const classMap = {
   },
 };
 
-const exampleRolls = [
-  {
-    check: "Observation + Wits",
-    dice: "6d6",
-    results: [2, 5, 6, 1, 3, 4],
-    success: true,
-    notes: "Found hidden passage",
-  },
-  {
-    check: "Sanity Check",
-    dice: "1d20",
-    results: [18],
-    success: false,
-    notes: "Minor Madness",
-  },
-];
-
 const NarrativeScene = ({ visible }) => {
+  const [fetchedScript, setFetchedScript] = useState([]);
   const [visibleLines, setVisibleLines] = useState([]);
   const [showNotebook, setShowNotebook] = useState(false);
 
-  const fullScript = [
-    { text: "It's been a few days since that strange messaging correspondence...", font: "mono", size: "lg", color: "text-white", delay: 0 },
-    { text: "Something about a typewriter... you almost forgot.", font: "cinzel", size: "2xl", color: "text-yellow-100", delay: 3000 },
-    { text: "It's nearly dusk. The streets of San Juan are dry and hot.", font: "serif", size: "xl", italic: true, color: "text-white", delay: 6000 },
-    { text: "You turn the key to your apartment.", font: "mono", size: "lg", color: "text-white", delay: 9000 },
-  ];
-
-  // 👇 FIRST: seed the script into visibleLines
+  // 👇 FIRST: fetch narration script from backend
   useEffect(() => {
     if (!visible) return;
 
+    fetch(`${SERVER}/api/getNarrationScript`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ sceneId: "opening_scene" }),
+    })
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to fetch narration script');
+        return response.json();
+      })
+      .then(data => {
+        console.log('Narration script received:', data);
+        setFetchedScript(data);
+      })
+      .catch(err => {
+        console.error('Error fetching narration script:', err);
+      });
+  }, [visible]);
+
+  // 👇 SECOND: seed the fetchedScript into visibleLines
+  useEffect(() => {
+    if (!fetchedScript.length) return;
+
     let timeouts = [];
 
-    fullScript.forEach((entry, idx) => {
+    fetchedScript.forEach((entry) => {
       timeouts.push(
         setTimeout(() => {
           setVisibleLines(prev => [...prev, { ...entry, wordsRevealed: 0 }]);
@@ -64,9 +67,9 @@ const NarrativeScene = ({ visible }) => {
     });
 
     return () => timeouts.forEach(clearTimeout);
-  }, [visible]);
+  }, [fetchedScript]);
 
-  // 👇 SECOND: type word-by-word
+  // 👇 THIRD: type word-by-word
   useEffect(() => {
     if (!visibleLines.length) return;
 
@@ -86,20 +89,10 @@ const NarrativeScene = ({ visible }) => {
     return () => clearInterval(interval);
   }, [visibleLines.length]);
 
-  // 👇 THIRD: trigger notebook appearance after 3rd line finishes
-  useEffect(() => {
-    if (visibleLines.length > 2) {
-      const thirdLine = visibleLines[2];
-      if (thirdLine && thirdLine.wordsRevealed === 2 && !showNotebook) {
-        setShowNotebook(true);
-      }
-    }
-  }, [visibleLines, showNotebook]);
-
   return (
     <div className="relative w-full h-full letterbox vignette">
       
-      {/* ✍️ Narration Lines (Top Left) */}
+      {/* ✍️ Narration Lines */}
       <div className="absolute top-10 left-10 z-[80] text-left space-y-4 max-w-xl pointer-events-none">
         {visibleLines.map((entry, idx) => {
           const fontClass = classMap.font[entry.font] || 'font-mono';
@@ -124,14 +117,14 @@ const NarrativeScene = ({ visible }) => {
         })}
       </div>
 
-      {/* 📒 GM Notebook (Top Right) */}
+      {/* 📒 GM Notebook */}
       <GMNotebook
         rollInstruction={{
           check: "Observation + Wits",
           dice: "6d6",
           canPush: true,
-          pushCondition: "optional", // future use
-          pushTimeoutMs: 10000
+          pushCondition: "optional",
+          pushTimeoutMs: 10000,
         }}
         onSendResult={(payload) => {
           console.log('Result to send:', payload);
@@ -139,9 +132,7 @@ const NarrativeScene = ({ visible }) => {
         }}
       />
 
-
-
-      {/* 👤 Player Input (Bottom Left) */}
+      {/* 👤 Player Input */}
       <PlayerInput />
     </div>
   );
