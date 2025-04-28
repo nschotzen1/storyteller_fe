@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
+
 const SERVER = 'http://localhost:5001';
 
 const GMNotebook = ({ rollInstruction, onSendResult }) => {
@@ -105,13 +106,16 @@ const GMNotebook = ({ rollInstruction, onSendResult }) => {
     };
   }, [rollInstruction]);
 
+
   return (
     <motion.div
       initial={{ opacity: 0, rotate: -12, scale: 0.5, x: 300, y: -100 }}
       animate={{ opacity: 1, rotate: 0, scale: 1, x: 0, y: 0 }}
       exit={{ opacity: 0, rotate: 12, scale: 0.8, x: 300, y: -100 }}
       transition={{ type: 'spring', stiffness: 100, damping: 14 }}
+
       className="absolute top-10 right-10 z-[85] w-[340px] bg-paper-grid p-5 rounded-md shadow-2xl border border-gray-400/40 text-gray-800 font-mono text-sm"
+
       style={{
         backgroundImage: `
           url('/textures/paper_texture_rugged.jpg'),
@@ -123,6 +127,7 @@ const GMNotebook = ({ rollInstruction, onSendResult }) => {
       }}
     >
       <h2 className="text-lg font-bold mb-3 underline decoration-dashed decoration-gray-500">GM Notebook</h2>
+
 
       <div className="space-y-2">
         <div className="italic">{rollInstruction.check}</div>
