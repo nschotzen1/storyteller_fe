@@ -125,7 +125,20 @@ const NarrativeScene = ({ visible }) => {
       </div>
 
       {/* 📒 GM Notebook (Top Right) */}
-      <GMNotebook rolls={exampleRolls} />
+      <GMNotebook
+        rollInstruction={{
+          check: "Observation + Wits",
+          dice: "6d6",
+          canPush: true,
+          pushCondition: "optional", // future use
+          pushTimeoutMs: 10000
+        }}
+        onSendResult={(payload) => {
+          console.log('Result to send:', payload);
+          // TODO: POST payload to backend API
+        }}
+      />
+
 
 
       {/* 👤 Player Input (Bottom Left) */}
