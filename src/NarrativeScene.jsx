@@ -133,7 +133,11 @@ const NarrativeScene = ({ visible }) => {
             initial={{ opacity: 0, y: -10, rotate: [-2, 0, 1.5][i % 3] }} // slight variety per bookmark
             animate={{ opacity: 1, y: 0 }}
             whileTap={{ scale: 0.95 }}
-            whileHover={{ scale: 1.03 }}
+            whileHover={{
+              scale: 1.04,
+              rotate: [null, -0.5, 0.5, -0.3, 0.3, 0],  // mini wiggle
+              transition: { repeat: Infinity, duration: 1, ease: "easeInOut" }
+            }}
             transition={{ type: 'spring', stiffness: 120, damping: 12, delay: 0.2 + i * 0.1 }}
             className={`bookmark-img ${activeFramework === b.id ? 'active-bookmark' : ''}`}
             style={{ backgroundImage: `url(${b.texture})` }}
