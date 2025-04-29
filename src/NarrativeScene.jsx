@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion';
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import PlayerInput from './PlayerInput';
 import GMNotebook from './GMNotebook';
 
@@ -35,7 +35,14 @@ const NarrativeScene = ({ visible }) => {
     return newId;
   });
 
-  // 👉 Fetch narration script
+  const [bookmarks, setBookmarks] = useState([
+    { id: 'typewriter',  unlocked: true, texture: '/bookmarks/typewriter.png' },
+    { id: 'journal',  unlocked: true, texture: '/bookmarks/journal.png' },
+    { id: 'cards', unlocked: true, texture: '/bookmarks/cards.png' },
+  ]);
+
+  const [activeFramework, setActiveFramework] = useState('typewriter');
+
   useEffect(() => {
     if (!visible) return;
 
@@ -49,7 +56,6 @@ const NarrativeScene = ({ visible }) => {
         return response.json();
       })
       .then(data => {
-        console.log('Narration script received:', data);
         setFetchedScript(data.narrationScript || []);
         setRequiredRolls(data.required_rolls || null);
       })
@@ -58,7 +64,6 @@ const NarrativeScene = ({ visible }) => {
       });
   }, [visible, sessionId]);
 
-  // 👉 Seed narration lines based on delays
   useEffect(() => {
     if (!fetchedScript.length) return;
 
@@ -74,7 +79,6 @@ const NarrativeScene = ({ visible }) => {
     return () => timeouts.forEach(clearTimeout);
   }, [fetchedScript]);
 
-  // 👉 Animate word-by-word
   useEffect(() => {
     if (!visibleLines.length) return;
 
@@ -93,7 +97,6 @@ const NarrativeScene = ({ visible }) => {
     return () => clearInterval(interval);
   }, [visibleLines.length]);
 
-  // 👉 Handle player response
   const handlePlayerResponse = (playerContent) => {
     fetch(`${SERVER}/api/getNarrationScript`, {
       method: 'POST',
@@ -105,10 +108,9 @@ const NarrativeScene = ({ visible }) => {
         return response.json();
       })
       .then(data => {
-        console.log('Updated narration script received:', data);
         setFetchedScript(data.narrationScript || []);
         setRequiredRolls(data.required_rolls || null);
-        setVisibleLines([]); // Reset visible lines for new entries
+        setVisibleLines([]); // Reset lines when new input happens
       })
       .catch(err => {
         console.error('Error sending player response:', err);
@@ -117,9 +119,32 @@ const NarrativeScene = ({ visible }) => {
 
   return (
     <div className="relative w-full h-full letterbox vignette">
-      
-      {/* ✍️ Narration Lines */}
-      <div className="absolute top-10 left-10 z-[80] text-left space-y-4 max-w-xl pointer-events-none">
+
+      {/* 📚 Bookmarks on left side */}
+      {/* 📚 Bookmarks on RIGHT side */}
+      <div className="fixed top-20 right-0 flex flex-col gap-6 pr-1 z-[2000] items-end pointer-events-auto">
+
+
+      {bookmarks.map((b, i) => (
+        b.unlocked && (
+          <motion.button
+            key={b.id}
+            onClick={() => setActiveFramework(b.id)}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.03 }}
+            transition={{ type: 'spring', stiffness: 120, damping: 12, delay: 0.2 + i * 0.1 }}
+            className={`bookmark-img ${activeFramework === b.id ? 'active-bookmark' : ''}`}
+            style={{ backgroundImage: `url(${b.texture})` }}
+          />
+        )
+      ))}
+      </div>
+
+
+      {/* ✍️ Main Narration Area */}
+      <div className="absolute top-0 left-0 w-full h-full p-16 pt-28 space-y-4 overflow-y-auto pointer-events-none">
         {visibleLines.map((entry, idx) => {
           const fontClass = classMap.font[entry.font] || 'font-mono';
           const sizeClass = classMap.size[entry.size] || 'text-base';
@@ -143,7 +168,7 @@ const NarrativeScene = ({ visible }) => {
         })}
       </div>
 
-      {/* 📒 GM Notebook if required */}
+      {/* 📒 Frameworks */}
       {requiredRolls && (
         <GMNotebook
           rollInstruction={{
@@ -155,7 +180,6 @@ const NarrativeScene = ({ visible }) => {
           }}
           onSendResult={(payload) => {
             console.log('Result to send:', payload);
-            // You can POST this payload to server if needed
           }}
         />
       )}

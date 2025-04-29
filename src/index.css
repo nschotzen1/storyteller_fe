@@ -352,3 +352,33 @@ body {
   animation: ghostText 4.5s ease-out forwards;
 }
 
+
+.bookmark-img {
+  width: 260px;                 /* 👈 Width of the ribbon */
+  height: 140px;                /* 👈 Height of the ribbon */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: none;
+  border-radius: 6px;
+  opacity: 0.95;
+  cursor: pointer;
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+  box-shadow: 3px 6px 12px rgba(0, 0, 0, 0.7);
+  transform: rotate(1.5deg);
+  z-index: 2000;
+  clip-path: inset(0 round 6px); 
+}
+
+.bookmark-img:hover {
+  transform: rotate(0deg) scale(1.01);
+  opacity: 1;
+  box-shadow: 0 0 6px rgba(255, 240, 150, 0.15);
+}
+
+.active-bookmark {
+  box-shadow: 0 0 10px rgba(255, 235, 100, 0.3);
+  transform: scale(1.04);
+}
+
+
