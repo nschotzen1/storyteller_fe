@@ -13,6 +13,16 @@ body {
   animation: fadeUp 5s ease-out forwards;
 }
 
+.bg-grid-scanlines {
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 2px 2px;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+}
+/* Fade-in effect for the main content */
+
 @keyframes fadeUp {
   from {
     opacity: 0;
