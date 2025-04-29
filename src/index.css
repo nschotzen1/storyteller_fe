@@ -365,7 +365,7 @@ body {
   cursor: pointer;
   transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
   box-shadow: 3px 6px 12px rgba(0, 0, 0, 0.7);
-  transform: rotate(1.5deg);
+  /* transform: rotate(1.5deg); */
   z-index: 2000;
   clip-path: inset(0 round 6px); 
 }

@@ -130,7 +130,7 @@ const NarrativeScene = ({ visible }) => {
           <motion.button
             key={b.id}
             onClick={() => setActiveFramework(b.id)}
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -10, rotate: [-2, 0, 1.5][i % 3] }} // slight variety per bookmark
             animate={{ opacity: 1, y: 0 }}
             whileTap={{ scale: 0.95 }}
             whileHover={{ scale: 1.03 }}
