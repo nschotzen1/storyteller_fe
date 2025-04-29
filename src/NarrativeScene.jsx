@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import TypewriterFramework from './TypewriterFramework';
+
 import PlayerInput from './PlayerInput';
 import GMNotebook from './GMNotebook';
 
@@ -36,12 +38,12 @@ const NarrativeScene = ({ visible }) => {
   });
 
   const [bookmarks, setBookmarks] = useState([
-    { id: 'typewriter',  unlocked: true, texture: '/bookmarks/typewriter.png' },
-    { id: 'journal',  unlocked: true, texture: '/bookmarks/journal.png' },
+    { id: 'typewriter', unlocked: true, texture: '/bookmarks/typewriter.png' },
+    { id: 'journal', unlocked: true, texture: '/bookmarks/journal.png' },
     { id: 'cards', unlocked: true, texture: '/bookmarks/cards.png' },
   ]);
 
-  const [activeFramework, setActiveFramework] = useState('typewriter');
+  const [activeFramework, setActiveFramework] = useState(null);
 
   useEffect(() => {
     if (!visible) return;
@@ -49,7 +51,7 @@ const NarrativeScene = ({ visible }) => {
     fetch(`${SERVER}/api/getNarrationScript`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, sceneId: "opening_scene" }),
+      body: JSON.stringify({ sessionId, sceneId: 'opening_scene' }),
     })
       .then(response => {
         if (!response.ok) throw new Error('Failed to fetch narration script');
@@ -83,7 +85,7 @@ const NarrativeScene = ({ visible }) => {
     if (!visibleLines.length) return;
 
     const interval = setInterval(() => {
-      setVisibleLines(prevLines => 
+      setVisibleLines(prevLines =>
         prevLines.map((line) => {
           if (line.wordsRevealed === undefined) return line;
           const totalWords = line.text.split(' ').length;
@@ -101,7 +103,7 @@ const NarrativeScene = ({ visible }) => {
     fetch(`${SERVER}/api/getNarrationScript`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, sceneId: "opening_scene", content: playerContent }),
+      body: JSON.stringify({ sessionId, sceneId: 'opening_scene', content: playerContent }),
     })
       .then(response => {
         if (!response.ok) throw new Error('Failed to fetch updated script');
@@ -120,77 +122,101 @@ const NarrativeScene = ({ visible }) => {
   return (
     <div className="relative w-full h-full letterbox vignette">
 
-      {/* 📚 Bookmarks on left side */}
-      {/* 📚 Bookmarks on RIGHT side */}
-      <div className="fixed top-20 right-0 flex flex-col gap-6 pr-1 z-[2000] items-end pointer-events-auto">
+      {/* MAIN UI: Only visible if no active framework */}
+      {!activeFramework && (
+        <>
+          {/* 📚 Bookmarks on RIGHT side */}
+          <div className="fixed top-20 right-0 flex flex-col gap-6 pr-2 z-[2000] items-end pointer-events-auto">
 
+            {bookmarks.map((b, i) => (
+              b.unlocked && (
+                <motion.button
+                  key={b.id}
+                  onClick={() => setActiveFramework(b.id)}
+                  initial={{ opacity: 0, y: -10, rotate: [-2, 0, 1.5][i % 3] }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileTap={{ scale: 0.95 }}
+                  whileHover={{
+                    scale: 1.04,
+                    rotate: [null, -0.5, 0.5, -0.3, 0.3, 0],
+                    transition: { repeat: Infinity, duration: 1, ease: 'easeInOut' }
+                  }}
+                  transition={{ type: 'spring', stiffness: 120, damping: 12, delay: 0.2 + i * 0.1 }}
+                  className={`bookmark-img ${activeFramework === b.id ? 'active-bookmark' : ''}`}
+                  style={{ backgroundImage: `url(${b.texture})` }}
+                />
+              )
+            ))}
+          </div>
 
-      {bookmarks.map((b, i) => (
-        b.unlocked && (
-          <motion.button
-            key={b.id}
-            onClick={() => setActiveFramework(b.id)}
-            initial={{ opacity: 0, y: -10, rotate: [-2, 0, 1.5][i % 3] }} // slight variety per bookmark
-            animate={{ opacity: 1, y: 0 }}
-            whileTap={{ scale: 0.95 }}
-            whileHover={{
-              scale: 1.04,
-              rotate: [null, -0.5, 0.5, -0.3, 0.3, 0],  // mini wiggle
-              transition: { repeat: Infinity, duration: 1, ease: "easeInOut" }
-            }}
-            transition={{ type: 'spring', stiffness: 120, damping: 12, delay: 0.2 + i * 0.1 }}
-            className={`bookmark-img ${activeFramework === b.id ? 'active-bookmark' : ''}`}
-            style={{ backgroundImage: `url(${b.texture})` }}
-          />
-        )
-      ))}
-      </div>
+          {/* ✍️ Main Narration Area */}
+          <div className="absolute top-0 left-0 w-full h-full p-16 pt-28 space-y-4 overflow-y-auto pointer-events-none">
+            {visibleLines.map((entry, idx) => {
+              const fontClass = classMap.font[entry.font] || 'font-mono';
+              const sizeClass = classMap.size[entry.size] || 'text-base';
+              const italicClass = entry.italic ? 'italic' : '';
+              const colorClass = entry.color || 'text-white';
+              const words = entry.text.split(' ');
+              const shownWords = entry.wordsRevealed !== undefined
+                ? words.slice(0, entry.wordsRevealed).join(' ')
+                : entry.text;
 
+              return (
+                <motion.p
+                  key={idx}
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 1 }}
+                  className={`leading-relaxed drop-shadow ${fontClass} ${sizeClass} ${colorClass} ${italicClass}`}
+                >
+                  {shownWords}
+                </motion.p>
+              );
+            })}
+          </div>
 
-      {/* ✍️ Main Narration Area */}
-      <div className="absolute top-0 left-0 w-full h-full p-16 pt-28 space-y-4 overflow-y-auto pointer-events-none">
-        {visibleLines.map((entry, idx) => {
-          const fontClass = classMap.font[entry.font] || 'font-mono';
-          const sizeClass = classMap.size[entry.size] || 'text-base';
-          const italicClass = entry.italic ? 'italic' : '';
-          const colorClass = entry.color || 'text-white';
+          {/* 🎲 GM Notebook */}
+          {requiredRolls && (
+            <GMNotebook
+              rollInstruction={{
+                check: requiredRolls.check,
+                dice: requiredRolls.dice,
+                canPush: requiredRolls.canPush,
+                pushCondition: 'optional',
+                pushTimeoutMs: 10000,
+              }}
+              onSendResult={(payload) => {
+                console.log('Result to send:', payload);
+              }}
+            />
+          )}
 
-          const words = entry.text.split(' ');
-          const shownWords = entry.wordsRevealed !== undefined ? words.slice(0, entry.wordsRevealed).join(' ') : entry.text;
-
-          return (
-            <motion.p
-              key={idx}
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1 }}
-              className={`leading-relaxed drop-shadow ${fontClass} ${sizeClass} ${colorClass} ${italicClass}`}
-            >
-              {shownWords}
-            </motion.p>
-          );
-        })}
-      </div>
-
-      {/* 📒 Frameworks */}
-      {requiredRolls && (
-        <GMNotebook
-          rollInstruction={{
-            check: requiredRolls.check,
-            dice: requiredRolls.dice,
-            canPush: requiredRolls.canPush,
-            pushCondition: "optional",
-            pushTimeoutMs: 10000,
-          }}
-          onSendResult={(payload) => {
-            console.log('Result to send:', payload);
-          }}
-        />
+          {/* 👤 Player Input */}
+          <PlayerInput onSend={handlePlayerResponse} />
+        </>
       )}
 
-      {/* 👤 Player Input */}
-      <PlayerInput onSend={handlePlayerResponse} />
-
+      {/* PAGE FLIP TO FRAMEWORK VIEW */}
+      <AnimatePresence mode="wait">
+        {activeFramework && (
+          <motion.div
+            key={activeFramework}
+            initial={{ rotateY: 90, opacity: 0 }}
+            animate={{ rotateY: 0, opacity: 1 }}
+            exit={{ rotateY: -90, opacity: 0 }}
+            transition={{ duration: 0.8, ease: 'easeInOut' }}
+            className="absolute inset-0 bg-black z-[3000] pointer-events-auto"
+            style={{
+              backfaceVisibility: 'hidden',
+              transformStyle: 'preserve-3d',
+            }}
+          >
+            {activeFramework === 'typewriter' && (
+              <TypewriterFramework onBack={() => setActiveFramework(null)} />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
