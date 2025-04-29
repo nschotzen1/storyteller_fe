@@ -1,8 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const PlayerInput = ({ pulseSpeed = 'normal', cursorShape = '█' }) => {
+
+
+const PlayerInput = ({ onSend, pulseSpeed = 'normal', cursorShape = '█' }) => {
   const [input, setInput] = useState('');
   const inputRef = useRef(null);
+
+  const handleSend = () => {
+    if (input.trim() === '') return;
+    if (onSend) onSend(input);
+    setInput(''); // Clear after sending
+  };
 
   const pulseClass = {
     slow: 'animate-heartbeat-slow',
@@ -28,6 +36,7 @@ const PlayerInput = ({ pulseSpeed = 'normal', cursorShape = '█' }) => {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             className="absolute left-0 top-0 w-full h-full opacity-0 bg-transparent text-transparent caret-transparent"
             placeholder="Type your response..."
           />
