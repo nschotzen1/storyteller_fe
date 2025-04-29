@@ -21,7 +21,7 @@ body {
   opacity: 0.05;
   mix-blend-mode: overlay;
 }
-/* Fade-in effect for the main content */
+
 
 @keyframes fadeUp {
   from {
@@ -168,6 +168,17 @@ body {
 }
 
 
+
+.flicker {
+  animation: flickerSoft 3s infinite ease-in-out;
+}
+@keyframes flickerSoft {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+
+
 .iris-mask {
   position: absolute;
   inset: 0;
@@ -307,5 +318,37 @@ body {
 }
 .tooltip-btn:active {
   transform: scale(0.95);
+}
+
+
+
+@keyframes ghostText {
+  0% {
+    opacity: 0;
+    filter: blur(8px) brightness(80%);
+    letter-spacing: 0.05em;
+  }
+  30% {
+    opacity: 0.4;
+    filter: blur(4px) brightness(90%);
+    letter-spacing: 0.02em;
+  }
+  70% {
+    opacity: 0.8;
+    filter: blur(2px) brightness(100%);
+  }
+  100% {
+    opacity: 1;
+    filter: none;
+  }
+}
+
+.animate-ghost-text {
+  animation: ghostText 4.5s ease-out forwards;
+}
+
+
+.animate-ghost-text {
+  animation: ghostText 4.5s ease-out forwards;
 }
 

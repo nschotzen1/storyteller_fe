@@ -1,6 +1,3 @@
-// Enhanced MysteryMessenger.jsx
-// A retro-sci-fi messaging UI with layered melancholy, mystery, and narrative weight
-
 import React, { useState, useEffect, useRef } from "react";
 import { Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,16 +16,16 @@ const MessageBubble = ({ text, sender }) => {
       transition={{ duration: 0.5 }}
       className={`flex items-start gap-2 ${
         sender === 'system' ? 'self-start' : 'self-end flex-row-reverse'
-      }`}
+      } relative`}
     >
       <img
         src={avatar}
         alt={sender}
         className="w-8 h-8 rounded-full border border-yellow-700 shadow-md"
       />
-      <div className="flex flex-col max-w-[80%]">
+      <div className="flex flex-col max-w-[260px] md:max-w-[300px] relative">
         {sender === 'system' && (
-          <div className="mb-1 text-xs text-yellow-400 font-fell leading-snug tracking-wide">
+          <div className="mb-1 text-xs text-yellow-400 font-fell leading-snug tracking-wide flicker">
             <div className="flex items-center gap-1 font-semibold">
               The Esteemed Storyteller’s Society
               <span className="ml-1 wax-seal text-red-700">🕯️</span>
@@ -38,15 +35,21 @@ const MessageBubble = ({ text, sender }) => {
             </div>
           </div>
         )}
-        <div
-          className={`px-4 py-3 rounded-lg text-sm shadow-md whitespace-pre-wrap ${
-            sender === "system"
-              ? "bg-yellow-900/20 text-yellow-100 backdrop-blur-md border border-yellow-800"
-              : "bg-yellow-100 text-black font-mono"
-          }`}
-        >
-          {text}
-        </div>
+       <div
+      className={`px-4 py-3 rounded-md text-sm relative font-mono shadow-md ${
+        sender === "system"
+          ? "bg-yellow-900/20 text-yellow-100 backdrop-blur-sm border border-yellow-800 animate-ghost-text"
+          : "bg-yellow-100 text-black"
+      }`}
+    >
+      {text}
+
+      {/* Static overlay inside assistant message only */}
+      {sender === 'system' && (
+        <div className="absolute inset-0 pointer-events-none opacity-10 bg-[url('/textures/film_grain.png')] bg-cover mix-blend-overlay"></div>
+      )}
+    </div>
+
       </div>
     </motion.div>
   );
@@ -194,23 +197,29 @@ const MysteryMessenger = ({ start = true, onCurtainDropComplete }) => {
       animate={{ opacity: 1 }}
       transition={{ duration: 3.5, delay: 2 }}
     >
+      {/* Atmosphere */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#0c0c0c] via-[#1a1a1a] to-black opacity-95 z-0"></div>
-      <div className="absolute inset-0 bg-[url('/textures/film_grain.png')] bg-cover bg-center opacity-5 z-0 pointer-events-none mix-blend-soft-light"></div>
-      <div className="absolute inset-0 bg-grid-scanlines z-10 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-[url('/textures/film_grain.png')] bg-cover bg-center opacity-15 z-0 pointer-events-none mix-blend-soft-light"></div>
+      <div className="absolute inset-0 bg-grid-scanlines z-10 pointer-events-none flicker-screen"></div>
 
+      {/* Retro Device */}
       <div className="relative w-[380px] md:w-[420px] h-[640px] rounded-[28px] border-[4px] border-yellow-800 shadow-[0_0_40px_rgba(255,255,255,0.08)] bg-gradient-to-br from-[#1c1c1c] via-[#292522] to-[#0e0d0b] ring-2 ring-yellow-900/40 overflow-hidden backdrop-blur-[3px]">
-        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-yellow-900 rounded-full opacity-40"></div>
-        <div className="absolute top-3 left-3 flex items-center gap-1 text-yellow-800 text-[10px] font-mono opacity-60">
-          <div className="w-3 h-2 border border-yellow-800 rounded-sm relative">
-            <div className="w-[70%] h-full bg-yellow-700" />
-            <div className="absolute -right-[2px] top-0 h-2 w-[2px] bg-yellow-700" />
+
+        {/* 🔋 Battery */}
+        <div className="absolute top-3 left-3 flex items-center gap-1 text-yellow-700 text-[10px] font-mono opacity-80">
+          <div className="w-4 h-2 border border-yellow-700 rounded-sm relative">
+            <div className="w-[70%] h-full bg-yellow-600" />
+            <div className="absolute -right-[2px] top-0 h-2 w-[2px] bg-yellow-600" />
           </div>
           68%
         </div>
-        <div className="absolute top-3 right-3 text-[9px] font-mono text-yellow-800 opacity-50 tracking-wide flicker">
+
+        {/* 📶 Signal */}
+        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 text-[9px] font-mono text-yellow-700 opacity-50 tracking-wide flicker">
           LINK LOST
         </div>
 
+        {/* Inner Screen */}
         <div className="absolute inset-1 bg-black/70 rounded-[24px] flex flex-col overflow-hidden">
           <div className={`flex-1 p-5 overflow-y-auto flex flex-col gap-4 relative ${chatEnded ? 'fade-rain' : ''}`}>
             {messages.map((msg, i) => (
@@ -249,7 +258,6 @@ const MysteryMessenger = ({ start = true, onCurtainDropComplete }) => {
           >
             New Session
           </button>
-
           <div className="absolute bottom-2 right-4 text-xs text-yellow-700 opacity-50 font-mono">
             session: {sessionId}
           </div>
