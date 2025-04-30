@@ -101,7 +101,7 @@
   
 
 /* Keyboard */
-.typewriter-keyboard {
+/* .typewriter-keyboard {
   position: relative;
   background: linear-gradient(to bottom, #191714, #0e0d0c);
   border-top: 2px solid #333;
@@ -111,7 +111,7 @@
   grid-template-columns: repeat(10, 1fr);
   gap: 1rem;
   z-index: 10;
-}
+} */
 
 /* Individual key */
 .typewriter-key {
@@ -208,5 +208,118 @@
   @keyframes striker-blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.2; }
+  }
+  
+
+  .typewriter-key-wrapper {
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    user-select: none;
+    transform: translateY(var(--offset-y)) rotate(var(--tilt));
+    transition: transform 0.3s ease;
+  }
+
+  
+
+  
+  .typewriter-key-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    transition: transform 0.2s;
+    filter: contrast(1.05) brightness(0.95);
+  }
+  
+  .typewriter-key-wrapper:active .typewriter-key-img {
+    transform: scale(0.96);
+  }
+
+  .typewriter-key-wrapper.key-pressed .typewriter-key-img {
+    transform: scale(0.92);
+    filter: brightness(0.85) contrast(1.2);
+  }
+  
+  .typewriter-key-wrapper:nth-child(3n) {
+    transform: translateY(1px) rotate(-0.5deg);
+  }
+  .typewriter-key-wrapper:nth-child(5n) {
+    transform: translateY(-1px) rotate(0.4deg);
+  }
+
+  .typewriter-key-wrapper.key-pressed .typewriter-key-img {
+    transform: scale(0.94);
+    filter: brightness(0.85);
+  }
+
+  .typewriter-keyboard {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 2.5rem 4rem 4rem;
+    background: linear-gradient(to top, #1a1a1a, #0f0f0f);
+    border-top: 2px solid #333;
+    border-radius: 0 0 100px 100px; /* ← arc illusion */
+    box-shadow: inset 0 30px 60px rgba(0,0,0,0.5);
+    transform: perspective(1000px) rotateX(5deg); /* ← tilt keys slightly */
+    gap: 0.6rem 1rem;
+  }
+
+  .typewriter-keyboard::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 15%;
+    right: 15%;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.25), transparent 70%);
+    pointer-events: none;
+    z-index: 1;
+  }
+  
+  .typewriter-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    mix-blend-mode: soft-light; /* or 'overlay' for more dramatic light */
+    opacity: 0.92;
+    z-index: 1000;
+    pointer-events: none; /* ensures it's non-blocking */
+  }
+  
+  .keyboard-plate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 2rem 4rem;
+    background: #0a0a0a;
+    border-top-left-radius: 100px;
+    border-top-right-radius: 100px;
+    box-shadow: inset 0 20px 50px rgba(0,0,0,0.5);
+    transform: perspective(1000px) rotateX(5deg);
+  }
+  
+  .key-row {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+  }
+  
+  .typewriter-paper-frame {
+    width: 80%;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    z-index: 2;
   }
   
