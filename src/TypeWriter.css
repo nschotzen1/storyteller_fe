@@ -1,7 +1,50 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Unicase:wght@700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Uncial+Antiqua&family=Special+Elite&family=Cormorant+Garamond:wght@600&family=EB+Garamond&family=MedievalSharp&display=swap');
 
+.key-style-1 {
+    font-family: 'Uncial Antiqua', serif;
+    font-size: 1.3rem;
+    color: #e2dfd4;
+  }
+  .key-style-2 {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.5rem;
+    color: #ccc;
+  }
+  .key-style-3 {
+    font-family: 'Special Elite', monospace;
+    font-size: 1.1rem;
+    color: #ddd;
+  }
+  .key-style-4 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.7rem;
+    color: #faf5e9;
+  }
+  .key-style-5 {
+    font-family: 'IM Fell English SC', serif;
+    font-size: 1.6rem;
+    color: #d6cab0;
+  }
+  .key-style-6 {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 1.5rem;
+    color: #eee;
+  }
 
+  .key-engraved-glyph::after {
+    content: '𐌔'; /* or any arcane rune */
+    font-family: 'Uncial Antiqua';
+    font-size: 1rem;
+    color: rgba(255,255,255,0.08);
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+  }
+  
+  
 /* Main container */
 .typewriter-container {
   position: relative;
@@ -13,6 +56,9 @@
   background-color: #0b0908;
   overflow: hidden;
 }
+
+
+  
 
 /* Paper surface */
 .typewriter-paper {
@@ -37,21 +83,21 @@
   100% { transform: rotate(-0.1deg) translateY(0.5px); }
 }
 
-/* Typed text */
-.typewriter-text {
-    font-family: 'IBM Plex Mono', monospace;
-    font-weight: 700;
-    font-size: 1.6rem;
-    color: #16110c;
-    letter-spacing: 0.02em;
-    line-height: 2.2rem;
-    mix-blend-mode: multiply;
-    filter: contrast(1.2) brightness(0.95);
-    text-shadow:
-  0.5px 0.5px 0 rgba(0, 0, 0, 0.15),
-  -0.5px -0.5px 0 rgba(0, 0, 0, 0.1);
 
-  }
+
+.typewriter-text {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 1.8rem;
+  line-height: 2.4rem;
+  color: #1c130a;
+  letter-spacing: 0.01em;
+  filter: contrast(1.1);
+  mix-blend-mode: multiply;
+  text-shadow:
+    0.5px 0.5px rgba(0,0,0,0.15),
+   -0.5px -0.5px rgba(0,0,0,0.08);
+}
+
   
 
 /* Keyboard */
@@ -69,22 +115,24 @@
 
 /* Individual key */
 .typewriter-key {
-  width: 60px;
-  height: 60px;
-  background: radial-gradient(circle at 30% 30%, #555, #222);
-  border-radius: 50%;
-  border: 2px solid #000;
-  color: #ddd;
-  font-size: 1.4rem;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-shadow: 0 1px 0 #000;
-  box-shadow: inset -3px -3px 5px #000, inset 2px 2px 4px #666;
-  transition: all 0.15s;
-  user-select: none;
-}
+    width: 60px;
+    height: 60px;
+    background: radial-gradient(circle at 30% 30%, #4a4a4a, #1c1c1c);
+    border-radius: 50%;
+    border: 2px solid #0a0a0a;
+    box-shadow:
+      inset -3px -3px 6px #000,
+      inset 2px 2px 4px rgba(255,255,255,0.1),
+      0 4px 6px rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    text-shadow:
+      1px 1px 0 #000,
+      -1px -1px 0 rgba(255,255,255,0.05);
+    user-select: none;
+  }
 
 .typewriter-key:active {
   transform: translateY(2px);
@@ -139,19 +187,22 @@
     filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5)) blur(0.2px);
     pointer-events: none;
   }
-
   .striker-cursor {
     display: inline-block;
-    width: 40px;  /* bigger */
-    height: 80px; /* bigger */
+    width: 48px;
+    height: 100px;
     background-image: url('/textures/striker.png');
     background-size: contain;
     background-repeat: no-repeat;
+    margin-left: 4px;
     vertical-align: bottom;
-    margin-left: 8px;
     position: relative;
-    top: 6px;
+    top: 47px; /* nudges slightly down to match letter base */
+    right:25px;
+    filter: drop-shadow(1px 2px 3px rgba(0, 0, 0, 0.5));
+    z-index: 10;
   }
+  
   
   
   @keyframes striker-blink {
