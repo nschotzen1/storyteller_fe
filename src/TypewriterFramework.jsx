@@ -4,7 +4,7 @@ import './TypeWriter.css';
 const keys = [
   'Q','W','E','R','T','Y','U','I','O','P',
   'A','S','D','F','G','H','J','K','L',
-  'Z','X','C',null,'V','B',null,'N','M'
+  'Z','X','C','V','B','N','M','THE XEROFAG'
 ];
 
 const materialOptions = ['stone', 'bone', 'brass'];
@@ -12,12 +12,18 @@ const materialOptions = ['stone', 'bone', 'brass'];
 const getRandomTexture = (key) => {
   if (!key) return null;
   const material = materialOptions[Math.floor(Math.random() * materialOptions.length)];
-  const variant = Math.random() < 0.3 ? '_glow' : ''; // 30% chance to glow
-  return `/textures/keys/${key}_1.png`; // replace with `${key}_${material}_1${variant}.png` if you generate variations
+  const variant = Math.random() < 0.3 ? '_glow' : '';
+  return `/textures/keys/${key}_1.png`;
 };
 
 const playKeySound = () => {
   const audio = new Audio('/sounds/typewriter-clack.mp3');
+  audio.volume = 0.3;
+  audio.play();
+};
+
+const playEnterSound = () => {
+  const audio = new Audio('/sounds/typewriter-enter.mp3');
   audio.volume = 0.3;
   audio.play();
 };
@@ -37,14 +43,21 @@ const TypewriterFramework = () => {
   const generateRow = (rowKeys) => (
     <div className="key-row">
       {rowKeys.map((key, idx) => {
-        const texture = keyTextures.find((_, i) => keys[i] === key);
+        const globalIdx = keys.findIndex(k => k === key);
+        const texture = keyTextures[globalIdx];
         const offset = Math.floor(Math.random() * 3) - 1;
         const tilt = (Math.random() * 1.4 - 0.7).toFixed(2);
+
         return (
           <div
             key={key + idx}
             className={`typewriter-key-wrapper ${lastPressedKey === key ? 'key-pressed' : ''}`}
             style={{ '--offset-y': `${offset}px`, '--tilt': `${tilt}deg` }}
+            onClick={() => {
+              setInputBuffer(prev => prev + key);
+              setLastPressedKey(key);
+              playKeySound();
+            }}
           >
             {texture && (
               <img
@@ -81,6 +94,12 @@ const TypewriterFramework = () => {
       e.preventDefault();
       const char = e.key === "Enter" ? '\n' : e.key;
       setInputBuffer(prev => prev + char);
+    }
+    if (e.key === "Enter") playEnterSound();
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      setTypedText(prev => prev.slice(0, -1));
+      return;
     }
 
     playKeySound();
@@ -119,18 +138,38 @@ const TypewriterFramework = () => {
       />
       <div className="typewriter-paper-frame">
         <div className="typewriter-paper">
-            <pre className="typewriter-text">
-            <span>{typedText}</span>
-            <span className="striker-cursor" />
-            </pre>
+        <pre className="typewriter-text">
+        {typedText}
+        <span className="striker-cursor" />
+        </pre>
         </div>
-        </div>
+      </div>
 
+      <div className="storyteller-sigil">
+        <img src="/textures/sigil_storytellers_society.png" alt="Storyteller's Society Sigil" />
+      </div>
 
       <div className="keyboard-plate">
         {generateRow(topRow)}
         {generateRow(midRow)}
         {generateRow(botRow)}
+        <div className="key-row spacebar-row">
+            <div
+                className="spacebar-wrapper"
+                onClick={() => {
+                setInputBuffer(prev => prev + ' ');
+                setLastPressedKey(' ');
+                playKeySound();
+                }}
+            >
+                <img
+                src="/textures/keys/spacebar.png"
+                alt="Spacebar"
+                className="spacebar-img"
+                />
+            </div>
+        </div>
+
       </div>
     </div>
   );
