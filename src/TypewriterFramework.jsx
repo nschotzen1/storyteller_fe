@@ -35,6 +35,9 @@ const TypewriterFramework = () => {
   const [lastPressedKey, setLastPressedKey] = useState(null);
   const [keyTextures, setKeyTextures] = useState(keys.map(getRandomTexture));
   const containerRef = useRef(null);
+  const scrollRef = useRef(null);
+  const strikerRef = useRef(null);
+  const lastLineRef = useRef(null);
 
   const topRow = ['Q','W','E','R','T','Y','U','I','O','P'];
   const midRow = ['A','S','D','F','G','H','J','K','L'];
@@ -74,12 +77,27 @@ const TypewriterFramework = () => {
 
   useEffect(() => {
     if (!inputBuffer.length) return;
+    const char = inputBuffer[0];
     const timeout = setTimeout(() => {
-      setTypedText(prev => prev + inputBuffer[0]);
+      setTypedText(prev => prev + char);
       setInputBuffer(prev => prev.slice(1));
+
+      if (char === '\n' && strikerRef.current) {
+        strikerRef.current.classList.add('striker-return');
+        const timeout = setTimeout(() => {
+          strikerRef.current.classList.remove('striker-return');
+        }, 600);
+        return () => clearTimeout(timeout);
+      }
     }, 100);
     return () => clearTimeout(timeout);
   }, [inputBuffer]);
+
+  useEffect(() => {
+    if (lastLineRef.current) {
+      lastLineRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [typedText]);
 
   useEffect(() => {
     containerRef.current?.focus();
@@ -137,13 +155,25 @@ const TypewriterFramework = () => {
         className="typewriter-overlay"
       />
       <div className="typewriter-paper-frame">
-        <div className="typewriter-paper">
-        <pre className="typewriter-text">
-        {typedText}
-        <span className="striker-cursor" />
-        </pre>
-        </div>
+  <div className="typewriter-paper">
+    <div className="paper-scroll-area" ref={scrollRef}>
+      <div className="typewriter-text">
+        {typedText.split('\n').map((line, idx, arr) => (
+          <div key={idx} className="typewriter-line">
+            {line}
+            {idx === arr.length - 1 && (
+              <>
+                <span ref={lastLineRef}></span>
+                <span className="striker-cursor" ref={strikerRef} />
+              </>
+            )}
+          </div>
+        ))}
       </div>
+    </div>
+  </div>
+        </div>
+
 
       <div className="storyteller-sigil">
         <img src="/textures/sigil_storytellers_society.png" alt="Storyteller's Society Sigil" />
@@ -154,22 +184,21 @@ const TypewriterFramework = () => {
         {generateRow(midRow)}
         {generateRow(botRow)}
         <div className="key-row spacebar-row">
-            <div
-                className="spacebar-wrapper"
-                onClick={() => {
-                setInputBuffer(prev => prev + ' ');
-                setLastPressedKey(' ');
-                playKeySound();
-                }}
-            >
-                <img
-                src="/textures/keys/spacebar.png"
-                alt="Spacebar"
-                className="spacebar-img"
-                />
-            </div>
+          <div
+            className="spacebar-wrapper"
+            onClick={() => {
+              setInputBuffer(prev => prev + ' ');
+              setLastPressedKey(' ');
+              playKeySound();
+            }}
+          >
+            <img
+              src="/textures/keys/spacebar.png"
+              alt="Spacebar"
+              className="spacebar-img"
+            />
+          </div>
         </div>
-
       </div>
     </div>
   );
