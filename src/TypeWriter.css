@@ -51,11 +51,14 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 100%;
+  height: 100vh; /* force it to viewport height */
   width: 100%;
   background-color: #0b0908;
-  overflow: hidden;
+  overflow-y: auto; /* allow scroll if needed */
+  padding-top: 4vh;
 }
+
+
 
 
   
@@ -77,11 +80,16 @@
   animation: paperSettle 20s ease-in-out infinite alternate;
 }
 
+
 .paper-scroll-area {
   max-height: 100%;
   height: 100%;
+  flex-grow: 1;
+  height: 100%;
   overflow-y: auto;
   scroll-behavior: smooth;
+  padding-bottom: 4rem; 
+  min-height: 10rem;
 }
 
 
@@ -93,37 +101,25 @@
 
 
 
+
 .typewriter-text {
   font-family: 'IM Fell English SC', serif;
   font-size: 1.8rem;
   line-height: 2.4rem;
   color: #1c130a;
   letter-spacing: 0.01em;
-  filter: contrast(1.1);
-  mix-blend-mode: multiply;
-  text-shadow:
-    0.5px 0.5px rgba(0,0,0,0.15),
-   -0.5px -0.5px rgba(0,0,0,0.08);
-}
-.typewriter-text {
-  font-family: 'IM Fell English SC', serif;
-  font-size: 1.8rem;
-  line-height: 2.4rem;
-  color: #1c130a;
-  letter-spacing: 0.01em;
-  filter: contrast(1.1);
-  mix-blend-mode: multiply;
-  text-shadow:
-    0.5px 0.5px rgba(0,0,0,0.15),
-   -0.5px -0.5px rgba(0,0,0,0.08);
+  white-space: pre-wrap;
+  word-break: break-word;
   display: flex;
   flex-direction: column;
+  mix-blend-mode: multiply;
+  filter: contrast(1.1);
+  text-shadow:
+    0.5px 0.5px rgba(0,0,0,0.15),
+    -0.5px -0.5px rgba(0,0,0,0.08);
+  padding: 0; /* REMOVE excessive bottom padding */
 }
 
-.typewriter-line {
-  min-height: 2.4rem;
-  white-space: pre-wrap;
-}
 
 
   
@@ -215,6 +211,13 @@
     filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5)) blur(0.2px);
     pointer-events: none;
   }
+
+  .typewriter-line {
+    position: relative;
+    min-height: 2.4rem;
+    white-space: pre-wrap;
+  }
+  
   .striker-cursor {
     display: inline-block;
     width: 72px;
@@ -223,15 +226,20 @@
     background-size: contain;
     background-repeat: no-repeat;
     margin-left: 4px;
-    vertical-align: bottom;
+  
     position: relative;
-    top: 55px; /* nudges slightly down to match letter base */
-    right:45px; 
+    top: 14px;         /* ↓ From 55px — try 8–14px for fine-tuning */
+    right: 45px;       /* ← tweak horizontally if needed */
+  
+    vertical-align: middle; /* Ensures it aligns with text flow */
+  
     filter: drop-shadow(1px 2px 3px rgba(0, 0, 0, 0.5));
     z-index: 0;
-    opacity: 0.8;
+    opacity: 0.85;
     mix-blend-mode: multiply;
   }
+  
+  
   
   
   
@@ -336,6 +344,9 @@
     border-top-right-radius: 100px;
     box-shadow: inset 0 20px 50px rgba(0,0,0,0.5);
     transform: perspective(1000px) rotateX(5deg);
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+    transform: perspective(1000px) rotateX(4deg); /* slightly less dramatic */
   }
   
   .key-row {
@@ -352,6 +363,14 @@
     border-left: 12px solid transparent;
     border-right: 12px solid transparent;
     z-index: 2;
+    height: 70vh;     
+
+  }
+  
+  @media (max-height: 800px) {
+    .typewriter-paper-frame {
+      height: 60vh;
+    }
   }
 
 
@@ -466,27 +485,10 @@
     padding: 4rem 6rem;
   }
   
-  .paper-scroll-area {
-    flex-grow: 1;
-    overflow-y: auto;
-    scroll-behavior: smooth;
-  }
   
-  .typewriter-text {
-    font-family: 'IM Fell English SC', serif;
-    font-size: 1.8rem;
-    line-height: 2.4rem;
-    color: #1c130a;
-    letter-spacing: 0.01em;
-    white-space: pre-wrap;
-    word-break: break-word;
-    padding-bottom: 4rem;
-  }
   
-  .typewriter-line {
-    min-height: 2.4rem;
-  }
 
+ 
   
   .typewriter-paper-frame {
     height: 60vh; /* you can adjust this to 70vh or 65vh */
@@ -511,11 +513,26 @@
     animation: paperSettle 20s ease-in-out infinite alternate;
   }
 
-  
-  .paper-scroll-area {
-    flex-grow: 1;
-    height: 100%;
-    overflow-y: auto;
-    scroll-behavior: smooth;
+
+
+  .side-frame {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 80px; /* ← or try 100px for more impact */
+    z-index: 9;
+    pointer-events: none;
+    mix-blend-mode: multiply;
+    opacity: 0.96;
+    background-size: contain;
+    background-repeat: no-repeat;
+  }
+  .side-left {
+    /* left: -40px; or adjust to -60px for alignment */
+    background-image: url('/textures/decor/typewriter_side_left.png');
+  }
+  .side-right {
+    right: -40px;
+    background-image: url('/textures/decor/typewriter_side_right.png');
   }
   

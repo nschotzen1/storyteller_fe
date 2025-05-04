@@ -94,10 +94,14 @@ const TypewriterFramework = () => {
   }, [inputBuffer]);
 
   useEffect(() => {
-    if (lastLineRef.current) {
-      lastLineRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (scrollRef.current) {
+      const lineHeight = 38; // Approximate based on your CSS (2.4rem)
+      scrollRef.current.scrollTop =
+      lastLineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
     }
   }, [typedText]);
+  
 
   useEffect(() => {
     containerRef.current?.focus();
@@ -155,11 +159,14 @@ const TypewriterFramework = () => {
         className="typewriter-overlay"
       />
       <div className="typewriter-paper-frame">
+      <div className="side-frame side-left" />
+      <div className="side-frame side-right" />
+
   <div className="typewriter-paper">
     <div className="paper-scroll-area" ref={scrollRef}>
       <div className="typewriter-text">
         {typedText.split('\n').map((line, idx, arr) => (
-          <div key={idx} className="typewriter-line">
+          <div key={idx} className="typewriter-line" >
             {line}
             {idx === arr.length - 1 && (
               <>
