@@ -105,6 +105,7 @@
     0.5px 0.5px rgba(0,0,0,0.15),
    -0.5px -0.5px rgba(0,0,0,0.08);
 }
+
 .typewriter-text {
   font-family: 'IM Fell English SC', serif;
   font-size: 1.8rem;
@@ -225,12 +226,14 @@
     margin-left: 4px;
     vertical-align: bottom;
     position: relative;
+
     top: 55px; /* nudges slightly down to match letter base */
     right:45px; 
     filter: drop-shadow(1px 2px 3px rgba(0, 0, 0, 0.5));
     z-index: 0;
     opacity: 0.8;
     mix-blend-mode: multiply;
+
   }
   
   
@@ -353,7 +356,6 @@
     border-right: 12px solid transparent;
     z-index: 2;
   }
-
 
   .storyteller-sigil {
     display: flex;

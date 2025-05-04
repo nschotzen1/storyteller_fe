@@ -22,6 +22,7 @@ const playKeySound = () => {
   audio.play();
 };
 
+
 const playEnterSound = () => {
   const audio = new Audio('/sounds/typewriter-enter.mp3');
   audio.volume = 0.3;
@@ -75,6 +76,35 @@ const TypewriterFramework = () => {
     </div>
   );
 
+  const topRow = ['Q','W','E','R','T','Y','U','I','O','P'];
+  const midRow = ['A','S','D','F','G','H','J','K','L'];
+  const botRow = ['Z','X','C','V','B','N','M'];
+
+  const generateRow = (rowKeys) => (
+    <div className="key-row">
+      {rowKeys.map((key, idx) => {
+        const texture = keyTextures.find((_, i) => keys[i] === key);
+        const offset = Math.floor(Math.random() * 3) - 1;
+        const tilt = (Math.random() * 1.4 - 0.7).toFixed(2);
+        return (
+          <div
+            key={key + idx}
+            className={`typewriter-key-wrapper ${lastPressedKey === key ? 'key-pressed' : ''}`}
+            style={{ '--offset-y': `${offset}px`, '--tilt': `${tilt}deg` }}
+          >
+            {texture && (
+              <img
+                src={texture}
+                alt={`Key ${key}`}
+                className="typewriter-key-img"
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   useEffect(() => {
     if (!inputBuffer.length) return;
     const char = inputBuffer[0];
@@ -92,6 +122,7 @@ const TypewriterFramework = () => {
     }, 100);
     return () => clearTimeout(timeout);
   }, [inputBuffer]);
+
 
   useEffect(() => {
     if (lastLineRef.current) {
@@ -179,10 +210,12 @@ const TypewriterFramework = () => {
         <img src="/textures/sigil_storytellers_society.png" alt="Storyteller's Society Sigil" />
       </div>
 
+
       <div className="keyboard-plate">
         {generateRow(topRow)}
         {generateRow(midRow)}
         {generateRow(botRow)}
+
         <div className="key-row spacebar-row">
           <div
             className="spacebar-wrapper"
@@ -199,6 +232,7 @@ const TypewriterFramework = () => {
             />
           </div>
         </div>
+
       </div>
     </div>
   );
