@@ -16,6 +16,7 @@ const getRandomTexture = (key) => {
   return `/textures/keys/${key}_1.png`;
 };
 
+
 const scrollToCurrentLine = () => {
   if (scrollRef.current && lastLineRef.current) {
     const lineBottom = lastLineRef.current.offsetTop + lastLineRef.current.offsetHeight;
@@ -35,6 +36,7 @@ const playKeySound = () => {
   audio.volume = 0.3;
   audio.play();
 };
+
 
 const playEnterSound = () => {
   const audio = new Audio('/sounds/typewriter-enter.mp3');
@@ -89,6 +91,7 @@ const TypewriterFramework = () => {
     </div>
   );
 
+
   useEffect(() => {
     if (!inputBuffer.length) return;
     const char = inputBuffer[0];
@@ -107,12 +110,14 @@ const TypewriterFramework = () => {
     return () => clearTimeout(timeout);
   }, [inputBuffer]);
 
+
   useEffect(() => {
     // Delay slightly to allow DOM updates
     const timer = setTimeout(scrollToCurrentLine, 10);
     return () => clearTimeout(timer);
   }, [typedText]);
   
+
 
   useEffect(() => {
     containerRef.current?.focus();
@@ -187,6 +192,7 @@ const TypewriterFramework = () => {
     )}
   </div>
 ))}
+
       </div>
     </div>
   </div>
@@ -196,11 +202,11 @@ const TypewriterFramework = () => {
       <div className="storyteller-sigil">
         <img src="/textures/sigil_storytellers_society.png" alt="Storyteller's Society Sigil" />
       </div>
-
       <div className="keyboard-plate">
         {generateRow(topRow)}
         {generateRow(midRow)}
         {generateRow(botRow)}
+
         <div className="key-row spacebar-row">
           <div
             className="spacebar-wrapper"
