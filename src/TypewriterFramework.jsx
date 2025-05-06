@@ -16,6 +16,21 @@ const getRandomTexture = (key) => {
   return `/textures/keys/${key}_1.png`;
 };
 
+
+const scrollToCurrentLine = () => {
+  if (scrollRef.current && lastLineRef.current) {
+    const lineBottom = lastLineRef.current.offsetTop + lastLineRef.current.offsetHeight;
+    const visibleHeight = scrollRef.current.clientHeight;
+    const currentScroll = scrollRef.current.scrollTop;
+    
+    // Only scroll if the line is not fully visible
+    if (lineBottom > currentScroll + visibleHeight || 
+        lastLineRef.current.offsetTop < currentScroll) {
+      scrollRef.current.scrollTop = lineBottom - visibleHeight + 100; // Add extra space
+    }
+  }
+};
+
 const playKeySound = () => {
   const audio = new Audio('/sounds/typewriter-clack.mp3');
   audio.volume = 0.3;
@@ -76,34 +91,6 @@ const TypewriterFramework = () => {
     </div>
   );
 
-  const topRow = ['Q','W','E','R','T','Y','U','I','O','P'];
-  const midRow = ['A','S','D','F','G','H','J','K','L'];
-  const botRow = ['Z','X','C','V','B','N','M'];
-
-  const generateRow = (rowKeys) => (
-    <div className="key-row">
-      {rowKeys.map((key, idx) => {
-        const texture = keyTextures.find((_, i) => keys[i] === key);
-        const offset = Math.floor(Math.random() * 3) - 1;
-        const tilt = (Math.random() * 1.4 - 0.7).toFixed(2);
-        return (
-          <div
-            key={key + idx}
-            className={`typewriter-key-wrapper ${lastPressedKey === key ? 'key-pressed' : ''}`}
-            style={{ '--offset-y': `${offset}px`, '--tilt': `${tilt}deg` }}
-          >
-            {texture && (
-              <img
-                src={texture}
-                alt={`Key ${key}`}
-                className="typewriter-key-img"
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
 
   useEffect(() => {
     if (!inputBuffer.length) return;
@@ -125,10 +112,12 @@ const TypewriterFramework = () => {
 
 
   useEffect(() => {
-    if (lastLineRef.current) {
-      lastLineRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    // Delay slightly to allow DOM updates
+    const timer = setTimeout(scrollToCurrentLine, 10);
+    return () => clearTimeout(timer);
   }, [typedText]);
+  
+
 
   useEffect(() => {
     containerRef.current?.focus();
@@ -186,20 +175,24 @@ const TypewriterFramework = () => {
         className="typewriter-overlay"
       />
       <div className="typewriter-paper-frame">
+      <div className="side-frame side-left" />
+      <div className="side-frame side-right" />
+
   <div className="typewriter-paper">
     <div className="paper-scroll-area" ref={scrollRef}>
       <div className="typewriter-text">
-        {typedText.split('\n').map((line, idx, arr) => (
-          <div key={idx} className="typewriter-line">
-            {line}
-            {idx === arr.length - 1 && (
-              <>
-                <span ref={lastLineRef}></span>
-                <span className="striker-cursor" ref={strikerRef} />
-              </>
-            )}
-          </div>
-        ))}
+      {typedText.split('\n').map((line, idx, arr) => (
+      <div key={idx} className="typewriter-line">
+        {line}
+        {idx === arr.length - 1 && (
+          <>
+            <span ref={lastLineRef}></span>
+            <span className="striker-cursor" ref={strikerRef} />
+          </>
+    )}
+  </div>
+))}
+
       </div>
     </div>
   </div>
@@ -209,8 +202,6 @@ const TypewriterFramework = () => {
       <div className="storyteller-sigil">
         <img src="/textures/sigil_storytellers_society.png" alt="Storyteller's Society Sigil" />
       </div>
-
-
       <div className="keyboard-plate">
         {generateRow(topRow)}
         {generateRow(midRow)}
@@ -232,7 +223,6 @@ const TypewriterFramework = () => {
             />
           </div>
         </div>
-
       </div>
     </div>
   );
