@@ -16,6 +16,20 @@ const getRandomTexture = (key) => {
   return `/textures/keys/${key}_1.png`;
 };
 
+const scrollToCurrentLine = () => {
+  if (scrollRef.current && lastLineRef.current) {
+    const lineBottom = lastLineRef.current.offsetTop + lastLineRef.current.offsetHeight;
+    const visibleHeight = scrollRef.current.clientHeight;
+    const currentScroll = scrollRef.current.scrollTop;
+    
+    // Only scroll if the line is not fully visible
+    if (lineBottom > currentScroll + visibleHeight || 
+        lastLineRef.current.offsetTop < currentScroll) {
+      scrollRef.current.scrollTop = lineBottom - visibleHeight + 100; // Add extra space
+    }
+  }
+};
+
 const playKeySound = () => {
   const audio = new Audio('/sounds/typewriter-clack.mp3');
   audio.volume = 0.3;
@@ -94,12 +108,9 @@ const TypewriterFramework = () => {
   }, [inputBuffer]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      const lineHeight = 38; // Approximate based on your CSS (2.4rem)
-      scrollRef.current.scrollTop =
-      lastLineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-
-    }
+    // Delay slightly to allow DOM updates
+    const timer = setTimeout(scrollToCurrentLine, 10);
+    return () => clearTimeout(timer);
   }, [typedText]);
   
 
@@ -165,17 +176,17 @@ const TypewriterFramework = () => {
   <div className="typewriter-paper">
     <div className="paper-scroll-area" ref={scrollRef}>
       <div className="typewriter-text">
-        {typedText.split('\n').map((line, idx, arr) => (
-          <div key={idx} className="typewriter-line" >
-            {line}
-            {idx === arr.length - 1 && (
-              <>
-                <span ref={lastLineRef}></span>
-                <span className="striker-cursor" ref={strikerRef} />
-              </>
-            )}
-          </div>
-        ))}
+      {typedText.split('\n').map((line, idx, arr) => (
+      <div key={idx} className="typewriter-line">
+        {line}
+        {idx === arr.length - 1 && (
+          <>
+            <span ref={lastLineRef}></span>
+            <span className="striker-cursor" ref={strikerRef} />
+          </>
+    )}
+  </div>
+))}
       </div>
     </div>
   </div>

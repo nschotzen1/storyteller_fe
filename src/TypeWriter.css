@@ -85,10 +85,10 @@
   max-height: 100%;
   height: 100%;
   flex-grow: 1;
-  height: 100%;
   overflow-y: auto;
   scroll-behavior: smooth;
-  padding-bottom: 4rem; 
+  padding-bottom: 6rem; /* Increased for better spacing at bottom */
+  padding-left: 2rem; 
   min-height: 10rem;
 }
 
@@ -216,6 +216,9 @@
     position: relative;
     min-height: 2.4rem;
     white-space: pre-wrap;
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.3rem;
   }
   
   .striker-cursor {
@@ -225,20 +228,15 @@
     background-image: url('/textures/striker.png');
     background-size: contain;
     background-repeat: no-repeat;
-    margin-left: 4px;
-  
     position: relative;
-    top: 14px;         /* ↓ From 55px — try 8–14px for fine-tuning */
-    right: 45px;       /* ← tweak horizontally if needed */
-  
-    vertical-align: middle; /* Ensures it aligns with text flow */
-  
+    top: 20; /* Reset top position */
+    right: 45px;
+    align-self: center; /* Center in the flex container */
     filter: drop-shadow(1px 2px 3px rgba(0, 0, 0, 0.5));
     z-index: 0;
     opacity: 0.85;
     mix-blend-mode: multiply;
   }
-  
   
   
   
@@ -478,11 +476,17 @@
   }
   
   .typewriter-paper {
-    flex-grow: 1;
-    height: 100%;
-    overflow: hidden;
     position: relative;
-    padding: 4rem 6rem;
+    flex-grow: 1;
+    background-image: url('/textures/typewriter_paper.png'),
+                     radial-gradient(ellipse at top left, rgba(255, 235, 180, 0.2), transparent 80%);
+    background-size: cover;
+    background-position: center;
+    background-blend-mode: multiply, overlay, normal;
+    filter: brightness(1) contrast(1.1);
+    padding: 4rem 6rem 8rem 6rem; /* Added more padding at bottom */
+    box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.4);
+    animation: paperSettle 20s ease-in-out infinite alternate;
   }
   
   
@@ -519,20 +523,22 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 80px; /* ← or try 100px for more impact */
+    width: 120px; /* Increased from 80px */
     z-index: 9;
     pointer-events: none;
     mix-blend-mode: multiply;
     opacity: 0.96;
     background-size: contain;
     background-repeat: no-repeat;
-  }
-  .side-left {
-    /* left: -40px; or adjust to -60px for alignment */
-    background-image: url('/textures/decor/typewriter_side_left.png');
-  }
-  .side-right {
-    right: -40px;
-    background-image: url('/textures/decor/typewriter_side_right.png');
+    background-position: center;
   }
   
+  .side-left {
+    left: -60px; /* Adjusted to align properly */
+    background-image: url('/textures/decor/typewriter_side_left.png');
+  }
+  
+  .side-right {
+    right: -60px; /* Adjusted to align properly */
+    background-image: url('/textures/decor/typewriter_side_right.png');
+  }
