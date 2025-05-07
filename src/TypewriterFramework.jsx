@@ -8,6 +8,19 @@ const keys = [
 ];
 
 const materialOptions = ['stone', 'bone', 'brass'];
+const SERVER = 'http://localhost:5001'; // replace if needed
+
+const fetchTypewriterReply = async (text) => {
+  const response = await fetch(`${SERVER}/api/send_typewriter_text`, {
+    method: "POST",
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId: 'example-session', message: text })
+  });
+
+  const data = await response.json();
+  return data; // expects { content, font, font_size, font_color }
+};
+
 
 const getRandomTexture = (key) => {
   if (!key) return null;
@@ -18,19 +31,6 @@ const getRandomTexture = (key) => {
 };
 
 
-const scrollToCurrentLine = () => {
-  if (scrollRef.current && lastLineRef.current) {
-    const lineBottom = lastLineRef.current.offsetTop + lastLineRef.current.offsetHeight;
-    const visibleHeight = scrollRef.current.clientHeight;
-    const currentScroll = scrollRef.current.scrollTop;
-    
-    // Only scroll if the line is not fully visible
-    if (lineBottom > currentScroll + visibleHeight || 
-        lastLineRef.current.offsetTop < currentScroll) {
-      scrollRef.current.scrollTop = lineBottom - visibleHeight + 100; // Add extra space
-    }
-  }
-};
 
 const playKeySound = () => {
   const audio = new Audio('/sounds/typewriter-clack.mp3');
@@ -51,14 +51,34 @@ const TypewriterFramework = () => {
   const [typingAllowed, setTypingAllowed] = useState(true);
   const [lastPressedKey, setLastPressedKey] = useState(null);
   const [keyTextures, setKeyTextures] = useState(keys.map(getRandomTexture));
+  const [responses, setResponses] = useState([]);
+  const [lastSubmittedLine, setLastSubmittedLine] = useState('');
+
+
   const containerRef = useRef(null);
   const scrollRef = useRef(null);
   const strikerRef = useRef(null);
   const lastLineRef = useRef(null);
+  
 
   const topRow = ['Q','W','E','R','T','Y','U','I','O','P'];
   const midRow = ['A','S','D','F','G','THE XEROFAG', 'H','J','K','L'];
   const botRow = ['Z','X','C','V','B','N','M'];
+
+  const scrollToCurrentLine = () => {
+    if (scrollRef.current && lastLineRef.current) {
+      const lineBottom = lastLineRef.current.offsetTop + lastLineRef.current.offsetHeight;
+      const visibleHeight = scrollRef.current.clientHeight;
+      const currentScroll = scrollRef.current.scrollTop;
+      
+      // Only scroll if the line is not fully visible
+      if (lineBottom > currentScroll + visibleHeight || 
+          lastLineRef.current.offsetTop < currentScroll) {
+        scrollRef.current.scrollTop = lineBottom - visibleHeight + 100; // Add extra space
+      }
+    }
+  };
+  
 
   const generateRow = (rowKeys) => (
     <div className="key-row">
@@ -137,7 +157,18 @@ const TypewriterFramework = () => {
       const char = e.key === "Enter" ? '\n' : e.key;
       setInputBuffer(prev => prev + char);
     }
-    if (e.key === "Enter") playEnterSound();
+    if (e.key === "Enter") {
+      playEnterSound();
+    
+      const lastLine = typedText.split('\n').pop().trim();
+      if (lastLine.length > 3 && lastLine !== lastSubmittedLine) {
+        setLastSubmittedLine(lastLine); // prevent double submissions
+        fetchTypewriterReply(lastLine).then(reply => {
+          setResponses(prev => [...prev, reply]);
+        });
+      }
+    }
+    
     if (e.key === 'Backspace') {
       e.preventDefault();
       setTypedText(prev => prev.slice(0, -1));
@@ -161,6 +192,11 @@ const TypewriterFramework = () => {
   }, [keyTextures]);
 
   useEffect(() => {
+    if (!lastLineRef.current) return;
+    lastLineRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [responses]);
+
+  useEffect(() => {
     if (!lastPressedKey) return;
     const timeout = setTimeout(() => setLastPressedKey(null), 120);
     return () => clearTimeout(timeout);
@@ -178,58 +214,95 @@ const TypewriterFramework = () => {
         alt="grit shell overlay"
         className="typewriter-overlay"
       />
+  
       <div className="typewriter-paper-frame">
-      <div className="side-frame side-left" />
-      <div className="side-frame side-right" />
-
-  <div className="typewriter-paper">
-    <div className="paper-scroll-area" ref={scrollRef}>
-      <div className="typewriter-text">
-      {typedText.split('\n').map((line, idx, arr) => (
-      <div key={idx} className="typewriter-line">
-      {line.includes("The Xerofag")
-          ? line.split(/(The Xerofag)/g).map((part, i, arr) => {
-              const isLast = i === arr.length - 1;
-              const endsWithSpace = isLast && part.endsWith(' ');
-
-              return part === "The Xerofag" ? (
-                <span key={i} className="xerofag-highlight">{part}</span>
-              ) : endsWithSpace ? (
-                <span key={i}>{part}<span className="visible-space">&nbsp;</span></span>
-              ) : (
-                <span key={i}>{part}</span>
-              );
-            })
-          : line.endsWith(' ') ? (
-            <>{line}<span className="visible-space">&nbsp;</span></>
-          ) : (
-            line
-          )}
-
-
-        {idx === arr.length - 1 && (
-          <>
-            <span ref={lastLineRef}></span>
-            <span className="striker-cursor" ref={strikerRef} />
-          </>
-    )}
-  </div>
-))}
-
-      </div>
-    </div>
-  </div>
+        <div className="side-frame side-left" />
+        <div className="side-frame side-right" />
+  
+        <div className="typewriter-paper">
+          <div className="paper-scroll-area" ref={scrollRef}>
+            <div className="typewriter-text">
+              {typedText.split('\n').map((line, idx, arr) => (
+                <div key={idx} className="typewriter-line">
+                  {line.includes("The Xerofag")
+                    ? line.split(/(The Xerofag)/g).map((part, i, subArr) => {
+                        const isLast = i === subArr.length - 1;
+                        const endsWithSpace = isLast && part.endsWith(' ');
+                        return part === "The Xerofag" ? (
+                          <span key={i} className="xerofag-highlight">{part}</span>
+                        ) : endsWithSpace ? (
+                          <span key={i}>
+                            {part}
+                            <span className="visible-space">&nbsp;</span>
+                          </span>
+                        ) : (
+                          <span key={i}>{part}</span>
+                        );
+                      })
+                    : line.endsWith(' ') ? (
+                      <>
+                        <span>{line}</span>
+                        <span className="visible-space">&nbsp;</span>
+                      </>
+                    ) : (
+                      <span>{line}</span>
+                    )
+                  }
+  
+                  {idx === arr.length - 1 && (
+                    <>
+                      <span ref={lastLineRef}></span>
+                      <span className="striker-cursor" ref={strikerRef} />
+                    </>
+                  )}
+                </div>
+              ))}
+  
+              {responses.map((resp, idx) => (
+                <div
+                  key={`resp-${idx}`}
+                  ref={idx === responses.length - 1 ? lastLineRef : null}
+                  className="typewriter-line emergent-line"
+                  style={{
+                    fontFamily: resp.font || 'IM Fell English SC',
+                    fontSize: resp.font_size || '1.8rem',
+                    color: resp.font_color || '#1c130a',
+                  }}
+                >
+                  {resp.content.split('').map((char, i) => {
+                    const delay = Math.random() * 2000;
+                    return (
+                      <span
+                        key={i}
+                        className="emergent-letter"
+                        style={{
+                          animationDelay: `${delay}ms`,
+                          animationDuration: '0.8s',
+                        }}
+                      >
+                        {char}
+                      </span>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-
-
-      <div className="storyteller-sigil">
-        <img src="/textures/sigil_storytellers_society.png" alt="Storyteller's Society Sigil" />
       </div>
+  
+      <div className="storyteller-sigil">
+        <img
+          src="/textures/sigil_storytellers_society.png"
+          alt="Storyteller's Society Sigil"
+        />
+      </div>
+  
       <div className="keyboard-plate">
         {generateRow(topRow)}
         {generateRow(midRow)}
         {generateRow(botRow)}
-
+  
         <div className="key-row spacebar-row">
           <div
             className="spacebar-wrapper"
@@ -250,5 +323,4 @@ const TypewriterFramework = () => {
     </div>
   );
 };
-
 export default TypewriterFramework;
