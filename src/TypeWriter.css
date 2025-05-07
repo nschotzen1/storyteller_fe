@@ -542,3 +542,14 @@
     right: -60px; /* Adjusted to align properly */
     background-image: url('/textures/decor/typewriter_side_right.png');
   }
+
+
+  .xerofag-highlight {
+    font-family: 'Uncial Antiqua', serif;
+    font-size: 1.9rem;
+    color: #7a1818;
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 3px rgba(150, 0, 0, 0.4);
+    mix-blend-mode: multiply;
+  }
+  

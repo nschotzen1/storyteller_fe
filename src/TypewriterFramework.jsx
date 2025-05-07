@@ -11,9 +11,10 @@ const materialOptions = ['stone', 'bone', 'brass'];
 
 const getRandomTexture = (key) => {
   if (!key) return null;
+  const normalizedKey = key.replace(/\s+/g, '_').toUpperCase();
   const material = materialOptions[Math.floor(Math.random() * materialOptions.length)];
   const variant = Math.random() < 0.3 ? '_glow' : '';
-  return `/textures/keys/${key}_1.png`;
+  return `/textures/keys/${normalizedKey}_1.png`;
 };
 
 
@@ -56,7 +57,7 @@ const TypewriterFramework = () => {
   const lastLineRef = useRef(null);
 
   const topRow = ['Q','W','E','R','T','Y','U','I','O','P'];
-  const midRow = ['A','S','D','F','G','H','J','K','L'];
+  const midRow = ['A','S','D','F','G','THE XEROFAG', 'H','J','K','L'];
   const botRow = ['Z','X','C','V','B','N','M'];
 
   const generateRow = (rowKeys) => (
@@ -73,10 +74,13 @@ const TypewriterFramework = () => {
             className={`typewriter-key-wrapper ${lastPressedKey === key ? 'key-pressed' : ''}`}
             style={{ '--offset-y': `${offset}px`, '--tilt': `${tilt}deg` }}
             onClick={() => {
-              setInputBuffer(prev => prev + key);
+              const insertText = key === 'THE XEROFAG' ? 'The Xerofag ' : key;
+              const chars = [...insertText]; // This ensures emoji/multibyte support too
+              setInputBuffer(prev => prev + chars.join(''));
               setLastPressedKey(key);
               playKeySound();
             }}
+            
           >
             {texture && (
               <img
@@ -183,7 +187,26 @@ const TypewriterFramework = () => {
       <div className="typewriter-text">
       {typedText.split('\n').map((line, idx, arr) => (
       <div key={idx} className="typewriter-line">
-        {line}
+      {line.includes("The Xerofag")
+          ? line.split(/(The Xerofag)/g).map((part, i, arr) => {
+              const isLast = i === arr.length - 1;
+              const endsWithSpace = isLast && part.endsWith(' ');
+
+              return part === "The Xerofag" ? (
+                <span key={i} className="xerofag-highlight">{part}</span>
+              ) : endsWithSpace ? (
+                <span key={i}>{part}<span className="visible-space">&nbsp;</span></span>
+              ) : (
+                <span key={i}>{part}</span>
+              );
+            })
+          : line.endsWith(' ') ? (
+            <>{line}<span className="visible-space">&nbsp;</span></>
+          ) : (
+            line
+          )}
+
+
         {idx === arr.length - 1 && (
           <>
             <span ref={lastLineRef}></span>
