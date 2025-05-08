@@ -32,9 +32,18 @@ const getRandomTexture = (key) => {
 
 
 
+
+
 const playKeySound = () => {
   const audio = new Audio('/sounds/typewriter-clack.mp3');
   audio.volume = 0.3;
+  audio.play();
+};
+
+const playXerofagHowl = () => {
+  const howlIndex = Math.floor(Math.random() * 3) + 1; // 1 to 3
+  const audio = new Audio(`/sounds/howl_${howlIndex}.mp3`);
+  audio.volume = 0.4;
   audio.play();
 };
 
@@ -46,6 +55,7 @@ const playEnterSound = () => {
 };
 
 const TypewriterFramework = () => {
+  const [lastUserInputTime, setLastUserInputTime] = useState(Date.now());
   const [typedText, setTypedText] = useState('');
   const [inputBuffer, setInputBuffer] = useState('');
   const [typingAllowed, setTypingAllowed] = useState(true);
@@ -53,6 +63,15 @@ const TypewriterFramework = () => {
   const [keyTextures, setKeyTextures] = useState(keys.map(getRandomTexture));
   const [responses, setResponses] = useState([]);
   const [lastSubmittedLine, setLastSubmittedLine] = useState('');
+  const [responseQueued, setResponseQueued] = useState(false);
+  const [lastGeneratedLength, setLastGeneratedLength] = useState(0);
+  const [ghostKeyQueue, setGhostKeyQueue] = useState([]);
+  
+
+
+
+
+
 
 
   const containerRef = useRef(null);
@@ -61,23 +80,39 @@ const TypewriterFramework = () => {
   const lastLineRef = useRef(null);
   
 
+  const triggerGhostKey = (char) => {
+    const upper = char.toUpperCase();
+    setLastPressedKey(upper); // will trigger key press visual
+    playKeySound();           // reuse your existing sound
+  };
+  
+
   const topRow = ['Q','W','E','R','T','Y','U','I','O','P'];
   const midRow = ['A','S','D','F','G','THE XEROFAG', 'H','J','K','L'];
   const botRow = ['Z','X','C','V','B','N','M'];
 
   const scrollToCurrentLine = () => {
     if (scrollRef.current && lastLineRef.current) {
-      const lineBottom = lastLineRef.current.offsetTop + lastLineRef.current.offsetHeight;
-      const visibleHeight = scrollRef.current.clientHeight;
-      const currentScroll = scrollRef.current.scrollTop;
-      
-      // Only scroll if the line is not fully visible
-      if (lineBottom > currentScroll + visibleHeight || 
-          lastLineRef.current.offsetTop < currentScroll) {
-        scrollRef.current.scrollTop = lineBottom - visibleHeight + 100; // Add extra space
+      const container = scrollRef.current;
+      const line = lastLineRef.current;
+  
+      const containerTop = container.scrollTop;
+      const containerBottom = containerTop + container.clientHeight;
+  
+      const lineTop = line.offsetTop;
+      const lineBottom = lineTop + line.offsetHeight;
+  
+      const margin = 10; // small margin above/below
+  
+      const isAbove = lineTop < containerTop + margin;
+      const isBelow = lineBottom > containerBottom - margin;
+  
+      if (isAbove || isBelow) {
+        line.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     }
   };
+  
   
 
   const generateRow = (rowKeys) => (
@@ -95,10 +130,15 @@ const TypewriterFramework = () => {
             style={{ '--offset-y': `${offset}px`, '--tilt': `${tilt}deg` }}
             onClick={() => {
               const insertText = key === 'THE XEROFAG' ? 'The Xerofag ' : key;
+              const isXerofag = key === 'THE XEROFAG';
               const chars = [...insertText]; // This ensures emoji/multibyte support too
               setInputBuffer(prev => prev + chars.join(''));
               setLastPressedKey(key);
-              playKeySound();
+              if (isXerofag) {
+                playXerofagHowl();
+              } else {
+                playKeySound();
+              }
             }}
             
           >
@@ -136,10 +176,27 @@ const TypewriterFramework = () => {
 
 
   useEffect(() => {
-    // Delay slightly to allow DOM updates
-    const timer = setTimeout(scrollToCurrentLine, 10);
-    return () => clearTimeout(timer);
+    if (!scrollRef.current || !lastLineRef.current) return;
+  
+    const container = scrollRef.current;
+    const line = lastLineRef.current;
+  
+    const containerTop = container.scrollTop;
+    const containerBottom = containerTop + container.clientHeight;
+  
+    const lineTop = line.offsetTop;
+    const lineBottom = lineTop + line.offsetHeight;
+  
+    const margin = 20;
+  
+    const isBelow = lineBottom > containerBottom - margin;
+    const isAbove = lineTop < containerTop + margin;
+  
+    if (isBelow || isAbove) {
+      line.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   }, [typedText]);
+  
   
 
 
@@ -151,32 +208,36 @@ const TypewriterFramework = () => {
     if (!typingAllowed) return;
     const keyChar = e.key.toUpperCase();
     setLastPressedKey(keyChar);
-
+  
     if (e.key.length === 1 || e.key === "Enter") {
       e.preventDefault();
       const char = e.key === "Enter" ? '\n' : e.key;
       setInputBuffer(prev => prev + char);
-    }
-    if (e.key === "Enter") {
-      playEnterSound();
-    
-      const lastLine = typedText.split('\n').pop().trim();
-      if (lastLine.length > 3 && lastLine !== lastSubmittedLine) {
-        setLastSubmittedLine(lastLine); // prevent double submissions
-        fetchTypewriterReply(lastLine).then(reply => {
-          setResponses(prev => [...prev, reply]);
-        });
+  
+      if (e.key === "Enter") {
+        playEnterSound();
+  
+        const lastLine = typedText.split('\n').pop().trim();
+        if (lastLine.length > 3 && lastLine !== lastSubmittedLine) {
+          setLastSubmittedLine(lastLine); // prevent double submissions
+          fetchTypewriterReply(lastLine).then(reply => {
+            setResponses(prev => [...prev, reply]);
+          });
+          setLastUserInputTime(Date.now());
+          setResponseQueued(false);
+        }
       }
     }
-    
+  
     if (e.key === 'Backspace') {
       e.preventDefault();
       setTypedText(prev => prev.slice(0, -1));
       return;
     }
-
+  
     playKeySound();
   };
+  
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -191,16 +252,69 @@ const TypewriterFramework = () => {
     return () => clearInterval(interval);
   }, [keyTextures]);
 
+  
   useEffect(() => {
-    if (!lastLineRef.current) return;
-    lastLineRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [responses]);
+    if (!ghostKeyQueue.length) return;
+  
+    const interval = setInterval(() => {
+      const [nextChar, ...rest] = ghostKeyQueue;
+      if (nextChar) {
+        triggerGhostKey(nextChar);
+        setResponses(prev => {
+          const last = prev[prev.length - 1] || { content: '' };
+          const updated = [...prev.slice(0, -1), { ...last, content: last.content + nextChar }];
+          return updated;
+        });
+      }
+      setGhostKeyQueue(rest);
+    }, 90);
+  
+    return () => clearInterval(interval);
+  }, [ghostKeyQueue]);
+  
 
   useEffect(() => {
     if (!lastPressedKey) return;
     const timeout = setTimeout(() => setLastPressedKey(null), 120);
     return () => clearTimeout(timeout);
   }, [lastPressedKey]);
+
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const now = Date.now();
+      const pauseSeconds = (now - lastUserInputTime) / 1000;
+
+      const fullText = typedText;
+      const addition = fullText.slice(lastGeneratedLength);
+
+      if (addition.trim().split(/\s+/).length >= 3 && !responseQueued) {
+        const response = await fetch(`${SERVER}/api/shouldGenerateContinuation`, {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            currentText: fullText,
+            latestAddition: addition,
+            latestPauseSeconds: pauseSeconds
+          })
+        });
+        const { shouldGenerate } = await response.json();
+
+        if (shouldGenerate) {
+          const reply = await fetchTypewriterReply(fullText);
+          setResponses(prev => [...prev, { ...reply, content: '' }]);
+          setGhostKeyQueue(reply.content.split(''));
+          setLastGeneratedLength(fullText.length);
+          setResponseQueued(true);
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [typedText, lastUserInputTime, responseQueued]);
+
+
+  const displayedContent = responses.map(r => r.content).join('');
 
   return (
     <div
@@ -222,70 +336,62 @@ const TypewriterFramework = () => {
         <div className="typewriter-paper">
           <div className="paper-scroll-area" ref={scrollRef}>
             <div className="typewriter-text">
-              {typedText.split('\n').map((line, idx, arr) => (
-                <div key={idx} className="typewriter-line">
-                  {line.includes("The Xerofag")
-                    ? line.split(/(The Xerofag)/g).map((part, i, subArr) => {
-                        const isLast = i === subArr.length - 1;
-                        const endsWithSpace = isLast && part.endsWith(' ');
-                        return part === "The Xerofag" ? (
-                          <span key={i} className="xerofag-highlight">{part}</span>
-                        ) : endsWithSpace ? (
-                          <span key={i}>
-                            {part}
-                            <span className="visible-space">&nbsp;</span>
-                          </span>
-                        ) : (
-                          <span key={i}>{part}</span>
-                        );
-                      })
-                    : line.endsWith(' ') ? (
-                      <>
-                        <span>{line}</span>
-                        <span className="visible-space">&nbsp;</span>
-                      </>
-                    ) : (
-                      <span>{line}</span>
-                    )
-                  }
-  
-                  {idx === arr.length - 1 && (
-                    <>
-                      <span ref={lastLineRef}></span>
-                      <span className="striker-cursor" ref={strikerRef} />
-                    </>
-                  )}
-                </div>
-              ))}
-  
-              {responses.map((resp, idx) => (
-                <div
-                  key={`resp-${idx}`}
-                  ref={idx === responses.length - 1 ? lastLineRef : null}
-                  className="typewriter-line emergent-line"
-                  style={{
-                    fontFamily: resp.font || 'IM Fell English SC',
-                    fontSize: resp.font_size || '1.8rem',
-                    color: resp.font_color || '#1c130a',
-                  }}
-                >
-                  {resp.content.split('').map((char, i) => {
-                    const delay = Math.random() * 2000;
-                    return (
-                      <span
-                        key={i}
-                        className="emergent-letter"
-                        style={{
-                          animationDelay: `${delay}ms`,
-                          animationDuration: '0.8s',
-                        }}
-                      >
-                        {char}
-                      </span>
-                    );
-                  })}
-                </div>
-              ))}
+            {typedText.split('\n').map((line, idx, arr) => {
+  const isLastLine = idx === arr.length - 1;
+  const parts = line.includes("The Xerofag")
+    ? line.split(/(The Xerofag)/g).map((part, i, subArr) => {
+        const isLast = i === subArr.length - 1;
+        const endsWithSpace = isLast && part.endsWith(' ');
+        return part === "The Xerofag" ? (
+          <span key={i} className="xerofag-highlight">{part}</span>
+        ) : endsWithSpace ? (
+          <span key={i}>
+            {part}
+            <span className="visible-space">&nbsp;</span>
+          </span>
+        ) : (
+          <span key={i}>{part}</span>
+        );
+      })
+    : line.endsWith(' ') ? (
+      <>
+        <span>{line}</span>
+        <span className="visible-space">&nbsp;</span>
+      </>
+    ) : (
+      <span>{line}</span>
+    );
+
+  return (
+    <div key={idx} className="typewriter-line">
+      {isLastLine ? (
+        <span>
+          {parts}
+
+          {responses.length > 0 &&
+            responses[responses.length - 1]?.content !== '' && (
+              <span
+                className="emergent-letter"
+                style={{
+                  fontFamily: responses[0]?.font,
+                  fontSize: responses[0]?.font_size,
+                  color: responses[0]?.font_color,
+                }}
+              >
+                {responses[responses.length - 1].content}
+              </span>
+          )}
+
+          <span ref={lastLineRef}></span>
+          <span className="striker-cursor" ref={strikerRef} />
+        </span>
+      ) : (
+        parts
+      )}
+    </div>
+  );
+})}
+
             </div>
           </div>
         </div>
