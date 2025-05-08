@@ -122,6 +122,15 @@ const TypewriterFramework = () => {
       }
     }
   };
+
+  const commitGhostText = () => {
+    const fullGhost = responses.map(r => r.content).join('');
+    setTypedText(prev => prev + fullGhost);
+    setResponses([]);
+    setGhostKeyQueue([]);
+    setLastGeneratedLength(typedText.length + fullGhost.length);
+  };
+  
   
   
 
@@ -221,23 +230,23 @@ const TypewriterFramework = () => {
   
     if (e.key.length === 1 || e.key === "Enter") {
       e.preventDefault();
+    
+      // Commit ghost text so new input comes after it
+      if (responses.length > 0) {
+        commitGhostText();
+      }
+    
       const char = e.key === "Enter" ? '\n' : e.key;
       setInputBuffer(prev => prev + char);
-  
+    
+      setLastUserInputTime(Date.now());
+      setResponseQueued(false);
+    
       if (e.key === "Enter") {
         playEnterSound();
-  
-        const lastLine = typedText.split('\n').pop().trim();
-        if (lastLine.length > 3 && lastLine !== lastSubmittedLine) {
-          setLastSubmittedLine(lastLine); // prevent double submissions
-          fetchTypewriterReply(lastLine).then(reply => {
-            setResponses(prev => [...prev, reply]);
-          });
-          setLastUserInputTime(Date.now());
-          setResponseQueued(false);
-        }
       }
     }
+    
   
     if (e.key === 'Backspace') {
       e.preventDefault();
@@ -374,28 +383,44 @@ const TypewriterFramework = () => {
 
   return (
     <div key={idx} className="typewriter-line">
-  {isLastLine ? (
-    <span>
-      {parts}
-      {responses.length > 0 &&
-        responses[responses.length - 1]?.content !== '' && (
-          <span
-            className="emergent-letter"
-            style={{
-              fontFamily: responses[0]?.font,
-              fontSize: responses[0]?.font_size,
-              color: responses[0]?.font_color,
-            }}
-          >
-            {responses[responses.length - 1].content}
-          </span>
-      )}
-      <span ref={lastLineRef}></span>
-      <span className="striker-cursor" ref={strikerRef} />
-    </span>
-  ) : (
-    parts
-  )}
+ {isLastLine ? (
+  <span>
+    {parts}
+    {responses.length > 0 &&
+      responses[responses.length - 1]?.content !== '' && (
+        <>
+          {responses[responses.length - 1].content
+            .split('')
+            .map((char, i) => {
+              const delay = Math.random() * 1600; // random 0–1600ms
+              const fuzzX = (Math.random() * 0.8 - 0.4).toFixed(2);
+              const fuzzY = (Math.random() * 1.5 - 0.75).toFixed(2);
+
+              return (
+                <span
+                  key={`ghost-char-${i}`}
+                  className="emergent-letter ghost-drift"
+                  style={{
+                    fontFamily: responses[0]?.font,
+                    fontSize: responses[0]?.font_size,
+                    color: responses[0]?.font_color,
+                    animationDelay: `${delay}ms`,
+                    transform: `translate(${fuzzX}px, ${fuzzY}px)`,
+                  }}
+                >
+                  {char}
+                </span>
+              );
+            })}
+        </>
+    )}
+    <span ref={lastLineRef}></span>
+    <span className="striker-cursor" ref={strikerRef} />
+  </span>
+) : (
+  parts
+)}
+
 </div>
 
   );
