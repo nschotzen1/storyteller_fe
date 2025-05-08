@@ -41,8 +41,18 @@ const playKeySound = () => {
 };
 
 const playXerofagHowl = () => {
-  const howlIndex = Math.floor(Math.random() * 3) + 1; // 1 to 3
-  const audio = new Audio(`/sounds/howl_${howlIndex}.mp3`);
+  const roll = Math.floor(Math.random() * 20) + 1; // d20 roll
+
+  let audioSrc;
+  if (roll > 12) {
+    const variant = Math.floor(Math.random() * 5) + 1; // 1–5
+    audioSrc = `/sounds/the_xerofag_${variant}.mp3`;
+  } else {
+    const howlIndex = Math.floor(Math.random() * 3) + 1;
+    audioSrc = `/sounds/howl_${howlIndex}.mp3`;
+  }
+
+  const audio = new Audio(audioSrc);
   audio.volume = 0.4;
   audio.play();
 };
@@ -364,31 +374,30 @@ const TypewriterFramework = () => {
 
   return (
     <div key={idx} className="typewriter-line">
-      {isLastLine ? (
-        <span>
-          {parts}
-
-          {responses.length > 0 &&
-            responses[responses.length - 1]?.content !== '' && (
-              <span
-                className="emergent-letter"
-                style={{
-                  fontFamily: responses[0]?.font,
-                  fontSize: responses[0]?.font_size,
-                  color: responses[0]?.font_color,
-                }}
-              >
-                {responses[responses.length - 1].content}
-              </span>
-          )}
-
-          <span ref={lastLineRef}></span>
-          <span className="striker-cursor" ref={strikerRef} />
-        </span>
-      ) : (
-        parts
+  {isLastLine ? (
+    <span>
+      {parts}
+      {responses.length > 0 &&
+        responses[responses.length - 1]?.content !== '' && (
+          <span
+            className="emergent-letter"
+            style={{
+              fontFamily: responses[0]?.font,
+              fontSize: responses[0]?.font_size,
+              color: responses[0]?.font_color,
+            }}
+          >
+            {responses[responses.length - 1].content}
+          </span>
       )}
-    </div>
+      <span ref={lastLineRef}></span>
+      <span className="striker-cursor" ref={strikerRef} />
+    </span>
+  ) : (
+    parts
+  )}
+</div>
+
   );
 })}
 
