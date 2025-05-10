@@ -391,11 +391,21 @@ const TypewriterFramework = () => {
         <>
           {(() => {
   const ghostContent = responses[responses.length - 1].content;
-  const totalDuration = 1200; // in ms
   const charCount = ghostContent.length;
 
+  // Generate & shuffle indices
+  const indices = Array.from({ length: charCount }, (_, i) => i);
+  const shuffled = [...indices].sort(() => Math.random() - 0.5);
+
+  // Assign random delays
+  const delayMap = {};
+  shuffled.forEach((charIndex, i) => {
+    delayMap[charIndex] = (i / charCount) * 1500 + Math.random() * 100;
+  });
+
+  // Render letters in order, but with random delays
   return ghostContent.split('').map((char, i) => {
-    const delay = (i / charCount) * totalDuration + Math.random() * 30;
+    const delay = delayMap[i];
     const fuzzX = (Math.random() * 0.4 - 0.2).toFixed(2);
     const fuzzY = (Math.random() * 0.6 - 0.3).toFixed(2);
 
@@ -405,7 +415,7 @@ const TypewriterFramework = () => {
         className="emergent-letter"
         style={{
           animationDelay: `${delay}ms`,
-          animationDuration: '0.5s',
+          animationDuration: '0.9s',
           transform: `translate(${fuzzX}px, ${fuzzY}px)`,
           fontFamily: responses[0]?.font,
           fontSize: responses[0]?.font_size,
@@ -417,6 +427,7 @@ const TypewriterFramework = () => {
     );
   });
 })()}
+
 
 
         </>
