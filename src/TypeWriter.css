@@ -558,11 +558,6 @@
 
   
 
-  .emergent-letter {
-    opacity: 0;
-    display: inline-block;
-    animation: emergeFadeIn 0.6s ease-out forwards;
-  }
   
   @keyframes emergeFadeIn {
     from {
@@ -571,6 +566,71 @@
       transform: scale(1.1);
     }
     to {
+      opacity: 1;
+      filter: blur(0);
+      transform: scale(1);
+    }
+  }
+  
+
+  .emergent-letter {
+  opacity: 0;
+  display: inline-block;
+  animation: emergeFadeIn 0.9s ease-out forwards;
+}
+
+@keyframes emergeFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(1.1) translateY(8px);
+    filter: blur(3px);
+  }
+  60% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+  
+  .emergent-letter {
+    opacity: 0;
+    display: inline-block;
+    animation: emergeFadeIn 0.8s ease-out forwards;
+  }
+  
+  .ghost-blur {
+    filter: blur(2px);
+    animation: emergeFadeSharp 1.2s ease-out forwards;
+  }
+  
+  @keyframes emergeFadeIn {
+    from {
+      opacity: 0;
+      filter: blur(1.5px);
+      transform: scale(1.05);
+    }
+    to {
+      opacity: 1;
+      filter: blur(0px);
+      transform: scale(1);
+    }
+  }
+  
+  @keyframes emergeFadeSharp {
+    0% {
+      opacity: 0;
+      filter: blur(2.5px);
+      transform: scale(1.08);
+    }
+    60% {
+      opacity: 0.4;
+      filter: blur(2px);
+    }
+    100% {
       opacity: 1;
       filter: blur(0);
       transform: scale(1);

@@ -389,29 +389,36 @@ const TypewriterFramework = () => {
     {responses.length > 0 &&
       responses[responses.length - 1]?.content !== '' && (
         <>
-          {responses[responses.length - 1].content
-            .split('')
-            .map((char, i) => {
-              const delay = Math.random() * 1600; // random 0–1600ms
-              const fuzzX = (Math.random() * 0.8 - 0.4).toFixed(2);
-              const fuzzY = (Math.random() * 1.5 - 0.75).toFixed(2);
+          {(() => {
+  const ghostContent = responses[responses.length - 1].content;
+  const totalDuration = 1200; // in ms
+  const charCount = ghostContent.length;
 
-              return (
-                <span
-                  key={`ghost-char-${i}`}
-                  className="emergent-letter ghost-drift"
-                  style={{
-                    fontFamily: responses[0]?.font,
-                    fontSize: responses[0]?.font_size,
-                    color: responses[0]?.font_color,
-                    animationDelay: `${delay}ms`,
-                    transform: `translate(${fuzzX}px, ${fuzzY}px)`,
-                  }}
-                >
-                  {char}
-                </span>
-              );
-            })}
+  return ghostContent.split('').map((char, i) => {
+    const delay = (i / charCount) * totalDuration + Math.random() * 30;
+    const fuzzX = (Math.random() * 0.4 - 0.2).toFixed(2);
+    const fuzzY = (Math.random() * 0.6 - 0.3).toFixed(2);
+
+    return (
+      <span
+        key={`ghost-char-${i}`}
+        className="emergent-letter"
+        style={{
+          animationDelay: `${delay}ms`,
+          animationDuration: '0.5s',
+          transform: `translate(${fuzzX}px, ${fuzzY}px)`,
+          fontFamily: responses[0]?.font,
+          fontSize: responses[0]?.font_size,
+          color: responses[0]?.font_color,
+        }}
+      >
+        {char}
+      </span>
+    );
+  });
+})()}
+
+
         </>
     )}
     <span ref={lastLineRef}></span>
