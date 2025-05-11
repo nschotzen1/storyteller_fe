@@ -148,17 +148,27 @@ const TypewriterFramework = () => {
             className={`typewriter-key-wrapper ${lastPressedKey === key ? 'key-pressed' : ''}`}
             style={{ '--offset-y': `${offset}px`, '--tilt': `${tilt}deg` }}
             onClick={() => {
-              const insertText = key === 'THE XEROFAG' ? 'The Xerofag ' : key;
-              const isXerofag = key === 'THE XEROFAG';
-              const chars = [...insertText]; // This ensures emoji/multibyte support too
-              setInputBuffer(prev => prev + chars.join(''));
-              setLastPressedKey(key);
-              if (isXerofag) {
-                playXerofagHowl();
-              } else {
-                playKeySound();
-              }
-            }}
+            const insertText = key === 'THE XEROFAG' ? 'The Xerofag ' : key;
+            const isXerofag = key === 'THE XEROFAG';
+
+            // 🧠 Commit ghost if needed
+            if (responses.length > 0) {
+              const ghostText = responses.map(r => r.content).join('');
+              setTypedText(prev => {
+                return prev + ghostText + insertText;
+              });
+              setResponses([]);
+              setGhostKeyQueue([]);
+              setLastGeneratedLength(typedText.length + ghostText.length + insertText.length);
+            } else {
+              // no ghost to commit, just type as normal
+              setInputBuffer(prev => prev + insertText);
+            }
+
+            setLastPressedKey(key);
+            isXerofag ? playXerofagHowl() : playKeySound();
+          }}
+
             
           >
             {texture && (
