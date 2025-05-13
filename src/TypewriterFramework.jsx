@@ -76,6 +76,9 @@ const TypewriterFramework = () => {
   const [responseQueued, setResponseQueued] = useState(false);
   const [lastGeneratedLength, setLastGeneratedLength] = useState(0);
   const [ghostKeyQueue, setGhostKeyQueue] = useState([]);
+  const [revealAmount, setRevealAmount] = useState(0);
+
+
   
 
 
@@ -183,6 +186,14 @@ const TypewriterFramework = () => {
       })}
     </div>
   );
+
+
+  useEffect(() => {
+  const linesTyped = typedText.split('\n').length;
+  const reveal = Math.min(linesTyped * 5, 100); // Reveal more per line (cap at 100%)
+  setRevealAmount(reveal);
+}, [typedText]);
+
 
 
   useEffect(() => {
@@ -358,107 +369,56 @@ const TypewriterFramework = () => {
         className="typewriter-overlay"
       />
   
-      <div className="typewriter-paper-frame">
-        <div className="side-frame side-left" />
-        <div className="side-frame side-right" />
-  
-        <div className="typewriter-paper">
-          <div className="paper-scroll-area" ref={scrollRef}>
-            <div className="typewriter-text">
-            {typedText.split('\n').map((line, idx, arr) => {
-  const isLastLine = idx === arr.length - 1;
-  const parts = line.includes("The Xerofag")
-    ? line.split(/(The Xerofag)/g).map((part, i, subArr) => {
-        const isLast = i === subArr.length - 1;
-        const endsWithSpace = isLast && part.endsWith(' ');
-        return part === "The Xerofag" ? (
-          <span key={i} className="xerofag-highlight">{part}</span>
-        ) : endsWithSpace ? (
-          <span key={i}>
-            {part}
-            <span className="visible-space">&nbsp;</span>
-          </span>
-        ) : (
-          <span key={i}>{part}</span>
-        );
-      })
-    : line.endsWith(' ') ? (
-      <>
-        <span>{line}</span>
-        <span className="visible-space">&nbsp;</span>
-      </>
-    ) : (
-      <span>{line}</span>
-    );
+     <div className="typewriter-paper-frame">
+<div className="paper-scroll-area film-scroll-layer" ref={scrollRef}>
+  {/* 🎞️ Film image background that scrolls */}
+  <div className="film-background" />
 
-  return (
-    <div key={idx} className="typewriter-line">
- {isLastLine ? (
-  <span>
-    {parts}
-    {responses.length > 0 &&
-      responses[responses.length - 1]?.content !== '' && (
-        <>
-          {(() => {
-  const ghostContent = responses[responses.length - 1].content;
-  const charCount = ghostContent.length;
+  {/* 📝 Text appears on top of film */}
+  <div className="typewriter-text film-overlay-text">
+    {/* ⬆️ Text on top of image */}
+    <div className="typewriter-text">
+      {typedText.split('\n').map((line, idx, arr) => {
+        const isLastLine = idx === arr.length - 1;
+        const parts = line.includes("The Xerofag")
+          ? line.split(/(The Xerofag)/g).map((part, i) => (
+              part === "The Xerofag" ? (
+                <span key={i} className="xerofag-highlight">{part}</span>
+              ) : (
+                <span key={i}>{part}</span>
+              )
+            ))
+          : <span>{line}</span>;
 
-  // Generate & shuffle indices
-  const indices = Array.from({ length: charCount }, (_, i) => i);
-  const shuffled = [...indices].sort(() => Math.random() - 0.5);
-
-  // Assign random delays
-  const delayMap = {};
-  shuffled.forEach((charIndex, i) => {
-    delayMap[charIndex] = (i / charCount) * 1500 + Math.random() * 100;
-  });
-
-  // Render letters in order, but with random delays
-  return ghostContent.split('').map((char, i) => {
-    const delay = delayMap[i];
-    const fuzzX = (Math.random() * 0.4 - 0.2).toFixed(2);
-    const fuzzY = (Math.random() * 0.6 - 0.3).toFixed(2);
-
-    return (
-      <span
-        key={`ghost-char-${i}`}
-        className="emergent-letter"
-        style={{
-          animationDelay: `${delay}ms`,
-          animationDuration: '0.9s',
-          transform: `translate(${fuzzX}px, ${fuzzY}px)`,
-          fontFamily: responses[0]?.font,
-          fontSize: responses[0]?.font_size,
-          color: responses[0]?.font_color,
-        }}
-      >
-        {char}
-      </span>
-    );
-  });
-})()}
-
-
-
-        </>
-    )}
-    <span ref={lastLineRef}></span>
-    <span className="striker-cursor" ref={strikerRef} />
-  </span>
-) : (
-  parts
-)}
-
-</div>
-
-  );
-})}
-
-            </div>
+        return (
+          <div key={idx} className="typewriter-line">
+            {isLastLine ? (
+              <span>
+                {parts}
+                {/* emerging ghost writer effect */}
+                {responses.length > 0 && responses[responses.length - 1]?.content !== '' && (
+                  <span className="emergent-letter" style={{
+                    fontFamily: responses[0]?.font,
+                    fontSize: responses[0]?.font_size,
+                    color: responses[0]?.font_color,
+                  }}>
+                    {responses[responses.length - 1].content}
+                  </span>
+                )}
+                <span ref={lastLineRef}></span>
+                <span className="striker-cursor" ref={strikerRef} />
+              </span>
+            ) : (
+              parts
+            )}
           </div>
-        </div>
-      </div>
-  
+        );
+      })}
+    </div>
+  </div>
+</div></div>
+
+
       <div className="storyteller-sigil">
         <img
           src="/textures/sigil_storytellers_society.png"

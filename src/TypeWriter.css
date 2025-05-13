@@ -61,26 +61,6 @@
 
 
 
-  
-
-/* Paper surface */
-.typewriter-paper {
-  position: relative;
-  flex-grow: 1;
-  background-image:
-    url('/textures/typewriter_paper.png'),
-    radial-gradient(ellipse at top left, rgba(255, 235, 180, 0.2), transparent 80%);
-    
-  background-size: cover;
-  background-position: center;
-  background-blend-mode: multiply, overlay, normal;
-  filter: brightness(1) contrast(1.1);
-  padding: 2rem 4rem;
-  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.4);
-  animation: paperSettle 20s ease-in-out infinite alternate;
-}
-
-
 .paper-scroll-area {
   max-height: 100%;
   height: 100%;
@@ -480,7 +460,7 @@
   .typewriter-paper {
     position: relative;
     flex-grow: 1;
-    background-image: url('/textures/typewriter_paper.png'),
+    background-image: url('/textures/decor/film_frame_desert.png'),
                      radial-gradient(ellipse at top left, rgba(255, 235, 180, 0.2), transparent 80%);
     background-size: cover;
     background-position: center;
@@ -490,6 +470,7 @@
     box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.4);
     animation: paperSettle 20s ease-in-out infinite alternate;
   }
+  
   
   
   
@@ -503,23 +484,15 @@
     flex-direction: column;
   }
   
-  .typewriter-paper {
-    flex-grow: 1;
-    height: 100%;
-    overflow: hidden;
-    position: relative;
-    padding: 4rem 6rem;
-    background-image: url('/textures/typewriter_paper.png'),
-                      radial-gradient(ellipse at top left, rgba(255, 235, 180, 0.2), transparent 80%);
-    background-size: cover;
-    background-position: center;
-    background-blend-mode: multiply, overlay, normal;
-    filter: brightness(1) contrast(1.1);
-    box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.4);
-    animation: paperSettle 20s ease-in-out infinite alternate;
-  }
 
-
+.typewriter-paper.film-mode {
+  background-image: url('/textures/decor/film_frame_desert.png');
+  background-size: cover;
+  background-position: top center; /* shows sky first */
+  background-repeat: no-repeat;
+  mask-image: linear-gradient(to bottom, black 0%, black 80%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 80%, transparent 100%);
+}
 
   .side-frame {
     position: absolute;
@@ -656,3 +629,86 @@
   
   
   
+
+
+
+
+
+.film-reveal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.85) 0%, transparent 100%);
+  pointer-events: none;
+  transition: height 0.5s ease;
+}
+
+.paper-scroll-area {
+  position: relative;
+  z-index: 3;
+  overflow-y: auto;
+  height: 100%;
+  padding: 4rem 6rem 8rem;
+  scroll-behavior: smooth;
+}
+
+
+
+.film-scroll-layer {
+  position: relative;
+  min-height: 1000px;
+}
+
+.film-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background-image: url('/textures/decor/film_frame_desert.png');
+  background-size: cover;
+  background-position: top center;
+  opacity: 0.95;
+  z-index: 1;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.typewriter-text {
+  position: relative;
+  z-index: 2;
+  padding-top: 6rem;
+  padding-left: 5rem;
+  padding-right: 5rem;
+}
+
+.film-scroll-layer {
+  position: relative;
+  overflow-y: auto;
+}
+
+.film-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 1200px; /* or however tall your image is */
+  background-image: url('/textures/decor/film_frame_desert.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: top center;
+  z-index: 1;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  opacity: 0.92;
+}
+
+.film-overlay-text {
+  position: relative;
+  z-index: 2;
+  padding-top: 6rem;
+  padding-left: 5rem;
+  padding-right: 5rem;
+}
