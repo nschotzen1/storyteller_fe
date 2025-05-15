@@ -87,7 +87,7 @@
   text-shadow:
     0.5px 0.5px rgba(0,0,0,0.15),
     -0.5px -0.5px rgba(0,0,0,0.08);
-  padding: 0; /* REMOVE excessive bottom padding */
+  padding: 100px 0 0 0; /* <--- Start 100px below top! */
 }
 
 
@@ -600,10 +600,12 @@
 .typewriter-text {
   position: relative;
   z-index: 2;
-  padding-top: 6rem;
+  padding-top: 9rem;
   padding-left: 5rem;
   padding-right: 5rem;
 }
+
+
 
 .film-scroll-layer {
   position: relative;
@@ -621,10 +623,12 @@
 }
 
 
+
+
 .typewriter-paper-frame {
-  height: 520px; /* Or what you want visible */
+  height: 520px;           /* Or whatever you want visible at once */
   max-height: 90vh;
-  overflow-y: auto;    /* only here */
+  overflow-y: auto;        /* <-- Let user scroll up/down within revealed area */
   width: 80%;
   margin: 0 auto;
   position: relative;
@@ -633,24 +637,20 @@
   z-index: 2;
   display: flex;
   flex-direction: column;
+  background: transparent;
 }
 
 .paper-scroll-area {
-  min-height: 1400px;
-  height: 1400px;
-  width: 100%;
   position: relative;
-  background: transparent;
-  /* REMOVE any overflow-y: auto here! */
+  width: 100%;
+  will-change: height;
+  transition: height 0.25s cubic-bezier(.4,2,.3,1); /* smooth growth */
+  /* height is set via style prop in JSX! */
 }
 
-/* This makes the film frame always fit underneath text */
 .film-background {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 1400px; /* same as above! */
+  top: 0; left: 0; width: 100%; height: 1400px;
   background-image: url('/textures/decor/film_frame_desert.png');
   background-size: cover;
   background-repeat: no-repeat;
@@ -659,3 +659,13 @@
   pointer-events: none;
   opacity: 0.92;
 }
+.typewriter-text.film-overlay-text {
+  position: relative;
+  z-index: 2;
+  padding-top: 100px; /* TOP_OFFSET, matches the JS logic below */
+  padding-left: 5rem;
+  padding-right: 5rem;
+  display: flex;
+  flex-direction: column;
+}
+

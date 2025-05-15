@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './TypeWriter.css';
 
+
+const FILM_HEIGHT = 1400;
+const LINE_HEIGHT = 2.4 * 16; // px
+const TOP_OFFSET = 100;
+
+function lineCount(typed, ghost = '') {
+  return (typed + ghost).split('\n').length;
+}
+
+const MAX_LINES = Math.floor((FILM_HEIGHT - TOP_OFFSET) / LINE_HEIGHT);
+
 const keys = [
   'Q','W','E','R','T','Y','U','I','O','P',
   'A','S','D','F','G','H','J','K','L',
@@ -65,6 +76,8 @@ const playEndOfPageSound = () => {
   audio.play();
 };
 
+
+
 const TypewriterFramework = () => {
   const [lastUserInputTime, setLastUserInputTime] = useState(Date.now());
   const [typedText, setTypedText] = useState('');
@@ -104,6 +117,13 @@ const TypewriterFramework = () => {
     return typedText + ghostText;
   };
 
+  const lineCount = (typed, ghost = '') =>
+  (typed + ghost).split('\n').length;
+
+  const scrollHeight =
+  TOP_OFFSET + lineCount(typedText, responses.length ? responses[responses.length - 1]?.content : '').valueOf() * LINE_HEIGHT + 40; // +40px padding at bottom
+
+
   
 useEffect(() => {
   // Scroll so that the last line is at the bottom of the .paper-scroll-area
@@ -126,14 +146,24 @@ useEffect(() => {
 
   
 
-  const commitGhostText = () => {
-    const fullGhost = responses.map(r => r.content).join('');
+const commitGhostText = () => {
+  const fullGhost = responses.map(r => r.content).join('');
+  const merged = typedText + fullGhost;
+  if (countLines(merged) > MAX_LINES) {
+    // Only commit up to the allowed lines
+    const allowedLines = merged.split('\n').slice(0, MAX_LINES).join('\n');
+    setTypedText(allowedLines);
+    setResponses([]);
+    setGhostKeyQueue([]);
+    setLastGeneratedLength(allowedLines.length);
+  } else {
     setTypedText(prev => prev + fullGhost);
     setResponses([]);
     setGhostKeyQueue([]);
     setLastGeneratedLength(typedText.length + fullGhost.length);
-  };
-  
+  }
+};
+
   const generateRow = (rowKeys) => (
     <div className="key-row">
       {rowKeys.map((key, idx) => {
@@ -220,15 +250,13 @@ useEffect(() => {
     containerRef.current?.focus();
   }, []);
 
-  const FILM_HEIGHT = 1200; // or 1400 as in your CSS
-const LINE_HEIGHT = 2.4 * 16; // in px (if 2.4rem, 1rem = 16px)
-const MAX_LINES = Math.floor(FILM_HEIGHT / LINE_HEIGHT); // e.g. 31
+
 
 // Utility to count lines, including newlines in ghost text
-function countLines(typed, responses) {
-  const text = typed + (responses.map(r => r.content).join('') || '');
-  return text.split('\n').length;
+function countLines(str) {
+  return str.split('\n').length;
 }
+
 
 // Watch for overflow (page end)
 useEffect(() => {
@@ -255,42 +283,46 @@ useEffect(() => {
 }, [typedText, responses, endOfPageReached]);
 
 
-  const handleKeyDown = (e) => {
-    if (!typingAllowed) {
-      playEndOfPageSound();
-      return;
-    }
-    
-    const keyChar = e.key.toUpperCase();
-    setLastPressedKey(keyChar);
+ const handleKeyDown = (e) => {
+  if (!typingAllowed) {
+    playEndOfPageSound();
+    return;
+  }
   
-    if (e.key.length === 1 || e.key === "Enter") {
-      e.preventDefault();
-    
-      // Commit ghost text so new input comes after it
-      if (responses.length > 0) {
-        commitGhostText();
-      }
-    
-      const char = e.key === "Enter" ? '\n' : e.key;
-      setInputBuffer(prev => prev + char);
-    
-      setLastUserInputTime(Date.now());
-      setResponseQueued(false);
-    
-      if (e.key === "Enter") {
-        playEnterSound();
-      }
-    }
-    
-    if (e.key === 'Backspace') {
-      e.preventDefault();
-      setTypedText(prev => prev.slice(0, -1));
-      return;
-    }
+  const char = e.key === "Enter" ? '\n' : e.key;
   
-    playKeySound();
-  };
+  
+
+  const merged = typedText + inputBuffer + ghostText + (char || '');
+  if (char === '\n' && countLines(merged) > MAX_LINES) {
+    playEndOfPageSound();
+    return; // Block more lines!
+  }
+
+  setLastPressedKey(e.key.toUpperCase());
+
+  if (e.key.length === 1 || e.key === "Enter") {
+    e.preventDefault();
+    // Commit ghost text so new input comes after it
+    if (responses.length > 0) {
+      commitGhostText();
+    }
+    setInputBuffer(prev => prev + char);
+    setLastUserInputTime(Date.now());
+    setResponseQueued(false);
+    if (e.key === "Enter") {
+      playEnterSound();
+    }
+  }
+
+  if (e.key === 'Backspace') {
+    e.preventDefault();
+    setTypedText(prev => prev.slice(0, -1));
+    return;
+  }
+
+  playKeySound();
+};
 
  
 
@@ -368,6 +400,11 @@ useEffect(() => {
   }, [typedText, lastUserInputTime, responseQueued, typingAllowed]);
 
   const displayedContent = responses.map(r => r.content).join('');
+  const ghostText = responses.length > 0 ? responses[responses.length - 1]?.content || '' : '';
+  const revealedHeight = Math.min(
+    FILM_HEIGHT,
+    TOP_OFFSET + lineCount(typedText, ghostText) * LINE_HEIGHT + 40 // +40px pad
+  );
 
   return (
     <div
@@ -382,60 +419,55 @@ useEffect(() => {
         className="typewriter-overlay"
       />
   
-     <div className="typewriter-paper-frame">
-      <div
-        className="paper-scroll-area"
-        ref={scrollRef}
-        tabIndex={0}
-      >
-    {/* Film background sits absolutely behind everything */}
+      <div className="typewriter-paper-frame">
+  <div
+    className="paper-scroll-area"
+    ref={scrollRef}
+    style={{
+      height: `${revealedHeight}px`,
+      overflow: 'hidden',      // Prevent scrolling past revealed area
+      position: 'relative'
+    }}
+    tabIndex={0}
+  >
     <div className="film-background" />
-
-    {/* Text appears on top */}
     <div className="typewriter-text film-overlay-text">
-        {(() => {
-      // Merge user + ghost content for correct line splitting
-      const ghostText = responses.length > 0 ? responses[responses.length - 1]?.content || '' : '';
-      const merged = typedText + ghostText;
-      const mergedLines = merged.split('\n');
-      // For highlighting: (optional) where user input ends and ghost begins
-      // const userCharCount = typedText.length;
-
-      return mergedLines.map((line, idx) => {
-        const isLastLine = idx === mergedLines.length - 1;
-        // Highlight "The Xerofag" if present (optional)
-        const parts = line.includes("The Xerofag")
-          ? line.split(/(The Xerofag)/g).map((part, i) => (
-              part === "The Xerofag" ? (
-                <span key={i} className="xerofag-highlight">{part}</span>
-              ) : (
-                <span key={i}>{part}</span>
-              )
-            ))
-          : <span>{line}</span>;
-
-        return (
-          <div key={idx} className="typewriter-line" ref={isLastLine ? lastLineRef : null}>
-            <span className="last-line-content">
-              {parts}
-              {isLastLine && (
-                <span
-                  className="striker-cursor"
-                  ref={strikerRef}
-                  style={{ display: 'inline-block', position: 'relative', left: '0px' }}
-                />
-              )}
-            </span>
-          </div>
-        );
-      });
-    })()}
-
+      {(() => {
+        const merged = typedText + ghostText;
+        const mergedLines = merged.split('\n');
+        return mergedLines.map((line, idx) => {
+          const isLastLine = idx === mergedLines.length - 1;
+          const parts = line.includes("The Xerofag")
+            ? line.split(/(The Xerofag)/g).map((part, i) => (
+                part === "The Xerofag" ? (
+                  <span key={i} className="xerofag-highlight">{part}</span>
+                ) : (
+                  <span key={i}>{part}</span>
+                )
+              ))
+            : <span>{line}</span>;
+          return (
+            <div key={idx} className="typewriter-line" ref={isLastLine ? lastLineRef : null}>
+              <span className="last-line-content">
+                {parts}
+                {isLastLine && (
+                  <span
+                    className="striker-cursor"
+                    ref={strikerRef}
+                    style={{ display: 'inline-block', position: 'relative', left: '0px' }}
+                  />
+                )}
+              </span>
+            </div>
+          );
+        });
+      })()}
     </div>
-    {/* Optional bottom padding so last line isn't flush with bottom */}
-    <div style={{ height: '32px' }} />
   </div>
 </div>
+
+
+
 
     
 
