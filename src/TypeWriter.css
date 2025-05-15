@@ -61,16 +61,6 @@
 
 
 
-.paper-scroll-area {
-  max-height: 100%;
-  height: 100%;
-  flex-grow: 1;
-  overflow-y: auto;
-  scroll-behavior: smooth;
-  padding-bottom: 6rem; /* Increased for better spacing at bottom */
-  padding-left: 2rem; 
-  min-height: 10rem;
-}
 
 
 /* Subtle paper shift to simulate breathing */
@@ -333,19 +323,7 @@
     gap: 1rem;
   }
   
-  .typewriter-paper-frame {
-    height: 75vh;              /* was 60vh — gives more room */
-    max-height: calc(100vh - 260px);
-    width: 80%;
-    margin: 0 auto;
-    position: relative;
-    overflow: hidden;
-    border-left: 12px solid transparent;
-    border-right: 12px solid transparent;
-    z-index: 2;
-    
-
-  }
+ 
   
   @media (max-height: 800px) {
     .typewriter-paper-frame {
@@ -450,40 +428,9 @@
   }
   
 
-  .typewriter-paper-frame {
-    height: 100%;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .typewriter-paper {
-    position: relative;
-    flex-grow: 1;
-    background-image: url('/textures/decor/film_frame_desert.png'),
-                     radial-gradient(ellipse at top left, rgba(255, 235, 180, 0.2), transparent 80%);
-    background-size: cover;
-    background-position: center;
-    background-blend-mode: multiply, overlay, normal;
-    filter: brightness(1) contrast(1.1);
-    padding: 4rem 6rem 8rem 6rem; /* Added more padding at bottom */
-    box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.4);
-    animation: paperSettle 20s ease-in-out infinite alternate;
-  }
-  
-  
-  
-  
-
  
-  
-  .typewriter-paper-frame {
-    height: 60vh; /* you can adjust this to 70vh or 65vh */
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-  
+
+
 
 .typewriter-paper.film-mode {
   background-image: url('/textures/decor/film_frame_desert.png');
@@ -645,14 +592,6 @@
   transition: height 0.5s ease;
 }
 
-.paper-scroll-area {
-  position: relative;
-  z-index: 3;
-  overflow-y: auto;
-  height: 100%;
-  padding: 4rem 6rem 8rem;
-  scroll-behavior: smooth;
-}
 
 
 
@@ -661,20 +600,7 @@
   min-height: 1000px;
 }
 
-.film-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 100%;
-  background-image: url('/textures/decor/film_frame_desert.png');
-  background-size: cover;
-  background-position: top center;
-  opacity: 0.95;
-  z-index: 1;
-  mix-blend-mode: multiply;
-  pointer-events: none;
-}
+
 
 .typewriter-text {
   position: relative;
@@ -689,21 +615,7 @@
   overflow-y: auto;
 }
 
-.film-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 1200px; /* or however tall your image is */
-  background-image: url('/textures/decor/film_frame_desert.png');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: top center;
-  z-index: 1;
-  pointer-events: none;
-  mix-blend-mode: multiply;
-  opacity: 0.92;
-}
+
 
 .film-overlay-text {
   position: relative;
@@ -711,4 +623,47 @@
   padding-top: 6rem;
   padding-left: 5rem;
   padding-right: 5rem;
+}
+
+
+.typewriter-paper-frame {
+  height: 65vh; /* Or what feels right */
+  max-height: 900px; /* optional, for very tall screens */
+  width: 80%;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+.paper-scroll-area {
+  /* This is the real "scrollable" zone INSIDE the frame */
+  height: 1400px;   /* <- MUST match your .film-background height exactly! */
+  min-height: 1400px;
+  position: relative;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  width: 100%;
+  z-index: 2;
+  background: transparent;
+}
+
+/* This makes the film frame always fit underneath text */
+.film-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 1400px; /* same as above! */
+  background-image: url('/textures/decor/film_frame_desert.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: top center;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.92;
 }
