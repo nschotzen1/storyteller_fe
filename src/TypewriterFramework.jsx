@@ -104,13 +104,22 @@ const TypewriterFramework = () => {
     return typedText + ghostText;
   };
 
-  // Always scroll last line into view when text or ghost changes
+  
 useEffect(() => {
+  // Scroll so that the last line is at the bottom of the .paper-scroll-area
   requestAnimationFrame(() => {
     if (scrollRef.current && lastLineRef.current) {
-      lastLineRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      // If the bottom of lastLineRef is within the scroll area, scroll so it aligns to the bottom
+      const scrollArea = scrollRef.current;
+      const lastLine = lastLineRef.current;
+      // Scroll so last line is at the bottom of the visible area
+      const offset = lastLine.offsetTop - scrollArea.offsetTop;
+      const maxScroll = scrollArea.scrollHeight - scrollArea.clientHeight;
+      let targetScroll = offset - scrollArea.clientHeight + lastLine.offsetHeight + 32; // +32 for bottom padding
+      if (targetScroll > maxScroll) targetScroll = maxScroll;
+      if (targetScroll < 0) targetScroll = 0;
+      scrollArea.scrollTo({ top: targetScroll, behavior: 'smooth' });
     }
-    // Cursor: no special positioning needed. It will always be after the last letter.
   });
 }, [typedText, responses]);
 
@@ -384,8 +393,17 @@ useEffect(() => {
 
     {/* Text appears on top */}
     <div className="typewriter-text film-overlay-text">
-      {typedText.split('\n').map((line, idx, arr) => {
-        const isLastLine = idx === arr.length - 1;
+        {(() => {
+      // Merge user + ghost content for correct line splitting
+      const ghostText = responses.length > 0 ? responses[responses.length - 1]?.content || '' : '';
+      const merged = typedText + ghostText;
+      const mergedLines = merged.split('\n');
+      // For highlighting: (optional) where user input ends and ghost begins
+      // const userCharCount = typedText.length;
+
+      return mergedLines.map((line, idx) => {
+        const isLastLine = idx === mergedLines.length - 1;
+        // Highlight "The Xerofag" if present (optional)
         const parts = line.includes("The Xerofag")
           ? line.split(/(The Xerofag)/g).map((part, i) => (
               part === "The Xerofag" ? (
@@ -395,42 +413,24 @@ useEffect(() => {
               )
             ))
           : <span>{line}</span>;
+
         return (
           <div key={idx} className="typewriter-line" ref={isLastLine ? lastLineRef : null}>
-            {isLastLine ? (
-              <span className="last-line-content">
-                {parts}
-                {/* Ghostwriter text if present */}
-                {responses.length > 0 && (
-                  <span
-                    className="emergent-letter"
-                    ref={ghostTextRef}
-                    style={{
-                      fontFamily: responses[0]?.font,
-                      fontSize: responses[0]?.font_size,
-                      color: responses[0]?.font_color,
-                    }}
-                  >
-                    {responses[responses.length - 1]?.content}
-                  </span>
-                )}
-                {/* Always position cursor after all text */}
+            <span className="last-line-content">
+              {parts}
+              {isLastLine && (
                 <span
                   className="striker-cursor"
                   ref={strikerRef}
-                  style={{
-                    display: 'inline-block',
-                    position: 'relative',
-                    left: '0px'
-                  }}
+                  style={{ display: 'inline-block', position: 'relative', left: '0px' }}
                 />
-              </span>
-            ) : (
-              parts
-            )}
+              )}
+            </span>
           </div>
         );
-      })}
+      });
+    })()}
+
     </div>
     {/* Optional bottom padding so last line isn't flush with bottom */}
     <div style={{ height: '32px' }} />

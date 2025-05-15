@@ -325,11 +325,6 @@
   
  
   
-  @media (max-height: 800px) {
-    .typewriter-paper-frame {
-      height: 60vh;
-    }
-  }
 
 
   .storyteller-sigil {
@@ -627,12 +622,12 @@
 
 
 .typewriter-paper-frame {
-  height: 65vh; /* Or what feels right */
-  max-height: 900px; /* optional, for very tall screens */
+  height: 520px; /* Or what you want visible */
+  max-height: 90vh;
+  overflow-y: auto;    /* only here */
   width: 80%;
   margin: 0 auto;
   position: relative;
-  overflow: hidden;
   border-left: 12px solid transparent;
   border-right: 12px solid transparent;
   z-index: 2;
@@ -641,15 +636,12 @@
 }
 
 .paper-scroll-area {
-  /* This is the real "scrollable" zone INSIDE the frame */
-  height: 1400px;   /* <- MUST match your .film-background height exactly! */
   min-height: 1400px;
-  position: relative;
-  overflow-y: auto;
-  scroll-behavior: smooth;
+  height: 1400px;
   width: 100%;
-  z-index: 2;
+  position: relative;
   background: transparent;
+  /* REMOVE any overflow-y: auto here! */
 }
 
 /* This makes the film frame always fit underneath text */
