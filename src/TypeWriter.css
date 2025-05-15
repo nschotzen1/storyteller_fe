@@ -597,16 +597,6 @@
 
 
 
-.typewriter-text {
-  position: relative;
-  z-index: 2;
-  padding-top: 9rem;
-  padding-left: 5rem;
-  padding-right: 5rem;
-}
-
-
-
 .film-scroll-layer {
   position: relative;
   overflow-y: auto;
@@ -626,27 +616,19 @@
 
 
 .typewriter-paper-frame {
-  height: 520px;           /* Or whatever you want visible at once */
+  height: 520px;   /* the window height! (matches ~how much of film is visible) */
   max-height: 90vh;
-  overflow-y: auto;        /* <-- Let user scroll up/down within revealed area */
+  overflow-y: auto; /* enables scroll up when text overflows! */
   width: 80%;
   margin: 0 auto;
   position: relative;
   border-left: 12px solid transparent;
   border-right: 12px solid transparent;
   z-index: 2;
-  display: flex;
-  flex-direction: column;
   background: transparent;
 }
 
-.paper-scroll-area {
-  position: relative;
-  width: 100%;
-  will-change: height;
-  transition: height 0.25s cubic-bezier(.4,2,.3,1); /* smooth growth */
-  /* height is set via style prop in JSX! */
-}
+
 
 .film-background {
   position: absolute;
@@ -659,13 +641,46 @@
   pointer-events: none;
   opacity: 0.92;
 }
+
 .typewriter-text.film-overlay-text {
   position: relative;
   z-index: 2;
-  padding-top: 100px; /* TOP_OFFSET, matches the JS logic below */
+  padding-top: 100px; /* TOP_OFFSET */
   padding-left: 5rem;
   padding-right: 5rem;
   display: flex;
   flex-direction: column;
 }
 
+
+
+
+.paper-scroll-area {
+  position: relative;
+  width: 100%;
+  height: 1400px;   /* FULL film height, always! */
+  overflow: hidden; /* never scroll INSIDE this div */
+}
+
+
+.film-background {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 1400px;
+  background-image: url('/textures/decor/film_frame_desert.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: top center;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.92;
+}
+
+.typewriter-text.film-overlay-text {
+  position: relative;
+  z-index: 2;
+  padding-top: 180px; /* TOP_OFFSET */
+  padding-left: 5rem;
+  padding-right: 5rem;
+  display: flex;
+  flex-direction: column;
+}

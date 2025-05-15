@@ -2,15 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import './TypeWriter.css';
 
 
-const FILM_HEIGHT = 1400;
-const LINE_HEIGHT = 2.4 * 16; // px
-const TOP_OFFSET = 100;
+const FILM_HEIGHT = 1400;   // must match your .film-background
+const LINE_HEIGHT = 2.4 * 16; // px, matches CSS
+const TOP_OFFSET = 180;      // px, for where first line starts
+const BOTTOM_PADDING = 180;   // px, so cursor never flush with bottom
+
+const MAX_LINES = Math.floor((FILM_HEIGHT - TOP_OFFSET - BOTTOM_PADDING) / LINE_HEIGHT);
 
 function lineCount(typed, ghost = '') {
   return (typed + ghost).split('\n').length;
 }
 
-const MAX_LINES = Math.floor((FILM_HEIGHT - TOP_OFFSET) / LINE_HEIGHT);
+
 
 const keys = [
   'Q','W','E','R','T','Y','U','I','O','P',
@@ -218,14 +221,18 @@ const commitGhostText = () => {
   );
 
   
-  // Update reveal amount based on combined text
-  useEffect(() => {
-    const combinedText = getCombinedText();
-    const linesTyped = combinedText.split('\n').length;
-    // Don't automatically set reveal based on lines, let scroll position handle it
-  }, [typedText, responses]);
-
-  
+ useEffect(() => {
+  if (containerRef.current && lastLineRef.current) {
+    // Only scroll down if new line is below the visible area
+    const frame = containerRef.current;
+    const last = lastLineRef.current;
+    const frameRect = frame.getBoundingClientRect();
+    const lastRect = last.getBoundingClientRect();
+    if (lastRect.bottom > frameRect.bottom || lastRect.top < frameRect.top) {
+      last.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }
+}, [typedText, responses]);
 
   useEffect(() => {
     if (!inputBuffer.length || !typingAllowed) return;
@@ -282,21 +289,25 @@ useEffect(() => {
   }
 }, [typedText, responses, endOfPageReached]);
 
-
- const handleKeyDown = (e) => {
+const handleKeyDown = (e) => {
   if (!typingAllowed) {
     playEndOfPageSound();
     return;
   }
-  
-  const char = e.key === "Enter" ? '\n' : e.key;
-  
-  
 
+  // Always define ghostText at the start!
+  const ghostText = responses.length > 0 ? responses[responses.length - 1]?.content || '' : '';
+  const char = e.key === "Enter" ? '\n' : e.key;
+
+  // Build what the text would look like if this character is added
   const merged = typedText + inputBuffer + ghostText + (char || '');
-  if (char === '\n' && countLines(merged) > MAX_LINES) {
+  const allLines = (typedText + ghostText).split('\n').slice(0, MAX_LINES);
+
+  // BLOCK if this new line would overflow the allowed lines
+  if (char === '\n' && allLines.length > MAX_LINES) {
     playEndOfPageSound();
-    return; // Block more lines!
+    // Optionally: trigger your page turn logic here
+    return;
   }
 
   setLastPressedKey(e.key.toUpperCase());
@@ -401,10 +412,18 @@ useEffect(() => {
 
   const displayedContent = responses.map(r => r.content).join('');
   const ghostText = responses.length > 0 ? responses[responses.length - 1]?.content || '' : '';
-  const revealedHeight = Math.min(
-    FILM_HEIGHT,
-    TOP_OFFSET + lineCount(typedText, ghostText) * LINE_HEIGHT + 40 // +40px pad
-  );
+  // Calculate how much height the text needs
+  const linesToShow = Math.min(lineCount(typedText, ghostText), MAX_LINES);
+  
+  // const neededHeight = TOP_OFFSET + linesToShow * LINE_HEIGHT + BOTTOM_PADDING;
+  const visibleLineCount = Math.min(lineCount(typedText, ghostText), MAX_LINES);
+  const neededHeight = TOP_OFFSET + visibleLineCount * LINE_HEIGHT + 4; // adjust 4 as needed for gap
+  const frameHeight = 520; // matches .typewriter-paper-frame
+
+  // If text is short, paper-scroll-area grows to fit; if text is long, it caps at frameHeight and becomes scrollable.
+  const scrollAreaHeight = Math.max(frameHeight, neededHeight);
+  
+  
 
   return (
     <div
@@ -419,24 +438,36 @@ useEffect(() => {
         className="typewriter-overlay"
       />
   
-      <div className="typewriter-paper-frame">
+        <div className="typewriter-paper-frame" style={{ height: `${frameHeight}px` }}>
   <div
     className="paper-scroll-area"
     ref={scrollRef}
     style={{
-      height: `${revealedHeight}px`,
-      overflow: 'hidden',      // Prevent scrolling past revealed area
-      position: 'relative'
+      height: `${scrollAreaHeight}px`,
+      maxHeight: `${frameHeight}px`, // never more than the frame
+      overflowY: neededHeight > frameHeight ? 'auto' : 'hidden',
+      position: 'relative',
+      width: '100%',
     }}
-    tabIndex={0}
   >
-    <div className="film-background" />
-    <div className="typewriter-text film-overlay-text">
+    <div
+      className="film-background"
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: `${FILM_HEIGHT}px`,
+        zIndex: 1,
+        pointerEvents: 'none'
+      }}
+    />
+    <div className="typewriter-text film-overlay-text" style={{ zIndex: 2, position: 'relative' }}>
       {(() => {
-        const merged = typedText + ghostText;
-        const mergedLines = merged.split('\n');
-        return mergedLines.map((line, idx) => {
-          const isLastLine = idx === mergedLines.length - 1;
+        // Only display lines that will fit within the film, given the top offset and padding
+        const allLines = (typedText + ghostText).split('\n').slice(0, MAX_LINES);
+        return allLines.map((line, idx) => {
+          const isLastLine = idx === allLines.length - 1;
           const parts = line.includes("The Xerofag")
             ? line.split(/(The Xerofag)/g).map((part, i) => (
                 part === "The Xerofag" ? (
