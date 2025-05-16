@@ -221,18 +221,8 @@ const commitGhostText = () => {
   );
 
   
- useEffect(() => {
-  if (containerRef.current && lastLineRef.current) {
-    // Only scroll down if new line is below the visible area
-    const frame = containerRef.current;
-    const last = lastLineRef.current;
-    const frameRect = frame.getBoundingClientRect();
-    const lastRect = last.getBoundingClientRect();
-    if (lastRect.bottom > frameRect.bottom || lastRect.top < frameRect.top) {
-      last.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-  }
-}, [typedText, responses]);
+
+
 
   useEffect(() => {
     if (!inputBuffer.length || !typingAllowed) return;
@@ -267,27 +257,28 @@ function countLines(str) {
 
 // Watch for overflow (page end)
 useEffect(() => {
-  const lines = countLines(typedText, responses);
-  if (lines >= MAX_LINES && !endOfPageReached) {
-    setEndOfPageReached(true);
-    setTypingAllowed(false);
+  if (!scrollRef.current || !lastLineRef.current) return;
 
-    // This is where you trigger the next frame logic, e.g.:
-    setTimeout(() => {
-      // Pass control to parent, change background, reset state, etc.
-      // For example, if you get a prop: onPageEnd()
-      // onPageEnd();
+  // Ensure DOM is updated before measuring
+  requestAnimationFrame(() => {
+    const scrollArea = scrollRef.current;
+    const lastLine = lastLineRef.current;
 
-      // For now, just reset for demo:
-      setTypedText('');
-      setResponses([]);
-      setEndOfPageReached(false);
-      setTypingAllowed(true);
-      scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-      // Optionally change the film background here
-    }, 800); // short pause before flip
-  }
-}, [typedText, responses, endOfPageReached]);
+    // Find the offset of the last line relative to the scrollArea
+    const offset = lastLine.offsetTop - scrollArea.offsetTop;
+    const lineBottom = offset + lastLine.offsetHeight;
+
+    // If last line is below the visible area, scroll so it's at the bottom
+    if (lineBottom > scrollArea.clientHeight) {
+      const targetScroll = lineBottom - scrollArea.clientHeight + 16; // 16px buffer
+      scrollArea.scrollTo({ top: targetScroll, behavior: 'smooth' });
+    }
+    // If all lines fit, scroll to top
+    else if (scrollArea.scrollTop > 0 && lineBottom <= scrollArea.clientHeight) {
+      scrollArea.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+}, [typedText, responses]);
 
 const handleKeyDown = (e) => {
   if (!typingAllowed) {
@@ -335,6 +326,20 @@ const handleKeyDown = (e) => {
   playKeySound();
 };
 
+
+useEffect(() => {
+  if (scrollRef.current && lastLineRef.current) {
+    // lastLineRef is attached to the last visible line
+    const scrollArea = scrollRef.current;
+    const lastLine = lastLineRef.current;
+
+    // Get the position of the last line inside the scroll area
+    // This ensures the last line will be as close to the bottom as possible
+    scrollArea.scrollTop = lastLine.offsetTop - scrollArea.offsetTop - scrollArea.clientHeight + lastLine.offsetHeight + 8; // 8px buffer
+    // Don't scroll to negative
+    if (scrollArea.scrollTop < 0) scrollArea.scrollTop = 0;
+  }
+}, [typedText, responses]);
  
 
   useEffect(() => {
