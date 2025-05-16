@@ -680,6 +680,7 @@
   z-index: 2;
   padding-top: 180px; /* TOP_OFFSET */
   padding-left: 5rem;
+  padding-bottom: 220px;
   padding-right: 5rem;
   display: flex;
   flex-direction: column;
