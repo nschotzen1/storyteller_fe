@@ -18,14 +18,27 @@ const keys = [
 const materialOptions = ['stone', 'bone', 'brass'];
 const SERVER = 'http://localhost:5001'; // replace if needed
 
-const fetchTypewriterReply = async (text) => {
+const fetchTypewriterReply = async (text, sessionId) => {
   const response = await fetch(`${SERVER}/api/send_typewriter_text`, {
     method: "POST",
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId: 'example-session', message: text })
+    body: JSON.stringify({ sessionId, message: text })
   });
   const data = await response.json();
   return data; // expects { content, font, font_size, font_color }
+};
+
+
+
+const fetchNextFilmImage = async (pageText, sessionId) => {
+  const response = await fetch(`${SERVER}/api/next_film_image`, {
+    method: "POST",
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, text: pageText })
+  });
+  const data = await response.json();
+  // expects: { image_url: "/textures/film_frames/frame2.png" }
+  return data.image_url;
 };
 
 const getRandomTexture = (key) => {
@@ -87,6 +100,15 @@ const TypewriterFramework = () => {
   const [scrollMode, setScrollMode] = useState('cinematic');
   const [initialLineCount, setInitialLineCount] = useState(0);
   const [hasUserTyped, setHasUserTyped] = useState(false);
+  const [filmBgUrl, setFilmBgUrl] = useState('/textures/decor/film_frame_desert.png');
+  const [sessionId] = useState(() => {
+      const stored = localStorage.getItem('sessionId');
+      if (stored) return stored;
+      const newId = Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('sessionId', newId);
+      return newId;
+    });
+
 
 
 
@@ -118,7 +140,24 @@ const TypewriterFramework = () => {
     }
   }
   requestAnimationFrame(animateScroll);
-}
+    }
+
+    const turnPage = async () => {
+  setEndOfPageReached(true);
+  setTypingAllowed(false);
+  playEndOfPageSound();
+  setTimeout(async () => {
+    const newImage = await fetchNextFilmImage(typedText + ghostText, sessionId);
+    setFilmBgUrl(newImage || '/textures/decor/film_frame_desert.png');
+    setTypedText('');
+    setResponses([]);
+    setEndOfPageReached(false);
+    setTypingAllowed(true);
+    setCinematicIntro(true);
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+  }, 800);
+};
+
 
 useEffect(() => {
   setInitialLineCount((typedText + ghostText).split('\n').length);
@@ -160,12 +199,15 @@ useEffect(() => {
       scrollArea.scrollTo({ top: targetScroll, behavior: 'smooth' });
       
     } 
-    if (lineBottom > scrollArea.clientHeight) {
-      const targetScroll = lineBottom - scrollArea.clientHeight + 16;
-      scrollArea.scrollTo({ top: targetScroll, behavior: 'smooth' });
-    }
   });
 }, [typedText, responses, scrollMode]);
+
+useEffect(() => {
+  if (!scrollRef.current || !lastLineRef.current) return;
+  requestAnimationFrame(() => {
+    lastLineRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+}, [typedText, ghostText, responses, scrollMode]);
 
   // Only one scroll effect - remove all other scroll-to-line code!
 
@@ -173,7 +215,8 @@ useEffect(() => {
   const commitGhostText = () => {
     const fullGhost = responses.map(r => r.content).join('');
     const merged = typedText + fullGhost;
-    if (countLines(merged) > MAX_LINES) {
+    const mergedLines = merged.split('\n').length;
+    if (mergedLines > MAX_LINES) {
       const allowedLines = merged.split('\n').slice(0, MAX_LINES).join('\n');
       setTypedText(allowedLines);
       setResponses([]);
@@ -199,22 +242,10 @@ useEffect(() => {
   useEffect(() => {
     const allLines = (typedText + ghostText).split('\n');
     if (allLines.length >= MAX_LINES && !endOfPageReached) {
-      setEndOfPageReached(true);
-      setTypingAllowed(false);
-      playEndOfPageSound();
-      setTimeout(() => {
-        // Here you could trigger parent callback for next frame
-        setTypedText('');
-        setResponses([]);
-        setEndOfPageReached(false);
-        setTypingAllowed(true);
-        setCinematicIntro(true); // <-- This triggers the effect on next frame
-        scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
-
-        // Optionally: switch background image here
-      }, 800);
+      turnPage();
     }
   }, [typedText, ghostText, endOfPageReached]);
+
 
   // -- Keyboard Handlers --
   const handleKeyDown = (e) => {
@@ -224,8 +255,14 @@ useEffect(() => {
     }
     if (!hasUserTyped) setHasUserTyped(true);
     const char = e.key === "Enter" ? '\n' : e.key;
-    const merged = typedText + inputBuffer + ghostText + (char || '');
+    const currentLines = (typedText + ghostText + inputBuffer).split('\n').length;
     const allLines = (typedText + ghostText).split('\n').slice(0, MAX_LINES);
+
+    if (currentLines >= MAX_LINES && e.key !== 'Backspace') {
+      turnPage();
+      return;
+    }
+
 
     if (char === '\n' && allLines.length > MAX_LINES) {
       playEndOfPageSound();
@@ -326,6 +363,8 @@ useEffect(() => {
     const timeout = setTimeout(() => setLastPressedKey(null), 120);
     return () => clearTimeout(timeout);
   }, [lastPressedKey]);
+
+  
 
   // -- Ghostwriter AI Trigger --
   useEffect(() => {
@@ -442,9 +481,15 @@ useEffect(() => {
               width: '100%',
               height: `${FILM_HEIGHT}px`,
               zIndex: 1,
-              pointerEvents: 'none'
+              pointerEvents: 'none',
+              backgroundImage: `url('${filmBgUrl}')`,
+              backgroundSize: 'cover',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'top center',
+              opacity: 0.92,
             }}
           />
+
           <div className="typewriter-text film-overlay-text" style={{ zIndex: 2, position: 'relative' }}>
             {(() => {
               const allLines = (typedText + ghostText).split('\n').slice(0, MAX_LINES);
