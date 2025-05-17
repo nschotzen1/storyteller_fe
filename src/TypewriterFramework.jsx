@@ -83,37 +83,89 @@ const TypewriterFramework = () => {
   const [lastGeneratedLength, setLastGeneratedLength] = useState(0);
   const [ghostKeyQueue, setGhostKeyQueue] = useState([]);
   const [endOfPageReached, setEndOfPageReached] = useState(false);
+  const [cinematicIntro, setCinematicIntro] = useState(true); 
+  const [scrollMode, setScrollMode] = useState('cinematic');
+  const [initialLineCount, setInitialLineCount] = useState(0);
+  const [hasUserTyped, setHasUserTyped] = useState(false);
+
+
+
 
   // refs
   const containerRef = useRef(null);
   const scrollRef = useRef(null);
   const lastLineRef = useRef(null);
   const strikerRef = useRef(null);
+  
+
+    function cinematicScrollTo(ref, to, duration = 1700) {
+  if (!ref.current) return;
+  const start = ref.current.scrollTop;
+  const change = to - start;
+  const startTime = performance.now();
+
+  function animateScroll(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    // Cinematic ease (ease-in-out cubic)
+    const ease = progress < 0.5
+      ? 4 * progress * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+    ref.current.scrollTop = start + change * ease;
+
+    if (progress < 1) {
+      requestAnimationFrame(animateScroll);
+    }
+  }
+  requestAnimationFrame(animateScroll);
+}
+
+useEffect(() => {
+  setInitialLineCount((typedText + ghostText).split('\n').length);
+  setScrollMode('cinematic');
+}, []); // or on page reset
+
+
+
+// Cinematic reveal effect
+useEffect(() => {
+  if (scrollMode !== 'cinematic') return;
+  if (!scrollRef.current) return;
+  scrollRef.current.scrollTop = 0;
+  const timer = setTimeout(() => {
+    cinematicScrollTo(scrollRef, 120, 1600); // always scroll to 120
+    setTimeout(() => setScrollMode('normal'), 1600);
+  }, 650);
+  return () => clearTimeout(timer);
+}, [scrollMode]);
+
 
   const topRow = ['Q','W','E','R','T','Y','U','I','O','P'];
   const midRow = ['A','S','D','F','G','THE XEROFAG', 'H','J','K','L'];
   const botRow = ['Z','X','C','V','B','N','M'];
 
-  // -- Centralized Scroll Effect --
-  useEffect(() => {
-    if (!scrollRef.current || !lastLineRef.current) return;
-    requestAnimationFrame(() => {
-      const scrollArea = scrollRef.current;
-      const lastLine = lastLineRef.current;
-      const offset = lastLine.offsetTop - scrollArea.offsetTop;
-      const lineBottom = offset + lastLine.offsetHeight;
+  
 
-      // If last line is below the visible area, scroll so it's at the bottom
-      if (lineBottom > scrollArea.clientHeight) {
-        const targetScroll = lineBottom - scrollArea.clientHeight + 16; // 16px buffer
-        scrollArea.scrollTo({ top: targetScroll, behavior: 'smooth' });
-      }
-      // If all lines fit, scroll to top
-      else if (scrollArea.scrollTop > 0 && lineBottom <= scrollArea.clientHeight) {
-        scrollArea.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    });
-  }, [typedText, responses]);
+  // -- Centralized Scroll Effect --
+ useEffect(() => {
+  if (scrollMode !== 'normal') return;
+  if (!scrollRef.current || !lastLineRef.current) return;
+  requestAnimationFrame(() => {
+    const scrollArea = scrollRef.current;
+    const lastLine = lastLineRef.current;
+    const offset = lastLine.offsetTop - scrollArea.offsetTop;
+    const lineBottom = offset + lastLine.offsetHeight;
+    if (lineBottom > scrollArea.clientHeight) {
+      const targetScroll = lineBottom - scrollArea.clientHeight + 16;
+      scrollArea.scrollTo({ top: targetScroll, behavior: 'smooth' });
+      
+    } 
+    if (lineBottom > scrollArea.clientHeight) {
+      const targetScroll = lineBottom - scrollArea.clientHeight + 16;
+      scrollArea.scrollTo({ top: targetScroll, behavior: 'smooth' });
+    }
+  });
+}, [typedText, responses, scrollMode]);
 
   // Only one scroll effect - remove all other scroll-to-line code!
 
@@ -135,6 +187,8 @@ const TypewriterFramework = () => {
     }
   };
 
+
+  
   // -- Line Counting --
   const ghostText = responses.length > 0 ? responses[responses.length - 1]?.content || '' : '';
   const visibleLineCount = Math.min(countLines(typedText, ghostText), MAX_LINES);
@@ -154,7 +208,9 @@ const TypewriterFramework = () => {
         setResponses([]);
         setEndOfPageReached(false);
         setTypingAllowed(true);
+        setCinematicIntro(true); // <-- This triggers the effect on next frame
         scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+
         // Optionally: switch background image here
       }, 800);
     }
@@ -166,7 +222,7 @@ const TypewriterFramework = () => {
       playEndOfPageSound();
       return;
     }
-
+    if (!hasUserTyped) setHasUserTyped(true);
     const char = e.key === "Enter" ? '\n' : e.key;
     const merged = typedText + inputBuffer + ghostText + (char || '');
     const allLines = (typedText + ghostText).split('\n').slice(0, MAX_LINES);
@@ -215,6 +271,18 @@ const TypewriterFramework = () => {
     }, 100);
     return () => clearTimeout(timeout);
   }, [inputBuffer, typingAllowed]);
+
+
+  useEffect(() => {
+  // Only if in cinematic mode and content increased, switch to normal mode
+  if (scrollMode === 'cinematic') {
+    
+    if (typedText.length > 1) {
+      setScrollMode('normal');
+    }
+  }
+}, [typedText, responses, scrollMode, initialLineCount, ghostText]);
+
 
   // -- Keyboard Focus --
   useEffect(() => {
