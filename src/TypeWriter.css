@@ -51,10 +51,10 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 100vh; /* force it to viewport height */
+  height: 100vh;
   width: 100%;
   background-color: #0b0908;
-  overflow-y: auto; /* allow scroll if needed */
+  overflow-y: auto;
   padding-top: 4vh;
 }
 
@@ -630,18 +630,6 @@
 
 
 
-.film-background {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 1400px;
-  background-image: url('/textures/decor/film_frame_desert.png');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: top center;
-  z-index: 1;
-  pointer-events: none;
-  opacity: 0.92;
-}
-
 .typewriter-text.film-overlay-text {
   position: relative;
   z-index: 2;
@@ -666,7 +654,6 @@
 .film-background {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 1400px;
-  background-image: url('/textures/decor/film_frame_desert.png');
   background-size: cover;
   background-repeat: no-repeat;
   background-position: top center;
@@ -684,4 +671,53 @@
   padding-right: 5rem;
   display: flex;
   flex-direction: column;
+}
+
+/* --- Page Turn Slide Animation --- */
+.film-slide-wrapper {
+  position: absolute;
+  top: 0; left: 0;
+  width: 200%; /* two images wide */
+  height: 1400px;
+  display: flex;
+  flex-direction: row;
+  z-index: 10;
+  overflow: hidden;
+  pointer-events: none;
+  transition: transform 4s cubic-bezier(0.6, 0, 0.3, 1);
+}
+
+.film-bg-slide {
+  width: 50%;   /* half the wrapper */
+  height: 100%;
+  background-size: cover;
+  background-position: top center;
+  background-repeat: no-repeat;
+  opacity: 0.92;
+  transition: none; /* let wrapper handle sliding! */
+  will-change: background-image;
+}
+
+.film-slide-wrapper.animating {
+  transition: transform 4s cubic-bezier(0.6, 0, 0.3, 1);
+}
+
+
+
+.film-bg-slide.next {
+  position: absolute;
+  left: 100%;
+}
+
+.film-bg-slide.slide-out {
+  transform: translateX(-100%);
+}
+
+.film-bg-slide.slide-in {
+  transform: translateX(0%);
+}
+
+@keyframes slideInAnim {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0%); }
 }
