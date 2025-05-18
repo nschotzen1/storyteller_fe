@@ -72,7 +72,7 @@ const playEnterSound = () => {
 };
 
 const playEndOfPageSound = () => {
-  const audio = new Audio('/sounds/typewriter-bell.mp3');
+  const audio = new Audio('/sounds/page_turn.mp3');
   audio.volume = 0.4;
   audio.play();
 };
