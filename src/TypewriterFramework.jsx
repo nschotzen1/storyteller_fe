@@ -25,10 +25,8 @@ const fetchTypewriterReply = async (text, sessionId) => {
     body: JSON.stringify({ sessionId, message: text })
   });
   const data = await response.json();
-  return data; // expects { content, font, font_size, font_color }
+  return data;
 };
-
-
 
 const fetchNextFilmImage = async (pageText, sessionId) => {
   const response = await fetch(`${SERVER}/api/next_film_image`, {
@@ -37,7 +35,6 @@ const fetchNextFilmImage = async (pageText, sessionId) => {
     body: JSON.stringify({ sessionId, text: pageText })
   });
   const data = await response.json();
-  // expects: { image_url: "/textures/film_frames/frame2.png" }
   return data.image_url;
 };
 
@@ -85,7 +82,7 @@ function countLines(typed, ghost = '') {
 }
 
 const TypewriterFramework = () => {
-  const [lastUserInputTime, setLastUserInputTime] = useState(Date.now());
+  // --- State ---
   const [typedText, setTypedText] = useState('');
   const [inputBuffer, setInputBuffer] = useState('');
   const [typingAllowed, setTypingAllowed] = useState(true);
@@ -95,55 +92,72 @@ const TypewriterFramework = () => {
   const [responseQueued, setResponseQueued] = useState(false);
   const [lastGeneratedLength, setLastGeneratedLength] = useState(0);
   const [ghostKeyQueue, setGhostKeyQueue] = useState([]);
-  const [endOfPageReached, setEndOfPageReached] = useState(false);
-  const [cinematicIntro, setCinematicIntro] = useState(true); 
   const [scrollMode, setScrollMode] = useState('cinematic');
-  const [initialLineCount, setInitialLineCount] = useState(0);
-  const [hasUserTyped, setHasUserTyped] = useState(false);
   const [filmBgUrl, setFilmBgUrl] = useState('/textures/decor/film_frame_desert.png');
+  const [lastUserInputTime, setLastUserInputTime] = useState(Date.now());
   const [sessionId] = useState(() => {
-      const stored = localStorage.getItem('sessionId');
-      if (stored) return stored;
-      const newId = Math.random().toString(36).substring(2, 15);
-      localStorage.setItem('sessionId', newId);
-      return newId;
-    });
+    const stored = localStorage.getItem('sessionId');
+    if (stored) return stored;
+    const newId = Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('sessionId', newId);
+    return newId;
+  });
 
-
-
-
-
-  // refs
+  // --- Refs ---
   const containerRef = useRef(null);
   const scrollRef = useRef(null);
   const lastLineRef = useRef(null);
   const strikerRef = useRef(null);
-  
 
-    function cinematicScrollTo(ref, to, duration = 1700) {
-  if (!ref.current) return;
-  const start = ref.current.scrollTop;
-  const change = to - start;
-  const startTime = performance.now();
+  // --- Derived ---
+  const ghostText = responses.length > 0 ? responses[responses.length - 1]?.content || '' : '';
+  const visibleLineCount = Math.min(countLines(typedText, ghostText), MAX_LINES);
+  const neededHeight = TOP_OFFSET + visibleLineCount * LINE_HEIGHT + 4;
+  const scrollAreaHeight = Math.max(FRAME_HEIGHT, neededHeight);
 
-  function animateScroll(now) {
-    const elapsed = now - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    // Cinematic ease (ease-in-out cubic)
-    const ease = progress < 0.5
-      ? 4 * progress * progress * progress
-      : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-    ref.current.scrollTop = start + change * ease;
+  // --- Cinematic Intro Scroll ---
+  useEffect(() => {
+    if (scrollMode !== 'cinematic' || !scrollRef.current) return;
+    scrollRef.current.scrollTop = 0;
+    const timer = setTimeout(() => {
+      cinematicScrollTo(scrollRef, 120, 1600);
+      setTimeout(() => setScrollMode('normal'), 1600);
+    }, 650);
+    return () => clearTimeout(timer);
+  }, [scrollMode]);
 
-    if (progress < 1) {
-      requestAnimationFrame(animateScroll);
+  function cinematicScrollTo(ref, to, duration = 1700) {
+    if (!ref.current) return;
+    const start = ref.current.scrollTop;
+    const change = to - start;
+    const startTime = performance.now();
+
+    function animateScroll(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = progress < 0.5
+        ? 4 * progress * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+      ref.current.scrollTop = start + change * ease;
+      if (progress < 1) requestAnimationFrame(animateScroll);
     }
+    requestAnimationFrame(animateScroll);
   }
-  requestAnimationFrame(animateScroll);
-    }
 
-    const turnPage = async () => {
-  setEndOfPageReached(true);
+  // --- Single Unified Scroll Effect ---
+  // Ensures the last line is visible after typing, page turn, or cinematic intro
+  useEffect(() => {
+    if (!scrollRef.current || !lastLineRef.current) return;
+    // Only scroll if in "normal" mode (not during cinematic)
+    if (scrollMode === 'normal') {
+      requestAnimationFrame(() => {
+        lastLineRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    }
+  }, [typedText, ghostText, responses, scrollMode]);
+
+  // --- Turn Page (single place) ---
+  const turnPage = async () => {
   setTypingAllowed(false);
   playEndOfPageSound();
   setTimeout(async () => {
@@ -151,67 +165,136 @@ const TypewriterFramework = () => {
     setFilmBgUrl(newImage || '/textures/decor/film_frame_desert.png');
     setTypedText('');
     setResponses([]);
-    setEndOfPageReached(false);
     setTypingAllowed(true);
-    setCinematicIntro(true);
+    setScrollMode('cinematic');
+    setLastGeneratedLength(0); // <-- 🔥 This fixes the bug!
     scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
   }, 800);
 };
 
+  // --- Keyboard Handler ---
+  const handleKeyDown = (e) => {
+    if (!typingAllowed) {
+      playEndOfPageSound();
+      return;
+    }
+    const char = e.key === "Enter" ? '\n' : e.key;
+    const currentLines = (typedText + ghostText + inputBuffer).split('\n').length;
 
-useEffect(() => {
-  setInitialLineCount((typedText + ghostText).split('\n').length);
-  setScrollMode('cinematic');
-}, []); // or on page reset
+    // --- Page End: Block and turn page ---
+    if (currentLines >= MAX_LINES && e.key !== 'Backspace') {
+      turnPage();
+      return;
+    }
+
+    setLastPressedKey(e.key.toUpperCase());
+
+    if (e.key.length === 1 || e.key === "Enter") {
+      e.preventDefault();
+      if (responses.length > 0) {
+        commitGhostText();
+      }
+      setInputBuffer(prev => prev + char);
+      setResponseQueued(false);
+      setLastUserInputTime(Date.now());
+      if (e.key === "Enter") playEnterSound();
+    }
 
 
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      setTypedText(prev => prev.slice(0, -1));
+      return;
+    }
 
-// Cinematic reveal effect
-useEffect(() => {
-  if (scrollMode !== 'cinematic') return;
-  if (!scrollRef.current) return;
-  scrollRef.current.scrollTop = 0;
-  const timer = setTimeout(() => {
-    cinematicScrollTo(scrollRef, 120, 1600); // always scroll to 120
-    setTimeout(() => setScrollMode('normal'), 1600);
-  }, 650);
-  return () => clearTimeout(timer);
-}, [scrollMode]);
+    playKeySound();
+  };
 
+  // --- Typewriter Input Buffer ---
+  useEffect(() => {
+    if (!inputBuffer.length || !typingAllowed) return;
+    const char = inputBuffer[0];
+    const timeout = setTimeout(() => {
+      setTypedText(prev => prev + char);
+      setInputBuffer(prev => prev.slice(1));
+      if (char === '\n' && strikerRef.current) {
+        strikerRef.current.classList.add('striker-return');
+        setTimeout(() => {
+          strikerRef.current.classList.remove('striker-return');
+        }, 600);
+      }
+    }, 100);
+    return () => clearTimeout(timeout);
+  }, [inputBuffer, typingAllowed]);
 
-  const topRow = ['Q','W','E','R','T','Y','U','I','O','P'];
-  const midRow = ['A','S','D','F','G','THE XEROFAG', 'H','J','K','L'];
-  const botRow = ['Z','X','C','V','B','N','M'];
+  // --- Key Visual State ---
+  useEffect(() => {
+    if (!lastPressedKey) return;
+    const timeout = setTimeout(() => setLastPressedKey(null), 120);
+    return () => clearTimeout(timeout);
+  }, [lastPressedKey]);
 
-  
+  // --- Key Texture Refresh ---
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const idx = Math.floor(Math.random() * keyTextures.length);
+      setKeyTextures(prev => {
+        const updated = [...prev];
+        const key = keys[idx];
+        updated[idx] = getRandomTexture(key);
+        return updated;
+      });
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [keyTextures]);
 
-  // -- Centralized Scroll Effect --
- useEffect(() => {
-  if (scrollMode !== 'normal') return;
-  if (!scrollRef.current || !lastLineRef.current) return;
-  requestAnimationFrame(() => {
-    const scrollArea = scrollRef.current;
-    const lastLine = lastLineRef.current;
-    const offset = lastLine.offsetTop - scrollArea.offsetTop;
-    const lineBottom = offset + lastLine.offsetHeight;
-    if (lineBottom > scrollArea.clientHeight) {
-      const targetScroll = lineBottom - scrollArea.clientHeight + 16;
-      scrollArea.scrollTo({ top: targetScroll, behavior: 'smooth' });
-      
-    } 
-  });
-}, [typedText, responses, scrollMode]);
+  // --- Ghost Key Typing Simulation ---
+  useEffect(() => {
+    if (!ghostKeyQueue.length || !typingAllowed) return;
+    const interval = setInterval(() => {
+      const [nextChar, ...rest] = ghostKeyQueue;
+      if (nextChar) {
+        setResponses(prev => {
+          const last = prev[prev.length - 1] || { content: '' };
+          const updated = [...prev.slice(0, -1), { ...last, content: last.content + nextChar }];
+          return updated;
+        });
+      }
+      setGhostKeyQueue(rest);
+    }, 90);
+    return () => clearInterval(interval);
+  }, [ghostKeyQueue, typingAllowed]);
 
-useEffect(() => {
-  if (!scrollRef.current || !lastLineRef.current) return;
-  requestAnimationFrame(() => {
-    lastLineRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  });
-}, [typedText, ghostText, responses, scrollMode]);
+  // --- Ghostwriter AI Trigger ---
+  useEffect(() => {
+    if (!typingAllowed) return;
+    const interval = setInterval(async () => {
+      const fullText = typedText;
+      const addition = fullText.slice(lastGeneratedLength);
+      if (addition.trim().split(/\s+/).length >= 3 && !responseQueued) {
+        const response = await fetch(`${SERVER}/api/shouldGenerateContinuation`, {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            currentText: fullText,
+            latestAddition: addition,
+            latestPauseSeconds: (Date.now() - lastUserInputTime) / 1000
+          })
+        });
+        const { shouldGenerate } = await response.json();
+        if (shouldGenerate) {
+          const reply = await fetchTypewriterReply(fullText, sessionId);
+          setResponses(prev => [...prev, { ...reply, content: '' }]);
+          setGhostKeyQueue(reply.content.split(''));
+          setLastGeneratedLength(fullText.length);
+          setResponseQueued(true);
+        }
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [typedText, lastUserInputTime, responseQueued, typingAllowed]);
 
-  // Only one scroll effect - remove all other scroll-to-line code!
-
-  // -- Typewriter Ghost Commit Logic --
+  // --- Commit Ghost Text ---
   const commitGhostText = () => {
     const fullGhost = responses.map(r => r.content).join('');
     const merged = typedText + fullGhost;
@@ -230,176 +313,12 @@ useEffect(() => {
     }
   };
 
-
-  
-  // -- Line Counting --
-  const ghostText = responses.length > 0 ? responses[responses.length - 1]?.content || '' : '';
-  const visibleLineCount = Math.min(countLines(typedText, ghostText), MAX_LINES);
-  const neededHeight = TOP_OFFSET + visibleLineCount * LINE_HEIGHT + 4;
-  const scrollAreaHeight = Math.max(FRAME_HEIGHT, neededHeight);
-
-  // -- Handle Page End --
-  useEffect(() => {
-    const allLines = (typedText + ghostText).split('\n');
-    if (allLines.length >= MAX_LINES && !endOfPageReached) {
-      turnPage();
-    }
-  }, [typedText, ghostText, endOfPageReached]);
-
-
-  // -- Keyboard Handlers --
-  const handleKeyDown = (e) => {
-    if (!typingAllowed) {
-      playEndOfPageSound();
-      return;
-    }
-    if (!hasUserTyped) setHasUserTyped(true);
-    const char = e.key === "Enter" ? '\n' : e.key;
-    const currentLines = (typedText + ghostText + inputBuffer).split('\n').length;
-    const allLines = (typedText + ghostText).split('\n').slice(0, MAX_LINES);
-
-    if (currentLines >= MAX_LINES && e.key !== 'Backspace') {
-      turnPage();
-      return;
-    }
-
-
-    if (char === '\n' && allLines.length > MAX_LINES) {
-      playEndOfPageSound();
-      return;
-    }
-
-    setLastPressedKey(e.key.toUpperCase());
-
-    if (e.key.length === 1 || e.key === "Enter") {
-      e.preventDefault();
-      if (responses.length > 0) {
-        commitGhostText();
-      }
-      setInputBuffer(prev => prev + char);
-      setLastUserInputTime(Date.now());
-      setResponseQueued(false);
-      if (e.key === "Enter") playEnterSound();
-    }
-
-    if (e.key === 'Backspace') {
-      e.preventDefault();
-      setTypedText(prev => prev.slice(0, -1));
-      return;
-    }
-
-    playKeySound();
-  };
-
-  // -- Typewriter Input Buffer (typing simulation) --
-  useEffect(() => {
-    if (!inputBuffer.length || !typingAllowed) return;
-    const char = inputBuffer[0];
-    const timeout = setTimeout(() => {
-      setTypedText(prev => prev + char);
-      setInputBuffer(prev => prev.slice(1));
-
-      if (char === '\n' && strikerRef.current) {
-        strikerRef.current.classList.add('striker-return');
-        setTimeout(() => {
-          strikerRef.current.classList.remove('striker-return');
-        }, 600);
-      }
-    }, 100);
-    return () => clearTimeout(timeout);
-  }, [inputBuffer, typingAllowed]);
-
-
-  useEffect(() => {
-  // Only if in cinematic mode and content increased, switch to normal mode
-  if (scrollMode === 'cinematic') {
-    
-    if (typedText.length > 1) {
-      setScrollMode('normal');
-    }
-  }
-}, [typedText, responses, scrollMode, initialLineCount, ghostText]);
-
-
-  // -- Keyboard Focus --
+  // --- Focus on Mount ---
   useEffect(() => {
     containerRef.current?.focus();
   }, []);
 
-  // -- Key Visual Refresh --
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const idx = Math.floor(Math.random() * keyTextures.length);
-      setKeyTextures(prev => {
-        const updated = [...prev];
-        const key = keys[idx];
-        updated[idx] = getRandomTexture(key);
-        return updated;
-      });
-    }, 20000);
-    return () => clearInterval(interval);
-  }, [keyTextures]);
-
-  // -- Ghost Key Typing Simulation --
-  useEffect(() => {
-    if (!ghostKeyQueue.length || !typingAllowed) return;
-    const interval = setInterval(() => {
-      const [nextChar, ...rest] = ghostKeyQueue;
-      if (nextChar) {
-        setResponses(prev => {
-          const last = prev[prev.length - 1] || { content: '' };
-          const updated = [...prev.slice(0, -1), { ...last, content: last.content + nextChar }];
-          return updated;
-        });
-      }
-      setGhostKeyQueue(rest);
-    }, 90);
-    return () => clearInterval(interval);
-  }, [ghostKeyQueue, typingAllowed]);
-
-  // -- Key Visual State --
-  useEffect(() => {
-    if (!lastPressedKey) return;
-    const timeout = setTimeout(() => setLastPressedKey(null), 120);
-    return () => clearTimeout(timeout);
-  }, [lastPressedKey]);
-
-  
-
-  // -- Ghostwriter AI Trigger --
-  useEffect(() => {
-    if (!typingAllowed) return;
-    const interval = setInterval(async () => {
-      const now = Date.now();
-      const pauseSeconds = (now - lastUserInputTime) / 1000;
-      const fullText = typedText;
-      const addition = fullText.slice(lastGeneratedLength);
-
-      if (addition.trim().split(/\s+/).length >= 3 && !responseQueued) {
-        const response = await fetch(`${SERVER}/api/shouldGenerateContinuation`, {
-          method: "POST",
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            currentText: fullText,
-            latestAddition: addition,
-            latestPauseSeconds: pauseSeconds
-          })
-        });
-        const { shouldGenerate } = await response.json();
-
-        if (shouldGenerate) {
-          const reply = await fetchTypewriterReply(fullText);
-          setResponses(prev => [...prev, { ...reply, content: '' }]);
-          setGhostKeyQueue(reply.content.split(''));
-          setLastGeneratedLength(fullText.length);
-          setResponseQueued(true);
-        }
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [typedText, lastUserInputTime, responseQueued, typingAllowed]);
-
-  // -- Keyboard Row Rendering --
+  // --- Render ---
   const generateRow = (rowKeys) => (
     <div className="key-row">
       {rowKeys.map((key, idx) => {
@@ -407,7 +326,6 @@ useEffect(() => {
         const texture = keyTextures[globalIdx];
         const offset = Math.floor(Math.random() * 3) - 1;
         const tilt = (Math.random() * 1.4 - 0.7).toFixed(2);
-
         return (
           <div
             key={key + idx}
@@ -420,7 +338,6 @@ useEffect(() => {
               }
               const insertText = key === 'THE XEROFAG' ? 'The Xerofag ' : key;
               const isXerofag = key === 'THE XEROFAG';
-
               if (responses.length > 0) {
                 const ghostText = responses.map(r => r.content).join('');
                 setTypedText(prev => prev + ghostText + insertText);
@@ -447,7 +364,6 @@ useEffect(() => {
     </div>
   );
 
-  // -- Render --
   return (
     <div
       className="typewriter-container"
@@ -489,7 +405,6 @@ useEffect(() => {
               opacity: 0.92,
             }}
           />
-
           <div className="typewriter-text film-overlay-text" style={{ zIndex: 2, position: 'relative' }}>
             {(() => {
               const allLines = (typedText + ghostText).split('\n').slice(0, MAX_LINES);
@@ -530,9 +445,9 @@ useEffect(() => {
         />
       </div>
       <div className="keyboard-plate">
-        {generateRow(topRow)}
-        {generateRow(midRow)}
-        {generateRow(botRow)}
+        {generateRow(keys.slice(0, 10))}
+        {generateRow(keys.slice(10, 20))}
+        {generateRow(keys.slice(20))}
         <div className="key-row spacebar-row">
           <div
             className={`spacebar-wrapper ${!typingAllowed ? 'key-disabled' : ''}`}
