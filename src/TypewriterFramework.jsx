@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './TypeWriter.css';
 
-// -- Configs matching your CSS --
-const FILM_HEIGHT = 1400;   // must match your .film-background
-const LINE_HEIGHT = 2.4 * 16; // px, matches CSS
-const TOP_OFFSET = 180;      // px, for where first line starts
-const BOTTOM_PADDING = 220;   // px, so cursor never flush with bottom
-const FRAME_HEIGHT = 520;     // matches .typewriter-paper-frame
-
+// --- Constants matching your CSS ---
+const FILM_HEIGHT = 1400;
+const LINE_HEIGHT = 2.4 * 16;
+const TOP_OFFSET = 180;
+const BOTTOM_PADDING = 220;
+const FRAME_HEIGHT = 520;
 const MAX_LINES = Math.floor((FILM_HEIGHT - TOP_OFFSET - BOTTOM_PADDING) / LINE_HEIGHT);
 
 const keys = [
@@ -15,18 +14,8 @@ const keys = [
   'A','S','D','F','G','H','J','K','L',
   'Z','X','C','V','B','N','M','THE XEROFAG'
 ];
-const materialOptions = ['stone', 'bone', 'brass'];
-const SERVER = 'http://localhost:5001'; // replace if needed
 
-const fetchTypewriterReply = async (text, sessionId) => {
-  const response = await fetch(`${SERVER}/api/send_typewriter_text`, {
-    method: "POST",
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId, message: text })
-  });
-  const data = await response.json();
-  return data;
-};
+const SERVER = 'http://localhost:5001';
 
 const fetchNextFilmImage = async (pageText, sessionId) => {
   const response = await fetch(`${SERVER}/api/next_film_image`, {
@@ -49,7 +38,11 @@ const playKeySound = () => {
   audio.volume = 0.3;
   audio.play();
 };
-
+const playEnterSound = () => {
+  const audio = new Audio('/sounds/typewriter-enter.mp3');
+  audio.volume = 0.3;
+  audio.play();
+};
 const playXerofagHowl = () => {
   const roll = Math.floor(Math.random() * 20) + 1;
   let audioSrc;
@@ -64,13 +57,6 @@ const playXerofagHowl = () => {
   audio.volume = 0.4;
   audio.play();
 };
-
-const playEnterSound = () => {
-  const audio = new Audio('/sounds/typewriter-enter.mp3');
-  audio.volume = 0.3;
-  audio.play();
-};
-
 const playEndOfPageSound = () => {
   const audio = new Audio('/sounds/page_turn.mp3');
   audio.volume = 0.4;
@@ -94,7 +80,20 @@ const TypewriterFramework = () => {
   const [ghostKeyQueue, setGhostKeyQueue] = useState([]);
   const [scrollMode, setScrollMode] = useState('cinematic');
   const [filmBgUrl, setFilmBgUrl] = useState('/textures/decor/film_frame_desert.png');
-  const [lastUserInputTime, setLastUserInputTime] = useState(Date.now());
+  const [pageChangeInProgress, setPageChangeInProgress] = useState(false);
+  const [isSlidingLeft, setIsSlidingLeft] = useState(false);
+  const [prevFilmBgUrl, setPrevFilmBgUrl] = useState(null);
+  const [nextFilmBgUrl, setNextFilmBgUrl] = useState(null);
+  const [slideX, setSlideX] = useState(0);
+
+  const slideWrapperRef = useRef(null);
+
+  // --- Refs ---
+  const containerRef = useRef(null);
+  const scrollRef = useRef(null);
+  const lastLineRef = useRef(null);
+  const strikerRef = useRef(null);
+
   const [sessionId] = useState(() => {
     const stored = localStorage.getItem('sessionId');
     if (stored) return stored;
@@ -103,19 +102,13 @@ const TypewriterFramework = () => {
     return newId;
   });
 
-  // --- Refs ---
-  const containerRef = useRef(null);
-  const scrollRef = useRef(null);
-  const lastLineRef = useRef(null);
-  const strikerRef = useRef(null);
-
   // --- Derived ---
   const ghostText = responses.length > 0 ? responses[responses.length - 1]?.content || '' : '';
   const visibleLineCount = Math.min(countLines(typedText, ghostText), MAX_LINES);
   const neededHeight = TOP_OFFSET + visibleLineCount * LINE_HEIGHT + 4;
   const scrollAreaHeight = Math.max(FRAME_HEIGHT, neededHeight);
 
-  // --- Cinematic Intro Scroll ---
+  // --- Cinematic Scroll intro ---
   useEffect(() => {
     if (scrollMode !== 'cinematic' || !scrollRef.current) return;
     scrollRef.current.scrollTop = 0;
@@ -131,7 +124,6 @@ const TypewriterFramework = () => {
     const start = ref.current.scrollTop;
     const change = to - start;
     const startTime = performance.now();
-
     function animateScroll(now) {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
@@ -144,11 +136,9 @@ const TypewriterFramework = () => {
     requestAnimationFrame(animateScroll);
   }
 
-  // --- Single Unified Scroll Effect ---
-  // Ensures the last line is visible after typing, page turn, or cinematic intro
+  // --- Unified scroll effect ---
   useEffect(() => {
     if (!scrollRef.current || !lastLineRef.current) return;
-    // Only scroll if in "normal" mode (not during cinematic)
     if (scrollMode === 'normal') {
       requestAnimationFrame(() => {
         lastLineRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -156,39 +146,73 @@ const TypewriterFramework = () => {
     }
   }, [typedText, ghostText, responses, scrollMode]);
 
-  // --- Turn Page (single place) ---
-  const turnPage = async () => {
-  setTypingAllowed(false);
-  playEndOfPageSound();
-  setTimeout(async () => {
-    const newImage = await fetchNextFilmImage(typedText + ghostText, sessionId);
-    setFilmBgUrl(newImage || '/textures/decor/film_frame_desert.png');
-    setTypedText('');
-    setResponses([]);
-    setTypingAllowed(true);
-    setScrollMode('cinematic');
-    setLastGeneratedLength(0); // <-- 🔥 This fixes the bug!
-    scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
-  }, 800);
-};
+  // --- Page Turn: Scroll up, then slide left (film change) ---
+  const handlePageTurnScroll = async () => {
+    if (pageChangeInProgress) return;
+    setPageChangeInProgress(true);
+    setTypingAllowed(false);
+    playEndOfPageSound();
+
+    if (scrollRef.current) {
+      const start = scrollRef.current.scrollTop;
+      const duration = 900;
+      const startTime = performance.now();
+
+      function animateScroll(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 3);
+        scrollRef.current.scrollTop = start - start * ease;
+        if (progress < 1) {
+          requestAnimationFrame(animateScroll);
+        } else {
+          scrollRef.current.scrollTop = 0;
+
+          // --- Begin Slide Left ---
+          setPrevFilmBgUrl(filmBgUrl);
+
+          // Fetch next film from API!
+          fetchNextFilmImage(typedText + ghostText, sessionId).then(newUrl => {
+            setNextFilmBgUrl(newUrl || '/textures/decor/film_frame_desert.png');
+            setIsSlidingLeft(true);
+            setSlideX(0);
+              setTimeout(() => {
+              setSlideX(-50);
+          }, 10);
+
+            // Clear text in prep for next page after slide
+            setTypedText('');
+            setResponses([]);
+            setScrollMode('cinematic');
+            setLastGeneratedLength(0);
+
+            // Now, actually start the slide animation
+            setTimeout(() => {
+              setFilmBgUrl(newUrl || '/textures/decor/film_frame_desert.png');
+              setIsSlidingLeft(false);
+              setTypingAllowed(true);
+              setPageChangeInProgress(false);
+            }, 1200); // match slide left duration (CSS 1.2s)
+          });
+        }
+      }
+      requestAnimationFrame(animateScroll);
+    }
+  };
 
   // --- Keyboard Handler ---
   const handleKeyDown = (e) => {
-    if (!typingAllowed) {
+    if (pageChangeInProgress || !typingAllowed) {
       playEndOfPageSound();
       return;
     }
     const char = e.key === "Enter" ? '\n' : e.key;
     const currentLines = (typedText + ghostText + inputBuffer).split('\n').length;
-
-    // --- Page End: Block and turn page ---
     if (currentLines >= MAX_LINES && e.key !== 'Backspace') {
-      turnPage();
+      handlePageTurnScroll();
       return;
     }
-
     setLastPressedKey(e.key.toUpperCase());
-
     if (e.key.length === 1 || e.key === "Enter") {
       e.preventDefault();
       if (responses.length > 0) {
@@ -196,17 +220,14 @@ const TypewriterFramework = () => {
       }
       setInputBuffer(prev => prev + char);
       setResponseQueued(false);
-      setLastUserInputTime(Date.now());
+      // setLastUserInputTime(Date.now()); // If needed for ghostwriter
       if (e.key === "Enter") playEnterSound();
     }
-
-
     if (e.key === 'Backspace') {
       e.preventDefault();
       setTypedText(prev => prev.slice(0, -1));
       return;
     }
-
     playKeySound();
   };
 
@@ -220,7 +241,9 @@ const TypewriterFramework = () => {
       if (char === '\n' && strikerRef.current) {
         strikerRef.current.classList.add('striker-return');
         setTimeout(() => {
-          strikerRef.current.classList.remove('striker-return');
+          if (strikerRef.current) {
+            strikerRef.current.classList.remove('striker-return');
+          }
         }, 600);
       }
     }, 100);
@@ -265,35 +288,6 @@ const TypewriterFramework = () => {
     return () => clearInterval(interval);
   }, [ghostKeyQueue, typingAllowed]);
 
-  // --- Ghostwriter AI Trigger ---
-  useEffect(() => {
-    if (!typingAllowed) return;
-    const interval = setInterval(async () => {
-      const fullText = typedText;
-      const addition = fullText.slice(lastGeneratedLength);
-      if (addition.trim().split(/\s+/).length >= 3 && !responseQueued) {
-        const response = await fetch(`${SERVER}/api/shouldGenerateContinuation`, {
-          method: "POST",
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            currentText: fullText,
-            latestAddition: addition,
-            latestPauseSeconds: (Date.now() - lastUserInputTime) / 1000
-          })
-        });
-        const { shouldGenerate } = await response.json();
-        if (shouldGenerate) {
-          const reply = await fetchTypewriterReply(fullText, sessionId);
-          setResponses(prev => [...prev, { ...reply, content: '' }]);
-          setGhostKeyQueue(reply.content.split(''));
-          setLastGeneratedLength(fullText.length);
-          setResponseQueued(true);
-        }
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [typedText, lastUserInputTime, responseQueued, typingAllowed]);
-
   // --- Commit Ghost Text ---
   const commitGhostText = () => {
     const fullGhost = responses.map(r => r.content).join('');
@@ -318,7 +312,7 @@ const TypewriterFramework = () => {
     containerRef.current?.focus();
   }, []);
 
-  // --- Render ---
+  // --- Keyboard Rows (unchanged) ---
   const generateRow = (rowKeys) => (
     <div className="key-row">
       {rowKeys.map((key, idx) => {
@@ -364,6 +358,7 @@ const TypewriterFramework = () => {
     </div>
   );
 
+  // --- Render ---
   return (
     <div
       className="typewriter-container"
@@ -377,9 +372,7 @@ const TypewriterFramework = () => {
         className="typewriter-overlay"
       />
       <div className="typewriter-paper-frame" style={{ height: `${FRAME_HEIGHT}px` }}>
-        <div
-          className="paper-scroll-area"
-          ref={scrollRef}
+        <div className="paper-scroll-area" ref={scrollRef}
           style={{
             height: `${scrollAreaHeight}px`,
             maxHeight: `${FRAME_HEIGHT}px`,
@@ -388,54 +381,155 @@ const TypewriterFramework = () => {
             width: '100%',
           }}
         >
-          <div
-            className="film-background"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: `${FILM_HEIGHT}px`,
-              zIndex: 1,
-              pointerEvents: 'none',
-              backgroundImage: `url('${filmBgUrl}')`,
-              backgroundSize: 'cover',
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'top center',
-              opacity: 0.92,
-            }}
-          />
-          <div className="typewriter-text film-overlay-text" style={{ zIndex: 2, position: 'relative' }}>
-            {(() => {
-              const allLines = (typedText + ghostText).split('\n').slice(0, MAX_LINES);
-              return allLines.map((line, idx) => {
-                const isLastLine = idx === allLines.length - 1;
-                const parts = line.includes("The Xerofag")
-                  ? line.split(/(The Xerofag)/g).map((part, i) => (
-                      part === "The Xerofag" ? (
-                        <span key={i} className="xerofag-highlight">{part}</span>
-                      ) : (
-                        <span key={i}>{part}</span>
-                      )
-                    ))
-                  : <span>{line}</span>;
-                return (
-                  <div key={idx} className="typewriter-line" ref={isLastLine ? lastLineRef : null}>
-                    <span className="last-line-content">
-                      {parts}
-                      {isLastLine && (
-                        <span
-                          className="striker-cursor"
-                          ref={strikerRef}
-                          style={{ display: 'inline-block', position: 'relative', left: '0px' }}
-                        />
-                      )}
-                    </span>
-                  </div>
-                );
-              });
-            })()}
-          </div>
+          {/* Slide left animation: old frame out, new frame in */}
+          {isSlidingLeft && (
+  <div
+    className="film-slide-wrapper animating"
+    style={{
+      transform: `translateX(${slideX}%)`,
+      transition: isSlidingLeft ? 'transform 1.18s cubic-bezier(0.5,0.15,0.35,1) 0s' : 'none',
+      width: '200%',
+      height: '100%',
+      display: 'flex',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      zIndex: 10,
+      pointerEvents: 'none',
+    }}
+  >
+    {/* Outgoing film/paper */}
+    <div
+      className="film-bg-slide"
+      style={{
+        backgroundImage: `url('${prevFilmBgUrl || filmBgUrl}')`,
+        width: '50%',
+        height: '100%',
+        backgroundSize: 'cover',
+        backgroundPosition: 'top center',
+        backgroundRepeat: 'no-repeat',
+        opacity: 0.96,
+        boxShadow: 'inset -12px 0 24px #120b05b0',
+        filter: 'contrast(1.06) brightness(1.04)',
+        position: 'relative',
+      }}
+    >
+      {/* Text and cursor of old page */}
+      <div style={{
+        position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
+        display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none',
+      }}>
+        <div className="typewriter-text film-overlay-text" style={{paddingTop: 180, paddingBottom: 220}}>
+          {typedText.split('\n').slice(0, MAX_LINES).map((line, idx, arr) => {
+            const isLastLine = idx === arr.length - 1;
+            return (
+              <div className="typewriter-line" key={idx}>
+                {line}
+                {isLastLine && (
+                  <span className="striker-cursor" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+    {/* Incoming film/paper */}
+    <div
+      className="film-bg-slide"
+      style={{
+        backgroundImage: `url('${nextFilmBgUrl || filmBgUrl}')`,
+        width: '50%',
+        height: '100%',
+        backgroundSize: 'cover',
+        backgroundPosition: 'top center',
+        backgroundRepeat: 'no-repeat',
+        opacity: 0.96,
+        boxShadow: 'inset 12px 0 24px #120b05b0',
+        filter: 'contrast(1.04) brightness(1.02)',
+        position: 'relative',
+      }}
+    >
+      {/* Could show a flicker overlay, or blank/new text */}
+      <div style={{
+        position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
+        display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none',
+      }}>
+        {/* Blank or opening animation for new page */}
+      </div>
+    </div>
+    {/* Flicker/dust overlay, optional */}
+    <div className="film-flicker-overlay" style={{
+      position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 11,
+      background: `url('/textures/grainy.png'), linear-gradient(90deg,rgba(0,0,0,0.09),rgba(0,0,0,0.16))`,
+      opacity: 0.15,
+      mixBlendMode: 'multiply',
+      animation: 'filmFlicker 1.1s infinite linear alternate',
+    }}/>
+  </div>
+)}
+
+
+          {/* Normal display: show just the film and text */}
+          {!isSlidingLeft && (
+            <>
+              <div
+                className="film-background"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '1400px',
+                  zIndex: 1,
+                  pointerEvents: 'none',
+                  backgroundImage: `url('${filmBgUrl}')`,
+                  backgroundSize: 'cover',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'top center',
+                  opacity: 0.92,
+                }}
+              />
+              <div
+                className="typewriter-text film-overlay-text"
+                style={{ zIndex: 2, position: 'relative' }}
+              >
+                {(() => {
+                  const allLines = (typedText + ghostText).split('\n').slice(0, MAX_LINES);
+                  return allLines.map((line, idx) => {
+                    const isLastLine = idx === allLines.length - 1;
+                    const parts = line.includes("The Xerofag")
+                      ? line.split(/(The Xerofag)/g).map((part, i) => (
+                          part === "The Xerofag" ? (
+                            <span key={i} className="xerofag-highlight">{part}</span>
+                          ) : (
+                            <span key={i}>{part}</span>
+                          )
+                        ))
+                      : <span>{line}</span>;
+                    return (
+                      <div
+                        key={idx}
+                        className="typewriter-line"
+                        ref={isLastLine ? lastLineRef : null}
+                      >
+                        <span className="last-line-content">
+                          {parts}
+                          {isLastLine && (
+                            <span
+                              className={"striker-cursor"}
+                              ref={strikerRef}
+                              style={{ display: 'inline-block', position: 'relative', left: '0px' }}
+                            />
+                          )}
+                        </span>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </>
+          )}
         </div>
       </div>
       <div className="storyteller-sigil">
