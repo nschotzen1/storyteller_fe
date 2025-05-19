@@ -758,3 +758,14 @@
   from { transform: translateY(0px); opacity: 1; }
   to   { transform: translateY(-200px); opacity: 0; }
 }
+
+@keyframes filmFlicker {
+  0% { opacity: 0.13; filter: blur(0.2px) brightness(1.05); }
+  12% { opacity: 0.18; filter: blur(0.4px) brightness(1.03); }
+  25% { opacity: 0.17; filter: blur(0.3px) brightness(1.08);}
+  50% { opacity: 0.14; filter: blur(0.6px) brightness(1.00);}
+  75% { opacity: 0.15; filter: blur(0.2px) brightness(0.97);}
+  100% { opacity: 0.12; filter: blur(0.1px) brightness(1.04);}
+}
+
+
