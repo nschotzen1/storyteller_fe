@@ -95,6 +95,20 @@ const TypewriterFramework = () => {
   const [scrollMode, setScrollMode] = useState('cinematic');
   const [filmBgUrl, setFilmBgUrl] = useState('/textures/decor/film_frame_desert.png');
   const [lastUserInputTime, setLastUserInputTime] = useState(Date.now());
+
+  // NEW: Slide up and page turn sequencing state
+  const [isSlidingUp, setIsSlidingUp] = useState(false);  
+  const [isPageTurning, setIsPageTurning] = useState(false);
+  const [prevFilmBgUrl, setPrevFilmBgUrl] = useState(null);
+  const [nextFilmBgUrl, setNextFilmBgUrl] = useState(null);
+
+  // --- Refs ---
+  const containerRef = useRef(null);
+  const scrollRef = useRef(null);
+  const lastLineRef = useRef(null);
+  const strikerRef = useRef(null);
+  const slideWrapperRef = useRef(null);
+
   const [sessionId] = useState(() => {
     const stored = localStorage.getItem('sessionId');
     if (stored) return stored;
@@ -103,31 +117,22 @@ const TypewriterFramework = () => {
     return newId;
   });
 
-  const [isPageTurning, setIsPageTurning] = useState(false);
-  const [prevFilmBgUrl, setPrevFilmBgUrl] = useState(null);
-  const slideWrapperRef = useRef(null);
-  const [nextFilmBgUrl, setNextFilmBgUrl] = useState(null);
-
-  // --- Refs ---
-  const containerRef = useRef(null);
-  const scrollRef = useRef(null);
-  const lastLineRef = useRef(null);
-  const strikerRef = useRef(null);
-
   // --- Derived ---
   const ghostText = responses.length > 0 ? responses[responses.length - 1]?.content || '' : '';
   const visibleLineCount = Math.min(countLines(typedText, ghostText), MAX_LINES);
   const neededHeight = TOP_OFFSET + visibleLineCount * LINE_HEIGHT + 4;
   const scrollAreaHeight = Math.max(FRAME_HEIGHT, neededHeight);
 
-  // --- Sliding page turn effect ---
+  // --- Sliding page turn effect (slide left after slide up) ---
   useEffect(() => {
     if (!isPageTurning) return;
+    // Wait a tick, then animate slide left
     setTimeout(() => {
       if (slideWrapperRef.current) {
         slideWrapperRef.current.style.transform = 'translateX(-100%)';
       }
     }, 60);
+    // After animation ends, swap to new frame, reset state
     setTimeout(() => {
       setFilmBgUrl(nextFilmBgUrl || '/textures/decor/film_frame_desert.png');
       setTypedText('');
@@ -136,6 +141,8 @@ const TypewriterFramework = () => {
       setTypingAllowed(true);
       setScrollMode('cinematic');
       setLastGeneratedLength(0);
+      setNextFilmBgUrl(null);
+      setPrevFilmBgUrl(null);
       scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
     }, 4060);
   }, [isPageTurning, nextFilmBgUrl]);
@@ -179,17 +186,22 @@ const TypewriterFramework = () => {
     }
   }, [typedText, ghostText, responses, scrollMode]);
 
-  // --- Start page turn ---
-  const startPageTurn = async () => {
+  // --- Start page turn (triggered at end of page) ---
+  const startPageTurn = () => {
     setTypingAllowed(false);
-    setIsPageTurning(true);
-    setPrevFilmBgUrl(filmBgUrl);
-    playEndOfPageSound();
-
-    // Fetch the next background (your async logic)
-    const nextUrl = await fetchNextFilmImage(typedText + ghostText, sessionId);
-    setNextFilmBgUrl(nextUrl || '/textures/decor/film_frame_desert.png');
+    console.log("Sliding up!")
+    setIsSlidingUp(true); // Will trigger slide-up animation (cursor fade & text block up/fade)
   };
+
+  // --- Slide up animation end handler ---
+ const handleSlideUpEnd = async () => {
+  setIsPageTurning(true);
+  setPrevFilmBgUrl(filmBgUrl);
+  playEndOfPageSound();
+  const nextUrl = await fetchNextFilmImage(typedText + ghostText, sessionId);
+  setNextFilmBgUrl(nextUrl || '/textures/decor/film_frame_desert.png');
+  setIsSlidingUp(false);
+};
 
   // --- Keyboard Handler ---
   const handleKeyDown = (e) => {
@@ -200,9 +212,9 @@ const TypewriterFramework = () => {
     const char = e.key === "Enter" ? '\n' : e.key;
     const currentLines = (typedText + ghostText + inputBuffer).split('\n').length;
 
-    // --- Page End: Block and turn page ---
     if (currentLines >= MAX_LINES && e.key !== 'Backspace') {
       startPageTurn();
+      console.log("Sliding up ENDEd!")
       return;
     }
 
@@ -336,7 +348,7 @@ const TypewriterFramework = () => {
     containerRef.current?.focus();
   }, []);
 
-  // --- Render ---
+  // --- Keyboard Rows (unchanged) ---
   const generateRow = (rowKeys) => (
     <div className="key-row">
       {rowKeys.map((key, idx) => {
@@ -382,6 +394,7 @@ const TypewriterFramework = () => {
     </div>
   );
 
+  // --- Render ---
   return (
     <div
       className="typewriter-container"
@@ -395,85 +408,164 @@ const TypewriterFramework = () => {
         className="typewriter-overlay"
       />
       <div className="typewriter-paper-frame" style={{ height: `${FRAME_HEIGHT}px` }}>
-        <div
-          className="paper-scroll-area"
-          ref={scrollRef}
-          style={{
-            height: `${scrollAreaHeight}px`,
-            maxHeight: `${FRAME_HEIGHT}px`,
-            overflowY: neededHeight > FRAME_HEIGHT ? 'auto' : 'hidden',
-            position: 'relative',
-            width: '100%',
-          }}
-        >
-          <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "1400px", zIndex: 2, pointerEvents: "none" }}>
-            {isPageTurning ? (
+     <div className="paper-scroll-area" ref={scrollRef}
+  style={{
+    height: `${scrollAreaHeight}px`,
+    maxHeight: `${FRAME_HEIGHT}px`,
+    overflowY: neededHeight > FRAME_HEIGHT ? 'auto' : 'hidden',
+    position: 'relative',
+    width: '100%',
+  }}
+>
+  {/* Slide up animation: text + bg together */}
+  {isSlidingUp && (
+    <div
+      className="film-and-text-slide typewriter-film-slide-up"
+      style={{ width: "100%", height: "1400px", position: "absolute", top: 0, left: 0, zIndex: 3 }}
+      onAnimationEnd={e => {
+        if (e.animationName === "filmSlideUp") handleSlideUpEnd();
+      }}
+    >
+      <div
+        className="film-background"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '1400px',
+          zIndex: 1,
+          pointerEvents: 'none',
+          backgroundImage: `url('${filmBgUrl}')`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'top center',
+          opacity: 0.92,
+        }}
+      />
+      <div
+        className="typewriter-text film-overlay-text"
+        style={{ zIndex: 2, position: 'relative', pointerEvents: 'none' }}
+      >
+        {(() => {
+          const allLines = (typedText + ghostText).split('\n').slice(0, MAX_LINES);
+          return allLines.map((line, idx) => {
+            const isLastLine = idx === allLines.length - 1;
+            const parts = line.includes("The Xerofag")
+              ? line.split(/(The Xerofag)/g).map((part, i) => (
+                  part === "The Xerofag" ? (
+                    <span key={i} className="xerofag-highlight">{part}</span>
+                  ) : (
+                    <span key={i}>{part}</span>
+                  )
+                ))
+              : <span>{line}</span>;
+            return (
               <div
-                className="film-slide-wrapper"
-                ref={slideWrapperRef}
-                style={{ transform: 'translateX(0%)' }}
+                key={idx}
+                className="typewriter-line"
+                ref={isLastLine ? lastLineRef : null}
               >
-                <div
-                  className="film-bg-slide"
-                  style={{ backgroundImage: `url('${prevFilmBgUrl}')` }}
-                />
-                <div
-                  className="film-bg-slide"
-                  style={{ backgroundImage: `url('${nextFilmBgUrl || filmBgUrl}')` }}
-                />
+                <span className="last-line-content">
+                  {parts}
+                  {isLastLine && (
+                    <span
+                      className={
+                        "striker-cursor hide-cursor"
+                      }
+                      ref={strikerRef}
+                      style={{ display: 'inline-block', position: 'relative', left: '0px' }}
+                    />
+                  )}
+                </span>
               </div>
-            ) : (
+            );
+          });
+        })()}
+      </div>
+    </div>
+  )}
+  {/* Slide left animation: old frame out, new frame in */}
+  {isPageTurning && (
+    <div
+      className="film-slide-wrapper"
+      ref={slideWrapperRef}
+      style={{ transform: 'translateX(0%)' }}
+    >
+      <div
+        className="film-bg-slide"
+        style={{ backgroundImage: `url('${prevFilmBgUrl}')` }}
+      />
+      <div
+        className="film-bg-slide"
+        style={{ backgroundImage: `url('${nextFilmBgUrl || filmBgUrl}')` }}
+      />
+    </div>
+  )}
+  {/* Normal display: show just the film and text */}
+  {!isSlidingUp && !isPageTurning && (
+    <>
+      <div
+        className="film-background"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '1400px',
+          zIndex: 1,
+          pointerEvents: 'none',
+          backgroundImage: `url('${filmBgUrl}')`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'top center',
+          opacity: 0.92,
+        }}
+      />
+      <div
+        className="typewriter-text film-overlay-text"
+        style={{ zIndex: 2, position: 'relative' }}
+      >
+        {(() => {
+          const allLines = (typedText + ghostText).split('\n').slice(0, MAX_LINES);
+          return allLines.map((line, idx) => {
+            const isLastLine = idx === allLines.length - 1;
+            const parts = line.includes("The Xerofag")
+              ? line.split(/(The Xerofag)/g).map((part, i) => (
+                  part === "The Xerofag" ? (
+                    <span key={i} className="xerofag-highlight">{part}</span>
+                  ) : (
+                    <span key={i}>{part}</span>
+                  )
+                ))
+              : <span>{line}</span>;
+            return (
               <div
-                className="film-background"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '1400px',
-                  zIndex: 1,
-                  pointerEvents: 'none',
-                  backgroundImage: `url('${filmBgUrl}')`,
-                  backgroundSize: 'cover',
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'top center',
-                  opacity: 0.92,
-                }}
-              />
-            )}
-          </div>
-          <div className="typewriter-text film-overlay-text" style={{ zIndex: 2, position: 'relative' }}>
-            {(() => {
-              const allLines = (typedText + ghostText).split('\n').slice(0, MAX_LINES);
-              return allLines.map((line, idx) => {
-                const isLastLine = idx === allLines.length - 1;
-                const parts = line.includes("The Xerofag")
-                  ? line.split(/(The Xerofag)/g).map((part, i) => (
-                    part === "The Xerofag" ? (
-                      <span key={i} className="xerofag-highlight">{part}</span>
-                    ) : (
-                      <span key={i}>{part}</span>
-                    )
-                  ))
-                  : <span>{line}</span>;
-                return (
-                  <div key={idx} className="typewriter-line" ref={isLastLine ? lastLineRef : null}>
-                    <span className="last-line-content">
-                      {parts}
-                      {isLastLine && (
-                        <span
-                          className="striker-cursor"
-                          ref={strikerRef}
-                          style={{ display: 'inline-block', position: 'relative', left: '0px' }}
-                        />
-                      )}
-                    </span>
-                  </div>
-                );
-              });
-            })()}
-          </div>
-        </div>
+                key={idx}
+                className="typewriter-line"
+                ref={isLastLine ? lastLineRef : null}
+              >
+                <span className="last-line-content">
+                  {parts}
+                  {isLastLine && (
+                    <span
+                      className={"striker-cursor"}
+                      ref={strikerRef}
+                      style={{ display: 'inline-block', position: 'relative', left: '0px' }}
+                    />
+                  )}
+                </span>
+              </div>
+            );
+          });
+        })()}
+      </div>
+    </>
+  )}
+</div>
+
+
+
       </div>
       <div className="storyteller-sigil">
         <img
