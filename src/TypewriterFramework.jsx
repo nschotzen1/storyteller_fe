@@ -27,6 +27,31 @@ const fetchNextFilmImage = async (pageText, sessionId) => {
   return data.image_url;
 };
 
+const fetchTypewriterReply = async (text, sessionId) => {
+  const response = await fetch(`${SERVER}/api/send_typewriter_text`, {
+    method: "POST",
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, message: text })
+  });
+  const data = await response.json();
+  return data;
+};
+
+const fetchShouldGenerateContinuation = async (currentText, latestAddition, latestPauseSeconds) => {
+  const response = await fetch(`${SERVER}/api/shouldGenerateContinuation`, {
+    method: "POST",
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      currentText,
+      latestAddition,
+      latestPauseSeconds
+    })
+  });
+  const data = await response.json();
+  return data.shouldGenerate;
+};
+
+
 const getRandomTexture = (key) => {
   if (!key) return null;
   const normalizedKey = key.replace(/\s+/g, '_').toUpperCase();
@@ -91,6 +116,10 @@ const TypewriterFramework = () => {
   const [prevText, setPrevText] = useState('');
   const [nextText, setNextText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
+  const [lastUserInputTime, setLastUserInputTime] = useState(Date.now());
+  const [responseQueued, setResponseQueued] = useState(false);
+  const [lastGeneratedLength, setLastGeneratedLength] = useState(0);
+
 
   const SLIDE_DURATION_MS = 1200;
 
@@ -257,6 +286,8 @@ const TypewriterFramework = () => {
       return;
     }
     setLastPressedKey(e.key.toUpperCase());
+    setLastUserInputTime(Date.now());
+    setResponseQueued(false);
     if (e.key.length === 1 || e.key === "Enter") {
       e.preventDefault();
       if (responses.length > 0) {
@@ -265,6 +296,8 @@ const TypewriterFramework = () => {
       setInputBuffer(prev => prev + char);
       if (e.key === "Enter") playEnterSound();
     }
+    
+
     if (e.key === 'Backspace') {
       e.preventDefault();
       // Remove last char from page text
@@ -344,6 +377,32 @@ const TypewriterFramework = () => {
     }, 90);
     return () => clearInterval(interval);
   }, [ghostKeyQueue, typingAllowed]);
+
+  // --- Ghostwriter AI Trigger ---
+useEffect(() => {
+  if (!typingAllowed) return;
+  const interval = setInterval(async () => {
+    // Use text for the *current page*
+    const fullText = pages[currentPage]?.text || '';
+    const addition = fullText.slice(lastGeneratedLength);
+    const pauseSeconds = (Date.now() - lastUserInputTime) / 1000;
+
+    // Only trigger when user added at least 3 words and not already queued
+    if (addition.trim().split(/\s+/).length >= 3 && !responseQueued) {
+      const shouldGenerate = await fetchShouldGenerateContinuation(fullText, addition, pauseSeconds);
+      if (shouldGenerate) {
+        const reply = await fetchTypewriterReply(fullText, sessionId);
+        setResponses(prev => [...prev, { ...reply, content: '' }]);
+        setGhostKeyQueue(reply.content.split(''));
+        setLastGeneratedLength(fullText.length);
+        setResponseQueued(true);
+      }
+    }
+  }, 1000);
+  return () => clearInterval(interval);
+  // Watch these dependencies:
+}, [pages, currentPage, typingAllowed, lastUserInputTime, responseQueued, lastGeneratedLength, sessionId]);
+
 
   // --- Commit Ghost Text ---
   const commitGhostText = () => {
