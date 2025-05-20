@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './TypeWriter.css';
 
-// --- Constants matching your CSS ---
+// --- Constants ---
 const FILM_HEIGHT = 1400;
 const LINE_HEIGHT = 2.4 * 16;
 const TOP_OFFSET = 180;
@@ -68,25 +68,31 @@ function countLines(typed, ghost = '') {
 }
 
 const TypewriterFramework = () => {
-  // --- State ---
-  const [typedText, setTypedText] = useState('');
+  // --- Page History State ---
+  const [pages, setPages] = useState([
+    { text: '', filmBgUrl: '/textures/decor/film_frame_desert.png' }
+  ]);
+  const [currentPage, setCurrentPage] = useState(0);
+
+  // --- Typing/Animation State ---
   const [inputBuffer, setInputBuffer] = useState('');
   const [typingAllowed, setTypingAllowed] = useState(true);
   const [lastPressedKey, setLastPressedKey] = useState(null);
   const [keyTextures, setKeyTextures] = useState(keys.map(getRandomTexture));
   const [responses, setResponses] = useState([]);
-  const [responseQueued, setResponseQueued] = useState(false);
-  const [lastGeneratedLength, setLastGeneratedLength] = useState(0);
   const [ghostKeyQueue, setGhostKeyQueue] = useState([]);
   const [scrollMode, setScrollMode] = useState('cinematic');
-  const [filmBgUrl, setFilmBgUrl] = useState('/textures/decor/film_frame_desert.png');
   const [pageChangeInProgress, setPageChangeInProgress] = useState(false);
-  const [isSlidingLeft, setIsSlidingLeft] = useState(false);
+  const [isSliding, setIsSliding] = useState(false);
+  const [slideX, setSlideX] = useState(0);
+  const [slideDir, setSlideDir] = useState('left'); // "left" or "right"
   const [prevFilmBgUrl, setPrevFilmBgUrl] = useState(null);
   const [nextFilmBgUrl, setNextFilmBgUrl] = useState(null);
-  const [slideX, setSlideX] = useState(0);
+  const [prevText, setPrevText] = useState('');
+  const [nextText, setNextText] = useState('');
+  const [showCursor, setShowCursor] = useState(true);
 
-  const slideWrapperRef = useRef(null);
+  const SLIDE_DURATION_MS = 1200;
 
   // --- Refs ---
   const containerRef = useRef(null);
@@ -103,8 +109,9 @@ const TypewriterFramework = () => {
   });
 
   // --- Derived ---
+  const { text: pageText, filmBgUrl: pageBg } = pages[currentPage] || {};
   const ghostText = responses.length > 0 ? responses[responses.length - 1]?.content || '' : '';
-  const visibleLineCount = Math.min(countLines(typedText, ghostText), MAX_LINES);
+  const visibleLineCount = Math.min(countLines(pageText, ghostText), MAX_LINES);
   const neededHeight = TOP_OFFSET + visibleLineCount * LINE_HEIGHT + 4;
   const scrollAreaHeight = Math.max(FRAME_HEIGHT, neededHeight);
 
@@ -144,15 +151,17 @@ const TypewriterFramework = () => {
         lastLineRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
       });
     }
-  }, [typedText, ghostText, responses, scrollMode]);
+  }, [pageText, ghostText, responses, scrollMode]);
 
-  // --- Page Turn: Scroll up, then slide left (film change) ---
+  // --- PAGE TURN: Scroll up, then slide left (NEW PAGE) ---
   const handlePageTurnScroll = async () => {
     if (pageChangeInProgress) return;
     setPageChangeInProgress(true);
     setTypingAllowed(false);
+    setShowCursor(false);
     playEndOfPageSound();
 
+    // Animate scroll up
     if (scrollRef.current) {
       const start = scrollRef.current.scrollTop;
       const duration = 900;
@@ -161,43 +170,78 @@ const TypewriterFramework = () => {
       function animateScroll(now) {
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        const ease = 1 - Math.pow(1 - progress, 3);
+        const ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
         scrollRef.current.scrollTop = start - start * ease;
         if (progress < 1) {
           requestAnimationFrame(animateScroll);
         } else {
           scrollRef.current.scrollTop = 0;
 
-          // --- Begin Slide Left ---
-          setPrevFilmBgUrl(filmBgUrl);
+          // Prepare for slide left
+          setSlideDir('left');
+          setPrevFilmBgUrl(pageBg);
+          setPrevText(pageText);
 
-          // Fetch next film from API!
-          fetchNextFilmImage(typedText + ghostText, sessionId).then(newUrl => {
-            setNextFilmBgUrl(newUrl || '/textures/decor/film_frame_desert.png');
-            setIsSlidingLeft(true);
+          // Fetch next film image
+          fetchNextFilmImage(pageText + ghostText, sessionId).then(newUrl => {
+            const newFilm = newUrl || '/textures/decor/film_frame_desert.png';
+            setNextFilmBgUrl(newFilm);
+            setNextText('');
+
+            // Update pages: Add new blank page, move to it
+            setPages(prev => [
+              ...prev.slice(0, currentPage + 1),
+              { text: '', filmBgUrl: newFilm }
+            ]);
+            setCurrentPage(prev => prev + 1);
+
+            // Animate slide left
+            setIsSliding(true);
             setSlideX(0);
-              setTimeout(() => {
-              setSlideX(-50);
-          }, 10);
-
-            // Clear text in prep for next page after slide
-            setTypedText('');
-            setResponses([]);
-            setScrollMode('cinematic');
-            setLastGeneratedLength(0);
-
-            // Now, actually start the slide animation
+            requestAnimationFrame(() => setSlideX(-50));
             setTimeout(() => {
-              setFilmBgUrl(newUrl || '/textures/decor/film_frame_desert.png');
-              setIsSlidingLeft(false);
+              setIsSliding(false);
               setTypingAllowed(true);
+              setShowCursor(true);
               setPageChangeInProgress(false);
-            }, 1200); // match slide left duration (CSS 1.2s)
+              setResponses([]);
+              setScrollMode('cinematic');
+            }, SLIDE_DURATION_MS);
           });
         }
       }
       requestAnimationFrame(animateScroll);
     }
+  };
+
+  // --- PAGE TURN: Slide right (BACK/NEXT in history) ---
+  const handleHistoryNavigation = (targetIdx) => {
+    if (pageChangeInProgress || isSliding) return;
+    setPageChangeInProgress(true);
+    setTypingAllowed(false);
+    setShowCursor(false);
+
+    // Slide dir and page content
+    const toNext = targetIdx > currentPage;
+    setSlideDir(toNext ? 'left' : 'right');
+    setPrevFilmBgUrl(pageBg);
+    setPrevText(pageText);
+    setNextFilmBgUrl(pages[targetIdx]?.filmBgUrl || '/textures/decor/film_frame_desert.png');
+    setNextText(pages[targetIdx]?.text || '');
+
+    // Animate slide
+    setIsSliding(true);
+    setSlideX(0);
+    requestAnimationFrame(() => setSlideX(toNext ? -50 : 50));
+    setTimeout(() => {
+      setIsSliding(false);
+      setCurrentPage(targetIdx);
+      setTypingAllowed(targetIdx === pages.length - 1);
+      setShowCursor(true);
+      setPageChangeInProgress(false);
+      setResponses([]);
+      setScrollMode('cinematic');
+    }, SLIDE_DURATION_MS);
   };
 
   // --- Keyboard Handler ---
@@ -207,7 +251,7 @@ const TypewriterFramework = () => {
       return;
     }
     const char = e.key === "Enter" ? '\n' : e.key;
-    const currentLines = (typedText + ghostText + inputBuffer).split('\n').length;
+    const currentLines = (pageText + ghostText + inputBuffer).split('\n').length;
     if (currentLines >= MAX_LINES && e.key !== 'Backspace') {
       handlePageTurnScroll();
       return;
@@ -219,24 +263,37 @@ const TypewriterFramework = () => {
         commitGhostText();
       }
       setInputBuffer(prev => prev + char);
-      setResponseQueued(false);
-      // setLastUserInputTime(Date.now()); // If needed for ghostwriter
       if (e.key === "Enter") playEnterSound();
     }
     if (e.key === 'Backspace') {
       e.preventDefault();
-      setTypedText(prev => prev.slice(0, -1));
+      // Remove last char from page text
+      setPages(prev => {
+        const updated = [...prev];
+        updated[currentPage] = {
+          ...updated[currentPage],
+          text: updated[currentPage].text.slice(0, -1)
+        };
+        return updated;
+      });
       return;
     }
     playKeySound();
   };
 
-  // --- Typewriter Input Buffer ---
+  // --- Typing: apply inputBuffer to current page text ---
   useEffect(() => {
     if (!inputBuffer.length || !typingAllowed) return;
     const char = inputBuffer[0];
     const timeout = setTimeout(() => {
-      setTypedText(prev => prev + char);
+      setPages(prev => {
+        const updated = [...prev];
+        updated[currentPage] = {
+          ...updated[currentPage],
+          text: updated[currentPage].text + char
+        };
+        return updated;
+      });
       setInputBuffer(prev => prev.slice(1));
       if (char === '\n' && strikerRef.current) {
         strikerRef.current.classList.add('striker-return');
@@ -248,7 +305,7 @@ const TypewriterFramework = () => {
       }
     }, 100);
     return () => clearTimeout(timeout);
-  }, [inputBuffer, typingAllowed]);
+  }, [inputBuffer, typingAllowed, currentPage]);
 
   // --- Key Visual State ---
   useEffect(() => {
@@ -291,20 +348,23 @@ const TypewriterFramework = () => {
   // --- Commit Ghost Text ---
   const commitGhostText = () => {
     const fullGhost = responses.map(r => r.content).join('');
-    const merged = typedText + fullGhost;
+    const merged = pageText + fullGhost;
     const mergedLines = merged.split('\n').length;
-    if (mergedLines > MAX_LINES) {
-      const allowedLines = merged.split('\n').slice(0, MAX_LINES).join('\n');
-      setTypedText(allowedLines);
-      setResponses([]);
-      setGhostKeyQueue([]);
-      setLastGeneratedLength(allowedLines.length);
-    } else {
-      setTypedText(prev => prev + fullGhost);
-      setResponses([]);
-      setGhostKeyQueue([]);
-      setLastGeneratedLength(typedText.length + fullGhost.length);
-    }
+    const newText =
+      mergedLines > MAX_LINES
+        ? merged.split('\n').slice(0, MAX_LINES).join('\n')
+        : pageText + fullGhost;
+
+    setPages(prev => {
+      const updated = [...prev];
+      updated[currentPage] = {
+        ...updated[currentPage],
+        text: newText
+      };
+      return updated;
+    });
+    setResponses([]);
+    setGhostKeyQueue([]);
   };
 
   // --- Focus on Mount ---
@@ -312,7 +372,7 @@ const TypewriterFramework = () => {
     containerRef.current?.focus();
   }, []);
 
-  // --- Keyboard Rows (unchanged) ---
+  // --- Keyboard Rows ---
   const generateRow = (rowKeys) => (
     <div className="key-row">
       {rowKeys.map((key, idx) => {
@@ -334,10 +394,16 @@ const TypewriterFramework = () => {
               const isXerofag = key === 'THE XEROFAG';
               if (responses.length > 0) {
                 const ghostText = responses.map(r => r.content).join('');
-                setTypedText(prev => prev + ghostText + insertText);
+                setPages(prev => {
+                  const updated = [...prev];
+                  updated[currentPage] = {
+                    ...updated[currentPage],
+                    text: updated[currentPage].text + ghostText + insertText
+                  };
+                  return updated;
+                });
                 setResponses([]);
                 setGhostKeyQueue([]);
-                setLastGeneratedLength(typedText.length + ghostText.length + insertText.length);
               } else {
                 setInputBuffer(prev => prev + insertText);
               }
@@ -358,7 +424,108 @@ const TypewriterFramework = () => {
     </div>
   );
 
-  // --- Render ---
+  // --- PAGE SLIDE JSX (forwards/backwards) ---
+  const getSlideX = () => slideDir === 'left' ? slideX : -slideX;
+  const renderSlideWrapper = () => (
+    <div
+      className="film-slide-wrapper animating"
+      style={{
+        transform: `translateX(${getSlideX()}%)`,
+        transition: isSliding ? `transform ${SLIDE_DURATION_MS}ms cubic-bezier(0.5,0.15,0.35,1)` : 'none',
+        width: '200%',
+        height: '100%',
+        display: 'flex',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        zIndex: 10,
+        pointerEvents: 'none',
+      }}
+    >
+      {/* Outgoing film/paper */}
+      <div
+        className="film-bg-slide"
+        style={{
+          backgroundImage: `url('${prevFilmBgUrl}')`,
+          width: '50%',
+          height: '100%',
+          backgroundSize: 'cover',
+          backgroundPosition: 'top center',
+          backgroundRepeat: 'no-repeat',
+          opacity: 0.96,
+          boxShadow: 'inset -12px 0 24px #120b05b0',
+          filter: 'contrast(1.06) brightness(1.04)',
+          position: 'relative',
+        }}
+      >
+        {/* Text of outgoing page */}
+        <div style={{
+          position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
+          display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none',
+        }}>
+          <div className="typewriter-text film-overlay-text" style={{paddingTop: 180, paddingBottom: 220}}>
+            {prevText.split('\n').slice(0, MAX_LINES).map((line, idx, arr) => {
+              const isLastLine = idx === arr.length - 1;
+              return (
+                <div className="typewriter-line" key={idx}>
+                  {line}
+                  {isLastLine && showCursor && (
+                    <span className="striker-cursor" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      {/* Incoming film/paper */}
+      <div
+        className="film-bg-slide"
+        style={{
+          backgroundImage: `url('${nextFilmBgUrl}')`,
+          width: '50%',
+          height: '100%',
+          backgroundSize: 'cover',
+          backgroundPosition: 'top center',
+          backgroundRepeat: 'no-repeat',
+          opacity: 0.96,
+          boxShadow: 'inset 12px 0 24px #120b05b0',
+          filter: 'contrast(1.04) brightness(1.02)',
+          position: 'relative',
+        }}
+      >
+        {/* Text of incoming page */}
+        <div style={{
+          position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
+          display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none',
+        }}>
+          <div className="typewriter-text film-overlay-text" style={{paddingTop: 180, paddingBottom: 220}}>
+            {nextText.split('\n').slice(0, MAX_LINES).map((line, idx, arr) => {
+              const isLastLine = idx === arr.length - 1;
+              return (
+                <div className="typewriter-line" key={idx}>
+                  {line}
+                  {isLastLine && showCursor && (
+                    <span className="striker-cursor" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      {/* Flicker/dust overlay, optional */}
+      <div className="film-flicker-overlay" style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 11,
+        background: `url('/textures/grainy.png'), linear-gradient(90deg,rgba(0,0,0,0.09),rgba(0,0,0,0.16))`,
+        opacity: 0.15,
+        mixBlendMode: 'multiply',
+        animation: 'filmFlicker 1.1s infinite linear alternate',
+      }}/>
+    </div>
+  );
+
+  // --- RENDER ---
   return (
     <div
       className="typewriter-container"
@@ -366,6 +533,27 @@ const TypewriterFramework = () => {
       onKeyDown={handleKeyDown}
       ref={containerRef}
     >
+      {/* Page navigation buttons */}
+      <div style={{
+        position: 'absolute', top: '3vh', left: 0, right: 0, zIndex: 20, width: '100%',
+        display: 'flex', justifyContent: 'space-between', pointerEvents: 'auto',
+        padding: '0 3vw'
+      }}>
+        <button
+          disabled={currentPage === 0 || isSliding}
+          onClick={() => handleHistoryNavigation(currentPage - 1)}
+          style={{ fontSize: 24, opacity: currentPage === 0 ? 0.3 : 1 }}
+        >← Prev</button>
+        <span style={{ color: '#887', fontFamily: 'IBM Plex Mono, monospace', fontSize: 16 }}>
+          Page {currentPage + 1} / {pages.length}
+        </span>
+        <button
+          disabled={currentPage === pages.length - 1 || isSliding}
+          onClick={() => handleHistoryNavigation(currentPage + 1)}
+          style={{ fontSize: 24, opacity: currentPage === pages.length - 1 ? 0.3 : 1 }}
+        >Next →</button>
+      </div>
+
       <img
         src="/textures/overlay_grit_shell.png"
         alt="grit shell overlay"
@@ -381,97 +569,11 @@ const TypewriterFramework = () => {
             width: '100%',
           }}
         >
-          {/* Slide left animation: old frame out, new frame in */}
-          {isSlidingLeft && (
-  <div
-    className="film-slide-wrapper animating"
-    style={{
-      transform: `translateX(${slideX}%)`,
-      transition: isSlidingLeft ? 'transform 1.18s cubic-bezier(0.5,0.15,0.35,1) 0s' : 'none',
-      width: '200%',
-      height: '100%',
-      display: 'flex',
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      zIndex: 10,
-      pointerEvents: 'none',
-    }}
-  >
-    {/* Outgoing film/paper */}
-    <div
-      className="film-bg-slide"
-      style={{
-        backgroundImage: `url('${prevFilmBgUrl || filmBgUrl}')`,
-        width: '50%',
-        height: '100%',
-        backgroundSize: 'cover',
-        backgroundPosition: 'top center',
-        backgroundRepeat: 'no-repeat',
-        opacity: 0.96,
-        boxShadow: 'inset -12px 0 24px #120b05b0',
-        filter: 'contrast(1.06) brightness(1.04)',
-        position: 'relative',
-      }}
-    >
-      {/* Text and cursor of old page */}
-      <div style={{
-        position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none',
-      }}>
-        <div className="typewriter-text film-overlay-text" style={{paddingTop: 180, paddingBottom: 220}}>
-          {typedText.split('\n').slice(0, MAX_LINES).map((line, idx, arr) => {
-            const isLastLine = idx === arr.length - 1;
-            return (
-              <div className="typewriter-line" key={idx}>
-                {line}
-                {isLastLine && (
-                  <span className="striker-cursor" />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-    {/* Incoming film/paper */}
-    <div
-      className="film-bg-slide"
-      style={{
-        backgroundImage: `url('${nextFilmBgUrl || filmBgUrl}')`,
-        width: '50%',
-        height: '100%',
-        backgroundSize: 'cover',
-        backgroundPosition: 'top center',
-        backgroundRepeat: 'no-repeat',
-        opacity: 0.96,
-        boxShadow: 'inset 12px 0 24px #120b05b0',
-        filter: 'contrast(1.04) brightness(1.02)',
-        position: 'relative',
-      }}
-    >
-      {/* Could show a flicker overlay, or blank/new text */}
-      <div style={{
-        position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none',
-      }}>
-        {/* Blank or opening animation for new page */}
-      </div>
-    </div>
-    {/* Flicker/dust overlay, optional */}
-    <div className="film-flicker-overlay" style={{
-      position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 11,
-      background: `url('/textures/grainy.png'), linear-gradient(90deg,rgba(0,0,0,0.09),rgba(0,0,0,0.16))`,
-      opacity: 0.15,
-      mixBlendMode: 'multiply',
-      animation: 'filmFlicker 1.1s infinite linear alternate',
-    }}/>
-  </div>
-)}
+          {/* Page slide animation */}
+          {isSliding && renderSlideWrapper()}
 
-
-          {/* Normal display: show just the film and text */}
-          {!isSlidingLeft && (
+          {/* Normal display */}
+          {!isSliding && (
             <>
               <div
                 className="film-background"
@@ -483,7 +585,7 @@ const TypewriterFramework = () => {
                   height: '1400px',
                   zIndex: 1,
                   pointerEvents: 'none',
-                  backgroundImage: `url('${filmBgUrl}')`,
+                  backgroundImage: `url('${pageBg}')`,
                   backgroundSize: 'cover',
                   backgroundRepeat: 'no-repeat',
                   backgroundPosition: 'top center',
@@ -495,7 +597,7 @@ const TypewriterFramework = () => {
                 style={{ zIndex: 2, position: 'relative' }}
               >
                 {(() => {
-                  const allLines = (typedText + ghostText).split('\n').slice(0, MAX_LINES);
+                  const allLines = (pageText + ghostText).split('\n').slice(0, MAX_LINES);
                   return allLines.map((line, idx) => {
                     const isLastLine = idx === allLines.length - 1;
                     const parts = line.includes("The Xerofag")
@@ -515,7 +617,7 @@ const TypewriterFramework = () => {
                       >
                         <span className="last-line-content">
                           {parts}
-                          {isLastLine && (
+                          {isLastLine && showCursor && (
                             <span
                               className={"striker-cursor"}
                               ref={strikerRef}
