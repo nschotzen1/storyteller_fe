@@ -116,9 +116,11 @@ const TypewriterFramework = () => {
   const [prevText, setPrevText] = useState('');
   const [nextText, setNextText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
+
   const [lastUserInputTime, setLastUserInputTime] = useState(Date.now());
   const [responseQueued, setResponseQueued] = useState(false);
   const [lastGeneratedLength, setLastGeneratedLength] = useState(0);
+
 
 
   const SLIDE_DURATION_MS = 1200;
