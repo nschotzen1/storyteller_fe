@@ -777,11 +777,31 @@
   user-select: none;
 }
 
+
+
+
 .lever-image {
-  transition: filter 0.3s, opacity 0.3s;
   border-radius: 50%;
   box-shadow: 0 0 14px #0008, 0 0 2px #664418;
+  transition: transform 0.32s cubic-bezier(0.61,0.02,0.52,1.02), filter 0.3s, opacity 0.3s;
+  will-change: transform;
 }
+
+.lever-image.lever-turn {
+  transform: rotate(-68deg) scale(1.09);
+  filter: brightness(1.09) drop-shadow(0 0 24px #ffc87288);
+}
+.lever-image.lever-reset {
+  animation: leverSnapBack 0.5s cubic-bezier(0.71, 0, 0.24, 1.01);
+}
+@keyframes leverSnapBack {
+  0% { transform: rotate(-68deg) scale(1.12);}
+  38% { transform: rotate(-5deg) scale(1.03);}
+  55% { transform: rotate(6deg) scale(0.96);}
+  82% { transform: rotate(-3deg) scale(1);}
+  100% { transform: rotate(0deg) scale(1);}
+}
+
 .lever-glow {
   filter: drop-shadow(0 0 10px #ebc278) drop-shadow(0 0 18px #ffe6c2);
 }

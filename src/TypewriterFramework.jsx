@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './TypeWriter.css';
+import TurnPageLever from './TurnPageLever.jsx';
 
 // --- Constants ---
 const FILM_HEIGHT = 1400;
@@ -17,40 +18,6 @@ const keys = [
 
 const SERVER = 'http://localhost:5001';
 
-function TurnPageLever({ level, onPull, canPull, disabled }) {
-  const leverImages = [
-    '/textures/lever/lever_phase1.png',
-    '/textures/lever/lever_phase2.png',
-    '/textures/lever/lever_phase3.png',
-    '/textures/lever/lever_phase4.png'
-  ];
-  return (
-    <div className="turn-page-lever">
-      <img
-        src={leverImages[level]}
-        alt={`Lever level ${level + 1}`}
-        className={`lever-image ${canPull ? 'lever-glow' : ''}`}
-        style={{ width: 220, height: 220, opacity: disabled ? 0.35 : 1 }}
-        draggable={false}
-      />
-      <button
-        className={`lever-pull-btn ${canPull && !disabled ? 'active' : 'disabled'}`}
-        onClick={canPull && !disabled ? onPull : undefined}
-        disabled={!canPull || disabled}
-        style={{
-          marginTop: 6,
-          fontSize: 15,
-          opacity: canPull && !disabled ? 1 : 0.3,
-          cursor: canPull && !disabled ? 'pointer' : 'not-allowed',
-          fontFamily: "'IM Fell English SC', serif",
-        }}
-        tabIndex={-1}
-      >
-        Turn Page
-      </button>
-    </div>
-  );
-}
 
 
 const fetchNextFilmImage = async (pageText, sessionId) => {
@@ -734,7 +701,7 @@ useEffect(() => {
                             <span
                               className={"striker-cursor"}
                               ref={strikerRef}
-                              style={{ display: 'inline-block', position: 'relative', left: '0px' }}
+                              style={{ display: 'inline-block', position: 'relative', left: '-40px' }}
                             />
                           )}
                         </span>
