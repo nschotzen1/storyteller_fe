@@ -17,6 +17,42 @@ const keys = [
 
 const SERVER = 'http://localhost:5001';
 
+function TurnPageLever({ level, onPull, canPull, disabled }) {
+  const leverImages = [
+    '/textures/lever/lever_phase1.png',
+    '/textures/lever/lever_phase2.png',
+    '/textures/lever/lever_phase3.png',
+    '/textures/lever/lever_phase4.png'
+  ];
+  return (
+    <div className="turn-page-lever">
+      <img
+        src={leverImages[level]}
+        alt={`Lever level ${level + 1}`}
+        className={`lever-image ${canPull ? 'lever-glow' : ''}`}
+        style={{ width: 220, height: 220, opacity: disabled ? 0.35 : 1 }}
+        draggable={false}
+      />
+      <button
+        className={`lever-pull-btn ${canPull && !disabled ? 'active' : 'disabled'}`}
+        onClick={canPull && !disabled ? onPull : undefined}
+        disabled={!canPull || disabled}
+        style={{
+          marginTop: 6,
+          fontSize: 15,
+          opacity: canPull && !disabled ? 1 : 0.3,
+          cursor: canPull && !disabled ? 'pointer' : 'not-allowed',
+          fontFamily: "'IM Fell English SC', serif",
+        }}
+        tabIndex={-1}
+      >
+        Turn Page
+      </button>
+    </div>
+  );
+}
+
+
 const fetchNextFilmImage = async (pageText, sessionId) => {
   const response = await fetch(`${SERVER}/api/next_film_image`, {
     method: "POST",
@@ -120,6 +156,8 @@ const TypewriterFramework = () => {
   const [lastUserInputTime, setLastUserInputTime] = useState(Date.now());
   const [responseQueued, setResponseQueued] = useState(false);
   const [lastGeneratedLength, setLastGeneratedLength] = useState(0);
+  // Level: 0 = empty, 3 = full (ready for page turn)
+  const [leverLevel, setLeverLevel] = useState(0);
 
 
 
@@ -433,6 +471,20 @@ useEffect(() => {
     containerRef.current?.focus();
   }, []);
 
+
+  useEffect(() => {
+  // Example: lever increases by writing (customize to your story logic)
+  const text = pages[currentPage]?.text || '';
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  let newLevel = 0;
+  if (words > 30) newLevel = 3;
+  else if (words > 20) newLevel = 2;
+  else if (words > 10) newLevel = 1;
+  else newLevel = 0;
+  setLeverLevel(newLevel);
+}, [pages, currentPage]);
+
+
   // --- Keyboard Rows ---
   const generateRow = (rowKeys) => (
     <div className="key-row">
@@ -701,6 +753,7 @@ useEffect(() => {
           alt="Storyteller's Society Sigil"
         />
       </div>
+     
       <div className="keyboard-plate">
         {generateRow(keys.slice(0, 10))}
         {generateRow(keys.slice(10, 20))}
@@ -726,6 +779,27 @@ useEffect(() => {
           </div>
         </div>
       </div>
+      <div
+  className="turn-page-lever-float"
+  style={{
+    position: 'absolute',
+    bottom: '48px',
+    left: '5vw',
+    zIndex: 50,
+    pointerEvents: 'auto', // so user can click/tap lever!
+  }}
+>
+  <TurnPageLever
+    level={leverLevel}
+    canPull={leverLevel === 3 && !pageChangeInProgress && typingAllowed}
+    disabled={pageChangeInProgress}
+    onPull={() => {
+      setLeverLevel(0);
+      handlePageTurnScroll();
+    }}
+  />
+</div>
+
     </div>
   );
 };
