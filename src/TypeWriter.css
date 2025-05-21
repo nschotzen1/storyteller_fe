@@ -769,3 +769,83 @@
 }
 
 
+.turn-page-lever {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+  user-select: none;
+}
+
+
+
+
+.lever-image {
+  border-radius: 50%;
+  box-shadow: 0 0 14px #0008, 0 0 2px #664418;
+  transition: transform 0.32s cubic-bezier(0.61,0.02,0.52,1.02), filter 0.3s, opacity 0.3s;
+  will-change: transform;
+}
+
+.lever-image.lever-turn {
+  transform: rotate(-68deg) scale(1.09);
+  filter: brightness(1.09) drop-shadow(0 0 24px #ffc87288);
+}
+.lever-image.lever-reset {
+  animation: leverSnapBack 0.5s cubic-bezier(0.71, 0, 0.24, 1.01);
+}
+@keyframes leverSnapBack {
+  0% { transform: rotate(-68deg) scale(1.12);}
+  38% { transform: rotate(-5deg) scale(1.03);}
+  55% { transform: rotate(6deg) scale(0.96);}
+  82% { transform: rotate(-3deg) scale(1);}
+  100% { transform: rotate(0deg) scale(1);}
+}
+
+.lever-glow {
+  filter: drop-shadow(0 0 10px #ebc278) drop-shadow(0 0 18px #ffe6c2);
+}
+
+.lever-pull-btn {
+  border: none;
+  border-radius: 20px;
+  background: linear-gradient(to top, #432e1e, #cda56c 95%, #f1e4cb);
+  color: #2a1705;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  padding: 0.3em 1.5em;
+  margin-top: 0.4em;
+  transition: opacity 0.18s, box-shadow 0.2s;
+  box-shadow: 0 0 6px #33271150;
+}
+.lever-pull-btn.active:hover {
+  box-shadow: 0 0 22px #ffd87d, 0 0 6px #ffecbe;
+  background: linear-gradient(to top, #f3d7ad, #e3bf7c 85%, #a88545);
+}
+.lever-pull-btn.disabled {
+  background: #443621;
+  color: #99866b;
+  cursor: not-allowed;
+}
+
+.turn-page-lever-float {
+  position: absolute;
+  left: 3vw;
+  bottom: 48px;
+  z-index: 60;
+  pointer-events: auto;
+  user-select: none;
+  /* Optionally add a gentle drop-shadow for realism: */
+  filter: drop-shadow(0 4px 14px #432b18);
+}
+
+/* Optional: lever scale up and drop-shadow for tactile presence */
+.turn-page-lever .lever-image {
+  width: 210px !important;
+  height: 210px !important;
+  max-width: 220px;
+  max-height: 220px;
+  min-width: 168px;
+  min-height: 168px;
+  box-shadow: 0 2px 32px #1a0902a0, 0 0 8px #ffc37222;
+}

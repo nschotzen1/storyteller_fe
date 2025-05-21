@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './TypeWriter.css';
+import TurnPageLever from './TurnPageLever.jsx';
 
 // --- Constants ---
 const FILM_HEIGHT = 1400;
@@ -16,6 +17,8 @@ const keys = [
 ];
 
 const SERVER = 'http://localhost:5001';
+
+
 
 const fetchNextFilmImage = async (pageText, sessionId) => {
   const response = await fetch(`${SERVER}/api/next_film_image`, {
@@ -120,6 +123,8 @@ const TypewriterFramework = () => {
   const [lastUserInputTime, setLastUserInputTime] = useState(Date.now());
   const [responseQueued, setResponseQueued] = useState(false);
   const [lastGeneratedLength, setLastGeneratedLength] = useState(0);
+  // Level: 0 = empty, 3 = full (ready for page turn)
+  const [leverLevel, setLeverLevel] = useState(0);
 
 
 
@@ -433,6 +438,20 @@ useEffect(() => {
     containerRef.current?.focus();
   }, []);
 
+
+  useEffect(() => {
+  // Example: lever increases by writing (customize to your story logic)
+  const text = pages[currentPage]?.text || '';
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  let newLevel = 0;
+  if (words > 30) newLevel = 3;
+  else if (words > 20) newLevel = 2;
+  else if (words > 10) newLevel = 1;
+  else newLevel = 0;
+  setLeverLevel(newLevel);
+}, [pages, currentPage]);
+
+
   // --- Keyboard Rows ---
   const generateRow = (rowKeys) => (
     <div className="key-row">
@@ -682,7 +701,7 @@ useEffect(() => {
                             <span
                               className={"striker-cursor"}
                               ref={strikerRef}
-                              style={{ display: 'inline-block', position: 'relative', left: '0px' }}
+                              style={{ display: 'inline-block', position: 'relative', left: '-40px' }}
                             />
                           )}
                         </span>
@@ -701,6 +720,7 @@ useEffect(() => {
           alt="Storyteller's Society Sigil"
         />
       </div>
+     
       <div className="keyboard-plate">
         {generateRow(keys.slice(0, 10))}
         {generateRow(keys.slice(10, 20))}
@@ -726,6 +746,27 @@ useEffect(() => {
           </div>
         </div>
       </div>
+      <div
+  className="turn-page-lever-float"
+  style={{
+    position: 'absolute',
+    bottom: '48px',
+    left: '5vw',
+    zIndex: 50,
+    pointerEvents: 'auto', // so user can click/tap lever!
+  }}
+>
+  <TurnPageLever
+    level={leverLevel}
+    canPull={leverLevel === 3 && !pageChangeInProgress && typingAllowed}
+    disabled={pageChangeInProgress}
+    onPull={() => {
+      setLeverLevel(0);
+      handlePageTurnScroll();
+    }}
+  />
+</div>
+
     </div>
   );
 };
