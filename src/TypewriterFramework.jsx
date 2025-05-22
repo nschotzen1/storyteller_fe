@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useReducer } from 'react';
+
 import './TypeWriter.css';
 import TurnPageLever from './TurnPageLever.jsx';
 import Keyboard from './Keyboard.jsx';
@@ -418,7 +420,8 @@ const TypewriterFramework = () => {
           scrollRef.current.scrollTop = 0;
 
           // Fetch next film image then prepare for slide
-          fetchNextFilmImage(pageText + ghostText, sessionId).then(newUrl => {
+          fetchNextFilmImage(pageText + ghostText, sessionId).then(data => {
+            const newUrl = data['data']['image_url']
             const newFilm = newUrl || DEFAULT_FILM_BG_URL;
             
             dispatchPageTransition({
