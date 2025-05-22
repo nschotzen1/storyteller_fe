@@ -31,7 +31,7 @@ export const fetchTypewriterReply = async (text, sessionId) => {
       return { data: null, error: { message: `API error: ${response.status} ${response.statusText}`, status: response.status } };
     }
     const data = await response.json();
-    return { data , error: null }; // data here is the reply object { content: '...' }
+    return { data, error: null }; // data here is the reply object { content: '...' }
   } catch (error) {
     console.error("Network error fetching typewriter reply:", error);
     return { data: null, error: { message: error.message } };
