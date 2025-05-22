@@ -531,6 +531,7 @@ const TypewriterFramework = () => {
       }
       dispatchTyping({ type: typingActionTypes.ADD_TO_INPUT_BUFFER, payload: char });
       if (e.key === "Enter") playEnterSound();
+      else playKeySound();
       return; // Return after handling Enter or character input
     }
 
@@ -656,7 +657,8 @@ useEffect(() => {
     if (addition.trim().split(/\s+/).length >= GHOSTWRITER_MIN_WORDS_TRIGGER && !ghostwriterState.responseQueued) {
       const shouldGenerate = await fetchShouldGenerateContinuation(fullText, addition, pauseSeconds);
       if (shouldGenerate) {
-        const reply = await fetchTypewriterReply(fullText, sessionId);
+        const resp = await fetchTypewriterReply(fullText, sessionId);
+        const reply = resp.data
         if (reply && reply.content) {
           dispatchTyping({ type: typingActionTypes.ADD_RESPONSE, payload: { ...reply, id: Date.now().toString(), content: '' } });
           dispatchTyping({ type: typingActionTypes.SET_GHOST_KEY_QUEUE, payload: reply.content.split('') });
