@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useReducer } from 'react';
 import './TypeWriter.css';
 import TurnPageLever from './TurnPageLever.jsx';
 import Keyboard from './components/typewriter/Keyboard.jsx';
