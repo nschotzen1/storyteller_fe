@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './TypeWriter.css';
 import TurnPageLever from './TurnPageLever.jsx';
-import Keyboard from './Keyboard.jsx';
-import PaperDisplay from './PaperDisplay.jsx';
-import PageNavigation from './PageNavigation.jsx'; // Import the new PageNavigation component
+import Keyboard from './components/typewriter/Keyboard.jsx';
+import PaperDisplay from './components/typewriter/PaperDisplay.jsx';
+import PageNavigation from './components/typewriter/PageNavigation.jsx'; // Import the new PageNavigation component
 import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines } from './utils.js';
 import { fetchNextFilmImage, fetchTypewriterReply, fetchShouldGenerateContinuation } from './apiService.js';
 
@@ -12,7 +12,7 @@ const FILM_HEIGHT = 1400;
 const LINE_HEIGHT = 2.4 * 16; // Roughly 38.4
 const TOP_OFFSET = 180;
 const BOTTOM_PADDING = 220;
-const FRAME_HEIGHT = 520;
+const FRAME_HEIGHT = 600; // Increased from 520
 const MAX_LINES = Math.floor((FILM_HEIGHT - TOP_OFFSET - BOTTOM_PADDING) / LINE_HEIGHT);
 
 // Default values

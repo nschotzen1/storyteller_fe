@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, within } from '@testing-library/react';
-import PaperDisplay from './PaperDisplay';
+import PaperDisplay from './components/typewriter/PaperDisplay';
 import '@testing-library/jest-dom';
 
 // Define or import necessary constants from TypewriterFramework.jsx

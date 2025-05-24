@@ -203,21 +203,55 @@ const PaperDisplay = ({
               style={{ zIndex: TYPEWRITER_TEXT_Z_INDEX, position: 'relative' }}
             >
               {(() => {
-                const allLines = (pageText + ghostText).split('\n').slice(0, MAX_LINES);
-                return allLines.map((line, idx) => {
-                  const isLastLine = idx === allLines.length - 1;
-                  const parts = line.includes(SPECIAL_KEY_TEXT) // Use SPECIAL_KEY_TEXT prop
-                    ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g')).map((part, i) => ( // Escape regex special chars
-                        part === SPECIAL_KEY_TEXT ? (
-                          <span key={i} className="xerofag-highlight">{part}</span>
-                        ) : (
-                          <span key={i}>{part}</span>
-                        )
-                      ))
-                    : <span>{line}</span>;
+                const pageTextLength = pageText.length;
+                const fullCombinedText = pageText + ghostText; // For length calculations if needed, not directly split
+                const originalLines = fullCombinedText.split('\n'); // All lines before MAX_LINES slicing
+                const allLinesToRender = originalLines.slice(0, MAX_LINES);
+                
+                let charOffsetInFullText = 0; // Tracks character progress in the original fullCombinedText
+
+                return allLinesToRender.map((line, lineIdx) => {
+                  const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
+                  
+                  // Calculate the starting global index for characters in this line
+                  // This needs to be the sum of lengths of *all original previous lines* plus their newlines
+                  let currentLineGlobalStartOffset = 0;
+                  for(let i=0; i < lineIdx; i++) {
+                    currentLineGlobalStartOffset += originalLines[i].length + 1; // +1 for the newline
+                  }
+
+                  let currentOffsetWithinLine = 0; // Tracks character position within the current line string
+                  
+                  const segments = line.includes(SPECIAL_KEY_TEXT)
+                    ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
+                    : [line]; // Treat the whole line as a single segment if no SPECIAL_KEY_TEXT
+
+                  const processedSegments = segments.map((segment, segmentIdx) => {
+                    if (segment === SPECIAL_KEY_TEXT) {
+                      const segmentKey = `seg-${lineIdx}-${segmentIdx}-xerofag`;
+                      // Increment offset for next segment/char within this line
+                      currentOffsetWithinLine += segment.length;
+                      return <span key={segmentKey} className="xerofag-highlight">{segment}</span>;
+                    } else {
+                      const segmentChars = segment.split('').map((char, charIdxInSegment) => {
+                        const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
+                        const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
+                        
+                        if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
+                          return <span key={charKey} className="ghost-char">{char}</span>;
+                        } else {
+                          return char;
+                        }
+                      });
+                      // Increment offset for next segment/char within this line
+                      currentOffsetWithinLine += segment.length;
+                      return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
+                    }
+                  });
+
                   return (
                     <div
-                      key={idx}
+                      key={lineIdx}
                       className="typewriter-line"
                       ref={isLastLine ? lastLineRef : null}
                     >

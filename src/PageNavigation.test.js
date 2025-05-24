@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom'; // For extended matchers like .toBeDisabled()
-import PageNavigation from './PageNavigation';
+import PageNavigation from './components/typewriter/PageNavigation';
 
 // Define default props and styling constants that PageNavigation expects
 const DEFAULT_STYLING_PROPS = {

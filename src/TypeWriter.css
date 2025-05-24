@@ -184,26 +184,28 @@
 
   .typewriter-line {
     position: relative;
-    min-height: 2.4rem;
+    min-height: 2.4rem; /* Should match --line-height-typewriter if that variable were used */
+    /* height: 2.4rem; /* Consider fixing height */
+    /* overflow: visible; /* Allow cursor to visually exceed line box */
     white-space: pre-wrap;
     display: flex;
-    align-items: center;
+    align-items: baseline; /* Changed from center */
     margin-bottom: 0.3rem;
   }
   
   .striker-cursor {
     display: inline-block;
-    width: 72px;
-    height: 100px;
+    width: 72px; /* Width can remain, or adjust if striker image aspect ratio needs it */
+    height: 70px; /* Reduced from 100px */
     background-image: url('/textures/striker.png');
     background-size: contain;
     background-repeat: no-repeat;
     position: relative;
-    top: 55px; /* Reset top position */
-    right: 40px;
-    align-self: center; /* Center in the flex container */
+    top: 30px; /* Adjusted from 55px */
+    right: 40px; /* This is likely fine, related to horizontal placement */
+    /* align-self: center; Removed */
     filter: drop-shadow(1px 2px 3px rgba(0, 0, 0, 0.5));
-    z-index: 0;
+    z-index: 0; /* Keep below text if text can overlap, or adjust if needed */
     opacity: 0.85;
     mix-blend-mode: multiply;
   }
@@ -306,15 +308,14 @@
     flex-direction: column;
     align-items: center;
     gap: 0.75rem;
-    padding: 2rem 4rem;
+    padding: 2rem 4rem; /* Horizontal padding remains */
     background: #0a0a0a;
     border-top-left-radius: 100px;
     border-top-right-radius: 100px;
     box-shadow: inset 0 20px 50px rgba(0,0,0,0.5);
-    transform: perspective(1000px) rotateX(5deg);
-    padding-top: 1rem;
-    padding-bottom: 2rem;
     transform: perspective(1000px) rotateX(4deg); /* slightly less dramatic */
+    padding-top: 0.75rem; /* Reduced from 1rem */
+    padding-bottom: 1.5rem; /* Reduced from 2rem */
   }
   
   .key-row {
@@ -330,7 +331,7 @@
   .storyteller-sigil {
     display: flex;
     justify-content: center;
-    margin: 1rem auto;
+    margin: 0.5rem auto; /* Reduced from 1rem auto */
     width: 80px;
     height: auto;
     opacity: 0.7;
@@ -848,4 +849,22 @@
   min-width: 168px;
   min-height: 168px;
   box-shadow: 0 2px 32px #1a0902a0, 0 0 8px #ffc37222;
+}
+
+/* --- Ghost Character Animation --- */
+@keyframes ghostCharAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.ghost-char {
+  display: inline-block; /* Ensures transform is applicable */
+  animation: ghostCharAppear 0.3s ease-out forwards;
+  /* will-change: transform, opacity; */ /* Optional: for performance hint */
 }

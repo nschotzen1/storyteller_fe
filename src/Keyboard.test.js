@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import Keyboard from './Keyboard'; // Adjust path as needed
+import Keyboard from './components/typewriter/Keyboard'; // Adjust path as needed
 import '@testing-library/jest-dom'; // For extended matchers
 
 // Constants that Keyboard expects as props
