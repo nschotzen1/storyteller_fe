@@ -253,11 +253,11 @@ const PaperDisplay = ({
                     <div
                       key={lineIdx}
                       className="typewriter-line"
-                      ref={isLastLine ? lastLineRef : null}
+                      ref={isLastLineOfRenderedSet ? lastLineRef : null}
                     >
                       <span className="last-line-content">
-                        {parts}
-                        {isLastLine && showCursor && (
+                        {processedSegments}
+                        {isLastLineOfRenderedSet && showCursor && (
                           <span
                             className={"striker-cursor"}
                             ref={strikerRef}
