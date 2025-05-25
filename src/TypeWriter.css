@@ -852,26 +852,22 @@
 }
 
 /* --- Ghost Character Animation --- */
-@keyframes ghostCharAppear {
+@keyframes materializeChar {
   from {
-    opacity: 0.1;
-    transform: scale(0.5) rotate(-45deg) translateX(-20px);
-    color: red; /* Make it very obvious */
-  }
-  50% {
-    opacity: 0.7;
-    transform: scale(1.2) rotate(45deg) translateX(20px);
-    color: blue;
+    opacity: 0;
+    transform: scale(0.9) translateY(5px);
+    filter: blur(2px);
   }
   to {
     opacity: 1;
-    transform: scale(1) rotate(0deg) translateX(0);
-    color: inherit; /* Revert to normal text color */
+    transform: scale(1) translateY(0);
+    filter: blur(0);
   }
 }
 
 .ghost-char {
   display: inline-block; /* Ensures transform is applicable */
-  animation: ghostCharAppear 2s ease-out forwards; /* Increased duration to 2s */
+  animation: materializeChar 0.6s ease-out forwards; /* Duration 0.6s */
+  color: inherit; /* Ensure color is inherited, resetting any debug color */
   /* will-change: transform, opacity; */ /* Optional: for performance hint */
 }
