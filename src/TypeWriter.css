@@ -184,26 +184,28 @@
 
   .typewriter-line {
     position: relative;
-    min-height: 2.4rem;
+    min-height: 2.4rem; /* Should match --line-height-typewriter if that variable were used */
+    /* height: 2.4rem; /* Consider fixing height */
+    /* overflow: visible; /* Allow cursor to visually exceed line box */
     white-space: pre-wrap;
     display: flex;
-    align-items: center;
+    align-items: baseline; /* Changed from center */
     margin-bottom: 0.3rem;
   }
   
   .striker-cursor {
     display: inline-block;
-    width: 72px;
-    height: 100px;
+    width: 72px; /* Width can remain, or adjust if striker image aspect ratio needs it */
+    height: 70px; /* Reduced from 100px */
     background-image: url('/textures/striker.png');
     background-size: contain;
     background-repeat: no-repeat;
     position: relative;
-    top: 55px; /* Reset top position */
-    right: 40px;
-    align-self: center; /* Center in the flex container */
+    top: 30px; /* Adjusted from 55px */
+    right: 40px; /* This is likely fine, related to horizontal placement */
+    /* align-self: center; Removed */
     filter: drop-shadow(1px 2px 3px rgba(0, 0, 0, 0.5));
-    z-index: 0;
+    z-index: 0; /* Keep below text if text can overlap, or adjust if needed */
     opacity: 0.85;
     mix-blend-mode: multiply;
   }
@@ -306,15 +308,14 @@
     flex-direction: column;
     align-items: center;
     gap: 0.75rem;
-    padding: 2rem 4rem;
+    padding: 2rem 4rem; /* Horizontal padding remains */
     background: #0a0a0a;
     border-top-left-radius: 100px;
     border-top-right-radius: 100px;
     box-shadow: inset 0 20px 50px rgba(0,0,0,0.5);
-    transform: perspective(1000px) rotateX(5deg);
-    padding-top: 1rem;
-    padding-bottom: 2rem;
     transform: perspective(1000px) rotateX(4deg); /* slightly less dramatic */
+    padding-top: 0.75rem; /* Reduced from 1rem */
+    padding-bottom: 1.5rem; /* Reduced from 2rem */
   }
   
   .key-row {
@@ -330,7 +331,7 @@
   .storyteller-sigil {
     display: flex;
     justify-content: center;
-    margin: 1rem auto;
+    margin: 0.5rem auto; /* Reduced from 1rem auto */
     width: 80px;
     height: auto;
     opacity: 0.7;
@@ -848,4 +849,90 @@
   min-width: 168px;
   min-height: 168px;
   box-shadow: 0 2px 32px #1a0902a0, 0 0 8px #ffc37222;
+}
+
+/* --- Ghost Character Animation --- */
+@keyframes materializeChar {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(5px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes shimmerChar {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(5px);
+    filter: blur(2px);
+  }
+  30% { /* Start shimmer */
+    opacity: 0.7;
+    filter: blur(1px) brightness(1.2);
+    transform: scale(1) translateY(0);
+  }
+  40% {
+    opacity: 0.5;
+    filter: blur(1px) brightness(0.9);
+  }
+  50% {
+    opacity: 0.9;
+    filter: blur(0.5px) brightness(1.3);
+  }
+  60% {
+    opacity: 0.7;
+    filter: blur(0.5px) brightness(0.9);
+  }
+  70% { /* End shimmer, settle */
+    opacity: 1;
+    filter: blur(0) brightness(1.1);
+    transform: scale(1.05); /* Slight pop */
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0) brightness(1);
+  }
+}
+
+@keyframes pulseSizeChar {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(5px); /* Start smaller */
+    filter: blur(3px);
+  }
+  60% {
+    opacity: 0.8;
+    transform: scale(1.5) translateY(-2px); /* Pulse bigger and slightly up */
+    filter: blur(0.5px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+.ghost-char { /* Common properties for all ghost chars */
+  display: inline-block;
+  color: inherit; /* Reset color if it was changed for debug */
+  /* Add will-change here if desired for all animations */
+  will-change: transform, opacity, filter;
+}
+
+.ghost-char-materialize {
+  animation: materializeChar 1.2s ease-out forwards; /* Slower duration */
+}
+
+.ghost-char-shimmer {
+  animation: shimmerChar 1.0s ease-out forwards; /* Duration for shimmer */
+}
+
+.ghost-char-pulse {
+  animation: pulseSizeChar 1.0s ease-out forwards; /* Duration for pulse */
 }
