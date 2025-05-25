@@ -961,17 +961,27 @@
 @keyframes wordErodeSink {
   from {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0) scale(1) rotateX(0);
+    filter: blur(0);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translateY(15px) scale(0.85) rotateX(20deg); /* More sink, slight shrink and rotation */
+    filter: blur(0.5px);
   }
   to {
     opacity: 0;
-    transform: translateY(10px) scale(0.9);
+    transform: translateY(30px) scale(0.7) rotateX(45deg); /* Pronounced sink, shrink, and rotation */
+    filter: blur(1px);
   }
 }
 
 .word-eroding-sink {
-  animation: wordErodeSink 1.5s ease-in forwards;
-   /* Important to keep words from re-appearing if they are re-rendered before removal */
+  animation: wordErodeSink 1.8s ease-in forwards; /* Changed from 1.5s, ease-in can look good for sinking */
+   /* Keep final state properties to prevent flicker if re-rendered before removal */
   opacity: 0;
-  transform: translateY(10px) scale(0.9);
+  transform: translateY(30px) scale(0.7) rotateX(45deg);
+  filter: blur(1px);
 }
+
+[end of src/TypeWriter.css]

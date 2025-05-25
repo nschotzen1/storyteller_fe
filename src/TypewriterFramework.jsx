@@ -37,8 +37,9 @@ const KEY_TEXTURE_REFRESH_INTERVAL = 20000; // ms
 const GHOST_KEY_TYPING_INTERVAL = 90; // ms
 const GHOSTWRITER_AI_TRIGGER_INTERVAL = 1000; // ms
 const SLIDE_DURATION_MS_ALREADY_DEFINED = 1200; // Already defined as SLIDE_DURATION_MS, kept for reference
-const WORD_EROSION_INTERVAL_MS = 200; // Time between starting erosion of one word and the next
-const WORD_ERASE_DELAY_MS = 1600; // Time from when a word starts eroding until it's erased (CSS animation is 1.5s)
+const WORD_EROSION_INTERVAL_MS = 600; // Time between starting erosion of one word and the next
+const WORD_ERASE_DELAY_MS = 1900; // Time from when a word starts eroding until it's erased
+const EROSION_START_DELAY_PER_CHAR_MS = 10; // Delay before erosion starts, per character of ghost text
 
 
 // Animation & Style Values
@@ -224,13 +225,14 @@ const initialTypingState = {
 const buildDisplayableGhostText = (ghostWords) => {
   return ghostWords.map(word => {
     if (word.status === 'eroding') {
-      return `<span class="word-eroding-fadeout">${word.text}</span>`;
+      // Ensure this uses the 'word-eroding-sink' class
+      return `<span class="word-eroding-sink">${word.text}</span>`;
     }
     if (word.status === 'visible') {
       return word.text;
     }
-    return ''; // Erased words contribute nothing
-  }).filter(Boolean).join(' '); // Filter out empty strings from erased words and join
+    return ''; 
+  }).filter(Boolean).join(' '); 
 };
 
 
@@ -395,6 +397,7 @@ const TypewriterFramework = () => {
   const lastLineRef = useRef(null);
   const strikerRef = useRef(null);
   const erosionTimeoutRef = useRef(null); 
+  const erosionStartDelayTimeoutRef = useRef(null); 
 
   const [sessionId] = useState(() => {
     const stored = localStorage.getItem(SESSION_ID_STORAGE_KEY);
@@ -449,6 +452,10 @@ const TypewriterFramework = () => {
 
   const handlePageTurnScroll = async () => {
     if (pageChangeInProgress) return;
+    if (erosionStartDelayTimeoutRef.current) {
+        clearTimeout(erosionStartDelayTimeoutRef.current);
+        erosionStartDelayTimeoutRef.current = null;
+    }
     dispatchPageTransition({ type: pageTransitionActionTypes.START_PAGE_TURN_SCROLL });
     dispatchTyping({ type: typingActionTypes.SET_TYPING_ALLOWED, payload: false });
     dispatchTyping({ type: typingActionTypes.SET_SHOW_CURSOR, payload: false });
@@ -494,6 +501,10 @@ const TypewriterFramework = () => {
 
   const handleHistoryNavigation = (targetIdx) => {
     if (pageChangeInProgress || isSliding) return;
+    if (erosionStartDelayTimeoutRef.current) {
+        clearTimeout(erosionStartDelayTimeoutRef.current);
+        erosionStartDelayTimeoutRef.current = null;
+    }
     dispatchTyping({ type: typingActionTypes.SET_TYPING_ALLOWED, payload: false });
     dispatchTyping({ type: typingActionTypes.SET_SHOW_CURSOR, payload: false });
     const toNext = targetIdx > currentPage;
@@ -525,6 +536,10 @@ const TypewriterFramework = () => {
     if (pageChangeInProgress || !typingAllowed) {
       playEndOfPageSound();
       return;
+    }
+    if (erosionStartDelayTimeoutRef.current) {
+        clearTimeout(erosionStartDelayTimeoutRef.current);
+        erosionStartDelayTimeoutRef.current = null; 
     }
     if (isGhostTextStable) { 
         dispatchTyping({ type: typingActionTypes.RESET_EROSION_STATE });
@@ -611,11 +626,12 @@ const TypewriterFramework = () => {
     return () => clearInterval(interval);
   }, [keyTextures]);
 
+  // --- Ghost Key Typing Simulation & Erosion Preparation ---
   useEffect(() => {
     if (!typingAllowed) return;
-    let interval;
+    let typingInterval; 
     if (ghostKeyQueue.length > 0) {
-      interval = setInterval(() => {
+      typingInterval = setInterval(() => {
         const charToAppend = ghostKeyQueue[0];
         if (charToAppend) {
           dispatchTyping({ type: typingActionTypes.UPDATE_LAST_RESPONSE_CONTENT, payload: charToAppend });
@@ -625,11 +641,28 @@ const TypewriterFramework = () => {
     } else if (responses.length > 0 && !isGhostTextStable) {
       const lastResponseContent = responses[responses.length - 1].content;
       if (lastResponseContent) {
-        dispatchTyping({ type: typingActionTypes.PREPARE_GHOST_WORDS_FOR_EROSION, payload: lastResponseContent });
+        const delay = lastResponseContent.length * EROSION_START_DELAY_PER_CHAR_MS;
+        if (erosionStartDelayTimeoutRef.current) {
+            clearTimeout(erosionStartDelayTimeoutRef.current);
+        }
+        erosionStartDelayTimeoutRef.current = setTimeout(() => {
+            const currentResponses = typingState.responses; 
+            if (currentResponses.length > 0 && !typingState.isGhostTextStable) { 
+                 const currentLastResponseContent = currentResponses[currentResponses.length - 1].content;
+                 if (currentLastResponseContent) { 
+                    dispatchTyping({ type: typingActionTypes.PREPARE_GHOST_WORDS_FOR_EROSION, payload: currentLastResponseContent });
+                 }
+            }
+        }, delay);
       }
     }
-    return () => clearInterval(interval);
-  }, [ghostKeyQueue, typingAllowed, responses, isGhostTextStable, dispatchTyping]);
+    return () => {
+        clearInterval(typingInterval);
+        if (erosionStartDelayTimeoutRef.current) {
+            clearTimeout(erosionStartDelayTimeoutRef.current);
+        }
+    };
+  }, [ghostKeyQueue, typingAllowed, responses, isGhostTextStable, dispatchTyping, typingState.responses, typingState.isGhostTextStable]); 
 
   useEffect(() => {
     if (isGhostTextStable && typingAllowed) {
@@ -667,6 +700,10 @@ const TypewriterFramework = () => {
           const resp = await fetchTypewriterReply(fullText, sessionId);
           const reply = resp.data;
           if (reply && reply.content) {
+            if (erosionStartDelayTimeoutRef.current) {
+                clearTimeout(erosionStartDelayTimeoutRef.current);
+                erosionStartDelayTimeoutRef.current = null;
+            }
             dispatchTyping({ type: typingActionTypes.RESET_EROSION_STATE }); 
             dispatchTyping({ type: typingActionTypes.ADD_RESPONSE, payload: { ...reply, id: Date.now().toString(), content: '' } });
             dispatchTyping({ type: typingActionTypes.SET_GHOST_KEY_QUEUE, payload: reply.content.split('') });
@@ -680,6 +717,10 @@ const TypewriterFramework = () => {
   }, [pages, currentPage, typingAllowed, lastUserInputTime, responseQueued, lastGeneratedLength, sessionId, dispatchTyping, dispatchGhostwriter]);
 
   const commitGhostText = () => {
+    if (erosionStartDelayTimeoutRef.current) {
+        clearTimeout(erosionStartDelayTimeoutRef.current);
+        erosionStartDelayTimeoutRef.current = null;
+    }
     const fullGhostText = responses.map(r => r.content).join('');
     if (!fullGhostText && !isGhostTextStable) return; 
     let textToCommit = fullGhostText;
@@ -715,6 +756,10 @@ const TypewriterFramework = () => {
   }, [pages, currentPage]);
 
   const handleRegularKeyPress = (keyText) => {
+    if (erosionStartDelayTimeoutRef.current) {
+        clearTimeout(erosionStartDelayTimeoutRef.current);
+        erosionStartDelayTimeoutRef.current = null;
+    }
     if (isGhostTextStable) dispatchTyping({ type: typingActionTypes.RESET_EROSION_STATE });
     if (responses.length > 0 && !isGhostTextStable) commitGhostText(); 
     dispatchTyping({ type: typingActionTypes.ADD_TO_INPUT_BUFFER, payload: keyText });
@@ -723,6 +768,10 @@ const TypewriterFramework = () => {
   };
 
   const handleXerofagKeyPress = () => {
+    if (erosionStartDelayTimeoutRef.current) {
+        clearTimeout(erosionStartDelayTimeoutRef.current);
+        erosionStartDelayTimeoutRef.current = null;
+    }
     if (isGhostTextStable) dispatchTyping({ type: typingActionTypes.RESET_EROSION_STATE });
     if (responses.length > 0 && !isGhostTextStable) commitGhostText();
     dispatchTyping({ type: typingActionTypes.ADD_TO_INPUT_BUFFER, payload: SPECIAL_KEY_INSERT_TEXT });
@@ -731,6 +780,10 @@ const TypewriterFramework = () => {
   };
 
   const handleSpacebarPress = () => {
+    if (erosionStartDelayTimeoutRef.current) {
+        clearTimeout(erosionStartDelayTimeoutRef.current);
+        erosionStartDelayTimeoutRef.current = null;
+    }
     if (isGhostTextStable) dispatchTyping({ type: typingActionTypes.RESET_EROSION_STATE });
     if (responses.length > 0 && !isGhostTextStable) commitGhostText();
     dispatchTyping({ type: typingActionTypes.ADD_TO_INPUT_BUFFER, payload: ' ' });
@@ -752,7 +805,7 @@ const TypewriterFramework = () => {
       <PaperDisplay
         pageText={pageText} 
         ghostText={ghostTextForDisplay} 
-        isGhostTextStable={isGhostTextStable} // Pass this prop
+        isGhostTextStable={isGhostTextStable} 
         pageBg={pageBg} scrollRef={scrollRef} lastLineRef={lastLineRef} strikerRef={strikerRef}
         showCursor={showCursor} isSliding={isSliding} slideX={slideX} slideDir={slideDir} prevFilmBgUrl={prevFilmBgUrl} nextFilmBgUrl={nextFilmBgUrl}
         prevText={prevText} nextText={nextText} MAX_LINES={MAX_LINES} TOP_OFFSET={TOP_OFFSET} BOTTOM_PADDING={BOTTOM_PADDING} FRAME_HEIGHT={FRAME_HEIGHT}
