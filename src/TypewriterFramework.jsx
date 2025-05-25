@@ -418,7 +418,8 @@ const TypewriterFramework = () => {
           scrollRef.current.scrollTop = 0;
 
           // Fetch next film image then prepare for slide
-          fetchNextFilmImage(pageText + ghostText, sessionId).then(newUrl => {
+          fetchNextFilmImage(pageText + ghostText, sessionId).then(data => {
+            const newUrl = data?.data.image_url || null;
             const newFilm = newUrl || DEFAULT_FILM_BG_URL;
             
             dispatchPageTransition({
@@ -652,7 +653,8 @@ useEffect(() => {
 
     // Use ghostwriterState.responseQueued
     if (addition.trim().split(/\s+/).length >= GHOSTWRITER_MIN_WORDS_TRIGGER && !ghostwriterState.responseQueued) {
-      const shouldGenerate = await fetchShouldGenerateContinuation(fullText, addition, pauseSeconds);
+      const data = await fetchShouldGenerateContinuation(fullText, addition, pauseSeconds);
+      const shouldGenerate = data.shouldGenerate
       if (shouldGenerate) {
         const resp = await fetchTypewriterReply(fullText, sessionId);
         const reply = resp.data
