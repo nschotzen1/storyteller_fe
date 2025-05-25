@@ -12,13 +12,11 @@ const getRandomAnimationClass = () => {
   return GHOST_ANIMATION_CLASSES[Math.floor(Math.random() * GHOST_ANIMATION_CLASSES.length)];
 };
 
-// This component will handle the rendering of the paper, text, film background,
-// and the page slide animations.
-
 const PaperDisplay = ({
   // Text and content props
   pageText,
-  ghostText,
+  ghostText, // Receives ghostTextForDisplay from TypewriterFramework (can be plain or HTML)
+  isGhostTextStable, // Indicates if ghostText contains pre-formatted HTML
   pageBg,
   showCursor,
 
@@ -29,32 +27,26 @@ const PaperDisplay = ({
 
   // Sliding animation state props
   isSliding,
-  slideX, // Renamed from pageTransitionState.slideX for clarity in props
-  slideDir, // Renamed from pageTransitionState.slideDir
-  prevFilmBgUrl, // Renamed from pageTransitionState.prevFilmBgUrl
-  nextFilmBgUrl, // Renamed from pageTransitionState.nextFilmBgUrl
-  prevText, // Renamed from pageTransitionState.prevText
-  nextText, // Renamed from pageTransitionState.nextText
+  slideX, 
+  slideDir, 
+  prevFilmBgUrl, 
+  nextFilmBgUrl, 
+  prevText, 
+  nextText, 
 
   // Constants for layout and styling
   MAX_LINES,
   TOP_OFFSET,
   BOTTOM_PADDING,
   FRAME_HEIGHT,
-  // LINE_HEIGHT, // Not directly used in JSX, but in calculation of NEEDED_HEIGHT
-  FILM_HEIGHT, // Used in film-background style
+  FILM_HEIGHT, 
   
-  // Calculated layout values
-  scrollAreaHeight, // Renamed from SCROLL_AREA_HEIGHT for camelCase consistency
-  neededHeight,     // Renamed from NEEDED_HEIGHT
+  scrollAreaHeight, 
+  neededHeight,     
 
-  // Animation constants
   SLIDE_DURATION_MS,
-  
-  // Constants for text processing
-  SPECIAL_KEY_TEXT, // For Xerofag highlighting, formerly XEROFAG_HIGHLIGHT_KEY
+  SPECIAL_KEY_TEXT, 
 
-  // Constants from TypewriterFramework that were used in renderSlideWrapper and paper display
   FILM_SLIDE_WRAPPER_WIDTH,
   FILM_SLIDE_WRAPPER_Z_INDEX,
   FILM_BG_SLIDE_OPACITY,
@@ -74,11 +66,9 @@ const PaperDisplay = ({
   FILM_BACKGROUND_OPACITY,
   TYPEWRITER_TEXT_Z_INDEX,
   STRIKER_CURSOR_OFFSET_LEFT,
-  SLIDE_DIRECTION_LEFT, // To compare with slideDir
+  SLIDE_DIRECTION_LEFT, 
 }) => {
 
-  // --- PAGE SLIDE JSX (forwards/backwards) ---
-  // This function was moved from TypewriterFramework.jsx
   const getSlideX = () => slideDir === SLIDE_DIRECTION_LEFT ? slideX : -slideX;
   
   const renderSlideWrapper = () => (
@@ -102,33 +92,20 @@ const PaperDisplay = ({
         className="film-bg-slide"
         style={{
           backgroundImage: `url('${prevFilmBgUrl}')`,
-          width: '50%',
-          height: '100%',
-          backgroundSize: 'cover',
-          backgroundPosition: 'top center',
-          backgroundRepeat: 'no-repeat',
-          opacity: FILM_BG_SLIDE_OPACITY,
-          boxShadow: FILM_BG_SLIDE_BOX_SHADOW_LEFT,
+          width: '50%', height: '100%', backgroundSize: 'cover', backgroundPosition: 'top center',
+          backgroundRepeat: 'no-repeat', opacity: FILM_BG_SLIDE_OPACITY, boxShadow: FILM_BG_SLIDE_BOX_SHADOW_LEFT,
           filter: `contrast(${FILM_BG_SLIDE_CONTRAST_OUTGOING}) brightness(${FILM_BG_SLIDE_BRIGHTNESS_OUTGOING})`,
           position: 'relative',
         }}
       >
-        <div style={{
-          position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
-          display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none',
-        }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none'}}>
           <div className="typewriter-text film-overlay-text" style={{ paddingTop: TOP_OFFSET, paddingBottom: BOTTOM_PADDING }}>
-            {prevText.split('\n').slice(0, MAX_LINES).map((line, idx, arr) => {
-              const isLastLine = idx === arr.length - 1;
-              return (
-                <div className="typewriter-line" key={idx}>
-                  {line}
-                  {isLastLine && showCursor && ( // Assuming showCursor is still relevant for sliding text
-                    <span className="striker-cursor" />
-                  )}
-                </div>
-              );
-            })}
+            {prevText.split('\n').slice(0, MAX_LINES).map((line, idx, arr) => (
+              <div className="typewriter-line" key={`prev-${idx}`}>
+                {line}
+                {idx === arr.length - 1 && showCursor && (<span className="striker-cursor" />)}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -137,44 +114,24 @@ const PaperDisplay = ({
         className="film-bg-slide"
         style={{
           backgroundImage: `url('${nextFilmBgUrl}')`,
-          width: '50%',
-          height: '100%',
-          backgroundSize: 'cover',
-          backgroundPosition: 'top center',
-          backgroundRepeat: 'no-repeat',
-          opacity: FILM_BG_SLIDE_OPACITY,
-          boxShadow: FILM_BG_SLIDE_BOX_SHADOW_RIGHT,
+          width: '50%', height: '100%', backgroundSize: 'cover', backgroundPosition: 'top center',
+          backgroundRepeat: 'no-repeat', opacity: FILM_BG_SLIDE_OPACITY, boxShadow: FILM_BG_SLIDE_BOX_SHADOW_RIGHT,
           filter: `contrast(${FILM_BG_SLIDE_CONTRAST_INCOMING}) brightness(${FILM_BG_SLIDE_BRIGHTNESS_INCOMING})`,
           position: 'relative',
         }}
       >
-        <div style={{
-          position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
-          display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none',
-        }}>
+        <div style={{position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none'}}>
           <div className="typewriter-text film-overlay-text" style={{ paddingTop: TOP_OFFSET, paddingBottom: BOTTOM_PADDING }}>
-            {nextText.split('\n').slice(0, MAX_LINES).map((line, idx, arr) => {
-              const isLastLine = idx === arr.length - 1;
-              return (
-                <div className="typewriter-line" key={idx}>
-                  {line}
-                  {isLastLine && showCursor && (
-                    <span className="striker-cursor" />
-                  )}
-                </div>
-              );
-            })}
+            {nextText.split('\n').slice(0, MAX_LINES).map((line, idx, arr) => (
+              <div className="typewriter-line" key={`next-${idx}`}>
+                {line}
+                {idx === arr.length - 1 && showCursor && (<span className="striker-cursor" />)}
+              </div>
+            ))}
           </div>
         </div>
       </div>
-      {/* Flicker/dust overlay, optional */}
-      <div className="film-flicker-overlay" style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: FILM_FLICKER_OVERLAY_Z_INDEX,
-        background: `url('${FILM_FLICKER_OVERLAY_TEXTURE_URL}'), ${FILM_FLICKER_OVERLAY_GRADIENT}`,
-        opacity: FILM_FLICKER_OVERLAY_OPACITY,
-        mixBlendMode: FILM_FLICKER_OVERLAY_BLEND_MODE,
-        animation: FILM_FLICKER_OVERLAY_ANIMATION,
-      }} />
+      <div className="film-flicker-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: FILM_FLICKER_OVERLAY_Z_INDEX, background: `url('${FILM_FLICKER_OVERLAY_TEXTURE_URL}'), ${FILM_FLICKER_OVERLAY_GRADIENT}`, opacity: FILM_FLICKER_OVERLAY_OPACITY, mixBlendMode: FILM_FLICKER_OVERLAY_BLEND_MODE, animation: FILM_FLICKER_OVERLAY_ANIMATION }} />
     </div>
   );
 
@@ -196,17 +153,9 @@ const PaperDisplay = ({
             <div
               className="film-background"
               style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: `${FILM_HEIGHT}px`,
-                zIndex: FILM_BACKGROUND_Z_INDEX,
-                pointerEvents: 'none',
-                backgroundImage: `url('${pageBg}')`,
-                backgroundSize: 'cover',
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'top center',
+                position: 'absolute', top: 0, left: 0, width: '100%', height: `${FILM_HEIGHT}px`,
+                zIndex: FILM_BACKGROUND_Z_INDEX, pointerEvents: 'none', backgroundImage: `url('${pageBg}')`,
+                backgroundSize: 'cover', backgroundRepeat: 'no-repeat', backgroundPosition: 'top center',
                 opacity: FILM_BACKGROUND_OPACITY,
               }}
             />
@@ -216,61 +165,76 @@ const PaperDisplay = ({
             >
               {(() => {
                 const pageTextLength = pageText.length;
-                const fullCombinedText = pageText + ghostText; // For length calculations if needed, not directly split
-                const originalLines = fullCombinedText.split('\n'); // All lines before MAX_LINES slicing
+                // ghostText here is ghostTextForDisplay from the framework
+                // If isGhostTextStable, ghostText is already formatted HTML string.
+                // Otherwise, it's plain text for character-by-character animation.
+                const fullCombinedText = pageText + ghostText;
+                const originalLines = fullCombinedText.split('\n'); 
                 const allLinesToRender = originalLines.slice(0, MAX_LINES);
                 
-                let charOffsetInFullText = 0; // Tracks character progress in the original fullCombinedText
+                let charGlobalOffset = 0; // Tracks character position across all original lines
 
                 return allLinesToRender.map((line, lineIdx) => {
                   const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
-                  
-                  // Calculate the starting global index for characters in this line
-                  // This needs to be the sum of lengths of *all original previous lines* plus their newlines
-                  let currentLineGlobalStartOffset = 0;
-                  for(let i=0; i < lineIdx; i++) {
-                    currentLineGlobalStartOffset += originalLines[i].length + 1; // +1 for the newline
-                  }
+                  let lineContentOutput = [];
+                  let currentSegmentStartGlobalOffset = charGlobalOffset;
 
-                  let currentOffsetWithinLine = 0; // Tracks character position within the current line string
-                  
                   const segments = line.includes(SPECIAL_KEY_TEXT)
                     ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
-                    : [line]; // Treat the whole line as a single segment if no SPECIAL_KEY_TEXT
+                    : [line];
 
-                  const processedSegments = segments.map((segment, segmentIdx) => {
+                  segments.forEach((segment, segmentIdx) => {
+                    const segmentKeyBase = `line-${lineIdx}-seg-${segmentIdx}`;
+
                     if (segment === SPECIAL_KEY_TEXT) {
-                      const segmentKey = `seg-${lineIdx}-${segmentIdx}-xerofag`;
-                      // Increment offset for next segment/char within this line
-                      currentOffsetWithinLine += segment.length;
-                      return <span key={segmentKey} className="xerofag-highlight">{segment}</span>;
-                    } else {
-                      const segmentChars = segment.split('').map((char, charIdxInSegment) => {
-                        const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
-                        const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
-                        
-                        if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
-                          const animationClass = getRandomAnimationClass();
-                          // console.log('Applying .ghost-char to:', char, 'at global index:', charGlobalIndex, 'with key:', charKey, 'animation:', animationClass);
-                          return <span key={charKey} className={`ghost-char ${animationClass}`}>{char}</span>;
+                      lineContentOutput.push(<span key={`${segmentKeyBase}-xerofag`} className="xerofag-highlight">{segment}</span>);
+                    } else if (segment.length > 0) {
+                      // Determine if this segment falls into pageText or ghostText
+                      if (currentSegmentStartGlobalOffset + segment.length <= pageTextLength) { // Entirely pageText
+                        lineContentOutput.push(<React.Fragment key={`${segmentKeyBase}-page`}>{segment}</React.Fragment>);
+                      } else if (currentSegmentStartGlobalOffset >= pageTextLength) { // Entirely ghostText
+                        if (isGhostTextStable) {
+                          lineContentOutput.push(<span key={`${segmentKeyBase}-ghost-stable`} dangerouslySetInnerHTML={{ __html: segment }} />);
                         } else {
-                          return char;
+                          lineContentOutput.push(
+                            segment.split('').map((char, charIdx) => (
+                              <span key={`${segmentKeyBase}-ghost-char-${charIdx}`} className={`ghost-char ${getRandomAnimationClass()}`}>{char}</span>
+                            ))
+                          );
                         }
-                      });
-                      // Increment offset for next segment/char within this line
-                      currentOffsetWithinLine += segment.length;
-                      return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
+                      } else { // Segment spans across pageText and ghostText
+                        const pageTextPart = segment.substring(0, pageTextLength - currentSegmentStartGlobalOffset);
+                        const ghostTextPart = segment.substring(pageTextLength - currentSegmentStartGlobalOffset);
+                        
+                        lineContentOutput.push(<React.Fragment key={`${segmentKeyBase}-page-part`}>{pageTextPart}</React.Fragment>);
+
+                        if (ghostTextPart.length > 0) {
+                          if (isGhostTextStable) {
+                            lineContentOutput.push(<span key={`${segmentKeyBase}-ghost-stable-part`} dangerouslySetInnerHTML={{ __html: ghostTextPart }} />);
+                          } else {
+                            lineContentOutput.push(
+                              ghostTextPart.split('').map((char, charIdx) => (
+                                <span key={`${segmentKeyBase}-ghost-char-part-${charIdx}`} className={`ghost-char ${getRandomAnimationClass()}`}>{char}</span>
+                              ))
+                            );
+                          }
+                        }
+                      }
                     }
+                    currentSegmentStartGlobalOffset += segment.length;
                   });
+                  
+                  // Add 1 for the newline character that was removed by split('\n')
+                  charGlobalOffset += line.length + 1; 
 
                   return (
                     <div
-                      key={lineIdx}
+                      key={`line-${lineIdx}`}
                       className="typewriter-line"
                       ref={isLastLineOfRenderedSet ? lastLineRef : null}
                     >
                       <span className="last-line-content">
-                        {processedSegments}
+                        {lineContentOutput}
                         {isLastLineOfRenderedSet && showCursor && (
                           <span
                             className={"striker-cursor"}

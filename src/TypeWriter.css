@@ -936,3 +936,42 @@
 .ghost-char-pulse {
   animation: pulseSizeChar 1.0s ease-out forwards; /* Duration for pulse */
 }
+
+@keyframes wordErodeFadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.8);
+    filter: blur(2px);
+  }
+}
+
+.word-eroding-fadeout {
+  animation: wordErodeFadeOut 1.5s ease-out forwards;
+  /* Important to keep words from re-appearing if they are re-rendered before removal */
+  opacity: 0; 
+  transform: scale(0.8);
+  filter: blur(2px);
+}
+
+@keyframes wordErodeSink {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+  }
+}
+
+.word-eroding-sink {
+  animation: wordErodeSink 1.5s ease-in forwards;
+   /* Important to keep words from re-appearing if they are re-rendered before removal */
+  opacity: 0;
+  transform: translateY(10px) scale(0.9);
+}
