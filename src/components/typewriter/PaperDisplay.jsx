@@ -1,5 +1,17 @@
 import React from 'react';
 
+// Animation classes for ghost characters
+const GHOST_ANIMATION_CLASSES = [
+  'ghost-char-materialize',
+  'ghost-char-shimmer',
+  'ghost-char-pulse'
+];
+
+// Helper function to get a random animation class
+const getRandomAnimationClass = () => {
+  return GHOST_ANIMATION_CLASSES[Math.floor(Math.random() * GHOST_ANIMATION_CLASSES.length)];
+};
+
 // This component will handle the rendering of the paper, text, film background,
 // and the page slide animations.
 
@@ -238,7 +250,9 @@ const PaperDisplay = ({
                         const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
                         
                         if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
-                          return <span key={charKey} className="ghost-char">{char}</span>;
+                          const animationClass = getRandomAnimationClass();
+                          // console.log('Applying .ghost-char to:', char, 'at global index:', charGlobalIndex, 'with key:', charKey, 'animation:', animationClass);
+                          return <span key={charKey} className={`ghost-char ${animationClass}`}>{char}</span>;
                         } else {
                           return char;
                         }
