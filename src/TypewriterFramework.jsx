@@ -38,7 +38,7 @@ const GHOST_KEY_TYPING_INTERVAL = 90; // ms
 const GHOSTWRITER_AI_TRIGGER_INTERVAL = 1000; // ms
 const SLIDE_DURATION_MS_ALREADY_DEFINED = 1200; // Already defined as SLIDE_DURATION_MS, kept for reference
 const WORD_EROSION_INTERVAL_MS = 600; // Time between starting erosion of one word and the next
-const WORD_ERASE_DELAY_MS = 1900; // Time from when a word starts eroding until it's erased
+const WORD_ERASE_DELAY_MS = 2100; // Time from when a word starts eroding until it's erased (CSS animation is 2s)
 const EROSION_START_DELAY_PER_CHAR_MS = 10; // Delay before erosion starts, per character of ghost text
 
 
@@ -225,8 +225,7 @@ const initialTypingState = {
 const buildDisplayableGhostText = (ghostWords) => {
   return ghostWords.map(word => {
     if (word.status === 'eroding') {
-      // Ensure this uses the 'word-eroding-sink' class
-      return `<span class="word-eroding-sink">${word.text}</span>`;
+      return `<span class="word-dematerializing-ghostly">${word.text}</span>`;
     }
     if (word.status === 'visible') {
       return word.text;
@@ -325,14 +324,26 @@ function typingReducer(state, action) {
         displayableGhostText: buildDisplayableGhostText(erodingWords)
       };
     case typingActionTypes.SET_GHOST_WORD_ERASED:
-      const erasedWords = state.ghostWords.map(gw =>
+      const afterErasedWords = state.ghostWords.map(gw =>
         gw.id === action.payload.wordId ? { ...gw, status: 'erased' } : gw
       );
-      return {
-        ...state,
-        ghostWords: erasedWords,
-        displayableGhostText: buildDisplayableGhostText(erasedWords)
-      };
+      const allErased = afterErasedWords.length > 0 && afterErasedWords.every(gw => gw.status === 'erased');
+      
+      if (allErased) {
+        return {
+          ...state,
+          ghostWords: [], 
+          isGhostTextStable: false, 
+          displayableGhostText: '', 
+          responses: [] 
+        };
+      } else {
+        return {
+          ...state,
+          ghostWords: afterErasedWords,
+          displayableGhostText: buildDisplayableGhostText(afterErasedWords)
+        };
+      }
     case typingActionTypes.RESET_EROSION_STATE:
       return {
         ...state,
