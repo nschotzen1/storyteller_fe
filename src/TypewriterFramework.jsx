@@ -654,7 +654,7 @@ useEffect(() => {
     // Use ghostwriterState.responseQueued
     if (addition.trim().split(/\s+/).length >= GHOSTWRITER_MIN_WORDS_TRIGGER && !ghostwriterState.responseQueued) {
       const data = await fetchShouldGenerateContinuation(fullText, addition, pauseSeconds);
-      const shouldGenerate = data.shouldGenerate
+      const shouldGenerate = data.data.shouldGenerate
       if (shouldGenerate) {
         const resp = await fetchTypewriterReply(fullText, sessionId);
         const reply = resp.data
