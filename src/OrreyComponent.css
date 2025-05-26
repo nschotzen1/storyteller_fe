@@ -1,0 +1,20 @@
+.orrery-container {
+  position: relative;
+  background: radial-gradient(ellipse at center, #0a0a0a 0%, #000000 100%);
+  border-radius: 50%;
+  box-shadow: 0 0 50px rgba(255, 200, 50, 0.2);
+  overflow: hidden;
+}
+
+.orrery-background {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120px;
+  height: 120px;
+  background: rgba(50, 10, 10, 0.7);
+  border: 2px solid #ffcc88;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: inset 0 0 40px rgba(255, 100, 50, 0.3);
+}
