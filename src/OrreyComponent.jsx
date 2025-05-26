@@ -38,6 +38,19 @@ function OrreryComponent() {
           />
         );
       })}
+    <img
+        src="/assets/orrery/radials.png"
+        alt="radial grooves"
+        style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: size,
+            height: size,
+            pointerEvents: 'none',
+            zIndex: 2,
+        }}
+        />
     </div>
   );
 }
