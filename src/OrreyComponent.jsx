@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { archetypes } from './components/orrey/archetypes';
 import Figurine from './components/orrey/Figurine';
-import './OrreryComponent.css';
+import './OrreyComponent.css';
 
 function OrreryComponent() {
   const size = 600;
