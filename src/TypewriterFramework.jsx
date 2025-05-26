@@ -885,7 +885,7 @@ useEffect(() => {
   />
 </div>
 
-      <OrreyComponent style={{ position: 'absolute', bottom: '20px', right: '20px', zIndex: 100 }} />
+      <OrreyComponent style={{ position: 'absolute', bottom: '20px', right: '20px', left: 'auto', zIndex: 100 }} />
     </div>
   );
 };
