@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { archetypes } from './components/orrey/archetypes';
-import Figurine from './components/orrey/Figurine';
-import './OrreyComponent.css';
+import { archetypes } from './components/orrery/archetypes';
+import Figurine from './components/orrery/Figurine';
+import './OrreryComponent.css';
 
 function OrreryComponent() {
   const size = 600;
@@ -39,18 +39,18 @@ function OrreryComponent() {
         );
       })}
     <img
-        src="/assets/orrery/radials.png"
-        alt="radial grooves"
-        style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: size,
-            height: size,
-            pointerEvents: 'none',
-            zIndex: 2,
-        }}
-        />
+  src="/assets/orrery/octagonal_base.png"
+  alt="Orrery Base"
+  style={{
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: size,
+    height: size,
+    pointerEvents: 'none',
+    zIndex: 1,
+  }}
+/>
     </div>
   );
 }
