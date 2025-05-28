@@ -19,6 +19,8 @@ const PaperDisplay = ({
   // Text and content props
   pageText,
   ghostText,
+  currentFontStyles, // New prop
+  fadeState, // New prop
   pageBg,
   showCursor,
 
@@ -76,6 +78,23 @@ const PaperDisplay = ({
   STRIKER_CURSOR_OFFSET_LEFT,
   SLIDE_DIRECTION_LEFT, // To compare with slideDir
 }) => {
+
+  // Apply font styles
+  const textStyles = {
+    zIndex: TYPEWRITER_TEXT_Z_INDEX,
+    position: 'relative',
+    // Default font style if nothing is provided.
+    // These might be overridden by currentFontStyles
+    fontFamily: "'Special Elite', cursive", // Example default
+    fontSize: '1.8rem', // Example default
+    color: '#3b1d15', // Example default
+  };
+
+  if (currentFontStyles) {
+    if (currentFontStyles.font) textStyles.fontFamily = currentFontStyles.font;
+    if (currentFontStyles.font_size) textStyles.fontSize = currentFontStyles.font_size;
+    if (currentFontStyles.font_color) textStyles.color = currentFontStyles.font_color;
+  }
 
   // --- PAGE SLIDE JSX (forwards/backwards) ---
   // This function was moved from TypewriterFramework.jsx
@@ -212,77 +231,81 @@ const PaperDisplay = ({
             />
             <div
               className="typewriter-text film-overlay-text"
-              style={{ zIndex: TYPEWRITER_TEXT_Z_INDEX, position: 'relative' }}
+              style={textStyles} // Apply the combined styles here
             >
-              {(() => {
-                const pageTextLength = pageText.length;
-                const fullCombinedText = pageText + ghostText; // For length calculations if needed, not directly split
-                const originalLines = fullCombinedText.split('\n'); // All lines before MAX_LINES slicing
-                const allLinesToRender = originalLines.slice(0, MAX_LINES);
-                
-                let charOffsetInFullText = 0; // Tracks character progress in the original fullCombinedText
-
-                return allLinesToRender.map((line, lineIdx) => {
-                  const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
-                  
-                  // Calculate the starting global index for characters in this line
-                  // This needs to be the sum of lengths of *all original previous lines* plus their newlines
-                  let currentLineGlobalStartOffset = 0;
-                  for(let i=0; i < lineIdx; i++) {
-                    currentLineGlobalStartOffset += originalLines[i].length + 1; // +1 for the newline
-                  }
-
-                  let currentOffsetWithinLine = 0; // Tracks character position within the current line string
-                  
-                  const segments = line.includes(SPECIAL_KEY_TEXT)
-                    ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
-                    : [line]; // Treat the whole line as a single segment if no SPECIAL_KEY_TEXT
-
-                  const processedSegments = segments.map((segment, segmentIdx) => {
-                    if (segment === SPECIAL_KEY_TEXT) {
-                      const segmentKey = `seg-${lineIdx}-${segmentIdx}-xerofag`;
-                      // Increment offset for next segment/char within this line
-                      currentOffsetWithinLine += segment.length;
-                      return <span key={segmentKey} className="xerofag-highlight">{segment}</span>;
-                    } else {
-                      const segmentChars = segment.split('').map((char, charIdxInSegment) => {
-                        const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
-                        const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
-                        
-                        if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
-                          const animationClass = getRandomAnimationClass();
-                          // console.log('Applying .ghost-char to:', char, 'at global index:', charGlobalIndex, 'with key:', charKey, 'animation:', animationClass);
-                          return <span key={charKey} className={`ghost-char ${animationClass}`}>{char}</span>;
-                        } else {
-                          return char;
-                        }
-                      });
-                      // Increment offset for next segment/char within this line
-                      currentOffsetWithinLine += segment.length;
-                      return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
-                    }
-                  });
-
-                  return (
-                    <div
-                      key={lineIdx}
-                      className="typewriter-line"
-                      ref={isLastLineOfRenderedSet ? lastLineRef : null}
-                    >
-                      <span className="last-line-content">
-                        {processedSegments}
-                        {isLastLineOfRenderedSet && showCursor && (
-                          <span
-                            className={"striker-cursor"}
-                            ref={strikerRef}
-                            style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
-                          />
-                        )}
-                      </span>
+              {fadeState && fadeState.isActive ? (
+                (() => {
+                  const fadeLines = fadeState.to_text.split('\n').slice(0, MAX_LINES);
+                  return fadeLines.map((line, lineIdx) => (
+                    <div key={`fade-${lineIdx}`} className="typewriter-line">
+                      {line}
                     </div>
-                  );
-                });
-              })()}
+                  ));
+                })()
+              ) : (
+                (() => {
+                  const pageTextLength = pageText.length;
+                  const fullCombinedText = pageText + ghostText; 
+                  const originalLines = fullCombinedText.split('\n'); 
+                  const allLinesToRender = originalLines.slice(0, MAX_LINES);
+                  
+                  return allLinesToRender.map((line, lineIdx) => {
+                    const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
+                    
+                    let currentLineGlobalStartOffset = 0;
+                    for(let i=0; i < lineIdx; i++) {
+                      currentLineGlobalStartOffset += originalLines[i].length + 1; 
+                    }
+
+                    let currentOffsetWithinLine = 0; 
+                    
+                    const segments = line.includes(SPECIAL_KEY_TEXT)
+                      ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
+                      : [line]; 
+
+                    const processedSegments = segments.map((segment, segmentIdx) => {
+                      if (segment === SPECIAL_KEY_TEXT) {
+                        const segmentKey = `seg-${lineIdx}-${segmentIdx}-xerofag`;
+                        currentOffsetWithinLine += segment.length;
+                        return <span key={segmentKey} className="xerofag-highlight">{segment}</span>;
+                      } else {
+                        const segmentChars = segment.split('').map((char, charIdxInSegment) => {
+                          const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
+                          const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
+                          
+                          if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
+                            const animationClass = getRandomAnimationClass();
+                            return <span key={charKey} className={`ghost-char ${animationClass}`}>{char}</span>;
+                          } else {
+                            return char;
+                          }
+                        });
+                        currentOffsetWithinLine += segment.length;
+                        return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
+                      }
+                    });
+
+                    return (
+                      <div
+                        key={lineIdx}
+                        className="typewriter-line"
+                        ref={isLastLineOfRenderedSet ? lastLineRef : null}
+                      >
+                        <span className="last-line-content">
+                          {processedSegments}
+                          {isLastLineOfRenderedSet && showCursor && (
+                            <span
+                              className={"striker-cursor"}
+                              ref={strikerRef}
+                              style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
+                            />
+                          )}
+                        </span>
+                      </div>
+                    );
+                  });
+                })()
+              )}
             </div>
           </>
         )}
