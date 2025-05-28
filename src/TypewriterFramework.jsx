@@ -4,6 +4,7 @@ import TurnPageLever from './TurnPageLever.jsx';
 import Keyboard from './components/typewriter/Keyboard.jsx';
 import PaperDisplay from './components/typewriter/PaperDisplay.jsx';
 import PageNavigation from './components/typewriter/PageNavigation.jsx'; // Import the new PageNavigation component
+import OrreyComponent from './OrreyComponent.jsx';
 import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines } from './utils.js';
 import { fetchNextFilmImage, fetchTypewriterReply, fetchShouldGenerateContinuation } from './apiService.js';
 
@@ -884,6 +885,7 @@ useEffect(() => {
   />
 </div>
 
+      <OrreyComponent style={{ position: 'absolute', bottom: '20px', right: '20px', left: 'auto', zIndex: 100 }} />
     </div>
   );
 };
