@@ -315,7 +315,6 @@ function typingReducer(state, action) {
       };
     case typingActionTypes.SEQUENCE_COMPLETE:
     case typingActionTypes.CANCEL_SEQUENCE:
-      // Both can share the same logic for now
       return {
         ...state,
         actionSequence: [],
@@ -621,7 +620,6 @@ const TypewriterFramework = () => {
           }
           return updatedPages;
         });
-
       }
       playKeySound();
       return; 
@@ -813,7 +811,6 @@ useEffect(() => {
     const pauseSeconds = (Date.now() - ghostwriterState.lastUserInputTime) / 1000;
 
     if (ghostwriterState.responseQueued) return; // Already waiting for a response or sequence to finish
-    
     // Inactivity Trigger
     if (
       pauseSeconds >= 15 &&
@@ -888,6 +885,7 @@ useEffect(() => {
 
     const currentText = pages[currentPage]?.text || ''; // Get current page text
     const mergedText = currentText + fullGhostText; // Merged text
+
     const mergedLines = mergedText.split('\n').length;
     const newTextForPage =
       mergedLines > MAX_LINES
@@ -908,6 +906,7 @@ useEffect(() => {
     
     dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+
   };
 
   // --- Focus on Mount ---
