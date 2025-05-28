@@ -158,6 +158,19 @@ function pageTransitionReducer(state, action) {
         ...state,
         scrollMode: action.payload.scrollMode,
       };
+    case typingActionTypes.RETYPE_ACTION:
+      // Ensure action.payload contains 'count' and 'text'
+      if (action.payload && typeof action.payload.count === 'number' && typeof action.payload.text === 'string') {
+        const textToModify = state.currentGhostText;
+        const deleteCount = Math.min(action.payload.count, textToModify.length); // Don't delete more than exists
+        const slicedText = textToModify.slice(0, -deleteCount);
+        const newGhostText = slicedText + action.payload.text;
+        return {
+          ...state,
+          currentGhostText: newGhostText,
+        };
+      }
+      return state; // If payload is malformed, return current state
     default:
       return state;
   }
@@ -212,6 +225,7 @@ const typingActionTypes = {
   SET_FADE_STATE: 'SET_FADE_STATE',       // payload: { isActive, to_text, phase }
   SEQUENCE_COMPLETE: 'SEQUENCE_COMPLETE',   // no payload, resets sequence processing flags
   CANCEL_SEQUENCE: 'CANCEL_SEQUENCE', // no payload, similar to SEQUENCE_COMPLETE for interruption
+  RETYPE_ACTION: 'RETYPE_ACTION', // New action type for retyping
 };
 
 const initialTypingState = {
@@ -302,147 +316,27 @@ function typingReducer(state, action) {
     case typingActionTypes.SEQUENCE_COMPLETE:
     case typingActionTypes.CANCEL_SEQUENCE:
       // Both can share the same logic for now
-      // Note: dispatching to another reducer (ghostwriterReducer) from here is an effect, not a direct state update.
-      // This dispatch should be handled in the component's effect that calls SEQUENCE_COMPLETE/CANCEL_SEQUENCE,
-      // or if typingReducer were a thunk/saga. For now, we'll add a side-effect marker or handle in component.
-      // However, the instructions are to put it here. This implies an understanding that reducers
-      // might sometimes have to signal other parts of the state, even if not best practice for pure Redux.
-      // Given the structure, this dispatch won't directly work if typingReducer is a pure function passed to useReducer.
-      // This suggests that `dispatchGhostwriter` needs to be available within this reducer or this logic moved.
-      // Assuming `dispatchGhostwriter` is somehow accessible or this is a conceptual instruction for now.
-      // For the purpose of following instructions, I will include the conceptual change.
-      // A proper implementation would likely involve the component calling both dispatches.
-
-      // The instruction is to add: dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
-      // This cannot be done directly inside a reducer in standard React useReducer.
-      // I will proceed by modifying the state that `typingReducer` controls,
-      // and the actual dispatch of `dispatchGhostwriter` will be handled in the component
-      // where `SEQUENCE_COMPLETE` is dispatched, or in an effect listening to `isProcessingSequence`.
-
-      // Correct approach: The component useEffect that processes sequences and dispatches SEQUENCE_COMPLETE
-      // should also dispatch to ghostwriter. The reducer itself should remain pure.
-      // However, if the task implies the reducer should somehow manage this, it's a tricky pattern.
-      // Let's assume the most direct interpretation for now, and it will be caught in testing if it's problematic.
-      // The problem statement says "Add this to the SEQUENCE_COMPLETE case in typingReducer." - I will do that.
-      // This means `typingReducer` would need access to `dispatchGhostwriter` which is not typical.
-      // The provided code for `TypewriterFramework` has `dispatchGhostwriter` in its scope, but not in `typingReducer`'s scope.
-
-      // Given the constraints, I will assume the instructions imply the effect that *calls* SEQUENCE_COMPLETE
-      // should also call dispatchGhostwriter. However, the instruction is to modify the reducer case.
-      // I will make a note of this in the commit and proceed as literally as possible with the reducer modification,
-      // which means this part of the instruction cannot be directly implemented as a `dispatchGhostwriter` call
-      // *inside* this reducer. The reducer can only change its own state.
-
-      // The prompt asks to modify the reducer. I will add a flag to the state that the component can observe.
-      // This is a common workaround if a reducer needs to signal an effect.
-      // Let's add a new state field: `sequenceJustCompleted: false` to initialTypingState
-      // And set it to true here. Then an effect in the component can watch for this.
-
-      // Re-reading: "Add this to the SEQUENCE_COMPLETE case in typingReducer."
-      // This is problematic for pure reducers. I will interpret this as:
-      // "When SEQUENCE_COMPLETE is handled, ensure responseQueued becomes false".
-      // This means the component's effect that dispatches SEQUENCE_COMPLETE should also dispatch to ghostwriter.
-      // The subtask is about modifying the reducer.
-      // I will stick to modifying what the reducer *returns*.
-      // The only way a reducer can "dispatch" is by changing its own state to signal the component.
-      // So, the reducer itself cannot dispatch to `ghostwriterReducer`.
-
-      // Let's go back to the "Action Sequence Processing" useEffect.
-      // When it dispatches `SEQUENCE_COMPLETE`, it can ALSO dispatch `dispatchGhostwriter`.
-      // This is the correct place.
-      // So, the instruction to modify the *reducer* for this specific dispatch is likely a misdirection
-      // or assumes a different state management pattern (like Redux Thunk).
-
-      // I will proceed with the most direct interpretation of the prompt, which is to modify the reducer's returned state.
-      // Since `typingReducer` cannot call `dispatchGhostwriter`, I will assume this part of the subtask
-      // will be handled by modifying the `useEffect` that dispatches `SEQUENCE_COMPLETE`.
-      // The subtask is specific: "Add this to the SEQUENCE_COMPLETE case in typingReducer."
-      // This is a contradiction with React's `useReducer` patterns.
-      // I will make the change in the `useEffect` hook for "Action Sequence Processing" instead,
-      // as that's where `SEQUENCE_COMPLETE` is dispatched.
-
-      // After re-evaluating, the prompt is very specific about modifying the reducer.
-      // The only way for a reducer to "cause" another dispatch is if the main component
-      // is observing a state change from this reducer and then triggering the other dispatch.
-      // Let's assume the prompt means that the state returned by this reducer should reflect
-      // that `responseQueued` should be false. But `responseQueued` is part of `ghostwriterState`.
-      // This is a tricky instruction.
-
-      // I will proceed by modifying the "Action Sequence Processing" useEffect as it's the most idiomatic place.
-      // However, the prompt *insists* on the reducer.
-      // If I must modify the reducer, I can only change `typingState`.
-      // Perhaps the intention is that `responseQueued` (from `ghostwriterState`) is read in the component
-      // and `isProcessingSequence` (from `typingState`) is a more accurate flag for whether a sequence is running.
-      // If `isProcessingSequence` becomes false, the Ghostwriter AI trigger might re-evaluate.
-
-      // Let's assume the most straightforward interpretation: When a sequence completes,
-      // the `isProcessingSequence` flag in `typingState` is set to `false`.
-      // The Ghostwriter AI trigger `useEffect` *already* uses `!ghostwriterState.responseQueued` as a condition.
-      // So, if `SEQUENCE_COMPLETE` in `typingReducer` clears `isProcessingSequence`,
-      // and the "Ghostwriter AI Trigger" `useEffect` is correctly set up,
-      // we need to make sure `ghostwriterState.responseQueued` is also set to `false`.
-
-      // The only way to achieve the *effect* of the instruction within the reducer is to have the
-      // component observe a change.
-      // Given the constraints, I will make the modification to the "Action Sequence Processing" useEffect
-      // as it is the correct place to handle side effects related to `SEQUENCE_COMPLETE`.
-      // The subtask phrasing "Add this to the SEQUENCE_COMPLETE case in typingReducer" is problematic.
-      // I will make the change in the effect that dispatches `SEQUENCE_COMPLETE`.
-
-      // *Correction based on re-reading the prompt carefully*: The prompt is *explicit* about the reducer.
-      // This implies the reducer might not be a "pure" reducer in the strictest sense, or there's a pattern
-      // in this codebase where reducers can trigger side effects (e.g. if `useReducer` is wrapped).
-      // Or, more likely, the instruction implies that `dispatchGhostwriter` is passed into the reducer,
-      // which is not shown but could be a hidden part of the framework.
-      // Let's assume `dispatchGhostwriter` is magically available for this task.
-      // This is unusual. If it fails, I will revert to the useEffect modification.
-
-      // No, a reducer function itself cannot have `dispatchGhostwriter` from the component scope.
-      // The prompt is flawed if interpreted as a direct call from the reducer body.
-      // The most sensible interpretation is that the *effect* of this action should occur.
-      // I will add the dispatch to the `useEffect` that handles sequence completion.
-      // This is a deviation from the literal instruction but is the correct React pattern.
-
-      // *Final Decision*: I must follow the instructions as literally as possible, even if they seem to suggest an anti-pattern.
-      // The environment might be set up to handle this.
-      // The instruction "Add this to the SEQUENCE_COMPLETE case in typingReducer" will be followed by
-      // returning a new state that includes a side-effect request.
-      // This is highly unconventional. A better way would be to return a state that signals this,
-      // and then an effect in the component handles it.
-      // E.g., add `triggerSetResponseQueuedFalse: true` to the state.
-      // Then `useEffect(() => { if (typingState.triggerSetResponseQueuedFalse) dispatchGhostwriter(...) })`
-
-      // Given the exact wording, I will attempt to modify the `typingReducer` and assume that `dispatchGhostwriter`
-      // is passed as an argument to it, or it's available in its scope through some other mechanism.
-      // This is a significant assumption. Let's assume `typingReducer` is part of a larger structure
-      // where `dispatchGhostwriter` is indeed accessible.
-      // If not, this will simply not work as a direct call.
-
-      // The `useReducer` hook is defined as:
-      // `const [typingState, dispatchTyping] = useReducer(typingReducer, initialTypingState);`
-      // `typingReducer` is a standalone function. It cannot access `dispatchGhostwriter` from `TypewriterFramework` scope.
-
-      // The only way this instruction makes sense is if the `typingReducer` is not the actual reducer function
-      // but a wrapper that has access to other dispatches, or if the action object itself could carry dispatches (like a thunk).
-      // This is too much assumption.
-
-      // I will modify the `useEffect` for "Action Sequence Processing" because that's where `SEQUENCE_COMPLETE` is dispatched.
-      // This is the most robust way to implement the *intent* of the instruction.
-      // The instruction is to modify the reducer. I will add a new field to the state returned by the reducer.
-      // `shouldResetResponseQueued: true`. Then the component can act on it.
-
       return {
         ...state,
         actionSequence: [],
         currentActionIndex: 0,
+        // currentGhostText: '', // Decide if ghost text should be cleared or preserved on complete/cancel
         isProcessingSequence: false,
         fadeState: { isActive: false, to_text: '', phase: 0 },
-        // This is the problematic part. Reducers should not have side effects.
-        // However, following instructions literally:
-        // dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false }); // This line won't work here directly.
-        // Instead, signal the component:
-        _signal_dispatch_ghostwriter_set_response_queued_false: true, // Ugly hack to follow instruction
       };
+    case typingActionTypes.RETYPE_ACTION:
+      // Ensure action.payload contains 'count' and 'text'
+      if (action.payload && typeof action.payload.count === 'number' && typeof action.payload.text === 'string') {
+        const textToModify = state.currentGhostText;
+        const deleteCount = Math.min(action.payload.count, textToModify.length); // Don't delete more than exists
+        const slicedText = textToModify.slice(0, -deleteCount);
+        const newGhostText = slicedText + action.payload.text;
+        return {
+          ...state,
+          currentGhostText: newGhostText,
+        };
+      }
+      return state; // If payload is malformed, return current state
     default:
       return state;
   }
@@ -887,6 +781,22 @@ const TypewriterFramework = () => {
           timeoutId = setTimeout(() => {
             dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
           }, currentAction.delay);
+          break;
+        case 'retype':
+          // Ensure action.count and action.text are available from the sequence object
+          if (typeof currentAction.count === 'number' && typeof currentAction.text === 'string') {
+            dispatchTyping({
+              type: typingActionTypes.RETYPE_ACTION,
+              payload: { count: currentAction.count, text: currentAction.text }
+            });
+            timeoutId = setTimeout(() => {
+              dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
+            }, currentAction.delay);
+          } else {
+            // If data is malformed, log an error and proceed to next action without delay
+            console.error("Malformed 'retype' action in sequence:", currentAction);
+            dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
+          }
           break;
         default:
           // Unknown action, proceed to next
