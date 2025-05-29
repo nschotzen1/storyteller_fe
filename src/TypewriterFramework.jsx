@@ -463,7 +463,7 @@ const TypewriterFramework = () => {
         lastLineRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
       });
     }
-  }, [pageText, ghostText, responses, pageTransitionState.scrollMode]);
+  }, [pageText, ghostText, pageTransitionState.scrollMode]);
 
   // --- PAGE TURN: Scroll up, then slide left (NEW PAGE) ---
   const handlePageTurnScroll = async () => {
@@ -607,51 +607,8 @@ const TypewriterFramework = () => {
 
     if (e.key === 'Backspace') {
       e.preventDefault();
-      // The logic for backspace is now more complex due to sequences.
-      // We dispatch HANDLE_BACKSPACE and the reducer will determine the outcome.
-      // If a sequence is cancelled, or input buffer is modified, or page text update is requested.
-      const oldInputBufferEmpty = typingState.inputBuffer.length === 0;
-      const oldIsProcessingSequence = typingState.isProcessingSequence;
-
+      // The variables oldInputBufferEmpty and oldIsProcessingSequence are removed as they are no longer used.
       dispatchTyping({ type: typingActionTypes.HANDLE_BACKSPACE });
-      
-      // The reducer now handles sequence cancellation directly.
-      // We only need to handle the `requestPageTextUpdate` flag here if it's set by the reducer
-      // AND no sequence was active AND input buffer was initially empty.
-      // This part might need to be re-evaluated based on the `typingState.requestPageTextUpdate` flag
-      // in an effect, as the state isn't updated immediately here.
-
-      // Simplified logic for setPages, relying on the effect for requestPageTextUpdate:
-      // If the reducer decided to request a page text update (e.g., buffer was empty, no sequence active)
-      // that logic is handled by the useEffect watching `typingState.requestPageTextUpdate`.
-      // However, the subtask says:
-      // "Ensure the logic for requestPageTextUpdate is preserved when inputBuffer and sequences are not involved."
-      // The reducer's HANDLE_BACKSPACE sets requestPageTextUpdate if inputBuffer is empty AND not isProcessingSequence.
-      // So, if that condition was met, the effect for requestPageTextUpdate will trigger.
-      // Let's test if we still need the direct setPages here or if the effect is sufficient.
-      // For now, keeping the original direct setPages logic for when no sequence was involved and buffer was empty.
-      if (oldInputBufferEmpty && !oldIsProcessingSequence && typingState.inputBuffer.length === 0 && !typingState.isProcessingSequence) {
-         // This condition means backspace was pressed on an empty buffer with no active sequence,
-         // and the reducer did not start a new sequence or add to buffer (which it shouldn't in this case).
-         // It should have set requestPageTextUpdate to true.
-         // The actual text deletion from `pages` state will be handled by the effect below.
-      }
-      // The original direct setPages call for backspace when buffer and responses were empty:
-      if (typingState.inputBuffer.length === 0 && !typingState.isProcessingSequence && !typingState.currentGhostText && oldInputBufferEmpty && !oldIsProcessingSequence) {
-        // This check is becoming complicated. The reducer sets `requestPageTextUpdate`.
-        // The `useEffect` below acts on it.
-        // Let's remove the direct setPages from here and rely on the effect.
-        // setPages(prev => {
-        //   const updatedPages = [...prev];
-        //   if (updatedPages[currentPage] && updatedPages[currentPage].text.length > 0) {
-        //     updatedPages[currentPage] = {
-        //       ...updatedPages[currentPage],
-        //       text: updatedPages[currentPage].text.slice(0, -1)
-        //     };
-        //   }
-        //   return updatedPages;
-        // });
-      }
       playKeySound();
       return; // Return after handling Backspace
     }
