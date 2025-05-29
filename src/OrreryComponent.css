@@ -1,0 +1,27 @@
+.orrery-container {
+  position: fixed;    /* was: relative */
+  right: 24px;        /* space from right edge */
+  bottom: 24px;       /* space from bottom */
+  background: radial-gradient(ellipse at center, #0a0a0a 0%, #000000 100%);
+  overflow: hidden;
+  z-index: 1000;      /* to ensure it's above most elements */
+}
+
+
+
+
+.orrery-background {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 70%;                /* changed from 120px */
+  height: 70%;               /* changed from 120px */
+  background: url('/assets/orrery/octagonal_base.png');
+  background-size: cover;     /* changed from contain */
+  background-repeat: no-repeat;
+  background-position: center;
+  border: 2px solid #ffcc88;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: inset 0 0 40px rgba(255, 100, 50, 0.3);
+}

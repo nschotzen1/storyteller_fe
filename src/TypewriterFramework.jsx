@@ -4,7 +4,7 @@ import TurnPageLever from './TurnPageLever.jsx';
 import Keyboard from './components/typewriter/Keyboard.jsx';
 import PaperDisplay from './components/typewriter/PaperDisplay.jsx';
 import PageNavigation from './components/typewriter/PageNavigation.jsx'; // Import the new PageNavigation component
-import OrreyComponent from './OrreyComponent.jsx';
+import OrreryComponent from './OrreryComponent.jsx';
 import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines } from './utils.js';
 import { fetchNextFilmImage, fetchTypewriterReply, fetchShouldGenerateContinuation } from './apiService.js';
 
@@ -95,7 +95,7 @@ const pageTransitionActionTypes = {
   START_HISTORY_NAVIGATION: 'START_HISTORY_NAVIGATION',
   SET_SCROLL_MODE: 'SET_SCROLL_MODE',
   // RESET_TRANSITION_STATE can be part of FINISH_SLIDE_ANIMATION or a separate action
-};
+}
 
 const initialPageTransitionState = {
   scrollMode: INITIAL_SCROLL_MODE,
@@ -609,6 +609,7 @@ const TypewriterFramework = () => {
       e.preventDefault();
       // The variables oldInputBufferEmpty and oldIsProcessingSequence are removed as they are no longer used.
       dispatchTyping({ type: typingActionTypes.HANDLE_BACKSPACE });
+
       playKeySound();
       return; // Return after handling Backspace
     }
@@ -620,31 +621,17 @@ const TypewriterFramework = () => {
           }
           return updatedPages;
         });
+
       }
       playKeySound();
-      return; // Return after handling Backspace
+      return; 
     }
-    
-    // For other keys not handled above (like Shift, Ctrl, etc.)
-    // playKeySound() was here, but it should only play for printable characters or specific control keys.
-    // For now, let's assume other keys don't play sounds unless specifically handled.
-    // If specific other keys should play sounds, they need explicit handling.
+
   };
 
   // Effect to handle page text update request from backspace
   useEffect(() => {
     if (typingState.requestPageTextUpdate) {
-      // This effect now solely handles page text deletion when requested by the reducer.
-      setPages(prev => {
-        const updatedPages = [...prev];
-        if (updatedPages[currentPage] && updatedPages[currentPage].text.length > 0) {
-          updatedPages[currentPage] = {
-            ...updatedPages[currentPage],
-            text: updatedPages[currentPage].text.slice(0, -1)
-          };
-        }
-        return updatedPages;
-      });
       dispatchTyping({ type: typingActionTypes.RESET_PAGE_TEXT_UPDATE_REQUEST });
     }
   }, [typingState.requestPageTextUpdate, dispatchTyping, setPages, currentPage]);
@@ -939,7 +926,7 @@ useEffect(() => {
   else if (words > LEVER_LEVEL_WORD_THRESHOLDS[1]) newLevel = 1;
   else newLevel = LEVER_LEVEL_WORD_THRESHOLDS[0]; // Should be 0
   setLeverLevel(newLevel);
-}, [pages, currentPage]);
+  }, [pages, currentPage]);
 
 
   // --- Keyboard Event Handlers for <Keyboard /> component ---
@@ -1096,8 +1083,7 @@ useEffect(() => {
     }}
   />
 </div>
-
-      <OrreyComponent style={{ position: 'absolute', bottom: '20px', right: '20px', left: 'auto', zIndex: 100 }} />
+<OrreryComponent />
     </div>
   );
 };
