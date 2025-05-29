@@ -608,7 +608,6 @@ const TypewriterFramework = () => {
       e.preventDefault();
       // The variables oldInputBufferEmpty and oldIsProcessingSequence are removed as they are no longer used.
       dispatchTyping({ type: typingActionTypes.HANDLE_BACKSPACE });
-
       playKeySound();
       return; // Return after handling Backspace
     }
