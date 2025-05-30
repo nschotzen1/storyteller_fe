@@ -936,3 +936,76 @@
 .ghost-char-pulse {
   animation: pulseSizeChar 1.0s ease-out forwards; /* Duration for pulse */
 }
+
+/* === FADE ACTION STYLES === */
+
+@keyframes textAppearAnimation {
+  from { 
+    opacity: 0;
+    /* Optional: add a slight movement */
+    /* transform: translateY(3px); */
+  }
+  to { 
+    opacity: 1;
+    /* transform: translateY(0); */
+  }
+}
+
+@keyframes textDisappearAnimation {
+  from { 
+    opacity: 1;
+    /* transform: translateY(0); */
+  }
+  to { 
+    opacity: 0;
+    /* transform: translateY(-3px); */
+  }
+}
+
+/*
+  When fadeState.isActive, the main text container (div.typewriter-text) gets:
+  `fade-active fade-phase-X` classes.
+  The content *inside* this container is ALREADY `fadeState.to_text` for the CURRENT phase.
+  So, these animations make the CURRENT `to_text` appear or disappear.
+*/
+
+.typewriter-text.fade-active {
+  /* Default animation properties for active fading elements */
+  animation-duration: 0.7s; /* Duration of the fade effect for a phase */
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards; /* Retain the style of the final keyframe */
+}
+
+/* 
+  Define behavior for each phase.
+  The `to_text` for the phase is rendered by React. This CSS animates that rendered text.
+*/
+
+/* Phase 1: Typically introduces the first piece of new text. */
+.typewriter-text.fade-active.fade-phase-1 {
+  animation-name: textAppearAnimation;
+}
+
+/* Phase 2: Continues the sequence, new text appears. */
+.typewriter-text.fade-active.fade-phase-2 {
+  animation-name: textAppearAnimation;
+}
+
+/* Phase 3: Further continuation, new text appears. */
+.typewriter-text.fade-active.fade-phase-3 {
+  animation-name: textAppearAnimation;
+}
+
+/* Phase 4: Final phase. 
+   If fadeState.to_text for this phase is an empty string, 
+   `textAppearAnimation` will make this empty string "appear" (i.e., content area becomes blank),
+   effectively achieving "fading to nothing" if the previous phase had text.
+   If this phase itself needs to animate *out* the text from phase 3, the JS logic would need adjustment.
+   Based on current JS, phase 4 renders its own to_text, and this animates it.
+*/
+.typewriter-text.fade-active.fade-phase-4 {
+  animation-name: textAppearAnimation; 
+  /* If to_text is "", opacity from 0 to 1 on an empty string results in no visible change, looks blank. */
+  /* If phase 4 is *always* a fade out, and PaperDisplay rendered previous text:
+  /* animation-name: textDisappearAnimation; */
+}

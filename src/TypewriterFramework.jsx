@@ -5,6 +5,7 @@ import Keyboard from './components/typewriter/Keyboard.jsx';
 import PaperDisplay from './components/typewriter/PaperDisplay.jsx';
 import PageNavigation from './components/typewriter/PageNavigation.jsx'; // Import the new PageNavigation component
 import OrreryComponent from './OrreryComponent.jsx';
+import useActionSequenceProcessor from './hooks/UseActionSequenceProcessor.js';
 import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines } from './utils.js';
 import { fetchNextFilmImage, fetchTypewriterReply, fetchShouldGenerateContinuation } from './apiService.js';
 
@@ -158,7 +159,6 @@ function pageTransitionReducer(state, action) {
         ...state,
         scrollMode: action.payload.scrollMode,
       };
-    case typingActionTypes.RETYPE_ACTION:
       // Ensure action.payload contains 'count' and 'text'
       if (action.payload && typeof action.payload.count === 'number' && typeof action.payload.text === 'string') {
         const textToModify = state.currentGhostText;
@@ -324,7 +324,7 @@ function typingReducer(state, action) {
         isProcessingSequence: false,
         fadeState: { isActive: false, to_text: '', phase: 0 },
       };
-    case typingActionTypes.RETYPE_ACTION:
+    
       // Ensure action.payload contains 'count' and 'text'
       if (action.payload && typeof action.payload.count === 'number' && typeof action.payload.text === 'string') {
         const textToModify = state.currentGhostText;
@@ -680,119 +680,18 @@ const TypewriterFramework = () => {
     return () => clearInterval(interval);
   }, [keyTextures]);
 
-  // --- Action Sequence Processing ---
-  useEffect(() => {
-    let timeoutId;
-
-    if (typingState.isProcessingSequence && typingState.currentActionIndex < typingState.actionSequence.length) {
-      const currentAction = typingState.actionSequence[typingState.currentActionIndex];
-
-      // Refined Fade Deactivation Logic: Part 1
-      // If fade was active and current action is not a fade, deactivate fade first.
-      if (typingState.fadeState.isActive && currentAction.action !== 'fade') {
-        dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
-      }
-
-      switch (currentAction.action) {
-        case 'type':
-          const newGhostTextType = typingState.currentGhostText + currentAction.text;
-          dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: newGhostTextType });
-          timeoutId = setTimeout(() => {
-            dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-          }, currentAction.delay);
-          break;
-        case 'pause':
-          timeoutId = setTimeout(() => {
-            dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-          }, currentAction.delay);
-          break;
-        case 'delete':
-          const newGhostTextDelete = typingState.currentGhostText.slice(0, -currentAction.count);
-          dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: newGhostTextDelete });
-          timeoutId = setTimeout(() => {
-            dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-          }, currentAction.delay);
-          break;
-        case 'fade':
-          dispatchTyping({
-            type: typingActionTypes.SET_FADE_STATE,
-            payload: { isActive: true, to_text: currentAction.to_text, phase: currentAction.phase }
-          });
-          timeoutId = setTimeout(() => {
-            dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-          }, currentAction.delay);
-          break;
-        case 'retype':
-          // Ensure action.count and action.text are available from the sequence object
-          if (typeof currentAction.count === 'number' && typeof currentAction.text === 'string') {
-            dispatchTyping({
-              type: typingActionTypes.RETYPE_ACTION,
-              payload: { count: currentAction.count, text: currentAction.text }
-            });
-            timeoutId = setTimeout(() => {
-              dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-            }, currentAction.delay);
-          } else {
-            // If data is malformed, log an error and proceed to next action without delay
-            console.error("Malformed 'retype' action in sequence:", currentAction);
-            dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-          }
-          break;
-        default:
-          // Unknown action, proceed to next
-          timeoutId = setTimeout(() => {
-            dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-          }, 0);
-          break;
-      }
-    } else if (typingState.isProcessingSequence && typingState.currentActionIndex >= typingState.actionSequence.length) {
-      // All actions processed, sequence is naturally completing.
-      const finalGhostTextOfSequence = typingState.currentGhostText;
-      const currentPageText = pages[currentPage]?.text || ''; // pages and currentPage are now dependencies
-      
-      if (finalGhostTextOfSequence) {
-        const textToCommit = currentPageText + finalGhostTextOfSequence;
-        const textToCommitLines = textToCommit.split('\n').length;
-        const newTextForPage =
-          textToCommitLines > MAX_LINES // MAX_LINES is a constant, not a dependency
-            ? textToCommit.split('\n').slice(0, MAX_LINES).join('\n')
-            : textToCommit;
-
-        setPages(prev => { // setPages is a dependency
-          const updatedPages = [...prev];
-          updatedPages[currentPage] = { // currentPage is a dependency
-            ...updatedPages[currentPage],
-            text: newTextForPage 
-          };
-          return updatedPages;
-        });
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
-      } else {
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentPageText.length });
-      }
-      
-      dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE }); 
-      if (typingState.fadeState.isActive) {
-        dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
-      }
-      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
-    }
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [
-    typingState.isProcessingSequence, 
-    typingState.actionSequence, 
-    typingState.currentActionIndex, 
-    typingState.fadeState.isActive, 
-    // typingState.currentGhostText, // Removed as per instruction
-    dispatchTyping, 
-    dispatchGhostwriter, 
-    pages, 
-    currentPage, 
-    setPages 
-  ]);
+   // --- Action Sequence Processing (moved to custom hook) ---
+  useActionSequenceProcessor(
+    typingState,
+    dispatchTyping,
+    dispatchGhostwriter,
+    pages,
+    currentPage,
+    setPages,
+    MAX_LINES,
+    typingActionTypes, // Pass locally defined action types
+    ghostwriterActionTypes // Pass locally defined action types
+  );
 
 
   // --- Ghost Key Typing Simulation ---
