@@ -320,7 +320,7 @@ function typingReducer(state, action) {
         ...state,
         actionSequence: [],
         currentActionIndex: 0,
-        // currentGhostText: '', // Decide if ghost text should be cleared or preserved on complete/cancel
+        currentGhostText: '', // Ensure ghost text is cleared on sequence completion/cancellation
         isProcessingSequence: false,
         fadeState: { isActive: false, to_text: '', phase: 0 },
       };
@@ -763,19 +763,53 @@ const TypewriterFramework = () => {
           break;
       }
     } else if (typingState.isProcessingSequence && typingState.currentActionIndex >= typingState.actionSequence.length) {
-      // All actions processed, complete the sequence
-      dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
-      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false }); // Added as per instruction for SEQUENCE_COMPLETE
-      // Refined Fade Deactivation Logic: Part 2 (End of Sequence)
+      // All actions processed, sequence is naturally completing.
+      const finalGhostTextOfSequence = typingState.currentGhostText;
+      const currentPageText = pages[currentPage]?.text || ''; // pages and currentPage are now dependencies
+      
+      if (finalGhostTextOfSequence) {
+        const textToCommit = currentPageText + finalGhostTextOfSequence;
+        const textToCommitLines = textToCommit.split('\n').length;
+        const newTextForPage =
+          textToCommitLines > MAX_LINES // MAX_LINES is a constant, not a dependency
+            ? textToCommit.split('\n').slice(0, MAX_LINES).join('\n')
+            : textToCommit;
+
+        setPages(prev => { // setPages is a dependency
+          const updatedPages = [...prev];
+          updatedPages[currentPage] = { // currentPage is a dependency
+            ...updatedPages[currentPage],
+            text: newTextForPage 
+          };
+          return updatedPages;
+        });
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
+      } else {
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentPageText.length });
+      }
+      
+      dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE }); 
       if (typingState.fadeState.isActive) {
         dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
       }
+      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
     }
 
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [typingState.isProcessingSequence, typingState.actionSequence, typingState.currentActionIndex, typingState.fadeState.isActive, dispatchTyping, dispatchGhostwriter]); // Added dispatchGhostwriter
+  }, [
+    typingState.isProcessingSequence, 
+    typingState.actionSequence, 
+    typingState.currentActionIndex, 
+    typingState.fadeState.isActive, 
+    typingState.currentGhostText, // Added because finalGhostTextOfSequence depends on it
+    dispatchTyping, 
+    dispatchGhostwriter, 
+    pages, // Added
+    currentPage, // Added
+    setPages // Added
+  ]);
 
 
   // --- Ghost Key Typing Simulation ---
@@ -792,13 +826,16 @@ useEffect(() => {
     const pauseSeconds = (Date.now() - ghostwriterState.lastUserInputTime) / 1000;
 
     if (ghostwriterState.responseQueued) return; // Already waiting for a response or sequence to finish
-
+    
+    // Inactivity Trigger
     if (
       pauseSeconds >= 15 &&
-      !typingState.isProcessingSequence && 
-      typingState.inputBuffer.length === 0
+      !typingState.isProcessingSequence &&
+      typingState.inputBuffer.length === 0 &&
+      (fullText.length === ghostwriterState.lastGeneratedLength || ghostwriterState.lastGeneratedLength === 0) // Added condition
     ) {
-      if (typingState.typingAllowed) { 
+      if (typingState.typingAllowed) {
+        // console.log("Ghostwriter: Triggering due to inactivity.");
         fetchTypewriterReply(fullText, sessionId).then(response => {
           const reply = response.data;
           if (reply && reply.writing_sequence && reply.metadata) {
@@ -855,9 +892,15 @@ useEffect(() => {
   const commitGhostText = () => {
     // Get ghost text from typingState.currentGhostText
     const fullGhostText = typingState.currentGhostText;
-    if (!fullGhostText && !typingState.isProcessingSequence) return; // No ghost text or active sequence to commit/cancel
+    // Modified guard clause as per instructions
+    if (!fullGhostText && !typingState.isProcessingSequence) {
+        // If no ghost text and not processing, ensure responseQueued is false.
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+        return;
+    }
 
-    const mergedText = pageText + fullGhostText; // fullGhostText might be empty if sequence is cancelled early
+    const currentText = pages[currentPage]?.text || ''; // Get current page text
+    const mergedText = currentText + fullGhostText; // Merged text
     const mergedLines = mergedText.split('\n').length;
     const newTextForPage =
       mergedLines > MAX_LINES
@@ -868,13 +911,16 @@ useEffect(() => {
       const updatedPages = [...prev];
       updatedPages[currentPage] = {
         ...updatedPages[currentPage],
-        text: newTextForPage
+        text: newTextForPage // Use the potentially truncated newTextForPage
       };
       return updatedPages;
     });
 
-    // Signal that the sequence is complete or cancelled by user action
+    // Update lastGeneratedLength to the length of the fully committed text
+    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
+    
     dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
+    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
   };
 
   // --- Focus on Mount ---
