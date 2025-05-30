@@ -95,7 +95,7 @@ const pageTransitionActionTypes = {
   START_HISTORY_NAVIGATION: 'START_HISTORY_NAVIGATION',
   SET_SCROLL_MODE: 'SET_SCROLL_MODE',
   // RESET_TRANSITION_STATE can be part of FINISH_SLIDE_ANIMATION or a separate action
-}
+};
 
 const initialPageTransitionState = {
   scrollMode: INITIAL_SCROLL_MODE,
@@ -315,6 +315,7 @@ function typingReducer(state, action) {
       };
     case typingActionTypes.SEQUENCE_COMPLETE:
     case typingActionTypes.CANCEL_SEQUENCE:
+      // Both can share the same logic for now
       return {
         ...state,
         actionSequence: [],
@@ -611,24 +612,22 @@ const TypewriterFramework = () => {
       playKeySound();
       return; // Return after handling Backspace
     }
-          if (updatedPages[currentPage] && updatedPages[currentPage].text.length > 0) {
-            updatedPages[currentPage] = {
-              ...updatedPages[currentPage],
-              text: updatedPages[currentPage].text.slice(0, -1)
-            };
-          }
-          return updatedPages;
-        });
-      }
-      playKeySound();
-      return; 
-    }
-
   };
 
   // Effect to handle page text update request from backspace
   useEffect(() => {
     if (typingState.requestPageTextUpdate) {
+      // This effect now solely handles page text deletion when requested by the reducer.
+      setPages(prev => {
+        const updatedPages = [...prev];
+        if (updatedPages[currentPage] && updatedPages[currentPage].text.length > 0) {
+          updatedPages[currentPage] = {
+            ...updatedPages[currentPage],
+            text: updatedPages[currentPage].text.slice(0, -1)
+          };
+        }
+        return updatedPages;
+      });
       dispatchTyping({ type: typingActionTypes.RESET_PAGE_TEXT_UPDATE_REQUEST });
     }
   }, [typingState.requestPageTextUpdate, dispatchTyping, setPages, currentPage]);
@@ -787,12 +786,12 @@ const TypewriterFramework = () => {
     typingState.actionSequence, 
     typingState.currentActionIndex, 
     typingState.fadeState.isActive, 
-    typingState.currentGhostText, // Added because finalGhostTextOfSequence depends on it
+    // typingState.currentGhostText, // Removed as per instruction
     dispatchTyping, 
     dispatchGhostwriter, 
-    pages, // Added
-    currentPage, // Added
-    setPages // Added
+    pages, 
+    currentPage, 
+    setPages 
   ]);
 
 
@@ -810,6 +809,7 @@ useEffect(() => {
     const pauseSeconds = (Date.now() - ghostwriterState.lastUserInputTime) / 1000;
 
     if (ghostwriterState.responseQueued) return; // Already waiting for a response or sequence to finish
+    
     // Inactivity Trigger
     if (
       pauseSeconds >= 15 &&
@@ -884,7 +884,6 @@ useEffect(() => {
 
     const currentText = pages[currentPage]?.text || ''; // Get current page text
     const mergedText = currentText + fullGhostText; // Merged text
-
     const mergedLines = mergedText.split('\n').length;
     const newTextForPage =
       mergedLines > MAX_LINES
@@ -905,7 +904,6 @@ useEffect(() => {
     
     dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
-
   };
 
   // --- Focus on Mount ---
@@ -924,7 +922,7 @@ useEffect(() => {
   else if (words > LEVER_LEVEL_WORD_THRESHOLDS[1]) newLevel = 1;
   else newLevel = LEVER_LEVEL_WORD_THRESHOLDS[0]; // Should be 0
   setLeverLevel(newLevel);
-  }, [pages, currentPage]);
+}, [pages, currentPage]);
 
 
   // --- Keyboard Event Handlers for <Keyboard /> component ---
@@ -1081,7 +1079,8 @@ useEffect(() => {
     }}
   />
 </div>
-<OrreryComponent />
+
+      <OrreryComponent  />
     </div>
   );
 };
