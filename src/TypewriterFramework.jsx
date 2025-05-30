@@ -95,7 +95,7 @@ const pageTransitionActionTypes = {
   START_HISTORY_NAVIGATION: 'START_HISTORY_NAVIGATION',
   SET_SCROLL_MODE: 'SET_SCROLL_MODE',
   // RESET_TRANSITION_STATE can be part of FINISH_SLIDE_ANIMATION or a separate action
-};
+}
 
 const initialPageTransitionState = {
   scrollMode: INITIAL_SCROLL_MODE,
@@ -610,7 +610,7 @@ const TypewriterFramework = () => {
       // The variables oldInputBufferEmpty and oldIsProcessingSequence are removed as they are no longer used.
       dispatchTyping({ type: typingActionTypes.HANDLE_BACKSPACE });
       playKeySound();
-      return; // Return after handling Backspace
+      return; 
     }
   };
 
@@ -922,7 +922,7 @@ useEffect(() => {
   else if (words > LEVER_LEVEL_WORD_THRESHOLDS[1]) newLevel = 1;
   else newLevel = LEVER_LEVEL_WORD_THRESHOLDS[0]; // Should be 0
   setLeverLevel(newLevel);
-}, [pages, currentPage]);
+  }, [pages, currentPage]);
 
 
   // --- Keyboard Event Handlers for <Keyboard /> component ---
@@ -1079,8 +1079,8 @@ useEffect(() => {
     }}
   />
 </div>
+<OrreryComponent />
 
-      <OrreryComponent  />
     </div>
   );
 };
