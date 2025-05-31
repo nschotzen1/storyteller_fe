@@ -38,7 +38,7 @@ export const fetchTypewriterReply = async (text, sessionId) => {
   }
 };
 
-export const fetchShouldGenerateContinuation = async (currentText, latestAddition, latestPauseSeconds) => {
+export const fetchShouldGenerateContinuation = async (currentText, latestAddition, latestPauseSeconds, ghostWriterResponseLength) => {
   try {
     const response = await fetch(`${SERVER}/api/shouldGenerateContinuation`, {
       method: "POST",
@@ -46,7 +46,8 @@ export const fetchShouldGenerateContinuation = async (currentText, latestAdditio
       body: JSON.stringify({
         currentText,
         latestAddition,
-        latestPauseSeconds
+        latestPauseSeconds,
+        ghostWriterResponseLength
       })
     });
     if (!response.ok) {

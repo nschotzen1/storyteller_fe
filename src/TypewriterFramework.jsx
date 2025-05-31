@@ -182,12 +182,14 @@ const ghostwriterActionTypes = {
   SET_RESPONSE_QUEUED: 'SET_RESPONSE_QUEUED',
   SET_LAST_GENERATED_LENGTH: 'SET_LAST_GENERATED_LENGTH',
   RESET_GHOSTWRITER_STATE: 'RESET_GHOSTWRITER_STATE',
+  SET_LAST_GHOST_WRITER_RESPONSE_LENGTH: 'SET_LAST_GHOST_WRITER_RESPONSE_LENGTH',
 };
 
 const initialGhostwriterState = {
   lastUserInputTime: Date.now(),
   responseQueued: false,
   lastGeneratedLength: 0,
+  lastGhostWriterResponseLength: 0,
 };
 
 function ghostwriterReducer(state, action) {
@@ -203,6 +205,8 @@ function ghostwriterReducer(state, action) {
         ...initialGhostwriterState,
         lastUserInputTime: Date.now(), // Reset time to now
       };
+    case ghostwriterActionTypes.SET_LAST_GHOST_WRITER_RESPONSE_LENGTH:
+      return { ...state, lastGhostWriterResponseLength: action.payload };
     default:
       return state;
   }
@@ -748,6 +752,7 @@ const TypewriterFramework = () => {
     } else if (typingState.isProcessingSequence && typingState.currentActionIndex >= typingState.actionSequence.length) {
       // All actions processed, sequence is naturally completing.
       const finalGhostTextOfSequence = typingState.currentGhostText;
+      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOST_WRITER_RESPONSE_LENGTH, payload: finalGhostTextOfSequence.length });
       const currentPageText = pages[currentPage]?.text || ''; // pages and currentPage are now dependencies
       
       if (finalGhostTextOfSequence) {
@@ -833,7 +838,7 @@ useEffect(() => {
         });
       }
     } else if (addition.trim().split(/\s+/).length >= GHOSTWRITER_MIN_WORDS_TRIGGER && !typingState.isProcessingSequence) {
-      fetchShouldGenerateContinuation(fullText, addition, pauseSeconds).then(shouldGenerateData => {
+      fetchShouldGenerateContinuation(fullText, addition, pauseSeconds, ghostwriterState.lastGhostWriterResponseLength).then(shouldGenerateData => {
         const shouldGenerate = shouldGenerateData.data.shouldGenerate;
         if (shouldGenerate) {
           fetchTypewriterReply(fullText, sessionId).then(response => {
@@ -863,7 +868,8 @@ useEffect(() => {
   typingState.inputBuffer, // Added
   ghostwriterState.lastUserInputTime, 
   ghostwriterState.responseQueued, 
-  ghostwriterState.lastGeneratedLength, 
+  ghostwriterState.lastGeneratedLength,
+  ghostwriterState.lastGhostWriterResponseLength, // Added
   sessionId, 
   dispatchTyping, 
   dispatchGhostwriter,
@@ -901,6 +907,7 @@ useEffect(() => {
 
     // Update lastGeneratedLength to the length of the fully committed text
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
+    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOST_WRITER_RESPONSE_LENGTH, payload: fullGhostText.length });
     
     dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
