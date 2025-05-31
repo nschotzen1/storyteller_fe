@@ -230,12 +230,15 @@ const PaperDisplay = ({
               }}
             />
             <div
-              className="typewriter-text film-overlay-text"
+              className={`typewriter-text film-overlay-text ${fadeState && fadeState.isActive ? `fade-active fade-phase-${fadeState.phase}` : ''}`}
               style={textStyles} // Apply the combined styles here
+              
             >
               {fadeState && fadeState.isActive ? (
                 (() => {
-                  const fadeLines = fadeState.to_text.split('\n').slice(0, MAX_LINES);
+                  // Display fadeState.to_text based on the current phase
+                  const textToDisplay = fadeState.to_text; // As per requirement, text displayed should be to_text
+                  const fadeLines = textToDisplay.split('\n').slice(0, MAX_LINES);
                   return fadeLines.map((line, lineIdx) => (
                     <div key={`fade-${lineIdx}`} className="typewriter-line">
                       {line}
