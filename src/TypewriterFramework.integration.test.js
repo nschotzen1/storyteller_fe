@@ -1,6 +1,6 @@
 // src/TypewriterFramework.integration.test.js
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act }Cfrom '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import TypewriterFramework from './TypewriterFramework';
 import '@testing-library/jest-dom';
 import { MAX_LINES as ACTUAL_MAX_LINES, DEFAULT_FILM_BG_URL } from './TypewriterFramework'; // Import constants
