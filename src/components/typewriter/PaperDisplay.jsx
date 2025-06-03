@@ -90,6 +90,12 @@ const PaperDisplay = ({
     color: '#3b1d15', // Example default
   };
 
+  // Prepare ghost letters for display, whether it's an array or a string
+  const ghostLetters = Array.isArray(ghostText)
+  ? ghostText
+  : (ghostText || '').split('').map((char, idx) => ({ char, ghost: false, key: idx }));
+
+  
   if (currentFontStyles) {
     if (currentFontStyles.font) textStyles.fontFamily = currentFontStyles.font;
     if (currentFontStyles.font_size) textStyles.fontSize = currentFontStyles.font_size;
@@ -235,18 +241,42 @@ const PaperDisplay = ({
             >
               {fadeState && fadeState.isActive ? (
                 (() => {
-                  const fadeLines = fadeState.to_text.split('\n').slice(0, MAX_LINES);
-                  return fadeLines.map((line, lineIdx) => (
-                    <div key={`fade-${lineIdx}`} className="typewriter-line">
-                      {line}
+                  // Split previous and new into arrays
+                  const prevChars = (fadeState.prev_text || '').split('');
+                  const toChars = (fadeState.to_text || '').split('');
+                  const maxLen = Math.max(prevChars.length, toChars.length);
+                  let changedStarted = false;
+
+                  return (
+                    <div className="typewriter-line">
+                      {Array.from({ length: maxLen }).map((_, idx) => {
+                        const prevChar = prevChars[idx] || '';
+                        const toChar = toChars[idx] || '';
+                        // If chars are the same, show normal
+                        if (prevChar === toChar) {
+                          return <span key={idx}>{toChar}</span>;
+                        }
+                        // If chars differ, animate transition (fade out, fade in, etc)
+                        // Simple: fade out old, fade in new
+                        changedStarted = true;
+                        return (
+                          <span key={idx} className={toChar ? "ghost-char ghost-char-materialize" : "ghost-blur"}>
+                            {toChar || prevChar}
+                          </span>
+                        );
+                      })}
                     </div>
-                  ));
+                  );
                 })()
-              ) : (
+) : (
                 (() => {
                   const pageTextLength = pageText.length;
-                  const fullCombinedText = pageText + ghostText; 
-                  const originalLines = fullCombinedText.split('\n'); 
+                  const ghostTextString = Array.isArray(ghostText)
+                      ? ghostText.map(g => g.char).join('')
+                      : (ghostText || '');
+                    const fullCombinedText = pageText + ghostTextString;
+                  const originalLines = fullCombinedText.split('\n');
+
                   const allLinesToRender = originalLines.slice(0, MAX_LINES);
                   
                   return allLinesToRender.map((line, lineIdx) => {
@@ -274,11 +304,26 @@ const PaperDisplay = ({
                           const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
                           
                           if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
-                            const animationClass = getRandomAnimationClass();
-                            return <span key={charKey} className={`ghost-char ${animationClass}`}>{char}</span>;
+                            // Only animate the most recently added ghost letter
+                            const ghostIdx = charGlobalIndex - pageTextLength;
+                            const isLastGhost = ghostIdx === ghostText.length - 1;
+                            const g = ghostText[ghostIdx];
+                            return (
+                              <span
+                                key={charKey}
+                                className={
+                                  "ghost-char" + (g.justAppeared ? " ghost-char-materialize" : "")
+                                }
+                                style={{ display: 'inline-block' }}
+                              >
+                                {g.char}
+                              </span>
+
+                            );
                           } else {
                             return char;
                           }
+
                         });
                         currentOffsetWithinLine += segment.length;
                         return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
@@ -293,13 +338,16 @@ const PaperDisplay = ({
                       >
                         <span className="last-line-content">
                           {processedSegments}
-                          {isLastLineOfRenderedSet && showCursor && (
-                            <span
-                              className={"striker-cursor"}
-                              ref={strikerRef}
-                              style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
-                            />
-                          )}
+
+                            
+                              {isLastLineOfRenderedSet && showCursor && (
+                                <span
+                                  className={"striker-cursor"}
+                                  ref={strikerRef}
+                                  style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
+                                />
+                              )}
+
                         </span>
                       </div>
                     );

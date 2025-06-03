@@ -918,21 +918,27 @@
   }
 }
 
-.ghost-char { /* Common properties for all ghost chars */
+.ghost-char {
   display: inline-block;
-  color: inherit; /* Reset color if it was changed for debug */
-  /* Add will-change here if desired for all animations */
-  will-change: transform, opacity, filter;
+  opacity: 1;
+  transition: none;
 }
 
+/* Only newly added letters get the animation! */
 .ghost-char-materialize {
-  animation: materializeChar 1.2s ease-out forwards; /* Slower duration */
+  animation: materializeChar 2.92s cubic-bezier(.36,1.43,.6,.98) forwards;
+  /* adjust timing for taste */
 }
 
-.ghost-char-shimmer {
-  animation: shimmerChar 1.0s ease-out forwards; /* Duration for shimmer */
-}
-
-.ghost-char-pulse {
-  animation: pulseSizeChar 1.0s ease-out forwards; /* Duration for pulse */
+@keyframes materializeChar {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: scale(1.18) translateY(9px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1) translateY(0);
+  }
 }

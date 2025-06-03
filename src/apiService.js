@@ -38,25 +38,19 @@ export const fetchTypewriterReply = async (text, sessionId) => {
   }
 };
 
-export const fetchShouldGenerateContinuation = async (currentText, latestAddition, latestPauseSeconds) => {
-  try {
-    const response = await fetch(`${SERVER}/api/shouldGenerateContinuation`, {
-      method: "POST",
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        currentText,
-        latestAddition,
-        latestPauseSeconds
-      })
-    });
-    if (!response.ok) {
-      console.error(`API error in fetchShouldGenerateContinuation: ${response.status} ${response.statusText}`);
-      return { data: null, error: { message: `API error: ${response.status} ${response.statusText}`, status: response.status } };
-    }
-    const data = await response.json();
-    return { data, error: null }; // data here is { shouldGenerate: true/false }
-  } catch (error) {
-    console.error("Network error fetching should generate continuation:", error);
-    return { data: null, error: { message: error.message } };
-  }
-};
+// Use axios or fetch—here’s a fetch version for clarity:
+export async function fetchShouldGenerateContinuation(currentText, latestAddition, latestPauseSeconds, lastGhostwriterWordCount) {
+  const res = await fetch(`${SERVER}/api/shouldGenerateContinuation`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      currentText,
+      latestAddition,
+      latestPauseSeconds,
+      lastGhostwriterWordCount, // new field!
+    }),
+  });
+  return await res.json();
+}

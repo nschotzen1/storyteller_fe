@@ -81,7 +81,6 @@ const STRIKER_CURSOR_OFFSET_LEFT = '-40px';
 
 
 // Logic Thresholds & Values
-const GHOSTWRITER_MIN_WORDS_TRIGGER = 3;
 const LEVER_LEVEL_WORD_THRESHOLDS = [0, 10, 20, 30]; // words for level 0, 1, 2, 3 respectively
 const SPECIAL_KEY_TEXT = 'THE XEROFAG';
 const SPECIAL_KEY_INSERT_TEXT = 'The Xerofag ';
@@ -182,12 +181,16 @@ const ghostwriterActionTypes = {
   SET_RESPONSE_QUEUED: 'SET_RESPONSE_QUEUED',
   SET_LAST_GENERATED_LENGTH: 'SET_LAST_GENERATED_LENGTH',
   RESET_GHOSTWRITER_STATE: 'RESET_GHOSTWRITER_STATE',
+  SET_LAST_GHOSTWRITER_WORD_COUNT: 'SET_LAST_GHOSTWRITER_WORD_COUNT',
+
 };
 
 const initialGhostwriterState = {
   lastUserInputTime: Date.now(),
   responseQueued: false,
   lastGeneratedLength: 0,
+  lastGhostwriterWordCount: 0, // NEW: Track last ghostwriter addition size
+
 };
 
 function ghostwriterReducer(state, action) {
@@ -201,8 +204,11 @@ function ghostwriterReducer(state, action) {
     case ghostwriterActionTypes.RESET_GHOSTWRITER_STATE:
       return {
         ...initialGhostwriterState,
-        lastUserInputTime: Date.now(), // Reset time to now
+        lastUserInputTime: Date.now(),
       };
+    case ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT:
+      return { ...state, lastGhostwriterWordCount: action.payload };
+
     default:
       return state;
   }
@@ -236,7 +242,7 @@ const initialTypingState = {
   requestPageTextUpdate: false, // Flag for backspace needing page text modification
   actionSequence: [],
   currentActionIndex: 0,
-  currentGhostText: '',
+  currentGhostText: [],
   isProcessingSequence: false,
   fadeState: { isActive: false, to_text: '', phase: 0 },
 };
@@ -337,6 +343,7 @@ function typingReducer(state, action) {
         };
       }
       return state; // If payload is malformed, return current state
+  
     default:
       return state;
   }
@@ -585,7 +592,13 @@ const TypewriterFramework = () => {
     }
     const char = e.key === "Enter" ? '\n' : e.key;
     // Use typingState.inputBuffer and typingState.currentGhostText for currentLines calculation
-    const currentLines = (pageText + ghostText + typingState.inputBuffer).split('\n').length;
+    
+    const ghostTextString = Array.isArray(ghostText)
+    ? ghostText.map(g => g.char).join('')
+    : (ghostText || '');
+    const fullCombinedText = pageText + ghostTextString;
+    const currentLines = fullCombinedText.split('\n');
+
     if (currentLines >= MAX_LINES && e.key !== 'Backspace') {
       handlePageTurnScroll();
       return;
@@ -694,13 +707,73 @@ const TypewriterFramework = () => {
       }
 
       switch (currentAction.action) {
-        case 'type':
-          const newGhostTextType = typingState.currentGhostText + currentAction.text;
-          dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: newGhostTextType });
-          timeoutId = setTimeout(() => {
+       case 'type': {
+          if (typeof currentAction.text !== "string") {
+            console.error("Type action missing 'text':", currentAction);
             dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-          }, currentAction.delay);
+            break;
+          }
+
+          const textToAdd = currentAction.text;
+          let letterIdx = 0;
+          let ghostText = Array.isArray(typingState.currentGhostText)
+            ? [...typingState.currentGhostText]
+            : [];
+
+          function typeNextLetter() {
+            if (letterIdx < textToAdd.length) {
+              ghostText = [
+                ...ghostText,
+                {
+                  char: textToAdd[letterIdx],
+                  ghost: true,
+                  key: `${Date.now()}_${Math.random()}_${letterIdx}`,
+                  justAppeared: true  // Only new letter animates
+                }
+              ];
+              playKeySound && playKeySound();
+              dispatchTyping({
+                type: typingActionTypes.UPDATE_GHOST_TEXT,
+                payload: ghostText,
+              });
+
+              // Clear animation class after it's played
+              setTimeout(() => {
+                ghostText = ghostText.map((g, idx) =>
+                  idx === ghostText.length - 1 ? { ...g, justAppeared: false } : g
+                );
+                dispatchTyping({
+                  type: typingActionTypes.UPDATE_GHOST_TEXT,
+                  payload: ghostText,
+                });
+              }, 420); // Match to your animation duration
+
+              // --- Rhythm logic for spooky effect ---
+              let delay;
+              const char = textToAdd[letterIdx];
+
+              if (Math.random() < 0.15) delay = 35 + Math.random() * 25;
+              else if (/[.,;:!? ]/.test(char) && Math.random() < 0.33) delay = 350 + Math.random() * 500;
+              else if (letterIdx > 0 && letterIdx % (5 + Math.floor(Math.random() * 4)) === 0 && Math.random() < 0.4) delay = 200 + Math.random() * 400;
+              else delay = 80 + Math.random() * 110;
+
+              letterIdx++;
+              timeoutId = setTimeout(typeNextLetter, delay);
+            } else {
+              timeoutId = setTimeout(() => {
+                dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
+              }, currentAction.delay || 0);
+            }
+          }
+
+
+
+          typeNextLetter();
           break;
+        }
+
+
+
         case 'pause':
           timeoutId = setTimeout(() => {
             dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
@@ -716,7 +789,12 @@ const TypewriterFramework = () => {
         case 'fade':
           dispatchTyping({
             type: typingActionTypes.SET_FADE_STATE,
-            payload: { isActive: true, to_text: currentAction.to_text, phase: currentAction.phase }
+            payload: {
+              isActive: true,
+              prev_text: typingState.currentGhostText || (pages[currentPage]?.text || ""),
+              to_text: currentAction.to_text,
+              phase: currentAction.phase
+            }
           });
           timeoutId = setTimeout(() => {
             dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
@@ -747,29 +825,37 @@ const TypewriterFramework = () => {
       }
     } else if (typingState.isProcessingSequence && typingState.currentActionIndex >= typingState.actionSequence.length) {
       // All actions processed, sequence is naturally completing.
-      const finalGhostTextOfSequence = typingState.currentGhostText;
+      const finalGhostTextOfSequence = Array.isArray(typingState.currentGhostText)
+      ? typingState.currentGhostText.map(x => x.char).join('')
+      : typingState.currentGhostText;
+
       const currentPageText = pages[currentPage]?.text || ''; // pages and currentPage are now dependencies
       
       if (finalGhostTextOfSequence) {
-        const textToCommit = currentPageText + finalGhostTextOfSequence;
-        const textToCommitLines = textToCommit.split('\n').length;
-        const newTextForPage =
-          textToCommitLines > MAX_LINES // MAX_LINES is a constant, not a dependency
-            ? textToCommit.split('\n').slice(0, MAX_LINES).join('\n')
-            : textToCommit;
+  const textToCommit = currentPageText + finalGhostTextOfSequence;
+  const textToCommitLines = textToCommit.split('\n').length;
+  const newTextForPage =
+    textToCommitLines > MAX_LINES
+      ? textToCommit.split('\n').slice(0, MAX_LINES).join('\n')
+      : textToCommit;
 
-        setPages(prev => { // setPages is a dependency
-          const updatedPages = [...prev];
-          updatedPages[currentPage] = { // currentPage is a dependency
-            ...updatedPages[currentPage],
-            text: newTextForPage 
-          };
-          return updatedPages;
-        });
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
-      } else {
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentPageText.length });
-      }
+  setPages(prev => {
+    const updatedPages = [...prev];
+    updatedPages[currentPage] = {
+      ...updatedPages[currentPage],
+      text: newTextForPage
+    };
+    return updatedPages;
+  });
+  dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
+  // ---- PATCH: Track last ghostwriter addition (in words) ----
+  const ghostwriterWords = finalGhostTextOfSequence.trim().split(/\s+/).filter(Boolean).length;
+  dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: ghostwriterWords });
+} else {
+  dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentPageText.length });
+  dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: 0 });
+}
+
       
       dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE }); 
       if (typingState.fadeState.isActive) {
@@ -796,11 +882,7 @@ const TypewriterFramework = () => {
 
 
   // --- Ghost Key Typing Simulation ---
-  // This useEffect is removed as ghostKeyQueue is removed.
-  // The new sequence processing logic will be handled by a new useEffect.
-
-  // --- Ghostwriter AI Trigger ---
-useEffect(() => {
+ useEffect(() => {
   if (!typingState.typingAllowed) return;
 
   const interval = setInterval(async () => {
@@ -808,68 +890,89 @@ useEffect(() => {
     const addition = fullText.slice(ghostwriterState.lastGeneratedLength);
     const pauseSeconds = (Date.now() - ghostwriterState.lastUserInputTime) / 1000;
 
-    if (ghostwriterState.responseQueued) return; // Already waiting for a response or sequence to finish
-    
-    // Inactivity Trigger
+    if (ghostwriterState.responseQueued) return;
+
+    // --- INACTIVITY COMPLETION: leave as-is if you want this ---
     if (
       pauseSeconds >= 15 &&
       !typingState.isProcessingSequence &&
       typingState.inputBuffer.length === 0 &&
-      (fullText.length === ghostwriterState.lastGeneratedLength || ghostwriterState.lastGeneratedLength === 0) // Added condition
+      (fullText.length === ghostwriterState.lastGeneratedLength || ghostwriterState.lastGeneratedLength === 0)
     ) {
-      if (typingState.typingAllowed) {
-        // console.log("Ghostwriter: Triggering due to inactivity.");
+      // (optional: you can disable this block if you never want inactivity autocompletion)
+      fetchTypewriterReply(fullText, sessionId).then(response => {
+        const reply = response.data;
+        if (reply && reply.writing_sequence && reply.metadata) {
+          setCurrentFontStyles(reply.metadata);
+          dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: reply.writing_sequence });
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
+        }
+      }).catch(error => {
+        console.error("Error fetching typewriter reply due to inactivity:", error);
+      });
+      return;
+    }
+
+    // --- USER-initiated continuation with GOLDEN RATIO THRESHOLD ---
+   if (
+  !typingState.isProcessingSequence &&
+  typingState.inputBuffer.length === 0 // Not while user is typing or ghostwriting
+) {
+  fetchShouldGenerateContinuation(
+    fullText,
+    addition,
+    pauseSeconds,
+    ghostwriterState.lastGhostwriterWordCount // <-- pass this to the API
+  )
+    .then(shouldGenerateData => {
+      // On server, shouldGenerateData.shouldGenerate (no .data)
+      const shouldGenerate = shouldGenerateData.shouldGenerate;
+      // DEBUG: log API-side threshold handling
+      console.log(
+        `[ghostwriter trigger] Server response: shouldGenerate=${shouldGenerate}, userAdditionLen=${addition.trim().split(/\s+/).length}, lastGhostwriterWordCount=${ghostwriterState.lastGhostwriterWordCount}`
+      );
+      if (shouldGenerate) {
         fetchTypewriterReply(fullText, sessionId).then(response => {
           const reply = response.data;
           if (reply && reply.writing_sequence && reply.metadata) {
             setCurrentFontStyles(reply.metadata);
             dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: reply.writing_sequence });
             dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
-            dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true }); 
-            dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() }); 
+            dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
+            // lastGhostwriterWordCount will be set after sequence commits
           }
         }).catch(error => {
-          console.error("Error fetching typewriter reply due to inactivity:", error);
+          console.error("Error fetching typewriter reply after shouldGenerate check:", error);
         });
       }
-    } else if (addition.trim().split(/\s+/).length >= GHOSTWRITER_MIN_WORDS_TRIGGER && !typingState.isProcessingSequence) {
-      fetchShouldGenerateContinuation(fullText, addition, pauseSeconds).then(shouldGenerateData => {
-        const shouldGenerate = shouldGenerateData.data.shouldGenerate;
-        if (shouldGenerate) {
-          fetchTypewriterReply(fullText, sessionId).then(response => {
-            const reply = response.data;
-            if (reply && reply.writing_sequence && reply.metadata) {
-              setCurrentFontStyles(reply.metadata);
-              dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: reply.writing_sequence });
-              dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
-              dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
-              dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
-            }
-          }).catch(error => {
-            console.error("Error fetching typewriter reply after shouldGenerate check:", error);
-          });
-        }
-      }).catch(error => {
-        console.error("Error fetching shouldGenerateContinuation:", error);
-      });
-    }
+    })
+    .catch(error => {
+      console.error("Error fetching shouldGenerateContinuation:", error);
+    });
+}
+
+
   }, GHOSTWRITER_AI_TRIGGER_INTERVAL);
 
   return () => clearInterval(interval);
 }, [
-  pages, 
-  currentPage, 
-  typingState.typingAllowed, 
-  typingState.isProcessingSequence, // Added
-  typingState.inputBuffer, // Added
-  ghostwriterState.lastUserInputTime, 
-  ghostwriterState.responseQueued, 
-  ghostwriterState.lastGeneratedLength, 
-  sessionId, 
-  dispatchTyping, 
+  pages,
+  currentPage,
+  typingState.typingAllowed,
+  typingState.isProcessingSequence,
+  typingState.inputBuffer,
+  ghostwriterState.lastUserInputTime,
+  ghostwriterState.responseQueued,
+  ghostwriterState.lastGeneratedLength,
+  ghostwriterState.lastGhostwriterWordCount, // ← ADD to deps!
+  sessionId,
+  dispatchTyping,
   dispatchGhostwriter,
-  setCurrentFontStyles // Added (was missing from original deps, but used)
+  setCurrentFontStyles
 ]);
+
+ 
 
 
   // --- Commit Ghost Text ---
