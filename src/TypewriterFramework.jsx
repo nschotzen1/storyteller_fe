@@ -5,7 +5,7 @@ import Keyboard from './components/typewriter/Keyboard.jsx';
 import PaperDisplay from './components/typewriter/PaperDisplay.jsx';
 import PageNavigation from './components/typewriter/PageNavigation.jsx'; // Import the new PageNavigation component
 import OrreryComponent from './OrreryComponent.jsx';
-import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines } from './utils.js';
+import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines, playGhostWriterSound } from './utils.js';
 import { fetchNextFilmImage, fetchTypewriterReply, fetchShouldGenerateContinuation } from './apiService.js';
 
 // --- Constants ---
@@ -731,7 +731,8 @@ const TypewriterFramework = () => {
                   justAppeared: true  // Only new letter animates
                 }
               ];
-              playKeySound && playKeySound();
+              console.log("Typing letter:", textToAdd[letterIdx], "at index:", letterIdx);
+              letterIdx % 5 == 0 && playGhostWriterSound && playGhostWriterSound();
               dispatchTyping({
                 type: typingActionTypes.UPDATE_GHOST_TEXT,
                 payload: ghostText,

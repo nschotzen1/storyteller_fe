@@ -241,37 +241,53 @@ const PaperDisplay = ({
             >
               {fadeState && fadeState.isActive ? (
                 (() => {
-                  // Split previous and new into arrays
+                  // Always treat prev_text as a string
                   const prevTextString = Array.isArray(fadeState.prev_text)
                     ? fadeState.prev_text.map(g => g.char).join('')
                     : (fadeState.prev_text || '');
                   const prevChars = prevTextString.split('');
                   const toChars = (fadeState.to_text || '').split('');
-                  const maxLen = Math.max(prevChars.length, toChars.length);
-                  let changedStarted = false;
+
+                  // Find the longest common prefix
+                  let prefixLen = 0;
+                  while (
+                    prefixLen < prevChars.length &&
+                    prefixLen < toChars.length &&
+                    prevChars[prefixLen] === toChars[prefixLen]
+                  ) {
+                    prefixLen++;
+                  }
+
+                  // Static (unchanged) prefix:
+                  const prefix = toChars.slice(0, prefixLen).join('');
+                  // The new "fade-in" part:
+                  const fadeIn = toChars.slice(prefixLen);
+                  // If you're summarizing/fading to a SHORTER line, fade out the removed part:
+                  const fadeOut = prevChars.slice(prefixLen);
 
                   return (
                     <div className="typewriter-line">
-                      {Array.from({ length: maxLen }).map((_, idx) => {
-                        const prevChar = prevChars[idx] || '';
-                        const toChar = toChars[idx] || '';
-                        // If chars are the same, show normal
-                        if (prevChar === toChar) {
-                          return <span key={idx}>{toChar}</span>;
-                        }
-                        // If chars differ, animate transition (fade out, fade in, etc)
-                        // Simple: fade out old, fade in new
-                        changedStarted = true;
-                        return (
-                          <span key={idx} className={toChar ? "ghost-char ghost-char-materialize" : "ghost-blur"}>
-                            {toChar || prevChar}
+                      {/* Unchanged prefix: */}
+                      {prefix && <span>{prefix}</span>}
+
+                      {/* If fading out text (summary/shorten): */}
+                      {fadeOut.length > fadeIn.length &&
+                        fadeOut.slice(fadeIn.length).map((char, idx) => (
+                          <span key={`fade-out-${idx}`} className="ghost-blur">
+                            {char}
                           </span>
-                        );
-                      })}
+                        ))}
+
+                      {/* Fade in new letters: */}
+                      {fadeIn.map((char, idx) => (
+                        <span key={`fade-in-${idx}`} className="ghost-char ghost-char-materialize">
+                          {char}
+                        </span>
+                      ))}
                     </div>
                   );
                 })()
-) : (
+              )  : (
                 (() => {
                   const pageTextLength = pageText.length;
                   const ghostTextString = Array.isArray(ghostText)

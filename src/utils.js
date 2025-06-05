@@ -10,6 +10,14 @@ export const playKeySound = () => {
   audio.play();
 };
 
+export const playGhostWriterSound = () => {
+  const roll = Math.floor(Math.random() * 2) + 1;
+  const audioSrc = roll === 1 ? '/sounds/ghostwriter_click_1.mp3' : '/sounds/ghostwriter_clack_2.mp3'; 
+  const audio = new Audio(audioSrc);
+  audio.volume = 0.3;
+  audio.play();
+};
+
 export const playEnterSound = () => {
   const audio = new Audio('/sounds/typewriter-enter.mp3');
   audio.volume = 0.3;
