@@ -1,5 +1,5 @@
 import React from 'react';
-import useGhostTextRenderer from '../../hooks/useGhostTextRenderer';
+import useGhostTextRenderer from '../../hooks/useGhostTextRenderer.jsx';
 
 // This component will handle the rendering of the paper, text, film background,
 // and the page slide animations.

@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import useGhostTextRenderer from './useGhostTextRenderer';
+import useGhostTextRenderer from './useGhostTextRenderer.jsx';
 import React from 'react'; // Required for JSX elements like <br />
 
 // Constants from the hook (can be redefined here or imported if exported from hook file)
