@@ -977,38 +977,41 @@ const TypewriterFramework = () => {
 
   // --- Commit Ghost Text ---
   const commitGhostText = () => {
-    // Get ghost text from typingState.currentGhostText
-    const fullGhostText = typingState.currentGhostText;
-    // Modified guard clause as per instructions
-    if (!fullGhostText && !typingState.isProcessingSequence) {
-        // If no ghost text and not processing, ensure responseQueued is false.
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
-        return;
-    }
+  // Get ghost text from typingState.currentGhostText
+  const fullGhostText = Array.isArray(typingState.currentGhostText)
+    ? typingState.currentGhostText.map(g => g.char).join('')
+    : (typingState.currentGhostText || '');
+  // Modified guard clause as per instructions
+  if (!fullGhostText && !typingState.isProcessingSequence) {
+      // If no ghost text and not processing, ensure responseQueued is false.
+      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+      return;
+  }
 
-    const currentText = pages[currentPage]?.text || ''; // Get current page text
-    const mergedText = currentText + fullGhostText; // Merged text
-    const mergedLines = mergedText.split('\n').length;
-    const newTextForPage =
-      mergedLines > MAX_LINES
-        ? mergedText.split('\n').slice(0, MAX_LINES).join('\n')
-        : mergedText;
+  const currentText = pages[currentPage]?.text || ''; // Get current page text
+  const mergedText = currentText + fullGhostText; // Merged text
+  const mergedLines = mergedText.split('\n').length;
+  const newTextForPage =
+    mergedLines > MAX_LINES
+      ? mergedText.split('\n').slice(0, MAX_LINES).join('\n')
+      : mergedText;
 
-    setPages(prev => {
-      const updatedPages = [...prev];
-      updatedPages[currentPage] = {
-        ...updatedPages[currentPage],
-        text: newTextForPage // Use the potentially truncated newTextForPage
-      };
-      return updatedPages;
-    });
+  setPages(prev => {
+    const updatedPages = [...prev];
+    updatedPages[currentPage] = {
+      ...updatedPages[currentPage],
+      text: newTextForPage // Use the potentially truncated newTextForPage
+    };
+    return updatedPages;
+  });
 
-    // Update lastGeneratedLength to the length of the fully committed text
-    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
-    
-    dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
-    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
-  };
+  // Update lastGeneratedLength to the length of the fully committed text
+  dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
+  
+  dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
+  dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+};
+
 
   // --- Focus on Mount ---
   useEffect(() => {

@@ -242,7 +242,10 @@ const PaperDisplay = ({
               {fadeState && fadeState.isActive ? (
                 (() => {
                   // Split previous and new into arrays
-                  const prevChars = (fadeState.prev_text || '').split('');
+                  const prevTextString = Array.isArray(fadeState.prev_text)
+                    ? fadeState.prev_text.map(g => g.char).join('')
+                    : (fadeState.prev_text || '');
+                  const prevChars = prevTextString.split('');
                   const toChars = (fadeState.to_text || '').split('');
                   const maxLen = Math.max(prevChars.length, toChars.length);
                   let changedStarted = false;
