@@ -127,6 +127,13 @@ describe('apiService', () => {
         error: { message: 'Network connection lost' },
       });
     });
+
+    it('should not call fetch when text is empty', async () => {
+      const result = await fetchTypewriterReply('', sessionId);
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(result).toEqual({ data: null, error: null });
+    });
   });
 
   describe('fetchShouldGenerateContinuation', () => {
@@ -195,6 +202,13 @@ describe('apiService', () => {
         data: null,
         error: { message: 'Failed to connect' },
       });
+    });
+
+    it('should not call fetch when latestAddition is empty', async () => {
+      const result = await fetchShouldGenerateContinuation(currentText, '', latestPauseSeconds);
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(result).toEqual({ data: { shouldGenerate: false }, error: null });
     });
   });
 });
