@@ -90,6 +90,12 @@ const PaperDisplay = ({
     color: '#3b1d15', // Example default
   };
 
+  // Prepare ghost letters for display, whether it's an array or a string
+  const ghostLetters = Array.isArray(ghostText)
+  ? ghostText
+  : (ghostText || '').split('').map((char, idx) => ({ char, ghost: false, key: idx }));
+
+  
   if (currentFontStyles) {
     if (currentFontStyles.font) textStyles.fontFamily = currentFontStyles.font;
     if (currentFontStyles.font_size) textStyles.fontSize = currentFontStyles.font_size;
@@ -234,19 +240,62 @@ const PaperDisplay = ({
               style={textStyles} // Apply the combined styles here
             >
               {fadeState && fadeState.isActive ? (
-                (() => {
-                  const fadeLines = fadeState.to_text.split('\n').slice(0, MAX_LINES);
-                  return fadeLines.map((line, lineIdx) => (
-                    <div key={`fade-${lineIdx}`} className="typewriter-line">
-                      {line}
-                    </div>
-                  ));
-                })()
-              ) : (
+                  (() => {
+                    // Always treat prev_text as a string
+                    const prevTextString = Array.isArray(fadeState.prev_text)
+                      ? fadeState.prev_text.map(g => g.char).join('')
+                      : (fadeState.prev_text || '');
+                    const prevChars = prevTextString.split('');
+                    const toChars = (fadeState.to_text || '').split('');
+
+                    // Find the longest common prefix
+                    let prefixLen = 0;
+                    while (
+                      prefixLen < prevChars.length &&
+                      prefixLen < toChars.length &&
+                      prevChars[prefixLen] === toChars[prefixLen]
+                    ) {
+                      prefixLen++;
+                    }
+
+                    // Static (unchanged) prefix:
+                    const prefix = toChars.slice(0, prefixLen).join('');
+                    // The new "fade-in" part:
+                    const fadeIn = toChars.slice(prefixLen);
+                    // If you're summarizing/fading to a SHORTER line, fade out the removed part:
+                    const fadeOut = prevChars.slice(prefixLen);
+
+                    return (
+                      <div className="typewriter-line">
+                        {/* Unchanged prefix: */}
+                        {prefix && <span>{prefix}</span>}
+
+                        {/* If fading out text (summary/shorten): */}
+                        {fadeOut.length > fadeIn.length &&
+                          fadeOut.slice(fadeIn.length).map((char, idx) => (
+                            <span key={`fade-out-${idx}`} className="ghost-blur">
+                              {char}
+                            </span>
+                          ))}
+
+                        {/* Fade in new letters: */}
+                        {fadeIn.map((char, idx) => (
+                          <span key={`fade-in-${idx}`} className="ghost-char ghost-char-materialize">
+                            {char}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()
+                )  : (
                 (() => {
                   const pageTextLength = pageText.length;
-                  const fullCombinedText = pageText + ghostText; 
-                  const originalLines = fullCombinedText.split('\n'); 
+                  const ghostTextString = Array.isArray(ghostText)
+                      ? ghostText.map(g => g.char).join('')
+                      : (ghostText || '');
+                    const fullCombinedText = pageText + ghostTextString;
+                  const originalLines = fullCombinedText.split('\n');
+
                   const allLinesToRender = originalLines.slice(0, MAX_LINES);
                   
                   return allLinesToRender.map((line, lineIdx) => {
@@ -274,11 +323,26 @@ const PaperDisplay = ({
                           const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
                           
                           if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
-                            const animationClass = getRandomAnimationClass();
-                            return <span key={charKey} className={`ghost-char ${animationClass}`}>{char}</span>;
+                            // Only animate the most recently added ghost letter
+                            const ghostIdx = charGlobalIndex - pageTextLength;
+                            const isLastGhost = ghostIdx === ghostText.length - 1;
+                            const g = ghostText[ghostIdx];
+                            return (
+                              <span
+                                key={charKey}
+                                className={
+                                  "ghost-char" + (g.justAppeared ? " ghost-char-materialize" : "")
+                                }
+                                style={{ display: 'inline-block' }}
+                              >
+                                {g.char}
+                              </span>
+
+                            );
                           } else {
                             return char;
                           }
+
                         });
                         currentOffsetWithinLine += segment.length;
                         return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
@@ -293,13 +357,16 @@ const PaperDisplay = ({
                       >
                         <span className="last-line-content">
                           {processedSegments}
-                          {isLastLineOfRenderedSet && showCursor && (
-                            <span
-                              className={"striker-cursor"}
-                              ref={strikerRef}
-                              style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
-                            />
-                          )}
+
+                            
+                              {isLastLineOfRenderedSet && showCursor && (
+                                <span
+                                  className={"striker-cursor"}
+                                  ref={strikerRef}
+                                  style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
+                                />
+                              )}
+
                         </span>
                       </div>
                     );
