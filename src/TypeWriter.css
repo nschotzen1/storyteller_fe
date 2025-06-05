@@ -1008,3 +1008,32 @@ ghost-char-pulse {
   /* If phase 4 is *always* a fade out, and PaperDisplay rendered previous text:
   /* animation-name: textDisappearAnimation; */
 }
+
+/* Key sentient glow effect */
+@keyframes keySentientGlow {
+  0% {
+    box-shadow: 0 0 5px rgba(255, 223, 186, 0.3), /* Inner key color */
+                inset 0 0 3px rgba(255, 200, 150, 0.2);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 223, 186, 0.7), /* Brighter, larger glow */
+                inset 0 0 8px rgba(255, 200, 150, 0.5);
+    transform: scale(1.03); /* Slight twitch/pulse */
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(255, 223, 186, 0.3),
+                inset 0 0 3px rgba(255, 200, 150, 0.2);
+    transform: scale(1);
+  }
+}
+
+.key-sentient-glow .typewriter-key-img { /* Target the image inside the wrapper */
+  animation: keySentientGlow 0.5s ease-out;
+  /* The animation is applied to the key image, not the wrapper,
+     to ensure the glow is visually centered on the keycap texture.
+     The box-shadow in the animation will appear around the key image.
+     If the key has its own box-shadow, this will be overridden during animation.
+     Ensure .typewriter-key-img has position:relative if not already for box-shadow to behave as expected.
+  */
+}

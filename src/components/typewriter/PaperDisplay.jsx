@@ -1,16 +1,5 @@
 import React from 'react';
-
-// Animation classes for ghost characters
-const GHOST_ANIMATION_CLASSES = [
-  'ghost-char-materialize',
-  'ghost-char-shimmer',
-  'ghost-char-pulse'
-];
-
-// Helper function to get a random animation class
-const getRandomAnimationClass = () => {
-  return GHOST_ANIMATION_CLASSES[Math.floor(Math.random() * GHOST_ANIMATION_CLASSES.length)];
-};
+import useGhostTextRenderer from '../../hooks/useGhostTextRenderer.jsx';
 
 // This component will handle the rendering of the paper, text, film background,
 // and the page slide animations.
@@ -247,56 +236,62 @@ const PaperDisplay = ({
                 })()
               ) : (
                 (() => {
-                  const pageTextLength = pageText.length;
-                  const fullCombinedText = pageText + ghostText; 
-                  const originalLines = fullCombinedText.split('\n'); 
-                  const allLinesToRender = originalLines.slice(0, MAX_LINES);
-                  
-                  return allLinesToRender.map((line, lineIdx) => {
-                    const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
-                    
-                    let currentLineGlobalStartOffset = 0;
-                    for(let i=0; i < lineIdx; i++) {
-                      currentLineGlobalStartOffset += originalLines[i].length + 1; 
+                  const aiFontColor = currentFontStyles?.font_color; // Extract AI font color
+                  const pageTextLines = pageText.split('\n');
+                  // Pass aiFontColor to the hook
+                  const renderedGhostTextElements = useGhostTextRenderer(ghostText, MAX_LINES, pageText.length, SPECIAL_KEY_TEXT, aiFontColor);
+
+                  const allOutputLines = [];
+
+                  // Process pageText lines
+                  pageTextLines.forEach((line, lineIdx) => {
+                    const pageTextSegments = line.includes(SPECIAL_KEY_TEXT)
+                      ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
+                      : [line];
+                    const processedPageTextSegments = pageTextSegments.map((segment, segmentIdx) => {
+                      if (segment === SPECIAL_KEY_TEXT) {
+                        return <span key={`page-seg-${lineIdx}-${segmentIdx}-xerofag`} className="xerofag-highlight">{segment}</span>;
+                      }
+                      return segment;
+                    });
+                    allOutputLines.push({ key: `page-line-${lineIdx}`, content: processedPageTextSegments });
+                  });
+
+                  // Process ghostText elements
+                  if (ghostText && ghostText.length > 0) {
+                    let currentGhostLine = [];
+                    if (!pageText.endsWith('\n') && allOutputLines.length > 0) {
+                      // Append to the last pageText line if it doesn't end with a newline
+                      currentGhostLine = allOutputLines.pop().content;
                     }
 
-                    let currentOffsetWithinLine = 0; 
-                    
-                    const segments = line.includes(SPECIAL_KEY_TEXT)
-                      ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
-                      : [line]; 
-
-                    const processedSegments = segments.map((segment, segmentIdx) => {
-                      if (segment === SPECIAL_KEY_TEXT) {
-                        const segmentKey = `seg-${lineIdx}-${segmentIdx}-xerofag`;
-                        currentOffsetWithinLine += segment.length;
-                        return <span key={segmentKey} className="xerofag-highlight">{segment}</span>;
+                    renderedGhostTextElements.forEach((el, elIdx) => {
+                      if (el.type === 'br') {
+                        allOutputLines.push({ key: `ghost-line-${allOutputLines.length}-${elIdx}-br`, content: [...currentGhostLine] });
+                        currentGhostLine = [];
                       } else {
-                        const segmentChars = segment.split('').map((char, charIdxInSegment) => {
-                          const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
-                          const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
-                          
-                          if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
-                            const animationClass = getRandomAnimationClass();
-                            return <span key={charKey} className={`ghost-char ${animationClass}`}>{char}</span>;
-                          } else {
-                            return char;
-                          }
-                        });
-                        currentOffsetWithinLine += segment.length;
-                        return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
+                        currentGhostLine.push(el);
                       }
                     });
+                    // Add any remaining ghost characters as the last line
+                    if (currentGhostLine.length > 0) {
+                      allOutputLines.push({ key: `ghost-line-${allOutputLines.length}-last`, content: [...currentGhostLine] });
+                    }
+                  }
 
+                  const linesToDisplay = allOutputLines.slice(0, MAX_LINES);
+
+                  return linesToDisplay.map((lineObj, idx) => {
+                    const isLastRenderedLine = idx === linesToDisplay.length - 1;
                     return (
                       <div
-                        key={lineIdx}
+                        key={lineObj.key}
                         className="typewriter-line"
-                        ref={isLastLineOfRenderedSet ? lastLineRef : null}
+                        ref={isLastRenderedLine ? lastLineRef : null}
                       >
                         <span className="last-line-content">
-                          {processedSegments}
-                          {isLastLineOfRenderedSet && showCursor && (
+                          {lineObj.content}
+                          {isLastRenderedLine && showCursor && (
                             <span
                               className={"striker-cursor"}
                               ref={strikerRef}
