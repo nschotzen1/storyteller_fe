@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 // Constants that might be needed by Keyboard if not passed (e.g. for styling or layout if specific)
 // For now, assuming all necessary data like SPECIAL_KEY_TEXT comes via props or is handled in callbacks
@@ -28,7 +28,36 @@ const Keyboard = ({
   KEY_OFFSET_Y_RANDOM_MAX,
   KEY_OFFSET_Y_RANDOM_MIN,
   SPECIAL_KEY_TEXT,
+  keysToGlow, // New prop: string[]
 }) => {
+  const [glowingKeys, setGlowingKeys] = useState(new Set());
+
+  useEffect(() => {
+    if (keysToGlow && keysToGlow.length > 0) {
+      const newGlowingKeysThisEffect = new Set();
+      const timeouts = [];
+
+      keysToGlow.forEach(keyChar => {
+        newGlowingKeysThisEffect.add(keyChar);
+        const timeoutId = setTimeout(() => {
+          setGlowingKeys(prevGlowingKeys => {
+            const updatedGlowingKeys = new Set(prevGlowingKeys);
+            updatedGlowingKeys.delete(keyChar);
+            return updatedGlowingKeys;
+          });
+        }, 500); // 500ms matches CSS animation duration
+        timeouts.push(timeoutId);
+      });
+      setGlowingKeys(newGlowingKeysThisEffect);
+
+      return () => {
+        timeouts.forEach(clearTimeout);
+      };
+    }
+    // No specific cleanup for glowingKeys if keysToGlow is empty,
+    // as timeouts will naturally remove them or they'll be overwritten by a new keysToGlow.
+  }, [keysToGlow]);
+
 
   const generateRow = (rowKeys) => (
     <div className="key-row">
@@ -45,11 +74,12 @@ const Keyboard = ({
         const tilt = (Math.random() * (tiltMax - tiltMin) + tiltMin).toFixed(2);
         
         const isSpecialKey = key === SPECIAL_KEY_TEXT;
+        const isGlowing = glowingKeys.has(key);
 
         return (
           <div
             key={key} // Use key string itself as key, assuming they are unique
-            className={`typewriter-key-wrapper ${lastPressedKey === key ? 'key-pressed' : ''} ${!typingAllowed ? 'key-disabled' : ''}`}
+            className={`typewriter-key-wrapper ${lastPressedKey === key ? 'key-pressed' : ''} ${!typingAllowed ? 'key-disabled' : ''} ${isGlowing ? 'key-sentient-glow' : ''}`}
             style={{ '--offset-y': `${offset}px`, '--tilt': `${tilt}deg` }}
             onClick={() => {
               if (!typingAllowed) {

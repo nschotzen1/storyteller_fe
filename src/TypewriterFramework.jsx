@@ -5,86 +5,93 @@ import Keyboard from './components/typewriter/Keyboard.jsx';
 import PaperDisplay from './components/typewriter/PaperDisplay.jsx';
 import PageNavigation from './components/typewriter/PageNavigation.jsx'; // Import the new PageNavigation component
 import OrreryComponent from './OrreryComponent.jsx';
+import useActionSequenceProcessor from './hooks/UseActionSequenceProcessor.js';
 import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines } from './utils.js';
 import { fetchNextFilmImage, fetchTypewriterReply, fetchShouldGenerateContinuation } from './apiService.js';
 
 // --- Constants ---
-const FILM_HEIGHT = 1400;
-const LINE_HEIGHT = 2.4 * 16; // Roughly 38.4
-const TOP_OFFSET = 180;
-const BOTTOM_PADDING = 220;
-const FRAME_HEIGHT = 600; // Increased from 520
-const MAX_LINES = Math.floor((FILM_HEIGHT - TOP_OFFSET - BOTTOM_PADDING) / LINE_HEIGHT);
+const LAYOUT_CONSTANTS = {
+  FILM_HEIGHT: 1400,
+  LINE_HEIGHT: 2.4 * 16, // Roughly 38.4
+  TOP_OFFSET: 180,
+  BOTTOM_PADDING: 220,
+  FRAME_HEIGHT: 600, // Increased from 520
+  MAX_LINES: Math.floor((1400 - 180 - 220) / (2.4 * 16)), // Calculated from other LAYOUT_CONSTANTS
+  FILM_SLIDE_WRAPPER_WIDTH: '200%',
+  PAGE_NAVIGATION_BUTTONS_TOP: '3vh',
+  PAGE_NAVIGATION_BUTTONS_PADDING: '0 3vw',
+  TURN_PAGE_LEVER_BOTTOM: '48px',
+  TURN_PAGE_LEVER_LEFT: '5vw',
+  NEEDED_HEIGHT_OFFSET: 4, // pixels
+  STRIKER_CURSOR_OFFSET_LEFT: '-40px',
+};
 
-// Default values
-const DEFAULT_FILM_BG_URL = '/textures/decor/film_frame_desert.png';
-const INITIAL_SCROLL_MODE = 'cinematic';
-const NORMAL_SCROLL_MODE = 'normal';
-const SLIDE_DIRECTION_LEFT = 'left';
-const SLIDE_DIRECTION_RIGHT = 'right';
-const SESSION_ID_STORAGE_KEY = 'sessionId';
+const ANIMATION_CONSTANTS = {
+  CINEMATIC_SCROLL_INTRO_DELAY: 650, // ms
+  CINEMATIC_SCROLL_INTRO_SCROLL_TO_TOP_TIMEOUT: 120, //ms
+  CINEMATIC_SCROLL_INTRO_DURATION: 1600, // ms
+  CINEMATIC_SCROLL_TO_NORMAL_MODE_TIMEOUT: 1600, // ms
+  CINEMATIC_SCROLL_DEFAULT_DURATION: 1700, // ms
+  PAGE_TURN_SCROLL_ANIMATION_DURATION: 900, // ms
+  STRIKER_RETURN_ANIMATION_DURATION: 600, // ms
+  TYPING_ANIMATION_INTERVAL: 100, // ms
+  LAST_PRESSED_KEY_TIMEOUT: 120, // ms
+  KEY_TEXTURE_REFRESH_INTERVAL: 20000, // ms
+  GHOST_KEY_TYPING_INTERVAL: 90, // ms
+  SLIDE_DURATION_MS_ALREADY_DEFINED: 1200, // Already defined as SLIDE_DURATION_MS, kept for reference
+  PAGE_SLIDE_X_OFFSET: -50, // Percentage for left slide
+};
 
-// Durations & Timeouts
-const CINEMATIC_SCROLL_INTRO_DELAY = 650; // ms
-const CINEMATIC_SCROLL_INTRO_SCROLL_TO_TOP_TIMEOUT = 120; //ms
-const CINEMATIC_SCROLL_INTRO_DURATION = 1600; // ms
-const CINEMATIC_SCROLL_TO_NORMAL_MODE_TIMEOUT = 1600; // ms
-const CINEMATIC_SCROLL_DEFAULT_DURATION = 1700; // ms
-const PAGE_TURN_SCROLL_ANIMATION_DURATION = 900; // ms
-const STRIKER_RETURN_ANIMATION_DURATION = 600; // ms
-const TYPING_ANIMATION_INTERVAL = 100; // ms
-const LAST_PRESSED_KEY_TIMEOUT = 120; // ms
-const KEY_TEXTURE_REFRESH_INTERVAL = 20000; // ms
-const GHOST_KEY_TYPING_INTERVAL = 90; // ms
-const GHOSTWRITER_AI_TRIGGER_INTERVAL = 1000; // ms
-const SLIDE_DURATION_MS_ALREADY_DEFINED = 1200; // Already defined as SLIDE_DURATION_MS, kept for reference
+const STYLE_CONSTANTS = {
+  DEFAULT_FILM_BG_URL: '/textures/decor/film_frame_desert.png',
+  KEY_TILT_RANDOM_MAX: 1.4,
+  KEY_TILT_RANDOM_MIN: -0.7,
+  KEY_OFFSET_Y_RANDOM_MAX: 3, // pixels
+  KEY_OFFSET_Y_RANDOM_MIN: -1, // pixels
+  FILM_SLIDE_WRAPPER_Z_INDEX: 10,
+  FILM_BG_SLIDE_OPACITY: 0.96,
+  FILM_BG_SLIDE_BOX_SHADOW_LEFT: 'inset -12px 0 24px #120b05b0',
+  FILM_BG_SLIDE_BOX_SHADOW_RIGHT: 'inset 12px 0 24px #120b05b0',
+  FILM_BG_SLIDE_CONTRAST_OUTGOING: 1.06,
+  FILM_BG_SLIDE_BRIGHTNESS_OUTGOING: 1.04,
+  FILM_BG_SLIDE_CONTRAST_INCOMING: 1.04,
+  FILM_BG_SLIDE_BRIGHTNESS_INCOMING: 1.02,
+  FILM_FLICKER_OVERLAY_Z_INDEX: 11,
+  FILM_FLICKER_OVERLAY_TEXTURE_URL: '/textures/grainy.png',
+  FILM_FLICKER_OVERLAY_GRADIENT: 'linear-gradient(90deg,rgba(0,0,0,0.09),rgba(0,0,0,0.16))',
+  FILM_FLICKER_OVERLAY_OPACITY: 0.15,
+  FILM_FLICKER_OVERLAY_BLEND_MODE: 'multiply',
+  FILM_FLICKER_OVERLAY_ANIMATION: 'filmFlicker 1.1s infinite linear alternate',
+  PAGE_NAVIGATION_BUTTONS_Z_INDEX: 20,
+  PAGE_NAVIGATION_BUTTON_FONT_SIZE: 24, // pixels
+  PAGE_NAVIGATION_BUTTON_DISABLED_OPACITY: 0.3,
+  PAGE_COUNT_TEXT_COLOR: '#887',
+  PAGE_COUNT_TEXT_FONT_FAMILY: 'IBM Plex Mono, monospace',
+  PAGE_COUNT_TEXT_FONT_SIZE: 16, // pixels
+  GRIT_SHELL_OVERLAY_URL: '/textures/overlay_grit_shell.png',
+  FILM_BACKGROUND_Z_INDEX: 1,
+  FILM_BACKGROUND_OPACITY: 0.92,
+  TYPEWRITER_TEXT_Z_INDEX: 2,
+  SIGIL_IMAGE_URL: '/textures/sigil_storytellers_society.png',
+  TURN_PAGE_LEVER_Z_INDEX: 50,
+};
 
-// Animation & Style Values
-const PAGE_SLIDE_X_OFFSET = -50; // Percentage for left slide
-const KEY_TILT_RANDOM_MAX = 1.4;
-const KEY_TILT_RANDOM_MIN = -0.7;
-const KEY_OFFSET_Y_RANDOM_MAX = 3; // pixels
-const KEY_OFFSET_Y_RANDOM_MIN = -1; // pixels
-const FILM_SLIDE_WRAPPER_WIDTH = '200%';
-const FILM_SLIDE_WRAPPER_Z_INDEX = 10;
-const FILM_BG_SLIDE_OPACITY = 0.96;
-const FILM_BG_SLIDE_BOX_SHADOW_LEFT = 'inset -12px 0 24px #120b05b0';
-const FILM_BG_SLIDE_BOX_SHADOW_RIGHT = 'inset 12px 0 24px #120b05b0';
-const FILM_BG_SLIDE_CONTRAST_OUTGOING = 1.06;
-const FILM_BG_SLIDE_BRIGHTNESS_OUTGOING = 1.04;
-const FILM_BG_SLIDE_CONTRAST_INCOMING = 1.04;
-const FILM_BG_SLIDE_BRIGHTNESS_INCOMING = 1.02;
-const FILM_FLICKER_OVERLAY_Z_INDEX = 11;
-const FILM_FLICKER_OVERLAY_TEXTURE_URL = '/textures/grainy.png';
-const FILM_FLICKER_OVERLAY_GRADIENT = 'linear-gradient(90deg,rgba(0,0,0,0.09),rgba(0,0,0,0.16))';
-const FILM_FLICKER_OVERLAY_OPACITY = 0.15;
-const FILM_FLICKER_OVERLAY_BLEND_MODE = 'multiply';
-const FILM_FLICKER_OVERLAY_ANIMATION = 'filmFlicker 1.1s infinite linear alternate';
-const PAGE_NAVIGATION_BUTTONS_TOP = '3vh';
-const PAGE_NAVIGATION_BUTTONS_Z_INDEX = 20;
-const PAGE_NAVIGATION_BUTTONS_PADDING = '0 3vw';
-const PAGE_NAVIGATION_BUTTON_FONT_SIZE = 24; // pixels
-const PAGE_NAVIGATION_BUTTON_DISABLED_OPACITY = 0.3;
-const PAGE_COUNT_TEXT_COLOR = '#887';
-const PAGE_COUNT_TEXT_FONT_FAMILY = 'IBM Plex Mono, monospace';
-const PAGE_COUNT_TEXT_FONT_SIZE = 16; // pixels
-const GRIT_SHELL_OVERLAY_URL = '/textures/overlay_grit_shell.png';
-const FILM_BACKGROUND_Z_INDEX = 1;
-const FILM_BACKGROUND_OPACITY = 0.92;
-const TYPEWRITER_TEXT_Z_INDEX = 2;
-const SIGIL_IMAGE_URL = '/textures/sigil_storytellers_society.png';
-const TURN_PAGE_LEVER_BOTTOM = '48px';
-const TURN_PAGE_LEVER_LEFT = '5vw';
-const TURN_PAGE_LEVER_Z_INDEX = 50;
-const NEEDED_HEIGHT_OFFSET = 4; // pixels
-const STRIKER_CURSOR_OFFSET_LEFT = '-40px';
+const BEHAVIOR_CONSTANTS = {
+  INITIAL_SCROLL_MODE: 'cinematic',
+  NORMAL_SCROLL_MODE: 'normal',
+  SLIDE_DIRECTION_LEFT: 'left',
+  SLIDE_DIRECTION_RIGHT: 'right',
+  SESSION_ID_STORAGE_KEY: 'sessionId',
+  GHOSTWRITER_AI_TRIGGER_INTERVAL: 1000, // ms
+  GHOSTWRITER_MIN_WORDS_TRIGGER: 3,
+  LEVER_LEVEL_WORD_THRESHOLDS: [0, 10, 20, 30], // words for level 0, 1, 2, 3 respectively
+  SPECIAL_KEY_TEXT: 'THE XEROFAG',
+  SPECIAL_KEY_INSERT_TEXT: 'The Xerofag ',
+};
 
+// Recalculate MAX_LINES using the new constant objects
+LAYOUT_CONSTANTS.MAX_LINES = Math.floor((LAYOUT_CONSTANTS.FILM_HEIGHT - LAYOUT_CONSTANTS.TOP_OFFSET - LAYOUT_CONSTANTS.BOTTOM_PADDING) / LAYOUT_CONSTANTS.LINE_HEIGHT);
 
-// Logic Thresholds & Values
-const GHOSTWRITER_MIN_WORDS_TRIGGER = 3;
-const LEVER_LEVEL_WORD_THRESHOLDS = [0, 10, 20, 30]; // words for level 0, 1, 2, 3 respectively
-const SPECIAL_KEY_TEXT = 'THE XEROFAG';
-const SPECIAL_KEY_INSERT_TEXT = 'The Xerofag ';
 
 // --- Page Transition Reducer ---
 const pageTransitionActionTypes = {
@@ -98,11 +105,11 @@ const pageTransitionActionTypes = {
 }
 
 const initialPageTransitionState = {
-  scrollMode: INITIAL_SCROLL_MODE,
+  scrollMode: BEHAVIOR_CONSTANTS.INITIAL_SCROLL_MODE,
   pageChangeInProgress: false,
   isSliding: false,
   slideX: 0,
-  slideDir: SLIDE_DIRECTION_LEFT,
+  slideDir: BEHAVIOR_CONSTANTS.SLIDE_DIRECTION_LEFT,
   prevFilmBgUrl: null,
   nextFilmBgUrl: null,
   prevText: '',
@@ -137,7 +144,7 @@ function pageTransitionReducer(state, action) {
         ...state,
         isSliding: false,
         pageChangeInProgress: false,
-        scrollMode: action.payload.newScrollMode || INITIAL_SCROLL_MODE,
+        scrollMode: action.payload.newScrollMode || BEHAVIOR_CONSTANTS.INITIAL_SCROLL_MODE,
         // typingAllowed and showCursor are not part of this reducer's state
         // but the action causing this might also trigger those changes elsewhere
       };
@@ -158,7 +165,6 @@ function pageTransitionReducer(state, action) {
         ...state,
         scrollMode: action.payload.scrollMode,
       };
-    case typingActionTypes.RETYPE_ACTION:
       // Ensure action.payload contains 'count' and 'text'
       if (action.payload && typeof action.payload.count === 'number' && typeof action.payload.text === 'string') {
         const textToModify = state.currentGhostText;
@@ -324,7 +330,7 @@ function typingReducer(state, action) {
         isProcessingSequence: false,
         fadeState: { isActive: false, to_text: '', phase: 0 },
       };
-    case typingActionTypes.RETYPE_ACTION:
+    
       // Ensure action.payload contains 'count' and 'text'
       if (action.payload && typeof action.payload.count === 'number' && typeof action.payload.text === 'string') {
         const textToModify = state.currentGhostText;
@@ -346,7 +352,7 @@ function typingReducer(state, action) {
 const keys = [
   'Q','W','E','R','T','Y','U','I','O','P',
   'A','S','D','F','G','H','J','K','L',
-  'Z','X','C','V','B','N','M','THE XEROFAG'
+  'Z','X','C','V','B','N','M', BEHAVIOR_CONSTANTS.SPECIAL_KEY_TEXT
 ];
 
 const TypewriterFramework = () => {
@@ -390,7 +396,7 @@ const TypewriterFramework = () => {
 
   // --- Page History State (Still useState as per instructions) ---
   const [pages, setPages] = useState([
-    { text: '', filmBgUrl: DEFAULT_FILM_BG_URL }
+    { text: '', filmBgUrl: STYLE_CONSTANTS.DEFAULT_FILM_BG_URL }
   ]);
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -400,6 +406,7 @@ const TypewriterFramework = () => {
   // Level: 0 = empty, 3 = full (ready for page turn)
   const [leverLevel, setLeverLevel] = useState(0);
   const [currentFontStyles, setCurrentFontStyles] = useState(null);
+  const [keysForSentientEffect, setKeysForSentientEffect] = useState([]);
 
 
 
@@ -412,10 +419,10 @@ const TypewriterFramework = () => {
   const strikerRef = useRef(null);
 
   const [sessionId] = useState(() => {
-    const stored = localStorage.getItem(SESSION_ID_STORAGE_KEY);
+    const stored = localStorage.getItem(BEHAVIOR_CONSTANTS.SESSION_ID_STORAGE_KEY);
     if (stored) return stored;
     const newId = Math.random().toString(36).substring(2, 15);
-    localStorage.setItem(SESSION_ID_STORAGE_KEY, newId);
+    localStorage.setItem(BEHAVIOR_CONSTANTS.SESSION_ID_STORAGE_KEY, newId);
     return newId;
   });
 
@@ -423,22 +430,22 @@ const TypewriterFramework = () => {
   const { text: pageText, filmBgUrl: pageBg } = pages[currentPage] || {};
   // Ghost text is now derived from typingState.responses
   const ghostText = typingState.currentGhostText;
-  const visibleLineCount = Math.min(countLines(pageText, ghostText), MAX_LINES);
-  const neededHeight = TOP_OFFSET + visibleLineCount * LINE_HEIGHT + NEEDED_HEIGHT_OFFSET;
-  const scrollAreaHeight = Math.max(FRAME_HEIGHT, neededHeight);
+  const visibleLineCount = Math.min(countLines(pageText, ghostText), LAYOUT_CONSTANTS.MAX_LINES);
+  const neededHeight = LAYOUT_CONSTANTS.TOP_OFFSET + visibleLineCount * LAYOUT_CONSTANTS.LINE_HEIGHT + LAYOUT_CONSTANTS.NEEDED_HEIGHT_OFFSET;
+  const scrollAreaHeight = Math.max(LAYOUT_CONSTANTS.FRAME_HEIGHT, neededHeight);
 
   // --- Cinematic Scroll intro ---
   useEffect(() => {
-    if (pageTransitionState.scrollMode !== INITIAL_SCROLL_MODE || !scrollRef.current) return;
+    if (pageTransitionState.scrollMode !== BEHAVIOR_CONSTANTS.INITIAL_SCROLL_MODE || !scrollRef.current) return;
     scrollRef.current.scrollTop = 0;
     const timer = setTimeout(() => {
-      cinematicScrollTo(scrollRef, CINEMATIC_SCROLL_INTRO_SCROLL_TO_TOP_TIMEOUT, CINEMATIC_SCROLL_INTRO_DURATION);
-      setTimeout(() => dispatchPageTransition({ type: pageTransitionActionTypes.SET_SCROLL_MODE, payload: { scrollMode: NORMAL_SCROLL_MODE } }), CINEMATIC_SCROLL_TO_NORMAL_MODE_TIMEOUT);
-    }, CINEMATIC_SCROLL_INTRO_DELAY);
+      cinematicScrollTo(scrollRef, ANIMATION_CONSTANTS.CINEMATIC_SCROLL_INTRO_SCROLL_TO_TOP_TIMEOUT, ANIMATION_CONSTANTS.CINEMATIC_SCROLL_INTRO_DURATION);
+      setTimeout(() => dispatchPageTransition({ type: pageTransitionActionTypes.SET_SCROLL_MODE, payload: { scrollMode: BEHAVIOR_CONSTANTS.NORMAL_SCROLL_MODE } }), ANIMATION_CONSTANTS.CINEMATIC_SCROLL_TO_NORMAL_MODE_TIMEOUT);
+    }, ANIMATION_CONSTANTS.CINEMATIC_SCROLL_INTRO_DELAY);
     return () => clearTimeout(timer);
   }, [pageTransitionState.scrollMode]);
 
-  function cinematicScrollTo(ref, to, duration = CINEMATIC_SCROLL_DEFAULT_DURATION) {
+  function cinematicScrollTo(ref, to, duration = ANIMATION_CONSTANTS.CINEMATIC_SCROLL_DEFAULT_DURATION) {
     if (!ref.current) return;
     const start = ref.current.scrollTop;
     const change = to - start;
@@ -458,7 +465,7 @@ const TypewriterFramework = () => {
   // --- Unified scroll effect ---
   useEffect(() => {
     if (!scrollRef.current || !lastLineRef.current) return;
-    if (pageTransitionState.scrollMode === NORMAL_SCROLL_MODE) {
+    if (pageTransitionState.scrollMode === BEHAVIOR_CONSTANTS.NORMAL_SCROLL_MODE) {
       requestAnimationFrame(() => {
         lastLineRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
       });
@@ -476,7 +483,7 @@ const TypewriterFramework = () => {
     // Animate scroll up
     if (scrollRef.current) {
       const start = scrollRef.current.scrollTop;
-      const duration = PAGE_TURN_SCROLL_ANIMATION_DURATION;
+      const duration = ANIMATION_CONSTANTS.PAGE_TURN_SCROLL_ANIMATION_DURATION;
       const startTime = performance.now();
 
       function animateScroll(now) {
@@ -492,12 +499,12 @@ const TypewriterFramework = () => {
           // Fetch next film image then prepare for slide
           fetchNextFilmImage(pageText + ghostText, sessionId).then(data => {
             const newUrl = data?.data.image_url || null;
-            const newFilm = newUrl || DEFAULT_FILM_BG_URL;
+            const newFilm = newUrl || STYLE_CONSTANTS.DEFAULT_FILM_BG_URL;
             
             dispatchPageTransition({
               type: pageTransitionActionTypes.PREPARE_SLIDE,
               payload: {
-                slideDir: SLIDE_DIRECTION_LEFT,
+                slideDir: BEHAVIOR_CONSTANTS.SLIDE_DIRECTION_LEFT,
                 prevFilmBgUrl: pageBg,
                 prevText: pageText,
                 nextFilmBgUrl: newFilm,
@@ -515,14 +522,14 @@ const TypewriterFramework = () => {
             requestAnimationFrame(() => {
               dispatchPageTransition({
                 type: pageTransitionActionTypes.START_SLIDE_ANIMATION,
-                payload: { slideX: PAGE_SLIDE_X_OFFSET }
+                payload: { slideX: ANIMATION_CONSTANTS.PAGE_SLIDE_X_OFFSET }
               });
             });
 
             setTimeout(() => {
               dispatchPageTransition({
                 type: pageTransitionActionTypes.FINISH_SLIDE_ANIMATION,
-                payload: { newScrollMode: INITIAL_SCROLL_MODE }
+                payload: { newScrollMode: BEHAVIOR_CONSTANTS.INITIAL_SCROLL_MODE }
               });
               dispatchTyping({ type: typingActionTypes.SET_TYPING_ALLOWED, payload: true });
               dispatchTyping({ type: typingActionTypes.SET_SHOW_CURSOR, payload: true });
@@ -549,10 +556,10 @@ const TypewriterFramework = () => {
     dispatchPageTransition({
       type: pageTransitionActionTypes.START_HISTORY_NAVIGATION,
       payload: {
-        slideDir: toNext ? SLIDE_DIRECTION_LEFT : SLIDE_DIRECTION_RIGHT,
+        slideDir: toNext ? BEHAVIOR_CONSTANTS.SLIDE_DIRECTION_LEFT : BEHAVIOR_CONSTANTS.SLIDE_DIRECTION_RIGHT,
         prevFilmBgUrl: pageBg,
         prevText: pageText,
-        nextFilmBgUrl: targetPage?.filmBgUrl || DEFAULT_FILM_BG_URL,
+        nextFilmBgUrl: targetPage?.filmBgUrl || STYLE_CONSTANTS.DEFAULT_FILM_BG_URL,
         nextText: targetPage?.text || '',
       }
     });
@@ -560,7 +567,7 @@ const TypewriterFramework = () => {
     requestAnimationFrame(() => {
       dispatchPageTransition({
         type: pageTransitionActionTypes.START_SLIDE_ANIMATION,
-        payload: { slideX: toNext ? PAGE_SLIDE_X_OFFSET : -PAGE_SLIDE_X_OFFSET }
+        payload: { slideX: toNext ? ANIMATION_CONSTANTS.PAGE_SLIDE_X_OFFSET : -ANIMATION_CONSTANTS.PAGE_SLIDE_X_OFFSET }
       });
     });
 
@@ -568,7 +575,7 @@ const TypewriterFramework = () => {
       setCurrentPage(targetIdx); // Update current page after slide
       dispatchPageTransition({
         type: pageTransitionActionTypes.FINISH_SLIDE_ANIMATION,
-        payload: { newScrollMode: INITIAL_SCROLL_MODE }
+        payload: { newScrollMode: BEHAVIOR_CONSTANTS.INITIAL_SCROLL_MODE }
       });
       dispatchTyping({ type: typingActionTypes.SET_TYPING_ALLOWED, payload: (targetIdx === pages.length - 1) });
       dispatchTyping({ type: typingActionTypes.SET_SHOW_CURSOR, payload: true });
@@ -586,7 +593,7 @@ const TypewriterFramework = () => {
     const char = e.key === "Enter" ? '\n' : e.key;
     // Use typingState.inputBuffer and typingState.currentGhostText for currentLines calculation
     const currentLines = (pageText + ghostText + typingState.inputBuffer).split('\n').length;
-    if (currentLines >= MAX_LINES && e.key !== 'Backspace') {
+    if (currentLines >= LAYOUT_CONSTANTS.MAX_LINES && e.key !== 'Backspace') {
       handlePageTurnScroll();
       return;
     }
@@ -653,16 +660,16 @@ const TypewriterFramework = () => {
           if (strikerRef.current) {
             strikerRef.current.classList.remove('striker-return');
           }
-        }, STRIKER_RETURN_ANIMATION_DURATION);
+        }, ANIMATION_CONSTANTS.STRIKER_RETURN_ANIMATION_DURATION);
       }
-    }, TYPING_ANIMATION_INTERVAL);
+    }, ANIMATION_CONSTANTS.TYPING_ANIMATION_INTERVAL);
     return () => clearTimeout(timeout);
   }, [typingState.inputBuffer, typingState.typingAllowed, currentPage, setPages]); // Added setPages to dependencies
 
   // --- Key Visual State ---
   useEffect(() => {
     if (!typingState.lastPressedKey) return;
-    const timeout = setTimeout(() => dispatchTyping({ type: typingActionTypes.CLEAR_LAST_PRESSED_KEY }), LAST_PRESSED_KEY_TIMEOUT);
+    const timeout = setTimeout(() => dispatchTyping({ type: typingActionTypes.CLEAR_LAST_PRESSED_KEY }), ANIMATION_CONSTANTS.LAST_PRESSED_KEY_TIMEOUT);
     return () => clearTimeout(timeout);
   }, [typingState.lastPressedKey]);
 
@@ -676,123 +683,22 @@ const TypewriterFramework = () => {
         updated[idx] = getRandomTexture(key);
         return updated;
       });
-    }, KEY_TEXTURE_REFRESH_INTERVAL);
+    }, ANIMATION_CONSTANTS.KEY_TEXTURE_REFRESH_INTERVAL);
     return () => clearInterval(interval);
   }, [keyTextures]);
 
-  // --- Action Sequence Processing ---
-  useEffect(() => {
-    let timeoutId;
-
-    if (typingState.isProcessingSequence && typingState.currentActionIndex < typingState.actionSequence.length) {
-      const currentAction = typingState.actionSequence[typingState.currentActionIndex];
-
-      // Refined Fade Deactivation Logic: Part 1
-      // If fade was active and current action is not a fade, deactivate fade first.
-      if (typingState.fadeState.isActive && currentAction.action !== 'fade') {
-        dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
-      }
-
-      switch (currentAction.action) {
-        case 'type':
-          const newGhostTextType = typingState.currentGhostText + currentAction.text;
-          dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: newGhostTextType });
-          timeoutId = setTimeout(() => {
-            dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-          }, currentAction.delay);
-          break;
-        case 'pause':
-          timeoutId = setTimeout(() => {
-            dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-          }, currentAction.delay);
-          break;
-        case 'delete':
-          const newGhostTextDelete = typingState.currentGhostText.slice(0, -currentAction.count);
-          dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: newGhostTextDelete });
-          timeoutId = setTimeout(() => {
-            dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-          }, currentAction.delay);
-          break;
-        case 'fade':
-          dispatchTyping({
-            type: typingActionTypes.SET_FADE_STATE,
-            payload: { isActive: true, to_text: currentAction.to_text, phase: currentAction.phase }
-          });
-          timeoutId = setTimeout(() => {
-            dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-          }, currentAction.delay);
-          break;
-        case 'retype':
-          // Ensure action.count and action.text are available from the sequence object
-          if (typeof currentAction.count === 'number' && typeof currentAction.text === 'string') {
-            dispatchTyping({
-              type: typingActionTypes.RETYPE_ACTION,
-              payload: { count: currentAction.count, text: currentAction.text }
-            });
-            timeoutId = setTimeout(() => {
-              dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-            }, currentAction.delay);
-          } else {
-            // If data is malformed, log an error and proceed to next action without delay
-            console.error("Malformed 'retype' action in sequence:", currentAction);
-            dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-          }
-          break;
-        default:
-          // Unknown action, proceed to next
-          timeoutId = setTimeout(() => {
-            dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-          }, 0);
-          break;
-      }
-    } else if (typingState.isProcessingSequence && typingState.currentActionIndex >= typingState.actionSequence.length) {
-      // All actions processed, sequence is naturally completing.
-      const finalGhostTextOfSequence = typingState.currentGhostText;
-      const currentPageText = pages[currentPage]?.text || ''; // pages and currentPage are now dependencies
-      
-      if (finalGhostTextOfSequence) {
-        const textToCommit = currentPageText + finalGhostTextOfSequence;
-        const textToCommitLines = textToCommit.split('\n').length;
-        const newTextForPage =
-          textToCommitLines > MAX_LINES // MAX_LINES is a constant, not a dependency
-            ? textToCommit.split('\n').slice(0, MAX_LINES).join('\n')
-            : textToCommit;
-
-        setPages(prev => { // setPages is a dependency
-          const updatedPages = [...prev];
-          updatedPages[currentPage] = { // currentPage is a dependency
-            ...updatedPages[currentPage],
-            text: newTextForPage 
-          };
-          return updatedPages;
-        });
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
-      } else {
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentPageText.length });
-      }
-      
-      dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE }); 
-      if (typingState.fadeState.isActive) {
-        dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
-      }
-      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
-    }
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [
-    typingState.isProcessingSequence, 
-    typingState.actionSequence, 
-    typingState.currentActionIndex, 
-    typingState.fadeState.isActive, 
-    // typingState.currentGhostText, // Removed as per instruction
-    dispatchTyping, 
-    dispatchGhostwriter, 
-    pages, 
-    currentPage, 
-    setPages 
-  ]);
+   // --- Action Sequence Processing (moved to custom hook) ---
+  useActionSequenceProcessor(
+    typingState,
+    dispatchTyping,
+    dispatchGhostwriter,
+    pages,
+    currentPage,
+    setPages,
+    LAYOUT_CONSTANTS.MAX_LINES,
+    typingActionTypes, // Pass locally defined action types
+    ghostwriterActionTypes // Pass locally defined action types
+  );
 
 
   // --- Ghost Key Typing Simulation ---
@@ -822,6 +728,18 @@ useEffect(() => {
         fetchTypewriterReply(fullText, sessionId).then(response => {
           const reply = response.data;
           if (reply && reply.writing_sequence && reply.metadata) {
+            // Select keys for sentient effect
+            const availableKeys = keys.filter(k => k !== BEHAVIOR_CONSTANTS.SPECIAL_KEY_TEXT && k.length === 1); // Filter out special key and ensure single characters
+            const numToSelect = Math.floor(Math.random() * 3) + 1; // 1 to 3 keys
+            const selectedKeys = [];
+            for (let i = 0; i < numToSelect; i++) {
+              const randomIndex = Math.floor(Math.random() * availableKeys.length);
+              selectedKeys.push(availableKeys[randomIndex]);
+              // Optional: remove selected key from availableKeys to avoid duplicates if desired
+              // availableKeys.splice(randomIndex, 1);
+            }
+            setKeysForSentientEffect(selectedKeys);
+
             setCurrentFontStyles(reply.metadata);
             dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: reply.writing_sequence });
             dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
@@ -832,13 +750,23 @@ useEffect(() => {
           console.error("Error fetching typewriter reply due to inactivity:", error);
         });
       }
-    } else if (addition.trim().split(/\s+/).length >= GHOSTWRITER_MIN_WORDS_TRIGGER && !typingState.isProcessingSequence) {
+    } else if (addition.trim().split(/\s+/).length >= BEHAVIOR_CONSTANTS.GHOSTWRITER_MIN_WORDS_TRIGGER && !typingState.isProcessingSequence) {
       fetchShouldGenerateContinuation(fullText, addition, pauseSeconds).then(shouldGenerateData => {
         const shouldGenerate = shouldGenerateData.data.shouldGenerate;
         if (shouldGenerate) {
           fetchTypewriterReply(fullText, sessionId).then(response => {
             const reply = response.data;
             if (reply && reply.writing_sequence && reply.metadata) {
+              // Select keys for sentient effect
+              const availableKeys = keys.filter(k => k !== BEHAVIOR_CONSTANTS.SPECIAL_KEY_TEXT && k.length === 1);
+              const numToSelect = Math.floor(Math.random() * 3) + 1; // 1 to 3 keys
+              const selectedKeys = [];
+              for (let i = 0; i < numToSelect; i++) {
+                const randomIndex = Math.floor(Math.random() * availableKeys.length);
+                selectedKeys.push(availableKeys[randomIndex]);
+              }
+              setKeysForSentientEffect(selectedKeys);
+
               setCurrentFontStyles(reply.metadata);
               dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: reply.writing_sequence });
               dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
@@ -853,7 +781,7 @@ useEffect(() => {
         console.error("Error fetching shouldGenerateContinuation:", error);
       });
     }
-  }, GHOSTWRITER_AI_TRIGGER_INTERVAL);
+  }, BEHAVIOR_CONSTANTS.GHOSTWRITER_AI_TRIGGER_INTERVAL);
 
   return () => clearInterval(interval);
 }, [
@@ -887,8 +815,8 @@ useEffect(() => {
     const mergedText = currentText + fullGhostText; // Merged text
     const mergedLines = mergedText.split('\n').length;
     const newTextForPage =
-      mergedLines > MAX_LINES
-        ? mergedText.split('\n').slice(0, MAX_LINES).join('\n')
+      mergedLines > LAYOUT_CONSTANTS.MAX_LINES
+        ? mergedText.split('\n').slice(0, LAYOUT_CONSTANTS.MAX_LINES).join('\n')
         : mergedText;
 
     setPages(prev => {
@@ -918,10 +846,10 @@ useEffect(() => {
   const text = pages[currentPage]?.text || '';
   const words = text.trim().split(/\s+/).filter(Boolean).length;
   let newLevel = 0;
-  if (words > LEVER_LEVEL_WORD_THRESHOLDS[3]) newLevel = 3;
-  else if (words > LEVER_LEVEL_WORD_THRESHOLDS[2]) newLevel = 2;
-  else if (words > LEVER_LEVEL_WORD_THRESHOLDS[1]) newLevel = 1;
-  else newLevel = LEVER_LEVEL_WORD_THRESHOLDS[0]; // Should be 0
+  if (words > BEHAVIOR_CONSTANTS.LEVER_LEVEL_WORD_THRESHOLDS[3]) newLevel = 3;
+  else if (words > BEHAVIOR_CONSTANTS.LEVER_LEVEL_WORD_THRESHOLDS[2]) newLevel = 2;
+  else if (words > BEHAVIOR_CONSTANTS.LEVER_LEVEL_WORD_THRESHOLDS[1]) newLevel = 1;
+  else newLevel = BEHAVIOR_CONSTANTS.LEVER_LEVEL_WORD_THRESHOLDS[0]; // Should be 0
   setLeverLevel(newLevel);
   }, [pages, currentPage]);
 
@@ -941,8 +869,8 @@ useEffect(() => {
     if (typingState.isProcessingSequence || typingState.currentGhostText) {
       commitGhostText();
     }
-    dispatchTyping({ type: typingActionTypes.ADD_TO_INPUT_BUFFER, payload: SPECIAL_KEY_INSERT_TEXT });
-    dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: SPECIAL_KEY_TEXT.toUpperCase() });
+    dispatchTyping({ type: typingActionTypes.ADD_TO_INPUT_BUFFER, payload: BEHAVIOR_CONSTANTS.SPECIAL_KEY_INSERT_TEXT });
+    dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: BEHAVIOR_CONSTANTS.SPECIAL_KEY_TEXT.toUpperCase() });
     playXerofagHowl();
   };
 
@@ -970,18 +898,18 @@ useEffect(() => {
         onNextPage={() => handleHistoryNavigation(currentPage + 1)}
         isSliding={isSliding} // Directly from pageTransitionState
         // Pass relevant styling constants
-        PAGE_NAVIGATION_BUTTONS_TOP={PAGE_NAVIGATION_BUTTONS_TOP}
-        PAGE_NAVIGATION_BUTTONS_Z_INDEX={PAGE_NAVIGATION_BUTTONS_Z_INDEX}
-        PAGE_NAVIGATION_BUTTONS_PADDING={PAGE_NAVIGATION_BUTTONS_PADDING}
-        PAGE_NAVIGATION_BUTTON_FONT_SIZE={PAGE_NAVIGATION_BUTTON_FONT_SIZE}
-        PAGE_NAVIGATION_BUTTON_DISABLED_OPACITY={PAGE_NAVIGATION_BUTTON_DISABLED_OPACITY}
-        PAGE_COUNT_TEXT_COLOR={PAGE_COUNT_TEXT_COLOR}
-        PAGE_COUNT_TEXT_FONT_FAMILY={PAGE_COUNT_TEXT_FONT_FAMILY}
-        PAGE_COUNT_TEXT_FONT_SIZE={PAGE_COUNT_TEXT_FONT_SIZE}
+        PAGE_NAVIGATION_BUTTONS_TOP={LAYOUT_CONSTANTS.PAGE_NAVIGATION_BUTTONS_TOP}
+        PAGE_NAVIGATION_BUTTONS_Z_INDEX={STYLE_CONSTANTS.PAGE_NAVIGATION_BUTTONS_Z_INDEX}
+        PAGE_NAVIGATION_BUTTONS_PADDING={LAYOUT_CONSTANTS.PAGE_NAVIGATION_BUTTONS_PADDING}
+        PAGE_NAVIGATION_BUTTON_FONT_SIZE={STYLE_CONSTANTS.PAGE_NAVIGATION_BUTTON_FONT_SIZE}
+        PAGE_NAVIGATION_BUTTON_DISABLED_OPACITY={STYLE_CONSTANTS.PAGE_NAVIGATION_BUTTON_DISABLED_OPACITY}
+        PAGE_COUNT_TEXT_COLOR={STYLE_CONSTANTS.PAGE_COUNT_TEXT_COLOR}
+        PAGE_COUNT_TEXT_FONT_FAMILY={STYLE_CONSTANTS.PAGE_COUNT_TEXT_FONT_FAMILY}
+        PAGE_COUNT_TEXT_FONT_SIZE={STYLE_CONSTANTS.PAGE_COUNT_TEXT_FONT_SIZE}
       />
 
       <img
-        src={GRIT_SHELL_OVERLAY_URL}
+        src={STYLE_CONSTANTS.GRIT_SHELL_OVERLAY_URL}
         alt="grit shell overlay"
         className="typewriter-overlay"
       />
@@ -1003,41 +931,41 @@ useEffect(() => {
         nextFilmBgUrl={nextFilmBgUrl}
         prevText={prevText}
         nextText={nextText}
-        MAX_LINES={MAX_LINES}
-        TOP_OFFSET={TOP_OFFSET}
-        BOTTOM_PADDING={BOTTOM_PADDING}
-        FRAME_HEIGHT={FRAME_HEIGHT}
-        FILM_HEIGHT={FILM_HEIGHT}
+        MAX_LINES={LAYOUT_CONSTANTS.MAX_LINES}
+        TOP_OFFSET={LAYOUT_CONSTANTS.TOP_OFFSET}
+        BOTTOM_PADDING={LAYOUT_CONSTANTS.BOTTOM_PADDING}
+        FRAME_HEIGHT={LAYOUT_CONSTANTS.FRAME_HEIGHT}
+        FILM_HEIGHT={LAYOUT_CONSTANTS.FILM_HEIGHT}
         scrollAreaHeight={scrollAreaHeight}
         neededHeight={neededHeight}
         SLIDE_DURATION_MS={SLIDE_DURATION_MS}
-        SPECIAL_KEY_TEXT={SPECIAL_KEY_TEXT}
+        SPECIAL_KEY_TEXT={BEHAVIOR_CONSTANTS.SPECIAL_KEY_TEXT}
         // Pass all necessary animation/style constants used by PaperDisplay and its renderSlideWrapper
-        FILM_SLIDE_WRAPPER_WIDTH={FILM_SLIDE_WRAPPER_WIDTH}
-        FILM_SLIDE_WRAPPER_Z_INDEX={FILM_SLIDE_WRAPPER_Z_INDEX}
-        FILM_BG_SLIDE_OPACITY={FILM_BG_SLIDE_OPACITY}
-        FILM_BG_SLIDE_BOX_SHADOW_LEFT={FILM_BG_SLIDE_BOX_SHADOW_LEFT}
-        FILM_BG_SLIDE_BOX_SHADOW_RIGHT={FILM_BG_SLIDE_BOX_SHADOW_RIGHT}
-        FILM_BG_SLIDE_CONTRAST_OUTGOING={FILM_BG_SLIDE_CONTRAST_OUTGOING}
-        FILM_BG_SLIDE_BRIGHTNESS_OUTGOING={FILM_BG_SLIDE_BRIGHTNESS_OUTGOING}
-        FILM_BG_SLIDE_CONTRAST_INCOMING={FILM_BG_SLIDE_CONTRAST_INCOMING}
-        FILM_BG_SLIDE_BRIGHTNESS_INCOMING={FILM_BG_SLIDE_BRIGHTNESS_INCOMING}
-        FILM_FLICKER_OVERLAY_Z_INDEX={FILM_FLICKER_OVERLAY_Z_INDEX}
-        FILM_FLICKER_OVERLAY_TEXTURE_URL={FILM_FLICKER_OVERLAY_TEXTURE_URL}
-        FILM_FLICKER_OVERLAY_GRADIENT={FILM_FLICKER_OVERLAY_GRADIENT}
-        FILM_FLICKER_OVERLAY_OPACITY={FILM_FLICKER_OVERLAY_OPACITY}
-        FILM_FLICKER_OVERLAY_BLEND_MODE={FILM_FLICKER_OVERLAY_BLEND_MODE}
-        FILM_FLICKER_OVERLAY_ANIMATION={FILM_FLICKER_OVERLAY_ANIMATION}
-        FILM_BACKGROUND_Z_INDEX={FILM_BACKGROUND_Z_INDEX}
-        FILM_BACKGROUND_OPACITY={FILM_BACKGROUND_OPACITY}
-        TYPEWRITER_TEXT_Z_INDEX={TYPEWRITER_TEXT_Z_INDEX}
-        STRIKER_CURSOR_OFFSET_LEFT={STRIKER_CURSOR_OFFSET_LEFT}
-        SLIDE_DIRECTION_LEFT={SLIDE_DIRECTION_LEFT}
+        FILM_SLIDE_WRAPPER_WIDTH={LAYOUT_CONSTANTS.FILM_SLIDE_WRAPPER_WIDTH}
+        FILM_SLIDE_WRAPPER_Z_INDEX={STYLE_CONSTANTS.FILM_SLIDE_WRAPPER_Z_INDEX}
+        FILM_BG_SLIDE_OPACITY={STYLE_CONSTANTS.FILM_BG_SLIDE_OPACITY}
+        FILM_BG_SLIDE_BOX_SHADOW_LEFT={STYLE_CONSTANTS.FILM_BG_SLIDE_BOX_SHADOW_LEFT}
+        FILM_BG_SLIDE_BOX_SHADOW_RIGHT={STYLE_CONSTANTS.FILM_BG_SLIDE_BOX_SHADOW_RIGHT}
+        FILM_BG_SLIDE_CONTRAST_OUTGOING={STYLE_CONSTANTS.FILM_BG_SLIDE_CONTRAST_OUTGOING}
+        FILM_BG_SLIDE_BRIGHTNESS_OUTGOING={STYLE_CONSTANTS.FILM_BG_SLIDE_BRIGHTNESS_OUTGOING}
+        FILM_BG_SLIDE_CONTRAST_INCOMING={STYLE_CONSTANTS.FILM_BG_SLIDE_CONTRAST_INCOMING}
+        FILM_BG_SLIDE_BRIGHTNESS_INCOMING={STYLE_CONSTANTS.FILM_BG_SLIDE_BRIGHTNESS_INCOMING}
+        FILM_FLICKER_OVERLAY_Z_INDEX={STYLE_CONSTANTS.FILM_FLICKER_OVERLAY_Z_INDEX}
+        FILM_FLICKER_OVERLAY_TEXTURE_URL={STYLE_CONSTANTS.FILM_FLICKER_OVERLAY_TEXTURE_URL}
+        FILM_FLICKER_OVERLAY_GRADIENT={STYLE_CONSTANTS.FILM_FLICKER_OVERLAY_GRADIENT}
+        FILM_FLICKER_OVERLAY_OPACITY={STYLE_CONSTANTS.FILM_FLICKER_OVERLAY_OPACITY}
+        FILM_FLICKER_OVERLAY_BLEND_MODE={STYLE_CONSTANTS.FILM_FLICKER_OVERLAY_BLEND_MODE}
+        FILM_FLICKER_OVERLAY_ANIMATION={STYLE_CONSTANTS.FILM_FLICKER_OVERLAY_ANIMATION}
+        FILM_BACKGROUND_Z_INDEX={STYLE_CONSTANTS.FILM_BACKGROUND_Z_INDEX}
+        FILM_BACKGROUND_OPACITY={STYLE_CONSTANTS.FILM_BACKGROUND_OPACITY}
+        TYPEWRITER_TEXT_Z_INDEX={STYLE_CONSTANTS.TYPEWRITER_TEXT_Z_INDEX}
+        STRIKER_CURSOR_OFFSET_LEFT={LAYOUT_CONSTANTS.STRIKER_CURSOR_OFFSET_LEFT}
+        SLIDE_DIRECTION_LEFT={BEHAVIOR_CONSTANTS.SLIDE_DIRECTION_LEFT}
       />
 
       <div className="storyteller-sigil">
         <img
-          src={SIGIL_IMAGE_URL}
+          src={STYLE_CONSTANTS.SIGIL_IMAGE_URL}
           alt="Storyteller's Society Sigil"
         />
       </div>
@@ -1053,26 +981,27 @@ useEffect(() => {
         playEndOfPageSound={playEndOfPageSound} // Pass the function directly
         // playKeySound and playXerofagHowl are called within the handlers above
         // Props for styling randomization, if Keyboard component uses them:
-        KEY_TILT_RANDOM_MAX={KEY_TILT_RANDOM_MAX}
-        KEY_TILT_RANDOM_MIN={KEY_TILT_RANDOM_MIN}
-        KEY_OFFSET_Y_RANDOM_MAX={KEY_OFFSET_Y_RANDOM_MAX}
-        KEY_OFFSET_Y_RANDOM_MIN={KEY_OFFSET_Y_RANDOM_MIN}
-        SPECIAL_KEY_TEXT={SPECIAL_KEY_TEXT}
+        KEY_TILT_RANDOM_MAX={STYLE_CONSTANTS.KEY_TILT_RANDOM_MAX}
+        KEY_TILT_RANDOM_MIN={STYLE_CONSTANTS.KEY_TILT_RANDOM_MIN}
+        KEY_OFFSET_Y_RANDOM_MAX={STYLE_CONSTANTS.KEY_OFFSET_Y_RANDOM_MAX}
+        KEY_OFFSET_Y_RANDOM_MIN={STYLE_CONSTANTS.KEY_OFFSET_Y_RANDOM_MIN}
+        SPECIAL_KEY_TEXT={BEHAVIOR_CONSTANTS.SPECIAL_KEY_TEXT}
+        keysToGlow={keysForSentientEffect} // Pass the new state here
       />
 
       <div
   className="turn-page-lever-float"
   style={{
     position: 'absolute',
-    bottom: TURN_PAGE_LEVER_BOTTOM,
-    left: TURN_PAGE_LEVER_LEFT,
-    zIndex: TURN_PAGE_LEVER_Z_INDEX,
+    bottom: LAYOUT_CONSTANTS.TURN_PAGE_LEVER_BOTTOM,
+    left: LAYOUT_CONSTANTS.TURN_PAGE_LEVER_LEFT,
+    zIndex: STYLE_CONSTANTS.TURN_PAGE_LEVER_Z_INDEX,
     pointerEvents: 'auto', // so user can click/tap lever!
   }}
 >
   <TurnPageLever
     level={leverLevel}
-    canPull={leverLevel === LEVER_LEVEL_WORD_THRESHOLDS.length -1 && !pageChangeInProgress && typingAllowed}
+    canPull={leverLevel === BEHAVIOR_CONSTANTS.LEVER_LEVEL_WORD_THRESHOLDS.length -1 && !pageChangeInProgress && typingAllowed}
     disabled={pageChangeInProgress}
     onPull={() => {
       setLeverLevel(0);

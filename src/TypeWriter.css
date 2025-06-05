@@ -854,9 +854,9 @@
 /* --- Ghost Character Animation --- */
 @keyframes materializeChar {
   from {
-    opacity: 0;
-    transform: scale(0.9) translateY(5px);
-    filter: blur(2px);
+    opacity: 0.1; /* Start slightly visible */
+    transform: scale(1.03) translateY(1px); /* Smaller scale, less Y shift */
+    filter: blur(0.5px); /* Less blur */
   }
   to {
     opacity: 1;
@@ -867,31 +867,31 @@
 
 @keyframes shimmerChar {
   0% {
-    opacity: 0;
-    transform: scale(0.9) translateY(5px);
-    filter: blur(2px);
+    opacity: 0.1;
+    transform: scale(1.02) translateY(1px);
+    filter: blur(0.5px);
   }
   30% { /* Start shimmer */
     opacity: 0.7;
-    filter: blur(1px) brightness(1.2);
+    filter: blur(0.3px) brightness(1.1);
     transform: scale(1) translateY(0);
   }
   40% {
-    opacity: 0.5;
-    filter: blur(1px) brightness(0.9);
+    opacity: 0.6; /* Less drastic dip */
+    filter: blur(0.3px) brightness(0.95); /* Reduced blur and brightness */
   }
   50% {
-    opacity: 0.9;
-    filter: blur(0.5px) brightness(1.3);
+    opacity: 0.8; /* Less drastic peak */
+    filter: blur(0.1px) brightness(1.15); /* Reduced blur and brightness */
   }
   60% {
     opacity: 0.7;
-    filter: blur(0.5px) brightness(0.9);
+    filter: blur(0.1px) brightness(0.95);
   }
   70% { /* End shimmer, settle */
     opacity: 1;
-    filter: blur(0) brightness(1.1);
-    transform: scale(1.05); /* Slight pop */
+    filter: blur(0) brightness(1.05); /* Reduced brightness */
+    transform: scale(1.01); /* Smaller pop */
   }
   100% {
     opacity: 1;
@@ -899,17 +899,16 @@
     filter: blur(0) brightness(1);
   }
 }
-
 @keyframes pulseSizeChar {
   0% {
-    opacity: 0;
-    transform: scale(0.7) translateY(5px); /* Start smaller */
-    filter: blur(3px);
+    opacity: 0.1;
+    transform: scale(0.98) translateY(1px); /* Start closer to final size, less Y shift */
+    filter: blur(1px); /* Reduced blur */
   }
   60% {
-    opacity: 0.8;
-    transform: scale(1.5) translateY(-2px); /* Pulse bigger and slightly up */
-    filter: blur(0.5px);
+    opacity: 0.9; /* Higher opacity during pulse */
+    transform: scale(1.05) translateY(0px); /* Smaller pulse, less Y shift */
+    filter: blur(0.2px); /* Reduced blur */
   }
   100% {
     opacity: 1;
@@ -933,6 +932,108 @@
   animation: shimmerChar 1.0s ease-out forwards; /* Duration for shimmer */
 }
 
-.ghost-char-pulse {
-  animation: pulseSizeChar 1.0s ease-out forwards; /* Duration for pulse */
+ghost-char-pulse {
+  animation: pulseSizeChar 0.8s ease-out forwards; /* Faster duration */
+}
+
+/* === FADE ACTION STYLES === */
+
+@keyframes textAppearAnimation {
+  from { 
+    opacity: 0;
+    /* Optional: add a slight movement */
+    /* transform: translateY(3px); */
+  }
+  to { 
+    opacity: 1;
+    /* transform: translateY(0); */
+  }
+}
+
+@keyframes textDisappearAnimation {
+  from { 
+    opacity: 1;
+    /* transform: translateY(0); */
+  }
+  to { 
+    opacity: 0;
+    /* transform: translateY(-3px); */
+  }
+}
+
+/*
+  When fadeState.isActive, the main text container (div.typewriter-text) gets:
+  `fade-active fade-phase-X` classes.
+  The content *inside* this container is ALREADY `fadeState.to_text` for the CURRENT phase.
+  So, these animations make the CURRENT `to_text` appear or disappear.
+*/
+
+.typewriter-text.fade-active {
+  /* Default animation properties for active fading elements */
+  animation-duration: 0.7s; /* Duration of the fade effect for a phase */
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards; /* Retain the style of the final keyframe */
+}
+
+/* 
+  Define behavior for each phase.
+  The `to_text` for the phase is rendered by React. This CSS animates that rendered text.
+*/
+
+/* Phase 1: Typically introduces the first piece of new text. */
+.typewriter-text.fade-active.fade-phase-1 {
+  animation-name: textAppearAnimation;
+}
+
+/* Phase 2: Continues the sequence, new text appears. */
+.typewriter-text.fade-active.fade-phase-2 {
+  animation-name: textAppearAnimation;
+}
+
+/* Phase 3: Further continuation, new text appears. */
+.typewriter-text.fade-active.fade-phase-3 {
+  animation-name: textAppearAnimation;
+}
+
+/* Phase 4: Final phase. 
+   If fadeState.to_text for this phase is an empty string, 
+   `textAppearAnimation` will make this empty string "appear" (i.e., content area becomes blank),
+   effectively achieving "fading to nothing" if the previous phase had text.
+   If this phase itself needs to animate *out* the text from phase 3, the JS logic would need adjustment.
+   Based on current JS, phase 4 renders its own to_text, and this animates it.
+*/
+.typewriter-text.fade-active.fade-phase-4 {
+  animation-name: textAppearAnimation; 
+  /* If to_text is "", opacity from 0 to 1 on an empty string results in no visible change, looks blank. */
+  /* If phase 4 is *always* a fade out, and PaperDisplay rendered previous text:
+  /* animation-name: textDisappearAnimation; */
+}
+
+/* Key sentient glow effect */
+@keyframes keySentientGlow {
+  0% {
+    box-shadow: 0 0 5px rgba(255, 223, 186, 0.3), /* Inner key color */
+                inset 0 0 3px rgba(255, 200, 150, 0.2);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 223, 186, 0.7), /* Brighter, larger glow */
+                inset 0 0 8px rgba(255, 200, 150, 0.5);
+    transform: scale(1.03); /* Slight twitch/pulse */
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(255, 223, 186, 0.3),
+                inset 0 0 3px rgba(255, 200, 150, 0.2);
+    transform: scale(1);
+  }
+}
+
+.key-sentient-glow .typewriter-key-img { /* Target the image inside the wrapper */
+  animation: keySentientGlow 0.5s ease-out;
+  /* The animation is applied to the key image, not the wrapper,
+     to ensure the glow is visually centered on the keycap texture.
+     The box-shadow in the animation will appear around the key image.
+     If the key has its own box-shadow, this will be overridden during animation.
+     Ensure .typewriter-key-img has position:relative if not already for box-shadow to behave as expected.
+  */
 }
