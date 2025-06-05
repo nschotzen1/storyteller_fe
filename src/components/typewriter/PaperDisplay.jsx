@@ -240,54 +240,54 @@ const PaperDisplay = ({
               style={textStyles} // Apply the combined styles here
             >
               {fadeState && fadeState.isActive ? (
-                (() => {
-                  // Always treat prev_text as a string
-                  const prevTextString = Array.isArray(fadeState.prev_text)
-                    ? fadeState.prev_text.map(g => g.char).join('')
-                    : (fadeState.prev_text || '');
-                  const prevChars = prevTextString.split('');
-                  const toChars = (fadeState.to_text || '').split('');
+                  (() => {
+                    // Always treat prev_text as a string
+                    const prevTextString = Array.isArray(fadeState.prev_text)
+                      ? fadeState.prev_text.map(g => g.char).join('')
+                      : (fadeState.prev_text || '');
+                    const prevChars = prevTextString.split('');
+                    const toChars = (fadeState.to_text || '').split('');
 
-                  // Find the longest common prefix
-                  let prefixLen = 0;
-                  while (
-                    prefixLen < prevChars.length &&
-                    prefixLen < toChars.length &&
-                    prevChars[prefixLen] === toChars[prefixLen]
-                  ) {
-                    prefixLen++;
-                  }
+                    // Find the longest common prefix
+                    let prefixLen = 0;
+                    while (
+                      prefixLen < prevChars.length &&
+                      prefixLen < toChars.length &&
+                      prevChars[prefixLen] === toChars[prefixLen]
+                    ) {
+                      prefixLen++;
+                    }
 
-                  // Static (unchanged) prefix:
-                  const prefix = toChars.slice(0, prefixLen).join('');
-                  // The new "fade-in" part:
-                  const fadeIn = toChars.slice(prefixLen);
-                  // If you're summarizing/fading to a SHORTER line, fade out the removed part:
-                  const fadeOut = prevChars.slice(prefixLen);
+                    // Static (unchanged) prefix:
+                    const prefix = toChars.slice(0, prefixLen).join('');
+                    // The new "fade-in" part:
+                    const fadeIn = toChars.slice(prefixLen);
+                    // If you're summarizing/fading to a SHORTER line, fade out the removed part:
+                    const fadeOut = prevChars.slice(prefixLen);
 
-                  return (
-                    <div className="typewriter-line">
-                      {/* Unchanged prefix: */}
-                      {prefix && <span>{prefix}</span>}
+                    return (
+                      <div className="typewriter-line">
+                        {/* Unchanged prefix: */}
+                        {prefix && <span>{prefix}</span>}
 
-                      {/* If fading out text (summary/shorten): */}
-                      {fadeOut.length > fadeIn.length &&
-                        fadeOut.slice(fadeIn.length).map((char, idx) => (
-                          <span key={`fade-out-${idx}`} className="ghost-blur">
+                        {/* If fading out text (summary/shorten): */}
+                        {fadeOut.length > fadeIn.length &&
+                          fadeOut.slice(fadeIn.length).map((char, idx) => (
+                            <span key={`fade-out-${idx}`} className="ghost-blur">
+                              {char}
+                            </span>
+                          ))}
+
+                        {/* Fade in new letters: */}
+                        {fadeIn.map((char, idx) => (
+                          <span key={`fade-in-${idx}`} className="ghost-char ghost-char-materialize">
                             {char}
                           </span>
                         ))}
-
-                      {/* Fade in new letters: */}
-                      {fadeIn.map((char, idx) => (
-                        <span key={`fade-in-${idx}`} className="ghost-char ghost-char-materialize">
-                          {char}
-                        </span>
-                      ))}
-                    </div>
-                  );
-                })()
-              )  : (
+                      </div>
+                    );
+                  })()
+                )  : (
                 (() => {
                   const pageTextLength = pageText.length;
                   const ghostTextString = Array.isArray(ghostText)
