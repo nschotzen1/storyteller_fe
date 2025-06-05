@@ -942,3 +942,39 @@
     transform: scale(1) translateY(0);
   }
 }
+
+@keyframes transformFadeInAnimation {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+    transform: scale(0.95); /* Optional: slight scale up */
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+
+.transform-fade-in {
+  animation: transformFadeInAnimation 0.5s ease-in forwards;
+  display: inline-block; /* Ensure it takes space */
+}
+
+@keyframes transformFadeOutAnimation {
+  from {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    filter: blur(2px);
+    transform: scale(0.95); /* Optional: slight scale down */
+  }
+}
+
+.transform-fade-out {
+  animation: transformFadeOutAnimation 0.5s ease-out forwards;
+  display: inline-block; /* Ensure it takes space, especially if positioned absolutely */
+}

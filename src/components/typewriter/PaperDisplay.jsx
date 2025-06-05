@@ -241,12 +241,8 @@ const PaperDisplay = ({
             >
               {fadeState && fadeState.isActive ? (
                   (() => {
-                    // Always treat prev_text as a string
-                    const prevTextString = Array.isArray(fadeState.prev_text)
-                      ? fadeState.prev_text.map(g => g.char).join('')
-                      : (fadeState.prev_text || '');
-                    const prevChars = prevTextString.split('');
-                    const toChars = (fadeState.to_text || '').split('');
+                    const prevChars = String(Array.isArray(fadeState.prev_text) ? fadeState.prev_text.map(g => g.char).join('') : fadeState.prev_text || '').split('');
+                    const toChars = String(fadeState.to_text || '').split('');
 
                     // Find the longest common prefix
                     let prefixLen = 0;
@@ -258,32 +254,43 @@ const PaperDisplay = ({
                       prefixLen++;
                     }
 
-                    // Static (unchanged) prefix:
                     const prefix = toChars.slice(0, prefixLen).join('');
-                    // The new "fade-in" part:
-                    const fadeIn = toChars.slice(prefixLen);
-                    // If you're summarizing/fading to a SHORTER line, fade out the removed part:
-                    const fadeOut = prevChars.slice(prefixLen);
+                    const fadeOutChars = prevChars.slice(prefixLen);
+                    const fadeInChars = toChars.slice(prefixLen);
+
+                    const maxLen = Math.max(fadeOutChars.length, fadeInChars.length);
+                    const changingPartElements = [];
+
+                    for (let i = 0; i < maxLen; i++) {
+                        const oldChar = fadeOutChars[i];
+                        const newChar = fadeInChars[i];
+
+                        if (oldChar !== undefined && newChar !== undefined && oldChar !== newChar) {
+                            changingPartElements.push(
+                                <span key={`fade-change-${i}`} style={{ position: 'relative', display: 'inline-block' }}>
+                                    <span className="transform-fade-out" style={{ position: 'absolute', left: 0, top: 0, display: 'inline-block' }}>{oldChar}</span>
+                                    <span className="transform-fade-in" style={{ display: 'inline-block' }}>{newChar}</span>
+                                </span>
+                            );
+                        } else if (oldChar !== undefined && newChar === undefined) {
+                            changingPartElements.push(
+                                <span key={`fade-out-${i}`} className="transform-fade-out" style={{ display: 'inline-block' }}>
+                                    {oldChar}
+                                </span>
+                            );
+                        } else if (newChar !== undefined && oldChar === undefined) {
+                            changingPartElements.push(
+                                <span key={`fade-in-${i}`} className="transform-fade-in" style={{ display: 'inline-block' }}>
+                                    {newChar}
+                                </span>
+                            );
+                        }
+                    }
 
                     return (
                       <div className="typewriter-line">
-                        {/* Unchanged prefix: */}
                         {prefix && <span>{prefix}</span>}
-
-                        {/* If fading out text (summary/shorten): */}
-                        {fadeOut.length > fadeIn.length &&
-                          fadeOut.slice(fadeIn.length).map((char, idx) => (
-                            <span key={`fade-out-${idx}`} className="ghost-blur">
-                              {char}
-                            </span>
-                          ))}
-
-                        {/* Fade in new letters: */}
-                        {fadeIn.map((char, idx) => (
-                          <span key={`fade-in-${idx}`} className="ghost-char ghost-char-materialize">
-                            {char}
-                          </span>
-                        ))}
+                        {changingPartElements}
                       </div>
                     );
                   })()

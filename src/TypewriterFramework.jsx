@@ -232,6 +232,8 @@ const typingActionTypes = {
   SEQUENCE_COMPLETE: 'SEQUENCE_COMPLETE',   // no payload, resets sequence processing flags
   CANCEL_SEQUENCE: 'CANCEL_SEQUENCE', // no payload, similar to SEQUENCE_COMPLETE for interruption
   RETYPE_ACTION: 'RETYPE_ACTION', // New action type for retyping
+  CAPTURE_PRE_FADE_SNAPSHOT: 'CAPTURE_PRE_FADE_SNAPSHOT',
+  SET_ALL_FADES_COMPLETED: 'SET_ALL_FADES_COMPLETED',
 };
 
 const initialTypingState = {
@@ -245,6 +247,8 @@ const initialTypingState = {
   currentGhostText: [],
   isProcessingSequence: false,
   fadeState: { isActive: false, to_text: '', phase: 0 },
+  preFadeSnapshot: null,
+  allFadesCompleted: false,
 };
 
 function typingReducer(state, action) {
@@ -302,6 +306,9 @@ function typingReducer(state, action) {
         currentGhostText: '',
         isProcessingSequence: true,
         fadeState: { isActive: false, to_text: '', phase: 0 },
+        preFadeSnapshot: null,
+        allFadesCompleted: false,
+        typingAllowed: true,
         inputBuffer: '', // Clear input buffer when a new sequence starts
       };
     case typingActionTypes.PROCESS_NEXT_ACTION:
@@ -320,15 +327,28 @@ function typingReducer(state, action) {
         fadeState: action.payload,
       };
     case typingActionTypes.SEQUENCE_COMPLETE:
+      const newGhostText = state.allFadesCompleted ? state.currentGhostText : '';
+      const newFadeState = state.allFadesCompleted ? state.fadeState : { isActive: false, to_text: '', phase: 0 };
+      return {
+        ...state,
+        actionSequence: [],
+        currentActionIndex: 0,
+        currentGhostText: newGhostText,
+        isProcessingSequence: false,
+        fadeState: newFadeState,
+      };
     case typingActionTypes.CANCEL_SEQUENCE:
       // Both can share the same logic for now
       return {
         ...state,
         actionSequence: [],
         currentActionIndex: 0,
-        currentGhostText: '', // Ensure ghost text is cleared on sequence completion/cancellation
+        currentGhostText: '', /* Clear ghost text on cancel */
         isProcessingSequence: false,
         fadeState: { isActive: false, to_text: '', phase: 0 },
+        preFadeSnapshot: null, /* Reset snapshot on cancel */
+        allFadesCompleted: false, /* Reset fades completed on cancel */
+        typingAllowed: true, /* Assume cancel means reset to typeable */
       };
     case typingActionTypes.RETYPE_ACTION:
       // Ensure action.payload contains 'count' and 'text'
@@ -343,7 +363,10 @@ function typingReducer(state, action) {
         };
       }
       return state; // If payload is malformed, return current state
-  
+    case typingActionTypes.CAPTURE_PRE_FADE_SNAPSHOT:
+      return { ...state, preFadeSnapshot: action.payload };
+    case typingActionTypes.SET_ALL_FADES_COMPLETED:
+      return { ...state, allFadesCompleted: true, typingAllowed: false };
     default:
       return state;
   }
@@ -356,7 +379,7 @@ const keys = [
   'Z','X','C','V','B','N','M','THE XEROFAG'
 ];
 
-const TypewriterFramework = () => {
+const TypewriterFramework = (props) => {
   // --- Reducers ---
   const [pageTransitionState, dispatchPageTransition] = useReducer(pageTransitionReducer, initialPageTransitionState);
   const {
@@ -706,6 +729,45 @@ const TypewriterFramework = () => {
         dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
       }
 
+      if (currentAction.action === 'fade' && !typingState.preFadeSnapshot) {
+        const currentGhostTextString = Array.isArray(typingState.currentGhostText) ? typingState.currentGhostText.map(g => g.char).join('') : typingState.currentGhostText;
+        const fullTextBeforeFade = (pages[currentPage]?.text || '') + currentGhostTextString;
+        const wordCount = fullTextBeforeFade.trim().split(/\s+/).filter(Boolean).length;
+
+        const nonFadeActionsBeforeCurrent = typingState.actionSequence.slice(0, typingState.currentActionIndex)
+            .filter(a => ['type', 'pause', 'delete', 'retype'].includes(a.action));
+
+        let lastActionText = '';
+        for (let i = nonFadeActionsBeforeCurrent.length - 1; i >= 0; i--) {
+            if (nonFadeActionsBeforeCurrent[i].action === 'type') {
+                lastActionText = nonFadeActionsBeforeCurrent[i].text;
+                break;
+            }
+        }
+
+        let lastPauseDelaySeconds = 0;
+        for (let i = nonFadeActionsBeforeCurrent.length - 1; i >= 0; i--) {
+            if (nonFadeActionsBeforeCurrent[i].action === 'pause') {
+                lastPauseDelaySeconds = nonFadeActionsBeforeCurrent[i].delay / 1000;
+                break;
+            }
+        }
+
+        dispatchTyping({
+            type: typingActionTypes.CAPTURE_PRE_FADE_SNAPSHOT,
+            payload: {
+                currentText: fullTextBeforeFade,
+                latestAddition: lastActionText,
+                latestPauseSeconds: lastPauseDelaySeconds,
+                lastGhostwriterWordCount: wordCount,
+            },
+        });
+
+        if (Array.isArray(typingState.currentGhostText)) {
+            dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: currentGhostTextString });
+        }
+    }
+
       switch (currentAction.action) {
        case 'type': {
           if (typeof currentAction.text !== "string") {
@@ -792,12 +854,24 @@ const TypewriterFramework = () => {
             type: typingActionTypes.SET_FADE_STATE,
             payload: {
               isActive: true,
-              prev_text: typingState.currentGhostText || (pages[currentPage]?.text || ""),
+              prev_text: typingState.currentGhostText,
               to_text: currentAction.to_text,
               phase: currentAction.phase
             }
           });
           timeoutId = setTimeout(() => {
+            dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: currentAction.to_text });
+
+            const isLastActionInSequence = typingState.currentActionIndex === typingState.actionSequence.length - 1;
+
+            if (isLastActionInSequence) {
+              dispatchTyping({ type: typingActionTypes.SET_ALL_FADES_COMPLETED });
+              // Assuming shouldGenerateTypeWriterResponse is a prop from the component's props
+              if (props.shouldGenerateTypeWriterResponse && typingState.preFadeSnapshot) {
+                props.shouldGenerateTypeWriterResponse(typingState.preFadeSnapshot);
+              }
+              dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
+            }
             dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
           }, currentAction.delay);
           break;
@@ -832,32 +906,31 @@ const TypewriterFramework = () => {
 
       const currentPageText = pages[currentPage]?.text || ''; // pages and currentPage are now dependencies
       
-      if (finalGhostTextOfSequence) {
-  const textToCommit = currentPageText + finalGhostTextOfSequence;
-  const textToCommitLines = textToCommit.split('\n').length;
-  const newTextForPage =
-    textToCommitLines > MAX_LINES
-      ? textToCommit.split('\n').slice(0, MAX_LINES).join('\n')
-      : textToCommit;
+      if (finalGhostTextOfSequence && !typingState.preFadeSnapshot && !typingState.allFadesCompleted) {
+          const textToCommit = currentPageText + finalGhostTextOfSequence;
+          const textToCommitLines = textToCommit.split('\n').length; // Use double backslash for literal
+          const newTextForPage =
+            textToCommitLines > MAX_LINES
+              ? textToCommit.split('\n').slice(0, MAX_LINES).join('\n')
+              : textToCommit;
 
-  setPages(prev => {
-    const updatedPages = [...prev];
-    updatedPages[currentPage] = {
-      ...updatedPages[currentPage],
-      text: newTextForPage
-    };
-    return updatedPages;
-  });
-  dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
-  // ---- PATCH: Track last ghostwriter addition (in words) ----
-  const ghostwriterWords = finalGhostTextOfSequence.trim().split(/\s+/).filter(Boolean).length;
-  dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: ghostwriterWords });
-} else {
-  dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentPageText.length });
-  dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: 0 });
-}
+          setPages(prev => {
+            const updatedPages = [...prev];
+            updatedPages[currentPage] = {
+              ...updatedPages[currentPage],
+              text: newTextForPage
+            };
+            return updatedPages;
+          });
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
+          const ghostwriterWords = finalGhostTextOfSequence.trim().split(/\s+/).filter(Boolean).length;
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: ghostwriterWords });
 
-      
+      } else if (!typingState.preFadeSnapshot && !typingState.allFadesCompleted) {
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentPageText.length });
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: 0 });
+      }
+
       dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE }); 
       if (typingState.fadeState.isActive) {
         dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
@@ -980,6 +1053,9 @@ const TypewriterFramework = () => {
 
   // --- Commit Ghost Text ---
   const commitGhostText = () => {
+  if (typingState.allFadesCompleted) {
+    return;
+  }
   // Get ghost text from typingState.currentGhostText
   const fullGhostText = Array.isArray(typingState.currentGhostText)
     ? typingState.currentGhostText.map(g => g.char).join('')
@@ -1037,6 +1113,7 @@ const TypewriterFramework = () => {
 
   // --- Keyboard Event Handlers for <Keyboard /> component ---
   const handleRegularKeyPress = (keyText) => {
+    if (!typingState.typingAllowed) return;
     // If there's an active sequence or ghost text, commit it first
     if (typingState.isProcessingSequence || typingState.currentGhostText) {
       commitGhostText();
@@ -1047,6 +1124,7 @@ const TypewriterFramework = () => {
   };
 
   const handleXerofagKeyPress = () => {
+    if (!typingState.typingAllowed) return;
     if (typingState.isProcessingSequence || typingState.currentGhostText) {
       commitGhostText();
     }
@@ -1056,6 +1134,7 @@ const TypewriterFramework = () => {
   };
 
   const handleSpacebarPress = () => {
+    if (!typingState.typingAllowed) return;
     if (typingState.isProcessingSequence || typingState.currentGhostText) {
       commitGhostText();
     }
