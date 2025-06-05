@@ -241,8 +241,28 @@ const PaperDisplay = ({
             >
               {fadeState && fadeState.isActive ? (
                   (() => {
-                    const prevChars = String(Array.isArray(fadeState.prev_text) ? fadeState.prev_text.map(g => g.char).join('') : fadeState.prev_text || '').split('');
-                    const toChars = String(fadeState.to_text || '').split('');
+                    let sPrevText = Array.isArray(fadeState.prev_text)
+                                    ? fadeState.prev_text.map(g => g.char).join('')
+                                    : fadeState.prev_text;
+                    let sToText = fadeState.to_text;
+
+                    // Ensure they are strings
+                    sPrevText = String(sPrevText || '');
+                    sToText = String(sToText || '');
+
+                    // Replace literal "/n" (slash followed by n) with actual newline character "
+"
+                    sPrevText = sPrevText.replace(/\/n/g, '\n');
+                    sToText = sToText.replace(/\/n/g, '\n');
+
+                    // Also handle cases where "\n" (literal backslash followed by n) might be in the string,
+                    // intending to be a newline. This converts a string like "Line1\nLine2" to "Line1
+"
+                    sPrevText = sPrevText.replace(/\\n/g, '\n');
+                    sToText = sToText.replace(/\\n/g, '\n');
+
+                    const prevChars = sPrevText.split('');
+                    const toChars = sToText.split('');
 
                     // Find the longest common prefix
                     let prefixLen = 0;
