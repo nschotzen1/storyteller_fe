@@ -20,6 +20,9 @@ export const fetchNextFilmImage = async (pageText, sessionId) => {
 };
 
 export const fetchTypewriterReply = async (text, sessionId) => {
+  if (!text) {
+    return { data: null, error: null };
+  }
   try {
     const response = await fetch(`${SERVER}/api/send_typewriter_text`, {
       method: "POST",
@@ -40,6 +43,9 @@ export const fetchTypewriterReply = async (text, sessionId) => {
 
 // Use axios or fetch—here’s a fetch version for clarity:
 export async function fetchShouldGenerateContinuation(currentText, latestAddition, latestPauseSeconds, lastGhostwriterWordCount) {
+  if (!latestAddition) {
+    return { data: { shouldGenerate: false }, error: null };
+  }
   const res = await fetch(`${SERVER}/api/shouldGenerateContinuation`, {
     method: 'POST',
     headers: {

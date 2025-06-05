@@ -897,7 +897,8 @@ const TypewriterFramework = () => {
       pauseSeconds >= 15 &&
       !typingState.isProcessingSequence &&
       typingState.inputBuffer.length === 0 &&
-      (fullText.length === ghostwriterState.lastGeneratedLength || ghostwriterState.lastGeneratedLength === 0)
+      (fullText.length === ghostwriterState.lastGeneratedLength || ghostwriterState.lastGeneratedLength === 0) &&
+      fullText.trim()
     ) {
       // (optional: you can disable this block if you never want inactivity autocompletion)
       fetchTypewriterReply(fullText, sessionId).then(response => {
@@ -917,7 +918,8 @@ const TypewriterFramework = () => {
     // --- USER-initiated continuation with GOLDEN RATIO THRESHOLD ---
    if (
   !typingState.isProcessingSequence &&
-  typingState.inputBuffer.length === 0 // Not while user is typing or ghostwriting
+  typingState.inputBuffer.length === 0 && // Not while user is typing or ghostwriting
+  addition.trim()
 ) {
   fetchShouldGenerateContinuation(
     fullText,
