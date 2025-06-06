@@ -12,7 +12,7 @@ export const playKeySound = () => {
 
 export const playGhostWriterSound = () => {
   const roll = Math.floor(Math.random() * 2) + 1;
-  const audioSrc = roll === 1 ? '/sounds/ghostwriter_click1.mp3' : '/sounds/ghostwriter_clack2.mp3'; 
+  const audioSrc = roll === 1 ? '/sounds/ghostwriter_click1.mp3' : '/sounds/ghostwriter_click2.mp3'; 
   const audio = new Audio(audioSrc);
   audio.volume = 0.3;
   audio.play();
