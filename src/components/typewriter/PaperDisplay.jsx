@@ -12,6 +12,85 @@ const getRandomAnimationClass = () => {
   return GHOST_ANIMATION_CLASSES[Math.floor(Math.random() * GHOST_ANIMATION_CLASSES.length)];
 };
 
+// --- Diffing Utility Function ---
+// Calculates segments of text based on differences between textA and textB.
+// Returns an array of objects: { type: 'common' | 'removed' | 'added', text: string }
+function calculateDiffSegments(textA, textB) {
+  const segments = [];
+  let i = 0; // pointer for textA
+  let j = 0; // pointer for textB
+
+  // 1. Find common prefix
+  let prefix = "";
+  while (i < textA.length && j < textB.length && textA[i] === textB[j]) {
+    prefix += textA[i];
+    i++;
+    j++;
+  }
+  if (prefix) {
+    segments.push({ type: 'common', text: prefix });
+  }
+
+  // 2. Find common suffix (on the remaining parts)
+  // Need to operate on the actual remaining substrings
+  const remainingA = textA.substring(i);
+  const remainingB = textB.substring(j);
+  let suffix = "";
+  let endAIdx = remainingA.length - 1;
+  let endBIdx = remainingB.length - 1;
+
+  while (endAIdx >= 0 && endBIdx >= 0 && remainingA[endAIdx] === remainingB[endBIdx]) {
+    suffix = remainingA[endAIdx] + suffix;
+    endAIdx--;
+    endBIdx--;
+  }
+
+  // 3. Middle parts are what's left after removing prefix and suffix from original strings
+  const middleA = textA.substring(i, textA.length - suffix.length);
+  const middleB = textB.substring(j, textB.length - suffix.length);
+
+  if (middleA) {
+    segments.push({ type: 'removed', text: middleA });
+  }
+  if (middleB) {
+    segments.push({ type: 'added', text: middleB });
+  }
+
+  // Add common suffix
+  if (suffix) {
+    segments.push({ type: 'common', text: suffix });
+  }
+
+  // Handle edge cases like completely identical or completely different strings
+  if (textA === textB) {
+    if (!textA) return []; // Both empty
+    return [{ type: 'common', text: textA }]; // Identical
+  }
+  if (!textA && textB) return [{ type: 'added', text: textB }]; // A empty, B has content
+  if (textA && !textB) return [{ type: 'removed', text: textA }]; // B empty, A has content
+
+
+  // Merge consecutive segments of the same type
+  const mergedSegments = [];
+  if (segments.length > 0) {
+    // Filter out empty text segments before merging
+    const nonEmptySegments = segments.filter(s => s.text.length > 0);
+    if (nonEmptySegments.length === 0) return [];
+
+    mergedSegments.push(nonEmptySegments[0]);
+    for (let k = 1; k < nonEmptySegments.length; k++) {
+      const lastMerged = mergedSegments[mergedSegments.length - 1];
+      if (nonEmptySegments[k].type === lastMerged.type) {
+        lastMerged.text += nonEmptySegments[k].text;
+      } else {
+        mergedSegments.push(nonEmptySegments[k]);
+      }
+    }
+  }
+  return mergedSegments;
+}
+
+
 // This component will handle the rendering of the paper, text, film background,
 // and the page slide animations.
 
@@ -242,54 +321,41 @@ const PaperDisplay = ({
             >
                 {fadeState && fadeState.isActive ? (
                 (() => {
-                  // Always treat prev_text as a string
-                  let sPrevText = Array.isArray(fadeState.prev_text)
-                    ? fadeState.prev_text.map(g => g.char).join('')
-                    : fadeState.prev_text;
-                  let sToText = fadeState.to_text;
+                  // Normalize userText and to_text
+                  const sUserText = String(userText || '').replace(/\\n/g, '\n').replace(/\/n/g, '\n');
+                  const sToText = String(fadeState.to_text || '').replace(/\\n/g, '\n').replace(/\/n/g, '\n');
 
-                  // Ensure they are strings
-                  sPrevText = String(sPrevText || '');
-                  sToText = String(sToText || '');
+                  // Get segments from the diffing utility
+                  const segments = calculateDiffSegments(sUserText, sToText);
 
-                  // Handle newlines
-                  sPrevText = sPrevText.replace(/\\n/g, '\n').replace(/\/n/g, '\n');
-                  sToText = sToText.replace(/\\n/g, '\n').replace(/\/n/g, '\n');
-
-                  // Find the longest common prefix (unchanged part)
-                  const prevChars = sPrevText.split('');
-                  const toChars = sToText.split('');
-                  let prefixLen = 0;
-                  while (
-                    prefixLen < prevChars.length &&
-                    prefixLen < toChars.length &&
-                    prevChars[prefixLen] === toChars[prefixLen]
-                  ) {
-                    prefixLen++;
-                  }
-
-                  const prefix = toChars.slice(0, prefixLen).join('');
-                  const fadeOutChars = prevChars.slice(prefixLen);
-                  const fadeInChars = toChars.slice(prefixLen);
-
-                  // We want both fading out (if shrinking) and fading in (if growing)
-                  const maxLen = Math.max(fadeOutChars.length, fadeInChars.length);
-                  console.log('FADE PHASE:', fadeState.phase, 'text:', fadeState.to_text, 'time:', Date.now());
+                  // Updated Console Logs
+                  console.log('[PaperDisplay] sUserText for diff:', sUserText);
+                  console.log('[PaperDisplay] sToText for diff:', sToText);
+                  console.log('[PaperDisplay] Diff segments:', segments);
+                  console.log('[PaperDisplay] fadeState.phase:', fadeState.phase, 'time:', Date.now());
+                  // console.log('[PaperDisplay] userText (original prop):', userText); // Optional: if needed for deep debugging
+                  // console.log('[PaperDisplay] fadeState.to_text (original prop):', fadeState.to_text); // Optional
 
                   return (
                     <div className="typewriter-line">
-                      {/* Unchanged prefix: */}
-                      {prefix && <span>{prefix}</span>}
-                      {/* Fade out characters (if going to a shorter text) */}
-                      {fadeOutChars.length > fadeInChars.length &&
-                        fadeOutChars.slice(fadeInChars.length).map((char, idx) => (
-                          <span key={`fade-out-${idx}`} className="transform-fade-out">{char}</span>
-                        ))
-                      }
-                      {/* Fade in characters (if new or changed) */}
-                      {fadeInChars.map((char, idx) => (
-                        <span key={`fade-in-${idx}`} className="transform-fade-in">{char}</span>
-                      ))}
+                      {segments.map((segment, segIdx) => {
+                        if (segment.type === 'common') {
+                          return <span key={`common-${segIdx}`}>{segment.text}</span>;
+                        } else if (segment.type === 'removed') {
+                          return segment.text.split('').map((char, charIdx) => (
+                            <span key={`removed-${segIdx}-${charIdx}`} className="transform-fade-out">
+                              {char === '\n' ? ' ' : char}
+                            </span>
+                          ));
+                        } else if (segment.type === 'added') {
+                          return segment.text.split('').map((char, charIdx) => (
+                            <span key={`added-${segIdx}-${charIdx}`} className="transform-fade-in">
+                              {char === '\n' ? ' ' : char}
+                            </span>
+                          ));
+                        }
+                        return null;
+                      })}
                     </div>
                   );
                 })()

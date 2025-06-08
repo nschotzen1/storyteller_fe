@@ -876,6 +876,14 @@ const TypewriterFramework = (props) => {
               typingState.currentActionIndex === typingState.actionSequence.length - 1 ||
               (typingState.actionSequence[typingState.currentActionIndex + 1]?.action !== 'fade');
 
+            // --- Step 3 Logging: Before SET_FADE_STATE ---
+            console.log('[TypewriterFramework] Page text before fade state set:', pages[currentPage]?.text);
+            console.log('[TypewriterFramework] Current ghost text for fade prev:', typingState.currentGhostText);
+            console.log('[TypewriterFramework] textForFadePrev:', textForFadePrev);
+            console.log('[TypewriterFramework] Fade action to_text:', currentAction.to_text);
+            console.log('[TypewriterFramework] Fade action phase:', currentAction.phase);
+            // --- End Step 3 Logging ---
+
             dispatchTyping({
               type: typingActionTypes.SET_FADE_STATE,
               payload: {
@@ -889,6 +897,10 @@ const TypewriterFramework = (props) => {
             timeoutId = setTimeout(() => {
               // Only update the real page text when the last fade phase finishes
               if (isLastFadeInSequence) {
+                // --- Step 3 Logging: Before setPages for fade commit ---
+                console.log('[TypewriterFramework] Committing to_text to pageText after fade:', currentAction.to_text);
+                console.log('[TypewriterFramework] Phase of fade just completed:', currentAction.phase);
+                // --- End Step 3 Logging ---
                 setPages(prev => {
                   const updatedPages = [...prev];
                   updatedPages[currentPage] = {
