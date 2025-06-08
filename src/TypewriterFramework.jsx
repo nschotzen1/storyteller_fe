@@ -861,6 +861,7 @@ const TypewriterFramework = (props) => {
           }, currentAction.delay);
           break;
         case 'fade': {
+          if (!typingState.fadeState.isActive) {
             // Always use the full current page text plus ghostText (if any) as the base for the fade.
             const currentGhostTextString = Array.isArray(typingState.currentGhostText)
               ? typingState.currentGhostText.map(g => g.char).join('')
@@ -869,7 +870,13 @@ const TypewriterFramework = (props) => {
             if (currentGhostTextString) {
               textForFadePrev = (pages[currentPage]?.text || '') + currentGhostTextString;
               // Optionally clear ghost text now for cleanliness
+              // This dispatch might be too early if currentGhostTextString IS the prev_text
+              // Consider if this specific UPDATE_GHOST_TEXT is needed here or if it's better handled by overall logic.
+              // For now, keeping it as it was in the provided context.
               if (Array.isArray(typingState.currentGhostText)) {
+                 // If currentGhostText was an array (e.g. from 'type' action), it's now part of textForFadePrev.
+                 // We can set it to empty string as its content is captured.
+                 // However, PaperDisplay will use fadeState.prev_text. This dispatch ensures internal consistency.
                 dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: '' });
               }
             } else {
@@ -883,8 +890,8 @@ const TypewriterFramework = (props) => {
 
             // --- Step 3 Logging: Before SET_FADE_STATE ---
             console.log('[TypewriterFramework] Page text before fade state set:', pages[currentPage]?.text);
-            console.log('[TypewriterFramework] Current ghost text for fade prev:', typingState.currentGhostText);
-            console.log('[TypewriterFramework] textForFadePrev:', textForFadePrev);
+            console.log('[TypewriterFramework] Current ghost text for fade prev (raw):', typingState.currentGhostText);
+            console.log('[TypewriterFramework] textForFadePrev (derived):', textForFadePrev);
             console.log('[TypewriterFramework] Fade action to_text:', currentAction.to_text);
             console.log('[TypewriterFramework] Fade action phase:', currentAction.phase);
             // --- End Step 3 Logging ---
@@ -914,14 +921,15 @@ const TypewriterFramework = (props) => {
                   };
                   return updatedPages;
                 });
-                // Clear ghost text on commit (final phase)
+                // Clear ghost text on commit (final phase of a sub-sequence of fades)
+                // This ensures that if this was the *final* text update, ghost text is empty.
                 dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: '' });
               }
 
               // Deactivate fade visuals
               dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
 
-              // Update currentGhostText with the result of the fade
+              // Update currentGhostText with the result of the fade, this becomes the basis for the next action or final commit.
               dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: currentAction.to_text });
 
               // If part of an initial fade sequence, handle that logic
@@ -938,9 +946,10 @@ const TypewriterFramework = (props) => {
               // Always process the next action (or finish)
               dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
             }, currentAction.delay);
-            break;
-          }
-          case 'retype':
+          } // End of if(!typingState.fadeState.isActive)
+          break;
+        }
+        case 'retype':
           // Ensure action.count and action.text are available from the sequence object
           if (typeof currentAction.count === 'number' && typeof currentAction.text === 'string') {
             dispatchTyping({
