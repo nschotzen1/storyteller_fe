@@ -916,6 +916,9 @@ const TypewriterFramework = (props) => {
               // Deactivate fade visuals
               dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
 
+              // Update currentGhostText with the result of the fade
+              dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: currentAction.to_text });
+
               // If part of an initial fade sequence, handle that logic
               const isLastActionInCurrentSequence =
                 typingState.currentActionIndex === typingState.actionSequence.length - 1;
