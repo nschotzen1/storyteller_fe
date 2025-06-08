@@ -493,10 +493,15 @@ const TypewriterFramework = (props) => {
 
   // --- Unified scroll effect ---
   useEffect(() => {
-    if (!scrollRef.current || !lastLineRef.current) return;
+    // The top-level check for scrollRef.current is good.
+    // The original error was specifically for lastLineRef.current being null before scrollIntoView.
+    if (!scrollRef.current) return;
+
     if (pageTransitionState.scrollMode === NORMAL_SCROLL_MODE) {
       requestAnimationFrame(() => {
-        lastLineRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        if (lastLineRef.current) { // Check if lastLineRef.current is not null
+          lastLineRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
       });
     }
   }, [pageText, ghostText, pageTransitionState.scrollMode]);
