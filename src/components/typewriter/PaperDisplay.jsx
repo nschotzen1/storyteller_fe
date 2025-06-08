@@ -321,41 +321,69 @@ const PaperDisplay = ({
             >
                 {fadeState && fadeState.isActive ? (
                 (() => {
-                  // Normalize prev_text (from fadeState) and to_text
+                  // Step 1: Normalize Inputs
+                  const sUserText = String(userText || '').replace(/\\n/g, '\n').replace(/\/n/g, '\n');
                   let sPrevText = Array.isArray(fadeState.prev_text)
                     ? fadeState.prev_text.map(g => g.char).join('')
                     : fadeState.prev_text;
-                  sPrevText = String(sPrevText || '').replace(/\n/g, '\n').replace(/\/n/g, '\n');
+                  sPrevText = String(sPrevText || '').replace(/\\n/g, '\n').replace(/\/n/g, '\n');
+                  const sToText = String(fadeState.to_text || '').replace(/\\n/g, '\n').replace(/\/n/g, '\n');
 
-                  const sToText = String(fadeState.to_text || '').replace(/\n/g, '\n').replace(/\/n/g, '\n');
+                  // Step 2: Determine Static User Text and Ghost Portions for Diff
+                  let staticUserTextToRender = '';
+                  let sPrevGhostText = '';
+                  let sToGhostText = '';
 
-                  // Get segments from the diffing utility using sPrevText and sToText
-                  const segments = calculateDiffSegments(sPrevText, sToText);
+                  if (sUserText && sPrevText.startsWith(sUserText)) {
+                    staticUserTextToRender = sUserText;
+                    sPrevGhostText = sPrevText.substring(sUserText.length);
+                    if (sToText.startsWith(sUserText)) {
+                      sToGhostText = sToText.substring(sUserText.length);
+                    } else {
+                      sToGhostText = sToText; // Target ghost text is entirely different
+                    }
+                  } else {
+                    // sPrevText does not start with sUserText, or sUserText is empty.
+                    // Treat entire sPrevText and sToText as ghost portions for diffing.
+                    staticUserTextToRender = ''; // No common user text prefix to keep static from sPrevText
+                    sPrevGhostText = sPrevText;
+                    sToGhostText = sToText;
+                  }
 
-                  // Updated Console Logs
-                  console.log('[PaperDisplay] sPrevText (for diff):', sPrevText);
-                  console.log('[PaperDisplay] sToText (for diff):', sToText);
-                  console.log('[PaperDisplay] Diff segments:', segments);
+                  // Step 3: Perform Diff on Ghost Portions
+                  const segments = calculateDiffSegments(sPrevGhostText, sToGhostText);
+
+                  // Step 5: Update Console Logs
+                  console.log('[PaperDisplay] userText (prop, normalized):', sUserText);
+                  console.log('[PaperDisplay] sPrevText (normalized):', sPrevText); // Log the full sPrevText for context
+                  console.log('[PaperDisplay] sToText (normalized):', sToText);     // Log the full sToText for context
+                  console.log('[PaperDisplay] staticUserTextToRender:', staticUserTextToRender);
+                  console.log('[PaperDisplay] sPrevGhostText (for diff):', sPrevGhostText);
+                  console.log('[PaperDisplay] sToGhostText (for diff):', sToGhostText);
+                  console.log('[PaperDisplay] Diff segments (ghost parts):', segments);
                   console.log('[PaperDisplay] fadeState.phase:', fadeState.phase, 'time:', Date.now());
-                  // Log userText prop for context if needed
-                  // const sUserText = String(userText || '').replace(/\n/g, '\n').replace(/\/n/g, '\n');
-                  // console.log('[PaperDisplay] userText prop (for context):', sUserText);
 
-
+                  // Step 4: Update Rendering Logic
                   return (
                     <div className="typewriter-line">
+                      {/* Render the determined static user text part */}
+                      {staticUserTextToRender && <span>{staticUserTextToRender}</span>}
+
+                      {/* Render the diffed segments of the ghost text part */}
                       {segments.map((segment, segIdx) => {
+                        const keyPrefix = `segment-${segIdx}-${segment.type}`;
                         if (segment.type === 'common') {
-                          return <span key={`common-${segIdx}`}>{segment.text}</span>;
+                          // Common text might contain newlines, render as is or handle if needed
+                          return <span key={keyPrefix}>{segment.text}</span>;
                         } else if (segment.type === 'removed') {
                           return segment.text.split('').map((char, charIdx) => (
-                            <span key={`removed-${segIdx}-${charIdx}`} className="transform-fade-out">
+                            <span key={`${keyPrefix}-char-${charIdx}`} className="transform-fade-out">
                               {char === '\n' ? ' ' : char}
                             </span>
                           ));
                         } else if (segment.type === 'added') {
                           return segment.text.split('').map((char, charIdx) => (
-                            <span key={`added-${segIdx}-${charIdx}`} className="transform-fade-in">
+                            <span key={`${keyPrefix}-char-${charIdx}`} className="transform-fade-in">
                               {char === '\n' ? ' ' : char}
                             </span>
                           ));
