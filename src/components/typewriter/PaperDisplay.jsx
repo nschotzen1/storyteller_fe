@@ -321,20 +321,26 @@ const PaperDisplay = ({
             >
                 {fadeState && fadeState.isActive ? (
                 (() => {
-                  // Normalize userText and to_text
-                  const sUserText = String(userText || '').replace(/\\n/g, '\n').replace(/\/n/g, '\n');
-                  const sToText = String(fadeState.to_text || '').replace(/\\n/g, '\n').replace(/\/n/g, '\n');
+                  // Normalize prev_text (from fadeState) and to_text
+                  let sPrevText = Array.isArray(fadeState.prev_text)
+                    ? fadeState.prev_text.map(g => g.char).join('')
+                    : fadeState.prev_text;
+                  sPrevText = String(sPrevText || '').replace(/\n/g, '\n').replace(/\/n/g, '\n');
 
-                  // Get segments from the diffing utility
-                  const segments = calculateDiffSegments(sUserText, sToText);
+                  const sToText = String(fadeState.to_text || '').replace(/\n/g, '\n').replace(/\/n/g, '\n');
+
+                  // Get segments from the diffing utility using sPrevText and sToText
+                  const segments = calculateDiffSegments(sPrevText, sToText);
 
                   // Updated Console Logs
-                  console.log('[PaperDisplay] sUserText for diff:', sUserText);
-                  console.log('[PaperDisplay] sToText for diff:', sToText);
+                  console.log('[PaperDisplay] sPrevText (for diff):', sPrevText);
+                  console.log('[PaperDisplay] sToText (for diff):', sToText);
                   console.log('[PaperDisplay] Diff segments:', segments);
                   console.log('[PaperDisplay] fadeState.phase:', fadeState.phase, 'time:', Date.now());
-                  // console.log('[PaperDisplay] userText (original prop):', userText); // Optional: if needed for deep debugging
-                  // console.log('[PaperDisplay] fadeState.to_text (original prop):', fadeState.to_text); // Optional
+                  // Log userText prop for context if needed
+                  // const sUserText = String(userText || '').replace(/\n/g, '\n').replace(/\/n/g, '\n');
+                  // console.log('[PaperDisplay] userText prop (for context):', sUserText);
+
 
                   return (
                     <div className="typewriter-line">
