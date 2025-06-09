@@ -12,85 +12,6 @@ const getRandomAnimationClass = () => {
   return GHOST_ANIMATION_CLASSES[Math.floor(Math.random() * GHOST_ANIMATION_CLASSES.length)];
 };
 
-// --- Diffing Utility Function ---
-// Calculates segments of text based on differences between textA and textB.
-// Returns an array of objects: { type: 'common' | 'removed' | 'added', text: string }
-function calculateDiffSegments(textA, textB) {
-  const segments = [];
-  let i = 0; // pointer for textA
-  let j = 0; // pointer for textB
-
-  // 1. Find common prefix
-  let prefix = "";
-  while (i < textA.length && j < textB.length && textA[i] === textB[j]) {
-    prefix += textA[i];
-    i++;
-    j++;
-  }
-  if (prefix) {
-    segments.push({ type: 'common', text: prefix });
-  }
-
-  // 2. Find common suffix (on the remaining parts)
-  // Need to operate on the actual remaining substrings
-  const remainingA = textA.substring(i);
-  const remainingB = textB.substring(j);
-  let suffix = "";
-  let endAIdx = remainingA.length - 1;
-  let endBIdx = remainingB.length - 1;
-
-  while (endAIdx >= 0 && endBIdx >= 0 && remainingA[endAIdx] === remainingB[endBIdx]) {
-    suffix = remainingA[endAIdx] + suffix;
-    endAIdx--;
-    endBIdx--;
-  }
-
-  // 3. Middle parts are what's left after removing prefix and suffix from original strings
-  const middleA = textA.substring(i, textA.length - suffix.length);
-  const middleB = textB.substring(j, textB.length - suffix.length);
-
-  if (middleA) {
-    segments.push({ type: 'removed', text: middleA });
-  }
-  if (middleB) {
-    segments.push({ type: 'added', text: middleB });
-  }
-
-  // Add common suffix
-  if (suffix) {
-    segments.push({ type: 'common', text: suffix });
-  }
-
-  // Handle edge cases like completely identical or completely different strings
-  if (textA === textB) {
-    if (!textA) return []; // Both empty
-    return [{ type: 'common', text: textA }]; // Identical
-  }
-  if (!textA && textB) return [{ type: 'added', text: textB }]; // A empty, B has content
-  if (textA && !textB) return [{ type: 'removed', text: textA }]; // B empty, A has content
-
-
-  // Merge consecutive segments of the same type
-  const mergedSegments = [];
-  if (segments.length > 0) {
-    // Filter out empty text segments before merging
-    const nonEmptySegments = segments.filter(s => s.text.length > 0);
-    if (nonEmptySegments.length === 0) return [];
-
-    mergedSegments.push(nonEmptySegments[0]);
-    for (let k = 1; k < nonEmptySegments.length; k++) {
-      const lastMerged = mergedSegments[mergedSegments.length - 1];
-      if (nonEmptySegments[k].type === lastMerged.type) {
-        lastMerged.text += nonEmptySegments[k].text;
-      } else {
-        mergedSegments.push(nonEmptySegments[k]);
-      }
-    }
-  }
-  return mergedSegments;
-}
-
-
 // This component will handle the rendering of the paper, text, film background,
 // and the page slide animations.
 
@@ -321,75 +242,26 @@ const PaperDisplay = ({
             >
                 {fadeState && fadeState.isActive ? (
                 (() => {
-                  // Step 1: Normalize Inputs
-                  const sUserText = String(userText || '').replace(/\\n/g, '\n').replace(/\/n/g, '\n');
-                  let sPrevText = Array.isArray(fadeState.prev_text)
-                    ? fadeState.prev_text.map(g => g.char).join('')
-                    : fadeState.prev_text;
-                  sPrevText = String(sPrevText || '').replace(/\\n/g, '\n').replace(/\/n/g, '\n');
-                  const sToText = String(fadeState.to_text || '').replace(/\\n/g, '\n').replace(/\/n/g, '\n');
+                  // Inside the (() => { ... })() block for fadeState.isActive
+                  const prefix = String(userText || ''); // Directly use destructured prop
+                  const sToText = String(fadeState.to_text || ''); // Directly use destructured prop
 
-                  // Step 2: Determine Static User Text and Ghost Portions for Diff
-                  let staticUserTextToRender = '';
-                  let sPrevGhostText = '';
-                  let sToGhostText = '';
+                  const fadingGhostText = sToText.startsWith(prefix) ? sToText.slice(prefix.length) : sToText;
 
-                  if (sUserText && sPrevText.startsWith(sUserText)) {
-                    staticUserTextToRender = sUserText;
-                    sPrevGhostText = sPrevText.substring(sUserText.length);
-                    if (sToText.startsWith(sUserText)) {
-                      sToGhostText = sToText.substring(sUserText.length);
-                    } else {
-                      sToGhostText = sToText; // Target ghost text is entirely different
-                    }
-                  } else {
-                    // sPrevText does not start with sUserText, or sUserText is empty.
-                    // Treat entire sPrevText and sToText as ghost portions for diffing.
-                    staticUserTextToRender = ''; // No common user text prefix to keep static from sPrevText
-                    sPrevGhostText = sPrevText;
-                    sToGhostText = sToText;
-                  }
+                  console.log('[FadeRender] userText (prefix):', prefix);
+                  console.log('[FadeRender] fadeState.to_text:', fadeState.to_text);
+                  console.log('[FadeRender] sToText (normalized to_text):', sToText);
+                  console.log('[FadeRender] fadingGhostText:', fadingGhostText);
+                  console.log('[FadeRender] fadeState.phase:', fadeState.phase, 'time:', Date.now());
 
-                  // Step 3: Perform Diff on Ghost Portions
-                  const segments = calculateDiffSegments(sPrevGhostText, sToGhostText);
-
-                  // Step 5: Update Console Logs
-                  console.log('[PaperDisplay] userText (prop, normalized):', sUserText);
-                  console.log('[PaperDisplay] sPrevText (normalized):', sPrevText); // Log the full sPrevText for context
-                  console.log('[PaperDisplay] sToText (normalized):', sToText);     // Log the full sToText for context
-                  console.log('[PaperDisplay] staticUserTextToRender:', staticUserTextToRender);
-                  console.log('[PaperDisplay] sPrevGhostText (for diff):', sPrevGhostText);
-                  console.log('[PaperDisplay] sToGhostText (for diff):', sToGhostText);
-                  console.log('[PaperDisplay] Diff segments (ghost parts):', segments);
-                  console.log('[PaperDisplay] fadeState.phase:', fadeState.phase, 'time:', Date.now());
-
-                  // Step 4: Update Rendering Logic
                   return (
                     <div className="typewriter-line">
-                      {/* Render the determined static user text part */}
-                      {staticUserTextToRender && <span>{staticUserTextToRender}</span>}
-
-                      {/* Render the diffed segments of the ghost text part */}
-                      {segments.map((segment, segIdx) => {
-                        const keyPrefix = `segment-${segIdx}-${segment.type}`;
-                        if (segment.type === 'common') {
-                          // Common text might contain newlines, render as is or handle if needed
-                          return <span key={keyPrefix}>{segment.text}</span>;
-                        } else if (segment.type === 'removed') {
-                          return segment.text.split('').map((char, charIdx) => (
-                            <span key={`${keyPrefix}-char-${charIdx}`} className="transform-fade-out">
-                              {char === '\n' ? ' ' : char}
-                            </span>
-                          ));
-                        } else if (segment.type === 'added') {
-                          return segment.text.split('').map((char, charIdx) => (
-                            <span key={`${keyPrefix}-char-${charIdx}`} className="transform-fade-in">
-                              {char === '\n' ? ' ' : char}
-                            </span>
-                          ));
-                        }
-                        return null;
-                      })}
+                      {prefix && <span>{prefix}</span>}
+                      {fadingGhostText && fadingGhostText.split('').map((char, idx) => (
+                        <span key={`fade-char-${idx}`} className="ghost-char transform-fade-out">
+                          {char === '\n' ? <br /> : (char === ' ' ? '\u00A0' : char)}
+                        </span>
+                      ))}
                     </div>
                   );
                 })()
