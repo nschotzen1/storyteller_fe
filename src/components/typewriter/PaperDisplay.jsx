@@ -1,5 +1,42 @@
 import React from 'react';
 
+// Simple character diff function
+// Returns an array of objects: { char: string, state: 'common' | 'removed' | 'added' }
+function diffChars(textA, textB) {
+    const M = textA.length;
+    const N = textB.length;
+    const lcsMatrix = Array(M + 1).fill(null).map(() => Array(N + 1).fill(0));
+
+    for (let i = 1; i <= M; i++) {
+        for (let j = 1; j <= N; j++) {
+            if (textA[i - 1] === textB[j - 1]) {
+                lcsMatrix[i][j] = lcsMatrix[i - 1][j - 1] + 1;
+            } else {
+                lcsMatrix[i][j] = Math.max(lcsMatrix[i - 1][j], lcsMatrix[i][j - 1]);
+            }
+        }
+    }
+
+    let i = M;
+    let j = N;
+    const result = [];
+    while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && textA[i - 1] === textB[j - 1]) {
+            result.unshift({ char: textA[i - 1], state: 'common' });
+            i--; j--;
+        } else if (j > 0 && (i === 0 || lcsMatrix[i][j - 1] >= lcsMatrix[i - 1][j])) {
+            result.unshift({ char: textB[j - 1], state: 'added' });
+            j--;
+        } else if (i > 0 && (j === 0 || lcsMatrix[i - 1][j] > lcsMatrix[i][j - 1])) {
+            result.unshift({ char: textA[i - 1], state: 'removed' });
+            i--;
+        } else { // Should ideally not be reached if i or j > 0
+            break;
+        }
+    }
+    return result;
+}
+
 // Animation classes for ghost characters
 const GHOST_ANIMATION_CLASSES = [
   'ghost-char-materialize',
@@ -243,25 +280,44 @@ const PaperDisplay = ({
                 {fadeState && fadeState.isActive ? (
                 (() => {
                   // Inside the (() => { ... })() block for fadeState.isActive
-                  const prefix = String(userText || ''); // Directly use destructured prop
-                  const sToText = String(fadeState.to_text || ''); // Directly use destructured prop
+                  const sUserText = String(userText || ''); // Destructured prop
 
-                  const fadingGhostText = sToText.startsWith(prefix) ? sToText.slice(prefix.length) : sToText;
+                  // Ensure prev_text and to_text are strings
+                  const sPrevText = String(fadeState.prev_text || '');
+                  const sToText = String(fadeState.to_text || '');
 
-                  console.log('[FadeRender] userText (prefix):', prefix);
+                  // Extract ghost portions
+                  const ghostPrevText = sPrevText.startsWith(sUserText) ? sPrevText.slice(sUserText.length) : sPrevText;
+                  const ghostToText = sToText.startsWith(sUserText) ? sToText.slice(sUserText.length) : sToText;
+
+                  console.log('[FadeRender] userText (prefix):', sUserText);
+                  console.log('[FadeRender] fadeState.prev_text:', fadeState.prev_text);
                   console.log('[FadeRender] fadeState.to_text:', fadeState.to_text);
-                  console.log('[FadeRender] sToText (normalized to_text):', sToText);
-                  console.log('[FadeRender] fadingGhostText:', fadingGhostText);
+                  console.log('[FadeRender] ghostPrevText:', ghostPrevText);
+                  console.log('[FadeRender] ghostToText:', ghostToText);
                   console.log('[FadeRender] fadeState.phase:', fadeState.phase, 'time:', Date.now());
+
+                  const diffedGhostChars = diffChars(ghostPrevText, ghostToText);
+                  console.log('[FadeRender] diffedGhostChars:', diffedGhostChars);
 
                   return (
                     <div className="typewriter-line">
-                      {prefix && <span>{prefix}</span>}
-                      {fadingGhostText && fadingGhostText.split('').map((char, idx) => (
-                        <span key={`fade-char-${idx}`} className="ghost-char transform-fade-out">
-                          {char === '\n' ? <br /> : (char === ' ' ? '\u00A0' : char)}
-                        </span>
-                      ))}
+                      {sUserText && <span>{sUserText}</span>}
+                      {diffedGhostChars.map((item, idx) => {
+                        let animationClass = '';
+                        if (item.state === 'added') {
+                          animationClass = 'ghost-char-fade-in'; // Use a class for fade-in
+                        } else if (item.state === 'removed') {
+                          animationClass = 'ghost-char-fade-out'; // Use a class for fade-out
+                        }
+                        // Common characters have no animation class, appear solid
+
+                        return (
+                          <span key={`fade-gchar-${idx}`} className={`ghost-char ${animationClass}`}>
+                            {item.char === '\n' ? <br /> : (item.char === ' ' ? '\u00A0' : item.char)}
+                          </span>
+                        );
+                      })}
                     </div>
                   );
                 })()
