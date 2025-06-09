@@ -1,42 +1,5 @@
 import React from 'react';
 
-// Simple character diff function
-// Returns an array of objects: { char: string, state: 'common' | 'removed' | 'added' }
-function diffChars(textA, textB) {
-    const M = textA.length;
-    const N = textB.length;
-    const lcsMatrix = Array(M + 1).fill(null).map(() => Array(N + 1).fill(0));
-
-    for (let i = 1; i <= M; i++) {
-        for (let j = 1; j <= N; j++) {
-            if (textA[i - 1] === textB[j - 1]) {
-                lcsMatrix[i][j] = lcsMatrix[i - 1][j - 1] + 1;
-            } else {
-                lcsMatrix[i][j] = Math.max(lcsMatrix[i - 1][j], lcsMatrix[i][j - 1]);
-            }
-        }
-    }
-
-    let i = M;
-    let j = N;
-    const result = [];
-    while (i > 0 || j > 0) {
-        if (i > 0 && j > 0 && textA[i - 1] === textB[j - 1]) {
-            result.unshift({ char: textA[i - 1], state: 'common' });
-            i--; j--;
-        } else if (j > 0 && (i === 0 || lcsMatrix[i][j - 1] >= lcsMatrix[i - 1][j])) {
-            result.unshift({ char: textB[j - 1], state: 'added' });
-            j--;
-        } else if (i > 0 && (j === 0 || lcsMatrix[i - 1][j] > lcsMatrix[i][j - 1])) {
-            result.unshift({ char: textA[i - 1], state: 'removed' });
-            i--;
-        } else { // Should ideally not be reached if i or j > 0
-            break;
-        }
-    }
-    return result;
-}
-
 // Animation classes for ghost characters
 const GHOST_ANIMATION_CLASSES = [
   'ghost-char-materialize',
@@ -281,44 +244,34 @@ const PaperDisplay = ({
                 (() => {
                   // Inside the (() => { ... })() block for fadeState.isActive
                   const sUserText = String(userText || ''); // Destructured prop
-
-                  // Ensure prev_text and to_text are strings
-                  const sPrevText = String(fadeState.prev_text || '');
                   const sToText = String(fadeState.to_text || '');
 
-                  // Extract ghost portions
-                  const ghostPrevText = sPrevText.startsWith(sUserText) ? sPrevText.slice(sUserText.length) : sPrevText;
-                  const ghostToText = sToText.startsWith(sUserText) ? sToText.slice(sUserText.length) : sToText;
+                  const ghostTextForCurrentPhase = sToText.startsWith(sUserText) ? sToText.slice(sUserText.length) : sToText;
 
-                  console.log('[FadeRender] userText (prefix):', sUserText);
-                  console.log('[FadeRender] fadeState.prev_text:', fadeState.prev_text);
-                  console.log('[FadeRender] fadeState.to_text:', fadeState.to_text);
-                  console.log('[FadeRender] ghostPrevText:', ghostPrevText);
-                  console.log('[FadeRender] ghostToText:', ghostToText);
-                  console.log('[FadeRender] fadeState.phase:', fadeState.phase, 'time:', Date.now());
+                  console.log('[FadeRender-Simple] userText (prefix):', sUserText);
+                  console.log('[FadeRender-Simple] fadeState.to_text:', fadeState.to_text);
+                  console.log('[FadeRender-Simple] ghostTextForCurrentPhase:', ghostTextForCurrentPhase);
+                  console.log('[FadeRender-Simple] fadeState.phase:', fadeState.phase, 'time:', Date.now());
 
-                  const diffedGhostChars = diffChars(ghostPrevText, ghostToText);
-                  console.log('[FadeRender] diffedGhostChars:', diffedGhostChars);
+                  // Helper to render text with <br /> tags for newlines
+                  const renderTextWithLineBreaks = (text) => {
+                      return text.split('\n').map((line, index, array) => (
+                          <React.Fragment key={index}>
+                              {line}
+                              {index < array.length - 1 && <br />}
+                          </React.Fragment>
+                      ));
+                  };
 
                   return (
-                    <div className="typewriter-line">
-                      {sUserText && <span>{sUserText}</span>}
-                      {diffedGhostChars.map((item, idx) => {
-                        let animationClass = '';
-                        if (item.state === 'added') {
-                          animationClass = 'ghost-char-fade-in'; // Use a class for fade-in
-                        } else if (item.state === 'removed') {
-                          animationClass = 'ghost-char-fade-out'; // Use a class for fade-out
-                        }
-                        // Common characters have no animation class, appear solid
-
-                        return (
-                          <span key={`fade-gchar-${idx}`} className={`ghost-char ${animationClass}`}>
-                            {item.char === '\n' ? <br /> : (item.char === ' ' ? '\u00A0' : item.char)}
-                          </span>
-                        );
-                      })}
-                    </div>
+                      <div className="typewriter-line"> {/* This outer div might need review if it's causing issues */}
+                          {sUserText && <span>{renderTextWithLineBreaks(sUserText)}</span>}
+                          {ghostTextForCurrentPhase && (
+                              <span className="ghost-text-fade-in-block" key={`fade-phase-${fadeState.phase}`}> {/* Key ensures re-trigger of animation on phase change */}
+                                  {renderTextWithLineBreaks(ghostTextForCurrentPhase)}
+                              </span>
+                          )}
+                      </div>
                   );
                 })()
               ) : (
