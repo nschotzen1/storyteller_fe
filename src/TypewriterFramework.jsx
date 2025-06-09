@@ -315,10 +315,23 @@ function typingReducer(state, action) {
         inputBuffer: '', // Clear input buffer when a new sequence starts
       };
     case typingActionTypes.PROCESS_NEXT_ACTION:
-      return {
-        ...state,
-        currentActionIndex: state.currentActionIndex + 1,
-      };
+      const newIndex = state.currentActionIndex + 1;
+      if (newIndex < state.actionSequence.length) {
+        const nextAction = state.actionSequence[newIndex];
+        if (nextAction.action !== 'fade') {
+          // If the next action is not a fade, deactivate current fade state visuals
+          // Consider full reset: { isActive: false, to_text: '', phase: 0 } if prev_text continuity isn't strictly needed for non-fade actions
+          return {
+            ...state,
+            currentActionIndex: newIndex,
+            fadeState: { ...state.fadeState, isActive: false }
+          };
+        }
+        // If next action is a fade, keep fadeState as is (isActive: true will be set by the fade action itself)
+        return { ...state, currentActionIndex: newIndex };
+      }
+      // If no more actions, currentActionIndex will be out of bounds, sequence completion is handled by useEffect.
+      return { ...state, currentActionIndex: newIndex };
     case typingActionTypes.UPDATE_GHOST_TEXT:
       return {
         ...state,
@@ -870,80 +883,25 @@ const TypewriterFramework = (props) => {
           }, currentAction.delay);
           break;
         case 'fade': {
-          if (!typingState.fadeState.isActive) {
-            // Always use the full current page text plus ghostText (if any) as the base for the fade.
-            const currentGhostTextString = Array.isArray(typingState.currentGhostText)
-              ? typingState.currentGhostText.map(g => g.char).join('')
-              : String(typingState.currentGhostText || '');
-            let textForFadePrev;
-            if (currentGhostTextString) {
-              textForFadePrev = (pages[currentPage]?.text || '') + currentGhostTextString;
-              if (Array.isArray(typingState.currentGhostText)) {
-                dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: '' });
-              }
-            } else {
-              textForFadePrev = pages[currentPage]?.text || '';
+          // Dispatch to update PaperDisplay with current fade phase's text and phase number
+          // This will make PaperDisplay render the current state, and its key change should trigger animation
+          dispatchTyping({
+            type: typingActionTypes.SET_FADE_STATE,
+            payload: {
+              isActive: true, // Keep fade active
+              prev_text: typingState.fadeState.to_text || (pages[currentPage]?.text || '') + (Array.isArray(typingState.currentGhostText) ? typingState.currentGhostText.map(g=>g.char).join('') : typingState.currentGhostText || ''), // Previous target or initial text
+              to_text: currentAction.to_text,
+              phase: currentAction.phase
             }
+          });
 
-            // --- Step 3 Logging: Before SET_FADE_STATE ---
-            console.log('[TypewriterFramework] Page text before fade state set:', pages[currentPage]?.text);
-            console.log('[TypewriterFramework] Current ghost text for fade prev (raw):', typingState.currentGhostText);
-            console.log('[TypewriterFramework] textForFadePrev (derived):', textForFadePrev);
-            console.log('[TypewriterFramework] Fade action to_text:', currentAction.to_text);
-            console.log('[TypewriterFramework] Fade action phase:', currentAction.phase);
-            // --- End Step 3 Logging ---
+          // Log for debugging this specific step
+          console.log('[FadeHandler] Dispatching SET_FADE_STATE for phase:', currentAction.phase, 'to_text:', currentAction.to_text, 'Delay:', currentAction.delay);
 
-            dispatchTyping({
-              type: typingActionTypes.SET_FADE_STATE,
-              payload: {
-                isActive: true,
-                prev_text: textForFadePrev,
-                to_text: currentAction.to_text,
-                phase: currentAction.phase
-              }
-            });
-
-            // Determine if the current fade action is the absolute last action in the entire sequence
-            const isLastActionInEntireSequence = typingState.currentActionIndex === typingState.actionSequence.length - 1;
-
-            timeoutId = setTimeout(() => {
-              console.log('[Fade] Phase:', currentAction.phase, 'isLastActionInEntireSequence:', isLastActionInEntireSequence, 'userTextBeforeGhostFade:', userTextBeforeGhostFade, 'to_text:', currentAction.to_text);
-
-              if (isLastActionInEntireSequence) {
-                setPages(prev => {
-                  const updatedPages = [...prev];
-                  if (updatedPages[currentPage]) { // Ensure page exists
-                    updatedPages[currentPage] = {
-                      ...updatedPages[currentPage],
-                      text: userTextBeforeGhostFade // Only user text remains
-                    };
-                  }
-                  console.log('[Fade] Final fade action. Setting page text to userTextBeforeGhostFade:', userTextBeforeGhostFade);
-                  return updatedPages;
-                });
-              }
-
-              // Deactivate fade visuals (original logic may call this)
-              dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
-
-              // Update currentGhostText with the result of the fade (original logic)
-              dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: currentAction.to_text });
-
-              // Original logic for initial fade sequence completion (if any) should be preserved.
-              // This typically involves checking typingState.isProcessingInitialFadeSequence and if it's the last action.
-              const isLastActionInCurrentSequenceForInitialFade = typingState.currentActionIndex === typingState.actionSequence.length - 1;
-              if (typingState.isProcessingInitialFadeSequence && isLastActionInCurrentSequenceForInitialFade) {
-                dispatchTyping({ type: typingActionTypes.SET_ALL_INITIAL_FADES_COMPLETED });
-                if (props.shouldGenerateTypeWriterResponse && typingState.preFadeSnapshot) {
-                  props.shouldGenerateTypeWriterResponse(typingState.preFadeSnapshot);
-                }
-                dispatchTyping({ type: typingActionTypes.COMPLETE_INITIAL_FADE_PROCESSING });
-              }
-
-              // Always process the next action (or finish)
-              dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
-            }, currentAction.delay);
-          } // End of if(!typingState.fadeState.isActive)
+          timeoutId = setTimeout(() => {
+            console.log('[FadeHandler] Timeout complete for phase:', currentAction.phase, 'Dispatching PROCESS_NEXT_ACTION.');
+            dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
+          }, currentAction.delay);
           break;
         }
         case 'retype':
@@ -972,40 +930,58 @@ const TypewriterFramework = (props) => {
     } else if (typingState.isProcessingSequence && typingState.currentActionIndex >= typingState.actionSequence.length) {
       // All actions processed, sequence is naturally completing.
       const finalGhostTextOfSequence = Array.isArray(typingState.currentGhostText)
-      ? typingState.currentGhostText.map(x => x.char).join('')
-      : typingState.currentGhostText;
+        ? typingState.currentGhostText.map(x => x.char).join('')
+        : String(typingState.currentGhostText || '');
 
-      const currentPageText = pages[currentPage]?.text || ''; // pages and currentPage are now dependencies
-      
-      if (finalGhostTextOfSequence && !typingState.preFadeSnapshot && !typingState.allFadesCompleted) {
-          const textToCommit = currentPageText + finalGhostTextOfSequence;
-          const textToCommitLines = textToCommit.split('\n').length; // Use double backslash for literal
-          const newTextForPage =
-            textToCommitLines > MAX_LINES
-              ? textToCommit.split('\n').slice(0, MAX_LINES).join('\n')
-              : textToCommit;
+      const currentPageText = pages[currentPage]?.text || '';
 
-          setPages(prev => {
-            const updatedPages = [...prev];
-            updatedPages[currentPage] = {
-              ...updatedPages[currentPage],
-              text: newTextForPage
-            };
-            return updatedPages;
-          });
-          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
-          const ghostwriterWords = finalGhostTextOfSequence.trim().split(/\s+/).filter(Boolean).length;
-          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: ghostwriterWords });
+      if (userTextBeforeGhostFade !== '') {
+        // If userTextBeforeGhostFade is set, it means a fade sequence has likely just completed.
+        // The page text should be what was captured before the fade.
+        setPages(prev => {
+          const updatedPages = [...prev];
+          if (updatedPages[currentPage]) {
+            updatedPages[currentPage] = { ...updatedPages[currentPage], text: userTextBeforeGhostFade };
+          }
+          console.log('[SequenceComplete] Applied userTextBeforeGhostFade. Text set to:', userTextBeforeGhostFade);
+          return updatedPages;
+        });
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: userTextBeforeGhostFade.length });
+        // Optionally, adjust word count based on userTextBeforeGhostFade if it represents the truest "final" user-intended text.
+        const ghostwriterWords = userTextBeforeGhostFade.trim().split(/\s+/).filter(Boolean).length;
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: ghostwriterWords });
+        // userTextBeforeGhostFade is reset by its own useEffect when isProcessingSequence becomes false after SEQUENCE_COMPLETE.
+      } else if (finalGhostTextOfSequence && !typingState.fadeState.isActive && !typingState.allInitialFadesCompleted) {
+        // Standard commit logic if not ending with a fade that used userTextBeforeGhostFade,
+        // and no fade is active (e.g. a type sequence that ends)
+        const textToCommit = currentPageText + finalGhostTextOfSequence;
+        const textToCommitLines = textToCommit.split('\n').length;
+        const newTextForPage =
+          textToCommitLines > MAX_LINES
+            ? textToCommit.split('\n').slice(0, MAX_LINES).join('\n')
+            : textToCommit;
 
-      } else if (!typingState.preFadeSnapshot && !typingState.allFadesCompleted) {
-          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentPageText.length });
-          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: 0 });
+        setPages(prev => {
+          const updatedPages = [...prev];
+          if (updatedPages[currentPage]) {
+            updatedPages[currentPage] = { ...updatedPages[currentPage], text: newTextForPage };
+          }
+          return updatedPages;
+        });
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
+        const ghostwriterWords = finalGhostTextOfSequence.trim().split(/\s+/).filter(Boolean).length;
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: ghostwriterWords });
+      } else if (!typingState.fadeState.isActive && !typingState.allInitialFadesCompleted) {
+        // If no ghost text to commit and no fade was active (e.g. empty sequence or just pauses)
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentPageText.length });
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: 0 });
       }
+      // If fadeState.isActive is true here, it implies the last action was a fade.
+      // The text setting for userTextBeforeGhostFade (if applicable) is handled above.
+      // The SET_FADE_STATE in SEQUENCE_COMPLETE in the reducer will turn off visuals.
 
-      dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE }); 
-      if (typingState.fadeState.isActive) {
-        dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
-      }
+      dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
+      // The reducer's SEQUENCE_COMPLETE handles resetting fadeState.isActive.
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
     }
 

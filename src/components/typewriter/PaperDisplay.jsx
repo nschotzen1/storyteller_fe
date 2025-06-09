@@ -265,9 +265,17 @@ const PaperDisplay = ({
 
                   return (
                       <div className="typewriter-line"> {/* This outer div might need review if it's causing issues */}
-                          {sUserText && <span>{renderTextWithLineBreaks(sUserText)}</span>}
+                          {sUserText && (
+                              <span style={{ display: 'inline' }}>
+                                  {renderTextWithLineBreaks(sUserText)}
+                              </span>
+                          )}
                           {ghostTextForCurrentPhase && (
-                              <span className="ghost-text-fade-in-block" key={`fade-phase-${fadeState.phase}`}> {/* Key ensures re-trigger of animation on phase change */}
+                              <span
+                                  className="ghost-text-fade-in-block"
+                                  key={`fade-phase-${fadeState.phase}`}
+                                  style={{ display: 'inline-block' }}
+                              >
                                   {renderTextWithLineBreaks(ghostTextForCurrentPhase)}
                               </span>
                           )}
