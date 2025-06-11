@@ -79,6 +79,8 @@ const PaperDisplay = ({
   STRIKER_CURSOR_OFFSET_LEFT,
   SLIDE_DIRECTION_LEFT, // To compare with slideDir
 }) => {
+  const [outgoingGhostInfo, setOutgoingGhostInfo] = React.useState({ text: '', key: null });
+  const [incomingGhostInfo, setIncomingGhostInfo] = React.useState({ text: '', key: null });
 
   // Apply font styles
   const textStyles = {
@@ -102,6 +104,33 @@ const PaperDisplay = ({
     if (currentFontStyles.font_size) textStyles.fontSize = currentFontStyles.font_size;
     if (currentFontStyles.font_color) textStyles.color = currentFontStyles.font_color;
   }
+
+  React.useEffect(() => {
+    if (fadeState.isActive) {
+        const sUserText = String(userText || '');
+        const currentGhostText = String(fadeState.to_text || '').startsWith(sUserText)
+            ? String(fadeState.to_text || '').slice(sUserText.length)
+            : String(fadeState.to_text || '');
+
+        // When a new phase comes in from props.fadeState, the current 'incoming' becomes 'outgoing'
+        setOutgoingGhostInfo(prevIncoming => {
+            // Only set outgoing if the phase is actually different and incoming wasn't empty.
+            // This prevents setting outgoing on the very first phase or if content was identical.
+            if (prevIncoming.key !== null && prevIncoming.key !== `phase-${fadeState.phase}`) {
+                return { ...prevIncoming, key: `outgoing-${prevIncoming.key}` }; // Ensure a new key for outgoing
+            }
+            return { text: '', key: null }; // No outgoing if it's the first meaningful phase
+        });
+
+        // Set the new 'incoming' text based on the current fadeState from props
+        setIncomingGhostInfo({ text: currentGhostText, key: `phase-${fadeState.phase}` });
+
+    } else {
+        // When fading stops, clear both
+        setOutgoingGhostInfo({ text: '', key: null });
+        setIncomingGhostInfo({ text: '', key: null });
+    }
+  }, [fadeState.isActive, fadeState.to_text, fadeState.phase, userText]);
 
   // --- PAGE SLIDE JSX (forwards/backwards) ---
   // This function was moved from TypewriterFramework.jsx
@@ -263,23 +292,45 @@ const PaperDisplay = ({
                       ));
                   };
 
+                  // Logging for the state passed from TypewriterFramework
+                  console.log('[FadeRender-Crossfade] Parent fadeState:', fadeState);
+                  // Logging for internal component states
+                  console.log('[FadeRender-Crossfade] sUserText:', sUserText);
+                  console.log('[FadeRender-Crossfade] incomingGhostInfo:', incomingGhostInfo);
+                  console.log('[FadeRender-Crossfade] outgoingGhostInfo:', outgoingGhostInfo);
+
                   return (
                       <div className="typewriter-line">
-                          <span style={{ display: 'inline-block', verticalAlign: 'baseline' }}> {/* New outer wrapper span */}
+                          <span style={{ display: 'inline-block', verticalAlign: 'baseline' }}> {/* Outer wrapper from previous step */}
                               {sUserText && (
                                   <span style={{ display: 'inline' }}>
                                       {renderTextWithLineBreaks(sUserText)}
                                   </span>
                               )}
-                              {ghostTextForCurrentPhase && (
-                                  <span
-                                      className="ghost-text-fade-in-block"
-                                      key={`fade-phase-${fadeState.phase}`}
-                                      style={{ display: 'inline-block' }} // Keep as inline-block for animation integrity
-                                  >
-                                      {renderTextWithLineBreaks(ghostTextForCurrentPhase)}
-                                  </span>
-                              )}
+                              {/* Container for cross-fading ghost texts */}
+                              <span style={{ display: 'inline-block', position: 'relative', verticalAlign: 'baseline' }} className="cross-fade-ghost-container">
+                                  {outgoingGhostInfo.text && outgoingGhostInfo.key && (
+                                      <span
+                                          key={outgoingGhostInfo.key}
+                                          className="ghost-text-block cross-fade-outgoing"
+                                          style={{ display: 'inline-block', position: 'absolute', top: 0, left: 0 }}
+                                      >
+                                          {renderTextWithLineBreaks(outgoingGhostInfo.text)}
+                                      </span>
+                                  )}
+                                  {incomingGhostInfo.text && incomingGhostInfo.key && (
+                                      <span
+                                          key={incomingGhostInfo.key} // Key from state, includes phase
+                                          className="ghost-text-block cross-fade-incoming"
+                                          // This one can be position: 'relative' or 'static' to define the space,
+                                          // or also absolute if container has defined size.
+                                          // For simplicity, let incoming define the flow and outgoing overlay it.
+                                          style={{ display: 'inline-block' }}
+                                      >
+                                          {renderTextWithLineBreaks(incomingGhostInfo.text)}
+                                      </span>
+                                  )}
+                              </span>
                           </span>
                       </div>
                   );
