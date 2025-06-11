@@ -264,21 +264,23 @@ const PaperDisplay = ({
                   };
 
                   return (
-                      <div className="typewriter-line"> {/* This outer div might need review if it's causing issues */}
-                          {sUserText && (
-                              <span style={{ display: 'inline' }}>
-                                  {renderTextWithLineBreaks(sUserText)}
-                              </span>
-                          )}
-                          {ghostTextForCurrentPhase && (
-                              <span
-                                  className="ghost-text-fade-in-block"
-                                  key={`fade-phase-${fadeState.phase}`}
-                                  style={{ display: 'inline-block' }}
-                              >
-                                  {renderTextWithLineBreaks(ghostTextForCurrentPhase)}
-                              </span>
-                          )}
+                      <div className="typewriter-line">
+                          <span style={{ display: 'inline-block', verticalAlign: 'baseline' }}> {/* New outer wrapper span */}
+                              {sUserText && (
+                                  <span style={{ display: 'inline' }}>
+                                      {renderTextWithLineBreaks(sUserText)}
+                                  </span>
+                              )}
+                              {ghostTextForCurrentPhase && (
+                                  <span
+                                      className="ghost-text-fade-in-block"
+                                      key={`fade-phase-${fadeState.phase}`}
+                                      style={{ display: 'inline-block' }} // Keep as inline-block for animation integrity
+                                  >
+                                      {renderTextWithLineBreaks(ghostTextForCurrentPhase)}
+                                  </span>
+                              )}
+                          </span>
                       </div>
                   );
                 })()

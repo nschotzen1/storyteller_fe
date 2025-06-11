@@ -8,6 +8,8 @@ import OrreryComponent from './OrreryComponent.jsx';
 import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines, playGhostWriterSound } from './utils.js';
 import { fetchNextFilmImage, fetchTypewriterReply, fetchShouldGenerateContinuation } from './apiService.js';
 
+const MIN_USER_WORDS_TO_REENABLE_GHOSTWRITER = 5;
+
 // --- Constants ---
 const FILM_HEIGHT = 1400;
 const LINE_HEIGHT = 2.4 * 16; // Roughly 38.4
@@ -431,6 +433,8 @@ const TypewriterFramework = (props) => {
 
   const [ghostwriterState, dispatchGhostwriter] = useReducer(ghostwriterReducer, initialGhostwriterState);
   const [userTextBeforeGhostFade, setUserTextBeforeGhostFade] = useState('');
+  const [isGhostwritingDisabledPostFade, setIsGhostwritingDisabledPostFade] = useState(false);
+  const [wordCountAtFadeEnd, setWordCountAtFadeEnd] = useState(0);
   const {
     lastUserInputTime,
     responseQueued,
@@ -749,6 +753,23 @@ const TypewriterFramework = (props) => {
     }
   }, [typingState.isProcessingSequence]);
 
+  // --- Re-enable Ghostwriting Post-Fade ---
+  useEffect(() => {
+    if (isGhostwritingDisabledPostFade && pages[currentPage]) {
+        const currentText = pages[currentPage].text || '';
+        const currentWords = currentText.trim().split(/\s+/).filter(Boolean).length;
+        const wordsTypedSinceFadeEnd = currentWords - wordCountAtFadeEnd;
+
+        console.log(`[GhostwriterControl] Checking re-enable: Current words: ${currentWords}, Words at fade end: ${wordCountAtFadeEnd}, Typed since: ${wordsTypedSinceFadeEnd}`);
+
+        if (wordsTypedSinceFadeEnd >= MIN_USER_WORDS_TO_REENABLE_GHOSTWRITER) {
+            setIsGhostwritingDisabledPostFade(false);
+            setWordCountAtFadeEnd(0); // Reset for clarity
+            console.log('[GhostwriterControl] Re-enabled ghostwriting.');
+        }
+    }
+  }, [pages, currentPage, isGhostwritingDisabledPostFade, wordCountAtFadeEnd, setIsGhostwritingDisabledPostFade, setWordCountAtFadeEnd]); // Added setters to dep array
+
   // --- Action Sequence Processing ---
   useEffect(() => {
     let timeoutId;
@@ -938,17 +959,23 @@ const TypewriterFramework = (props) => {
       if (userTextBeforeGhostFade !== '') {
         // If userTextBeforeGhostFade is set, it means a fade sequence has likely just completed.
         // The page text should be what was captured before the fade.
+        const currentText = userTextBeforeGhostFade; // Capture for consistent use
         setPages(prev => {
           const updatedPages = [...prev];
           if (updatedPages[currentPage]) {
-            updatedPages[currentPage] = { ...updatedPages[currentPage], text: userTextBeforeGhostFade };
+            updatedPages[currentPage] = { ...updatedPages[currentPage], text: currentText };
           }
-          console.log('[SequenceComplete] Applied userTextBeforeGhostFade. Text set to:', userTextBeforeGhostFade);
+          console.log('[SequenceComplete] Applied userTextBeforeGhostFade. Text set to:', currentText);
           return updatedPages;
         });
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: userTextBeforeGhostFade.length });
-        // Optionally, adjust word count based on userTextBeforeGhostFade if it represents the truest "final" user-intended text.
-        const ghostwriterWords = userTextBeforeGhostFade.trim().split(/\s+/).filter(Boolean).length;
+
+        const words = currentText.trim().split(/\s+/).filter(Boolean).length;
+        setWordCountAtFadeEnd(words);
+        setIsGhostwritingDisabledPostFade(true);
+        console.log(`[GhostwriterControl] Disabled post-fade. Word count at end: ${words}. User needs to type ${MIN_USER_WORDS_TO_REENABLE_GHOSTWRITER} more words.`);
+
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentText.length });
+        const ghostwriterWords = words; // Use the same word count
         dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: ghostwriterWords });
         // userTextBeforeGhostFade is reset by its own useEffect when isProcessingSequence becomes false after SEQUENCE_COMPLETE.
       } else if (finalGhostTextOfSequence && !typingState.fadeState.isActive && !typingState.allInitialFadesCompleted) {
@@ -1002,7 +1029,9 @@ const TypewriterFramework = (props) => {
     typingState.isProcessingInitialFadeSequence,
     userTextBeforeGhostFade, // Added
     typingState.preFadeSnapshot, // Added
-    props.shouldGenerateTypeWriterResponse // Added
+    props.shouldGenerateTypeWriterResponse, // Added
+    setIsGhostwritingDisabledPostFade, // Added
+    setWordCountAtFadeEnd // Added
   ]);
 
 
@@ -1011,6 +1040,10 @@ const TypewriterFramework = (props) => {
   if (!typingState.typingAllowed) return;
 
   const interval = setInterval(async () => {
+    if (isGhostwritingDisabledPostFade) {
+        console.log('[GhostwriterControl] Ghostwriting is currently disabled post-fade.');
+        return; // Prevent ghostwriting
+    }
     const fullText = pages[currentPage]?.text || '';
     const addition = fullText.slice(ghostwriterState.lastGeneratedLength);
     const pauseSeconds = (Date.now() - ghostwriterState.lastUserInputTime) / 1000;
@@ -1114,7 +1147,8 @@ const TypewriterFramework = (props) => {
   sessionId,
   dispatchTyping,
   dispatchGhostwriter,
-  setCurrentFontStyles
+  setCurrentFontStyles,
+  isGhostwritingDisabledPostFade // Added
 ]);
 
  
