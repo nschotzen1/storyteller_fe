@@ -961,3 +961,48 @@
   from { opacity: 1; filter: blur(0); transform: scale(1);}
   to   { opacity: 0; filter: blur(2px); transform: scale(0.95);}
 }
+
+/* Cross-Fade Animation for Ghost Text Phases */
+.cross-fade-ghost-container {
+  /* Styles like display, position, vertical-align are set via inline styles in PaperDisplay.jsx */
+  /* This class can be used for additional container-specific styles if needed in the future. */
+}
+
+.ghost-text-block {
+  /* Styles like display are set via inline styles in PaperDisplay.jsx */
+  /* This class is for any shared styling between outgoing and incoming blocks. */
+  /* For example, if they both needed a specific text color or font property not inherited. */
+}
+
+.cross-fade-outgoing {
+  animation: userGhostTextFadeOut 0.5s ease-in-out forwards;
+  /* Position and display are set via inline styles in PaperDisplay.jsx */
+  /* 'forwards' ensures it stays at opacity 0 after animation. */
+  /* It's absolutely positioned to overlay correctly without affecting flow. */
+  /* Adding width: 100%; to ensure it occupies the same width as the incoming text block within the relative container. */
+  width: 100%;
+}
+
+.cross-fade-incoming {
+  animation: userGhostTextFadeIn 0.5s ease-in-out forwards;
+  /* Position and display are set via inline styles in PaperDisplay.jsx */
+  /* This block defines the space. */
+}
+
+@keyframes userGhostTextFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes userGhostTextFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
