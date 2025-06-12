@@ -1010,3 +1010,58 @@
     opacity: 1;
   }
 }
+
+
+@keyframes smudgeFadeOut {
+  0% {
+    opacity: 1;
+    filter: blur(0) brightness(1) drop-shadow(0 0 1px #fff5);
+    transform: scale(1) translateY(0);
+  }
+  28% {
+    opacity: 0.85;
+    filter: blur(1.2px) brightness(1.15) contrast(0.94);
+    transform: scale(1.03) translateY(1.5px) skewX(-2deg);
+  }
+  55% {
+    opacity: 0.6;
+    filter: blur(2.6px) brightness(1.07) grayscale(0.18);
+    transform: scale(1.04) translateY(6px) skewX(-5deg);
+    text-shadow: 0 3px 8px #3a291744;
+  }
+  85% {
+    opacity: 0.22;
+    filter: blur(6px) brightness(0.85) grayscale(0.24);
+    transform: scale(1.07) translateY(17px) skewX(-10deg);
+    text-shadow: 0 6px 18px #2a181722;
+  }
+  100% {
+    opacity: 0;
+    filter: blur(15px) brightness(0.5) grayscale(0.42);
+    transform: scale(1.13) translateY(31px) skewX(-26deg);
+    text-shadow: none;
+  }
+}
+.smudge-fade-out {
+  animation: smudgeFadeOut 1.42s cubic-bezier(.72,.12,.19,.97) forwards;
+  will-change: opacity, filter, transform;
+  display: inline-block;
+  pointer-events: none;
+  position: relative;
+}
+
+@keyframes afterimageFade {
+  0% { opacity: 0.22; filter: blur(2.5px); }
+  90% { opacity: 0.03; filter: blur(12px); }
+  100% { opacity: 0; filter: blur(17px); }
+}
+.afterimage-fade {
+  opacity: 0.15;
+  filter: blur(6px) brightness(1.45);
+  pointer-events: none;
+  mix-blend-mode: lighten;
+  transition: opacity 1.15s linear, filter 1.3s;
+  position: absolute;
+  left: 0; top: 0; z-index: 2;
+  animation: afterimageFade 1.25s cubic-bezier(.73,0,.22,1) forwards;
+}
