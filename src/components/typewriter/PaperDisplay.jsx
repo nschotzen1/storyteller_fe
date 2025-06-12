@@ -300,42 +300,61 @@ const PaperDisplay = ({
                   console.log('[FadeRender-Crossfade] outgoingGhostInfo:', outgoingGhostInfo);
 
                   return (
-                      <div className="typewriter-line">
-                          <span style={{ display: 'inline-block', verticalAlign: 'baseline' }}> {/* Outer wrapper from previous step */}
-                              {sUserText && (
-                                  <span style={{ display: 'inline' }}>
-                                      {renderTextWithLineBreaks(sUserText)}
-                                  </span>
-                              )}
-                              {/* Container for cross-fading ghost texts */}
-                              <span style={{ display: 'inline-block', position: 'relative', verticalAlign: 'baseline' }} className="cross-fade-ghost-container">
-                                  {outgoingGhostInfo.text && outgoingGhostInfo.key && (
-                                      <span
-                                          key={outgoingGhostInfo.key}
-                                          className="ghost-text-block cross-fade-outgoing"
-                                          style={{ display: 'inline-block', position: 'absolute', top: 0, left: 0 }}
-                                      >
-                                          {renderTextWithLineBreaks(outgoingGhostInfo.text)}
-                                      </span>
-                                  )}
-                                  {incomingGhostInfo.text && incomingGhostInfo.key && (
-                                      <span
-                                          key={incomingGhostInfo.key} // Key from state, includes phase
-                                          className="ghost-text-block cross-fade-incoming"
-                                          // This one can be position: 'relative' or 'static' to define the space,
-                                          // or also absolute if container has defined size.
-                                          // For simplicity, let incoming define the flow and outgoing overlay it.
-                                          style={{ display: 'inline-block' }}
-                                      >
-                                          {renderTextWithLineBreaks(incomingGhostInfo.text)}
-                                      </span>
-                                  )}
-                              </span>
-                          </span>
-                      </div>
-                  );
-                })()
-              ) : (
+      <div className="typewriter-line">
+        <span style={{ display: 'inline-block', verticalAlign: 'baseline' }}>
+          {sUserText && (
+            <span style={{ display: 'inline' }}>
+              {renderTextWithLineBreaks(sUserText)}
+            </span>
+          )}
+          {/* Container for cross-fading ghost texts */}
+          <span style={{ display: 'inline-block', position: 'relative', verticalAlign: 'baseline' }} className="cross-fade-ghost-container">
+            {outgoingGhostInfo.text && outgoingGhostInfo.key && (
+              <span
+                key={outgoingGhostInfo.key}
+                className="ghost-text-block cross-fade-outgoing"
+                style={{ display: 'inline-block', position: 'absolute', top: 0, left: 0 }}
+              >
+                {/* --- ENHANCED: Fade out each char as smudge/afterimage --- */}
+                {outgoingGhostInfo.text.split('').map((char, i) => (
+                  <span
+                    key={i}
+                    style={{ position: 'relative', display: 'inline-block', minWidth: '0.7ch' }}
+                  >
+                    <span
+                      className="smudge-fade-out"
+                      style={{ animationDelay: `${i * 0.042}s` }}
+                    >
+                      {char === '\n' ? <br /> : char}
+                    </span>
+                    <span
+                      className="afterimage-fade"
+                      style={{ animationDelay: `${i * 0.042 + 0.13}s` }}
+                    >
+                      {char === '\n' ? <br /> : char}
+                    </span>
+                  </span>
+                ))}
+              </span>
+            )}
+            {incomingGhostInfo.text && incomingGhostInfo.key && (
+              <span
+                key={incomingGhostInfo.key}
+                className="ghost-text-block cross-fade-incoming"
+                style={{ display: 'inline-block' }}
+              >
+                {/* Appear instantly, or add a subtle fade-in if you want */}
+                {incomingGhostInfo.text.split('').map((char, i) => (
+                  <span key={i}>{char === '\n' ? <br /> : char}</span>
+                ))}
+              </span>
+            )}
+          </span>
+        </span>
+      </div>
+    );
+  })()
+)  : (
                 (() => {
                   const pageTextLength = pageText.length;
                   const ghostTextString = Array.isArray(ghostText)
