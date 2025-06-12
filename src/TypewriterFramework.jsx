@@ -8,6 +8,8 @@ import OrreryComponent from './OrreryComponent.jsx';
 import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines, playGhostWriterSound } from './utils.js';
 import { fetchNextFilmImage, fetchTypewriterReply, fetchShouldGenerateContinuation } from './apiService.js';
 
+const MIN_USER_WORDS_TO_REENABLE_GHOSTWRITER = 5;
+
 // --- Constants ---
 const FILM_HEIGHT = 1400;
 const LINE_HEIGHT = 2.4 * 16; // Roughly 38.4
@@ -232,6 +234,9 @@ const typingActionTypes = {
   SEQUENCE_COMPLETE: 'SEQUENCE_COMPLETE',   // no payload, resets sequence processing flags
   CANCEL_SEQUENCE: 'CANCEL_SEQUENCE', // no payload, similar to SEQUENCE_COMPLETE for interruption
   RETYPE_ACTION: 'RETYPE_ACTION', // New action type for retyping
+  CAPTURE_PRE_FADE_SNAPSHOT: 'CAPTURE_PRE_FADE_SNAPSHOT',
+  SET_ALL_INITIAL_FADES_COMPLETED: 'SET_ALL_INITIAL_FADES_COMPLETED',
+  COMPLETE_INITIAL_FADE_PROCESSING: 'COMPLETE_INITIAL_FADE_PROCESSING',
 };
 
 const initialTypingState = {
@@ -245,6 +250,9 @@ const initialTypingState = {
   currentGhostText: [],
   isProcessingSequence: false,
   fadeState: { isActive: false, to_text: '', phase: 0 },
+  preFadeSnapshot: null,
+  allInitialFadesCompleted: false,
+  isProcessingInitialFadeSequence: false,
 };
 
 function typingReducer(state, action) {
@@ -302,13 +310,30 @@ function typingReducer(state, action) {
         currentGhostText: '',
         isProcessingSequence: true,
         fadeState: { isActive: false, to_text: '', phase: 0 },
+        preFadeSnapshot: null,
+        allInitialFadesCompleted: false,
+        typingAllowed: true,
+        isProcessingInitialFadeSequence: action.payload.some(item => item.action === 'fade'),
         inputBuffer: '', // Clear input buffer when a new sequence starts
       };
     case typingActionTypes.PROCESS_NEXT_ACTION:
-      return {
-        ...state,
-        currentActionIndex: state.currentActionIndex + 1,
-      };
+      const newIndex = state.currentActionIndex + 1;
+      if (newIndex < state.actionSequence.length) {
+        const nextAction = state.actionSequence[newIndex];
+        if (nextAction.action !== 'fade') {
+          // If the next action is not a fade, deactivate current fade state visuals
+          // Consider full reset: { isActive: false, to_text: '', phase: 0 } if prev_text continuity isn't strictly needed for non-fade actions
+          return {
+            ...state,
+            currentActionIndex: newIndex,
+            fadeState: { ...state.fadeState, isActive: false }
+          };
+        }
+        // If next action is a fade, keep fadeState as is (isActive: true will be set by the fade action itself)
+        return { ...state, currentActionIndex: newIndex };
+      }
+      // If no more actions, currentActionIndex will be out of bounds, sequence completion is handled by useEffect.
+      return { ...state, currentActionIndex: newIndex };
     case typingActionTypes.UPDATE_GHOST_TEXT:
       return {
         ...state,
@@ -320,15 +345,29 @@ function typingReducer(state, action) {
         fadeState: action.payload,
       };
     case typingActionTypes.SEQUENCE_COMPLETE:
+      return {
+        ...state,
+        actionSequence: [],
+        currentActionIndex: 0,
+        currentGhostText: '', // Cleared as the content is committed by user or fade action.
+        isProcessingSequence: false,
+        fadeState: { isActive: false, to_text: '', phase: 0 }, // Reset fade display
+        // typingAllowed remains as is (should be true after fades, or managed by other logic)
+        // preFadeSnapshot, allInitialFadesCompleted, isProcessingInitialFadeSequence are NOT reset here.
+      };
     case typingActionTypes.CANCEL_SEQUENCE:
       // Both can share the same logic for now
       return {
         ...state,
         actionSequence: [],
         currentActionIndex: 0,
-        currentGhostText: '', // Ensure ghost text is cleared on sequence completion/cancellation
+        currentGhostText: '', /* Clear ghost text on cancel */
         isProcessingSequence: false,
         fadeState: { isActive: false, to_text: '', phase: 0 },
+        preFadeSnapshot: null, /* Reset snapshot on cancel */
+        allInitialFadesCompleted: false, /* Reset fades completed on cancel */
+        isProcessingInitialFadeSequence: false,
+        typingAllowed: true, /* Assume cancel means reset to typeable */
       };
     case typingActionTypes.RETYPE_ACTION:
       // Ensure action.payload contains 'count' and 'text'
@@ -343,7 +382,12 @@ function typingReducer(state, action) {
         };
       }
       return state; // If payload is malformed, return current state
-  
+    case typingActionTypes.CAPTURE_PRE_FADE_SNAPSHOT:
+      return { ...state, preFadeSnapshot: action.payload };
+    case typingActionTypes.SET_ALL_INITIAL_FADES_COMPLETED:
+      return { ...state, allInitialFadesCompleted: true };
+    case typingActionTypes.COMPLETE_INITIAL_FADE_PROCESSING:
+      return { ...state, isProcessingInitialFadeSequence: false };
     default:
       return state;
   }
@@ -356,7 +400,7 @@ const keys = [
   'Z','X','C','V','B','N','M','THE XEROFAG'
 ];
 
-const TypewriterFramework = () => {
+const TypewriterFramework = (props) => {
   // --- Reducers ---
   const [pageTransitionState, dispatchPageTransition] = useReducer(pageTransitionReducer, initialPageTransitionState);
   const {
@@ -388,6 +432,9 @@ const TypewriterFramework = () => {
   } = typingState;
 
   const [ghostwriterState, dispatchGhostwriter] = useReducer(ghostwriterReducer, initialGhostwriterState);
+  const [userTextBeforeGhostFade, setUserTextBeforeGhostFade] = useState('');
+  const [isGhostwritingDisabledPostFade, setIsGhostwritingDisabledPostFade] = useState(false);
+  const [wordCountAtFadeEnd, setWordCountAtFadeEnd] = useState(0);
   const {
     lastUserInputTime,
     responseQueued,
@@ -464,10 +511,15 @@ const TypewriterFramework = () => {
 
   // --- Unified scroll effect ---
   useEffect(() => {
-    if (!scrollRef.current || !lastLineRef.current) return;
+    // The top-level check for scrollRef.current is good.
+    // The original error was specifically for lastLineRef.current being null before scrollIntoView.
+    if (!scrollRef.current) return;
+
     if (pageTransitionState.scrollMode === NORMAL_SCROLL_MODE) {
       requestAnimationFrame(() => {
-        lastLineRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        if (lastLineRef.current) { // Check if lastLineRef.current is not null
+          lastLineRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
       });
     }
   }, [pageText, ghostText, pageTransitionState.scrollMode]);
@@ -693,6 +745,31 @@ const TypewriterFramework = () => {
     return () => clearInterval(interval);
   }, [keyTextures]);
 
+  // --- Reset userTextBeforeGhostFade ---
+  useEffect(() => {
+    if (!typingState.isProcessingSequence) {
+      setUserTextBeforeGhostFade('');
+      console.log('[Fade] Sequence not processing. Cleared userTextBeforeGhostFade.');
+    }
+  }, [typingState.isProcessingSequence]);
+
+  // --- Re-enable Ghostwriting Post-Fade ---
+  useEffect(() => {
+    if (isGhostwritingDisabledPostFade && pages[currentPage]) {
+        const currentText = pages[currentPage].text || '';
+        const currentWords = currentText.trim().split(/\s+/).filter(Boolean).length;
+        const wordsTypedSinceFadeEnd = currentWords - wordCountAtFadeEnd;
+
+        console.log(`[GhostwriterControl] Checking re-enable: Current words: ${currentWords}, Words at fade end: ${wordCountAtFadeEnd}, Typed since: ${wordsTypedSinceFadeEnd}`);
+
+        if (wordsTypedSinceFadeEnd >= MIN_USER_WORDS_TO_REENABLE_GHOSTWRITER) {
+            setIsGhostwritingDisabledPostFade(false);
+            setWordCountAtFadeEnd(0); // Reset for clarity
+            console.log('[GhostwriterControl] Re-enabled ghostwriting.');
+        }
+    }
+  }, [pages, currentPage, isGhostwritingDisabledPostFade, wordCountAtFadeEnd, setIsGhostwritingDisabledPostFade, setWordCountAtFadeEnd]); // Added setters to dep array
+
   // --- Action Sequence Processing ---
   useEffect(() => {
     let timeoutId;
@@ -705,6 +782,45 @@ const TypewriterFramework = () => {
       if (typingState.fadeState.isActive && currentAction.action !== 'fade') {
         dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
       }
+
+      if (currentAction.action === 'fade' && !typingState.preFadeSnapshot) {
+        const currentGhostTextString = Array.isArray(typingState.currentGhostText) ? typingState.currentGhostText.map(g => g.char).join('') : typingState.currentGhostText;
+        const fullTextBeforeFade = (pages[currentPage]?.text || '') + currentGhostTextString;
+        const wordCount = fullTextBeforeFade.trim().split(/\s+/).filter(Boolean).length;
+
+        const nonFadeActionsBeforeCurrent = typingState.actionSequence.slice(0, typingState.currentActionIndex)
+            .filter(a => ['type', 'pause', 'delete', 'retype'].includes(a.action));
+
+        let lastActionText = '';
+        for (let i = nonFadeActionsBeforeCurrent.length - 1; i >= 0; i--) {
+            if (nonFadeActionsBeforeCurrent[i].action === 'type') {
+                lastActionText = nonFadeActionsBeforeCurrent[i].text;
+                break;
+            }
+        }
+
+        let lastPauseDelaySeconds = 0;
+        for (let i = nonFadeActionsBeforeCurrent.length - 1; i >= 0; i--) {
+            if (nonFadeActionsBeforeCurrent[i].action === 'pause') {
+                lastPauseDelaySeconds = nonFadeActionsBeforeCurrent[i].delay / 1000;
+                break;
+            }
+        }
+
+        dispatchTyping({
+            type: typingActionTypes.CAPTURE_PRE_FADE_SNAPSHOT,
+            payload: {
+                currentText: fullTextBeforeFade,
+                latestAddition: lastActionText,
+                latestPauseSeconds: lastPauseDelaySeconds,
+                lastGhostwriterWordCount: wordCount,
+            },
+        });
+
+        if (Array.isArray(typingState.currentGhostText)) {
+            dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: currentGhostTextString });
+        }
+    }
 
       switch (currentAction.action) {
        case 'type': {
@@ -787,20 +903,28 @@ const TypewriterFramework = () => {
             dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
           }, currentAction.delay);
           break;
-        case 'fade':
+        case 'fade': {
+          // Dispatch to update PaperDisplay with current fade phase's text and phase number
+          // This will make PaperDisplay render the current state, and its key change should trigger animation
           dispatchTyping({
             type: typingActionTypes.SET_FADE_STATE,
             payload: {
-              isActive: true,
-              prev_text: typingState.currentGhostText || (pages[currentPage]?.text || ""),
+              isActive: true, // Keep fade active
+              prev_text: typingState.fadeState.to_text || (pages[currentPage]?.text || '') + (Array.isArray(typingState.currentGhostText) ? typingState.currentGhostText.map(g=>g.char).join('') : typingState.currentGhostText || ''), // Previous target or initial text
               to_text: currentAction.to_text,
               phase: currentAction.phase
             }
           });
+
+          // Log for debugging this specific step
+          console.log('[FadeHandler] Dispatching SET_FADE_STATE for phase:', currentAction.phase, 'to_text:', currentAction.to_text, 'Delay:', currentAction.delay);
+
           timeoutId = setTimeout(() => {
+            console.log('[FadeHandler] Timeout complete for phase:', currentAction.phase, 'Dispatching PROCESS_NEXT_ACTION.');
             dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
           }, currentAction.delay);
           break;
+        }
         case 'retype':
           // Ensure action.count and action.text are available from the sequence object
           if (typeof currentAction.count === 'number' && typeof currentAction.text === 'string') {
@@ -827,41 +951,64 @@ const TypewriterFramework = () => {
     } else if (typingState.isProcessingSequence && typingState.currentActionIndex >= typingState.actionSequence.length) {
       // All actions processed, sequence is naturally completing.
       const finalGhostTextOfSequence = Array.isArray(typingState.currentGhostText)
-      ? typingState.currentGhostText.map(x => x.char).join('')
-      : typingState.currentGhostText;
+        ? typingState.currentGhostText.map(x => x.char).join('')
+        : String(typingState.currentGhostText || '');
 
-      const currentPageText = pages[currentPage]?.text || ''; // pages and currentPage are now dependencies
-      
-      if (finalGhostTextOfSequence) {
-  const textToCommit = currentPageText + finalGhostTextOfSequence;
-  const textToCommitLines = textToCommit.split('\n').length;
-  const newTextForPage =
-    textToCommitLines > MAX_LINES
-      ? textToCommit.split('\n').slice(0, MAX_LINES).join('\n')
-      : textToCommit;
+      const currentPageText = pages[currentPage]?.text || '';
 
-  setPages(prev => {
-    const updatedPages = [...prev];
-    updatedPages[currentPage] = {
-      ...updatedPages[currentPage],
-      text: newTextForPage
-    };
-    return updatedPages;
-  });
-  dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
-  // ---- PATCH: Track last ghostwriter addition (in words) ----
-  const ghostwriterWords = finalGhostTextOfSequence.trim().split(/\s+/).filter(Boolean).length;
-  dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: ghostwriterWords });
-} else {
-  dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentPageText.length });
-  dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: 0 });
-}
+      if (userTextBeforeGhostFade !== '') {
+        // If userTextBeforeGhostFade is set, it means a fade sequence has likely just completed.
+        // The page text should be what was captured before the fade.
+        const currentText = userTextBeforeGhostFade; // Capture for consistent use
+        setPages(prev => {
+          const updatedPages = [...prev];
+          if (updatedPages[currentPage]) {
+            updatedPages[currentPage] = { ...updatedPages[currentPage], text: currentText };
+          }
+          console.log('[SequenceComplete] Applied userTextBeforeGhostFade. Text set to:', currentText);
+          return updatedPages;
+        });
 
-      
-      dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE }); 
-      if (typingState.fadeState.isActive) {
-        dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
+        const words = currentText.trim().split(/\s+/).filter(Boolean).length;
+        setWordCountAtFadeEnd(words);
+        setIsGhostwritingDisabledPostFade(true);
+        console.log(`[GhostwriterControl] Disabled post-fade. Word count at end: ${words}. User needs to type ${MIN_USER_WORDS_TO_REENABLE_GHOSTWRITER} more words.`);
+
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentText.length });
+        const ghostwriterWords = words; // Use the same word count
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: ghostwriterWords });
+        // userTextBeforeGhostFade is reset by its own useEffect when isProcessingSequence becomes false after SEQUENCE_COMPLETE.
+      } else if (finalGhostTextOfSequence && !typingState.fadeState.isActive && !typingState.allInitialFadesCompleted) {
+        // Standard commit logic if not ending with a fade that used userTextBeforeGhostFade,
+        // and no fade is active (e.g. a type sequence that ends)
+        const textToCommit = currentPageText + finalGhostTextOfSequence;
+        const textToCommitLines = textToCommit.split('\n').length;
+        const newTextForPage =
+          textToCommitLines > MAX_LINES
+            ? textToCommit.split('\n').slice(0, MAX_LINES).join('\n')
+            : textToCommit;
+
+        setPages(prev => {
+          const updatedPages = [...prev];
+          if (updatedPages[currentPage]) {
+            updatedPages[currentPage] = { ...updatedPages[currentPage], text: newTextForPage };
+          }
+          return updatedPages;
+        });
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
+        const ghostwriterWords = finalGhostTextOfSequence.trim().split(/\s+/).filter(Boolean).length;
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: ghostwriterWords });
+      } else if (!typingState.fadeState.isActive && !typingState.allInitialFadesCompleted) {
+        // If no ghost text to commit and no fade was active (e.g. empty sequence or just pauses)
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentPageText.length });
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: 0 });
       }
+      // If fadeState.isActive is true here, it implies the last action was a fade.
+      // The text setting for userTextBeforeGhostFade (if applicable) is handled above.
+      // The SET_FADE_STATE in SEQUENCE_COMPLETE in the reducer will turn off visuals.
+
+      dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
+      // The reducer's SEQUENCE_COMPLETE handles resetting fadeState.isActive.
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
     }
 
@@ -878,7 +1025,13 @@ const TypewriterFramework = () => {
     dispatchGhostwriter, 
     pages, 
     currentPage, 
-    setPages 
+    setPages,
+    typingState.isProcessingInitialFadeSequence,
+    userTextBeforeGhostFade, // Added
+    typingState.preFadeSnapshot, // Added
+    props.shouldGenerateTypeWriterResponse, // Added
+    setIsGhostwritingDisabledPostFade, // Added
+    setWordCountAtFadeEnd // Added
   ]);
 
 
@@ -887,6 +1040,10 @@ const TypewriterFramework = () => {
   if (!typingState.typingAllowed) return;
 
   const interval = setInterval(async () => {
+    if (isGhostwritingDisabledPostFade) {
+        console.log('[GhostwriterControl] Ghostwriting is currently disabled post-fade.');
+        return; // Prevent ghostwriting
+    }
     const fullText = pages[currentPage]?.text || '';
     const addition = fullText.slice(ghostwriterState.lastGeneratedLength);
     const pauseSeconds = (Date.now() - ghostwriterState.lastUserInputTime) / 1000;
@@ -903,12 +1060,21 @@ const TypewriterFramework = () => {
     ) {
       // (optional: you can disable this block if you never want inactivity autocompletion)
       fetchTypewriterReply(fullText, sessionId).then(response => {
-        const reply = response.data;
-        if (reply && reply.writing_sequence && reply.metadata) {
-          setCurrentFontStyles(reply.metadata);
-          dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: reply.writing_sequence });
-          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
-          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
+        const reply = response.data; // Assuming response.data holds the sequence and metadata
+        if (reply && reply.writing_sequence) { // Check if writing_sequence exists
+            const hasFadeActions = reply.writing_sequence.some(action => action.action === 'fade');
+            if (hasFadeActions) {
+                const currentTextForUser = pages[currentPage]?.text || '';
+                setUserTextBeforeGhostFade(currentTextForUser);
+                console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextBeforeGhostFade:', currentTextForUser);
+            }
+            // The existing setCurrentFontStyles and dispatchTyping for START_NEW_SEQUENCE should follow.
+            if (reply.metadata) { // Ensure metadata exists before trying to set it
+              setCurrentFontStyles(reply.metadata);
+            }
+            dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: reply.writing_sequence });
+            dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
+            dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
         }
       }).catch(error => {
         console.error("Error fetching typewriter reply due to inactivity:", error);
@@ -937,13 +1103,22 @@ const TypewriterFramework = () => {
       );
       if (shouldGenerate) {
         fetchTypewriterReply(fullText, sessionId).then(response => {
-          const reply = response.data;
-          if (reply && reply.writing_sequence && reply.metadata) {
-            setCurrentFontStyles(reply.metadata);
-            dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: reply.writing_sequence });
-            dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
-            dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
-            // lastGhostwriterWordCount will be set after sequence commits
+          const reply = response.data; // Assuming response.data holds the sequence and metadata
+          if (reply && reply.writing_sequence) { // Check if writing_sequence exists
+              const hasFadeActions = reply.writing_sequence.some(action => action.action === 'fade');
+              if (hasFadeActions) {
+                  const currentTextForUser = pages[currentPage]?.text || '';
+                  setUserTextBeforeGhostFade(currentTextForUser);
+                  console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextBeforeGhostFade:', currentTextForUser);
+              }
+              // The existing setCurrentFontStyles and dispatchTyping for START_NEW_SEQUENCE should follow.
+              if (reply.metadata) { // Ensure metadata exists before trying to set it
+                setCurrentFontStyles(reply.metadata);
+              }
+              dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: reply.writing_sequence });
+              dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
+              dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
+              // lastGhostwriterWordCount will be set after sequence commits
           }
         }).catch(error => {
           console.error("Error fetching typewriter reply after shouldGenerate check:", error);
@@ -972,7 +1147,8 @@ const TypewriterFramework = () => {
   sessionId,
   dispatchTyping,
   dispatchGhostwriter,
-  setCurrentFontStyles
+  setCurrentFontStyles,
+  isGhostwritingDisabledPostFade // Added
 ]);
 
  
@@ -1037,6 +1213,7 @@ const TypewriterFramework = () => {
 
   // --- Keyboard Event Handlers for <Keyboard /> component ---
   const handleRegularKeyPress = (keyText) => {
+    if (!typingState.typingAllowed) return;
     // If there's an active sequence or ghost text, commit it first
     if (typingState.isProcessingSequence || typingState.currentGhostText) {
       commitGhostText();
@@ -1047,6 +1224,7 @@ const TypewriterFramework = () => {
   };
 
   const handleXerofagKeyPress = () => {
+    if (!typingState.typingAllowed) return;
     if (typingState.isProcessingSequence || typingState.currentGhostText) {
       commitGhostText();
     }
@@ -1056,6 +1234,7 @@ const TypewriterFramework = () => {
   };
 
   const handleSpacebarPress = () => {
+    if (!typingState.typingAllowed) return;
     if (typingState.isProcessingSequence || typingState.currentGhostText) {
       commitGhostText();
     }
@@ -1112,6 +1291,7 @@ const TypewriterFramework = () => {
         nextFilmBgUrl={nextFilmBgUrl}
         prevText={prevText}
         nextText={nextText}
+        userText={userTextBeforeGhostFade}
         MAX_LINES={MAX_LINES}
         TOP_OFFSET={TOP_OFFSET}
         BOTTOM_PADDING={BOTTOM_PADDING}
