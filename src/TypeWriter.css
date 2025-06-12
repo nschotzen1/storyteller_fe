@@ -963,46 +963,50 @@
 }
 
 /* Cross-Fade Animation for Ghost Text Phases */
-.cross-fade-ghost-container {
-  /* Styles like display, position, vertical-align are set via inline styles in PaperDisplay.jsx */
-  /* This class can be used for additional container-specific styles if needed in the future. */
+/* Container styles are primarily inline in JSX for now */
+/* .cross-fade-ghost-container {} */
+
+/* Base for animated blocks within a typewriter line */
+.typewriter-line .ghost-text-block {
+  /* display: inline-block; /* Set via inline style in PaperDisplay.jsx */
+  /* vertical-align: baseline; /* Suggested for inline-block alignment */
+  opacity: 0; /* Default to transparent; fade-in will make it visible, fade-out starts from visible */
 }
 
-.ghost-text-block {
-  /* Styles like display are set via inline styles in PaperDisplay.jsx */
-  /* This class is for any shared styling between outgoing and incoming blocks. */
-  /* For example, if they both needed a specific text color or font property not inherited. */
+.typewriter-line .ghost-text-block.cross-fade-outgoing {
+  animation-name: userGhostTextFadeOut;
+  animation-duration: 0.5s; /* Standard duration */
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards; /* Keep final state (opacity: 0) */
+  /* position: absolute; /* Set via inline style in PaperDisplay.jsx */
+  /* top: 0;            /* Set via inline style in PaperDisplay.jsx */
+  /* left: 0;           /* Set via inline style in PaperDisplay.jsx */
+  /* width: 100%;       /* Set via inline style in PaperDisplay.jsx */
+  opacity: 1; /* Start fully visible before animation reduces opacity */
 }
 
-.cross-fade-outgoing {
-  animation: userGhostTextFadeOut 0.5s ease-in-out forwards;
-  /* Position and display are set via inline styles in PaperDisplay.jsx */
-  /* 'forwards' ensures it stays at opacity 0 after animation. */
-  /* It's absolutely positioned to overlay correctly without affecting flow. */
-  /* Adding width: 100%; to ensure it occupies the same width as the incoming text block within the relative container. */
-  width: 100%;
-}
-
-.cross-fade-incoming {
-  animation: userGhostTextFadeIn 0.5s ease-in-out forwards;
-  /* Position and display are set via inline styles in PaperDisplay.jsx */
-  /* This block defines the space. */
+.typewriter-line .ghost-text-block.cross-fade-incoming {
+  animation-name: userGhostTextFadeIn;
+  animation-duration: 0.5s; /* Standard duration */
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards; /* Keep final state (opacity: 1) */
+  opacity: 0; /* Start transparent before animation makes it visible */
 }
 
 @keyframes userGhostTextFadeOut {
-  from {
+  0% {
     opacity: 1;
   }
-  to {
+  100% {
     opacity: 0;
   }
 }
 
 @keyframes userGhostTextFadeIn {
-  from {
+  0% {
     opacity: 0;
   }
-  to {
+  100% {
     opacity: 1;
   }
 }
