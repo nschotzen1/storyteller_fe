@@ -4,7 +4,8 @@ module.exports = {
     extend: {
       fontFamily: {
         mono: ['"Space Mono"', "monospace"],
-        fell: ['"IM Fell English"', 'serif']
+        fell: ['"IM Fell English"', 'serif'],
+        cinzel: ['"Cinzel Decorative"', 'cursive'],
       },
       
       
