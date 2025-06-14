@@ -60,3 +60,18 @@ export async function fetchShouldGenerateContinuation(currentText, latestAdditio
   });
   return await res.json();
 }
+
+export const fetchSeerCards = async () => {
+  try {
+    const response = await fetch(`/mock-seer-cards.json`); // Files in public are served at root
+    if (!response.ok) {
+      console.error(`API error in fetchSeerCards: ${response.status} ${response.statusText}`);
+      return { data: null, error: { message: `API error: ${response.status} ${response.statusText}`, status: response.status } };
+    }
+    const parsedJson = await response.json();
+    return { data: parsedJson, error: null };
+  } catch (error) {
+    console.error("Network error fetching seer cards:", error);
+    return { data: null, error: { message: error.message } };
+  }
+};
