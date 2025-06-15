@@ -147,8 +147,8 @@ import SeerPage from './pages/SeerPage';
 function App() {
   return (
     <div className="w-screen h-screen bg-black text-white overflow-hidden">
-      {/* <TypewriterFramework /> */}
-      <SeerPage />
+      <TypewriterFramework /> 
+      {/* <SeerPage /> */}
     </div>
   );
 }
