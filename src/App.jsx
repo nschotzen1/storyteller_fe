@@ -8,7 +8,8 @@ import React, { useState, useEffect } from 'react';
 import MysteryMessenger from './Messanger';
 import CurtainIntro from './CurtainIntro';
 import NarrativeScene from './NarrativeScene';
-import TypewriterFramework from './TypewriterFramework';
+// import TypewriterFramework from './TypewriterFramework';
+import SeerPage from './pages/SeerPage';
 
 
 // function App() {
@@ -146,7 +147,8 @@ import TypewriterFramework from './TypewriterFramework';
 function App() {
   return (
     <div className="w-screen h-screen bg-black text-white overflow-hidden">
-      <TypewriterFramework />
+      <TypewriterFramework /> 
+      {/* <SeerPage /> */}
     </div>
   );
 }
