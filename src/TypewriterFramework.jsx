@@ -184,7 +184,7 @@ const ghostwriterActionTypes = {
   SET_LAST_GENERATED_LENGTH: 'SET_LAST_GENERATED_LENGTH',
   RESET_GHOSTWRITER_STATE: 'RESET_GHOSTWRITER_STATE',
   SET_LAST_GHOSTWRITER_WORD_COUNT: 'SET_LAST_GHOSTWRITER_WORD_COUNT',
-
+  SET_IS_AWAITING_API_REPLY: 'SET_IS_AWAITING_API_REPLY', // New action type
 };
 
 const initialGhostwriterState = {
@@ -192,7 +192,7 @@ const initialGhostwriterState = {
   responseQueued: false,
   lastGeneratedLength: 0,
   lastGhostwriterWordCount: 0, // NEW: Track last ghostwriter addition size
-
+  isAwaitingApiReply: false, // New state variable
 };
 
 function ghostwriterReducer(state, action) {
@@ -210,7 +210,8 @@ function ghostwriterReducer(state, action) {
       };
     case ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT:
       return { ...state, lastGhostwriterWordCount: action.payload };
-
+    case ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY: // Handle new action
+      return { ...state, isAwaitingApiReply: action.payload };
     default:
       return state;
   }
@@ -439,6 +440,7 @@ const TypewriterFramework = (props) => {
     lastUserInputTime,
     responseQueued,
     lastGeneratedLength,
+    isAwaitingApiReply, // Destructure new state variable
   } = ghostwriterState;
 
 
@@ -1056,9 +1058,11 @@ const TypewriterFramework = (props) => {
       !typingState.isProcessingSequence &&
       typingState.inputBuffer.length === 0 &&
       (fullText.length === ghostwriterState.lastGeneratedLength || ghostwriterState.lastGeneratedLength === 0) &&
-      fullText.trim()
+      fullText.trim() &&
+      !ghostwriterState.isAwaitingApiReply // Add condition here
     ) {
       // (optional: you can disable this block if you never want inactivity autocompletion)
+      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: true }); // Dispatch true before API call
       fetchTypewriterReply(fullText, sessionId).then(response => {
         const reply = response.data; // Assuming response.data holds the sequence and metadata
         let sequenceToDispatch = null;
@@ -1084,9 +1088,14 @@ const TypewriterFramework = (props) => {
             dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: sequenceToDispatch });
             dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
             dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
+            dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false }); // Dispatch false on success
+        } else {
+          // If no sequence to dispatch, still need to reset isAwaitingApiReply
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
         }
       }).catch(error => {
         console.error("Error fetching typewriter reply due to inactivity:", error);
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false }); // Dispatch false on error
       });
       return;
     }
@@ -1095,7 +1104,8 @@ const TypewriterFramework = (props) => {
    if (
   !typingState.isProcessingSequence &&
   typingState.inputBuffer.length === 0 && // Not while user is typing or ghostwriting
-  addition.trim()
+  addition.trim() &&
+  !ghostwriterState.isAwaitingApiReply // Add condition here
 ) {
   fetchShouldGenerateContinuation(
     fullText,
@@ -1111,6 +1121,7 @@ const TypewriterFramework = (props) => {
         `[ghostwriter trigger] Server response: shouldGenerate=${shouldGenerate}, userAdditionLen=${addition.trim().split(/\s+/).length}, lastGhostwriterWordCount=${ghostwriterState.lastGhostwriterWordCount}`
       );
       if (shouldGenerate) {
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: true }); // Dispatch true before API call
         fetchTypewriterReply(fullText, sessionId).then(response => {
           const reply = response.data; // Assuming response.data holds the sequence and metadata
           let sequenceToDispatch = null;
@@ -1136,15 +1147,28 @@ const TypewriterFramework = (props) => {
               dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: sequenceToDispatch });
               dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
               dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
+              dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false }); // Dispatch false on success
               // lastGhostwriterWordCount will be set after sequence commits
+          } else {
+            // If no sequence to dispatch, still need to reset isAwaitingApiReply
+             dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
           }
         }).catch(error => {
           console.error("Error fetching typewriter reply after shouldGenerate check:", error);
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false }); // Dispatch false on error
         });
       }
+      // If shouldGenerate is false, we are not making an API call, so no need to set isAwaitingApiReply to false here.
+      // It should remain in its current state (which should be false if no API call is in progress).
     })
     .catch(error => {
       console.error("Error fetching shouldGenerateContinuation:", error);
+      // If fetchShouldGenerateContinuation itself fails, we also need to ensure isAwaitingApiReply is reset,
+      // although this part of the logic path doesn't set it to true.
+      // However, to be safe, if an error occurs before we decide to call fetchTypewriterReply:
+      if (ghostwriterState.isAwaitingApiReply) { // Only reset if it was somehow true
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
+      }
     });
 }
 
@@ -1162,6 +1186,7 @@ const TypewriterFramework = (props) => {
   ghostwriterState.responseQueued,
   ghostwriterState.lastGeneratedLength,
   ghostwriterState.lastGhostwriterWordCount, // ← ADD to deps!
+  ghostwriterState.isAwaitingApiReply, // Add new state to dependency array
   sessionId,
   dispatchTyping,
   dispatchGhostwriter,
