@@ -240,4 +240,112 @@ describe('TypewriterFramework Integration Tests', () => {
       expect(screen.queryByText(PAGE1_TEXT.replace('.','M'))).not.toBeInTheDocument();
     });
   });
+
+  test('handles writing and fade sequences from new API response structure', async () => {
+    fetchTypewriterReply.mockResolvedValueOnce({
+      data: {
+        metadata: { font: "'IM Fell English SC', serif", font_size: "1.9rem", font_color: "#2a120f" },
+        writing_sequence: [
+          { action: "type", delay: 20, text: "Initial text.", style: {} },
+          { action: "pause", delay: 30 },
+          { action: "type", delay: 20, text: " More text.", style: {} },
+        ],
+        fade_sequence: [
+          { action: "fade", phase: 1, delay: 100, to_text: "Faded text 1", style: {} },
+          { action: "fade", phase: 2, delay: 80, to_text: "Faded text 2", style: {} },
+          { action: "fade", phase: 3, delay: 60, to_text: "", style: {} }
+        ]
+      },
+      error: null
+    });
+    const expectedTextAfterWriting = "Initial text. More text.";
+
+    const { container } = render(<TypewriterFramework />);
+
+    // Trigger fetchTypewriterReply via inactivity
+    // Simulate a key press to set lastUserInputTime
+    fireEvent.keyDown(container.firstChild, { key: 'A', code: 'KeyA' });
+    act(() => { jest.advanceTimersByTime(150); }); // Allow key press to register
+
+    // Advance timers for inactivity check (GHOSTWRITER_AI_TRIGGER_INTERVAL is 1000ms)
+    // and inactivity threshold (15s)
+    act(() => { jest.advanceTimersByTime(16000); }); // > 15s + GHOSTWRITER_AI_TRIGGER_INTERVAL
+
+    await waitFor(() => expect(fetchTypewriterReply).toHaveBeenCalledTimes(1));
+
+    // Verify writing_sequence processing
+    // Delays: 20 (type) + 30 (pause) + 20 (type) = 70ms
+    // Characters: "Initial text." (13) + " More text." (11) = 24 characters.
+    // Estimated typing time for test: 24 chars * ~10ms/char_test_approx (this is a rough estimate, actual is GHOST_KEY_TYPING_INTERVAL=90ms, but many letters can process faster due to internal logic)
+    // Let's use sum of explicit delays + buffer for typing letters.
+    // The actual ghost key typing interval is 90ms per letter, but the test sequence has its own delays.
+    // The 'type' action has internal letter-by-letter timeouts.
+    // Sum of explicit delays in sequence: 20+30+20 = 70ms.
+    // For "Initial text.": 13 chars. If each char takes ~80-110ms (from TypewriterFramework's random delay in 'type' action)
+    // For " More text.": 11 chars.
+    // This part of timing is tricky. Let's use a generous buffer for all letters in "type" actions.
+    // A single "type" action processes all its text with internal delays.
+    // So, delay for "Initial text." is 20ms (action delay) + internal letter delays.
+    // Then 30ms pause.
+    // Then delay for " More text." is 20ms (action delay) + internal letter delays.
+    // Let's assume ~30ms per char average for test purposes to be safe for internal typing animation within a 'type' action.
+    // 13 chars * 30ms = 390ms. 11 chars * 30ms = 330ms.
+    // Total: 20(action) + 390(typing) + 30(pause) + 20(action) + 330(typing) = 790ms.
+    // Adding a safety buffer.
+    act(() => { jest.advanceTimersByTime(1000); }); // Increased buffer for writing sequence
+
+    await waitFor(() => {
+      const lineElements = container.querySelectorAll('.typewriter-line .last-line-content');
+      expect(lineElements.length).toBeGreaterThanOrEqual(1);
+      // Ghost text is rendered character by character, then committed.
+      // We are checking the state *after* the writing_sequence should have completed.
+      // At this point, the text from writing_sequence is in currentGhostText.
+      // It gets committed to pageText when the sequence completes OR when user types.
+      // In this test, sequence completion should commit it.
+      // The PaperDisplay shows pageText + ghostText.
+      // When writing_sequence completes, currentGhostText becomes the content.
+      expect(lineElements[0].textContent).toBe(expectedTextAfterWriting);
+    }, { timeout: 2000 });
+
+
+    // Verify fade_sequence processing
+    // Fade 1
+    act(() => { jest.advanceTimersByTime(100); }); // Delay for fade phase 1
+    await waitFor(() => {
+      const lineContent = container.querySelector('.typewriter-line .last-line-content');
+      expect(lineContent.textContent).toBe("Faded text 1");
+    });
+
+    // Fade 2
+    act(() => { jest.advanceTimersByTime(80); }); // Delay for fade phase 2
+    await waitFor(() => {
+      const lineContent = container.querySelector('.typewriter-line .last-line-content');
+      expect(lineContent.textContent).toBe("Faded text 2");
+    });
+
+    // Fade 3 (to empty)
+    act(() => { jest.advanceTimersByTime(60); }); // Delay for fade phase 3
+    await waitFor(() => {
+      const lineContent = container.querySelector('.typewriter-line .last-line-content');
+      expect(lineContent.textContent).toBe("");
+    });
+
+    // Verify Final State (Text Reverts to userTextBeforeGhostFade)
+    // After fade sequence, text should revert to what was on page before fade started.
+    // In this test, userTextBeforeGhostFade was set when the sequence (containing fades) began.
+    // At that point, pageText was empty, and currentGhostText was being populated by writing_sequence.
+    // The snapshot for userTextBeforeGhostFade is taken from (pages[currentPage]?.text || '') + currentGhostTextString.
+    // So it should be "Initial text. More text."
+    // Sequence completion logic needs time.
+    act(() => { jest.advanceTimersByTime(100); }); // Buffer for sequence completion logic
+
+    await waitFor(() => {
+      const lineElements = container.querySelectorAll('.typewriter-line .last-line-content');
+      expect(lineElements.length).toBeGreaterThanOrEqual(1);
+      // This assertion needs to match how userTextBeforeGhostFade is set and restored.
+      // userTextBeforeGhostFade is set with the pageText + ghostText right before the first 'fade' action.
+      // In this case, it would be "Initial text. More text."
+      expect(lineElements[0].textContent).toBe(expectedTextAfterWriting);
+    });
+  });
 });
