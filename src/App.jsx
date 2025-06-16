@@ -8,7 +8,7 @@ import React, { useState, useEffect } from 'react';
 import MysteryMessenger from './Messanger';
 import CurtainIntro from './CurtainIntro';
 import NarrativeScene from './NarrativeScene';
-// import TypewriterFramework from './TypewriterFramework';
+import TypewriterFramework from './TypewriterFramework';
 import SeerPage from './pages/SeerPage';
 
 
