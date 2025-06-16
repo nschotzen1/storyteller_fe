@@ -316,24 +316,29 @@ function typingReducer(state, action) {
         typingAllowed: true,
         isProcessingInitialFadeSequence: action.payload.some(item => item.action === 'fade'),
         inputBuffer: '', // Clear input buffer when a new sequence starts
+        typingAllowed: action.payload.length > 0 && action.payload[0].action === 'pause', // Disable input if first action is not pause
       };
     case typingActionTypes.PROCESS_NEXT_ACTION:
       const newIndex = state.currentActionIndex + 1;
       if (newIndex < state.actionSequence.length) {
         const nextAction = state.actionSequence[newIndex];
+        // Set typingAllowed based on the next action
+        const newTypingAllowed = nextAction.action === 'pause';
         if (nextAction.action !== 'fade') {
           // If the next action is not a fade, deactivate current fade state visuals
           // Consider full reset: { isActive: false, to_text: '', phase: 0 } if prev_text continuity isn't strictly needed for non-fade actions
           return {
             ...state,
             currentActionIndex: newIndex,
-            fadeState: { ...state.fadeState, isActive: false }
+            fadeState: { ...state.fadeState, isActive: false },
+            typingAllowed: newTypingAllowed,
           };
         }
         // If next action is a fade, keep fadeState as is (isActive: true will be set by the fade action itself)
-        return { ...state, currentActionIndex: newIndex };
+        return { ...state, currentActionIndex: newIndex, typingAllowed: newTypingAllowed };
       }
       // If no more actions, currentActionIndex will be out of bounds, sequence completion is handled by useEffect.
+      // typingAllowed will be set to true by SEQUENCE_COMPLETE
       return { ...state, currentActionIndex: newIndex };
     case typingActionTypes.UPDATE_GHOST_TEXT:
       return {
@@ -353,7 +358,7 @@ function typingReducer(state, action) {
         currentGhostText: '', // Cleared as the content is committed by user or fade action.
         isProcessingSequence: false,
         fadeState: { isActive: false, to_text: '', phase: 0 }, // Reset fade display
-        // typingAllowed remains as is (should be true after fades, or managed by other logic)
+        typingAllowed: true, // Allow typing when sequence is complete
         // preFadeSnapshot, allInitialFadesCompleted, isProcessingInitialFadeSequence are NOT reset here.
       };
     case typingActionTypes.CANCEL_SEQUENCE:
