@@ -1061,18 +1061,27 @@ const TypewriterFramework = (props) => {
       // (optional: you can disable this block if you never want inactivity autocompletion)
       fetchTypewriterReply(fullText, sessionId).then(response => {
         const reply = response.data; // Assuming response.data holds the sequence and metadata
-        if (reply && reply.writing_sequence) { // Check if writing_sequence exists
-            const hasFadeActions = reply.writing_sequence.some(action => action.action === 'fade');
+        let sequenceToDispatch = null;
+        let hasFadeActions = false;
+
+        if (reply && reply.writing_sequence && reply.fade_sequence) {
+          sequenceToDispatch = [...reply.writing_sequence, ...reply.fade_sequence];
+          hasFadeActions = reply.fade_sequence.some(action => action.action === 'fade') || reply.writing_sequence.some(action => action.action === 'fade');
+        } else if (reply && reply.writing_sequence) {
+          sequenceToDispatch = reply.writing_sequence;
+          hasFadeActions = reply.writing_sequence.some(action => action.action === 'fade');
+        }
+
+        if (sequenceToDispatch) {
             if (hasFadeActions) {
                 const currentTextForUser = pages[currentPage]?.text || '';
                 setUserTextBeforeGhostFade(currentTextForUser);
                 console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextBeforeGhostFade:', currentTextForUser);
             }
-            // The existing setCurrentFontStyles and dispatchTyping for START_NEW_SEQUENCE should follow.
             if (reply.metadata) { // Ensure metadata exists before trying to set it
               setCurrentFontStyles(reply.metadata);
             }
-            dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: reply.writing_sequence });
+            dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: sequenceToDispatch });
             dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
             dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
         }
@@ -1104,18 +1113,27 @@ const TypewriterFramework = (props) => {
       if (shouldGenerate) {
         fetchTypewriterReply(fullText, sessionId).then(response => {
           const reply = response.data; // Assuming response.data holds the sequence and metadata
-          if (reply && reply.writing_sequence) { // Check if writing_sequence exists
-              const hasFadeActions = reply.writing_sequence.some(action => action.action === 'fade');
+          let sequenceToDispatch = null;
+          let hasFadeActions = false;
+
+          if (reply && reply.writing_sequence && reply.fade_sequence) {
+            sequenceToDispatch = [...reply.writing_sequence, ...reply.fade_sequence];
+            hasFadeActions = reply.fade_sequence.some(action => action.action === 'fade') || reply.writing_sequence.some(action => action.action === 'fade');
+          } else if (reply && reply.writing_sequence) {
+            sequenceToDispatch = reply.writing_sequence;
+            hasFadeActions = reply.writing_sequence.some(action => action.action === 'fade');
+          }
+
+          if (sequenceToDispatch) {
               if (hasFadeActions) {
                   const currentTextForUser = pages[currentPage]?.text || '';
                   setUserTextBeforeGhostFade(currentTextForUser);
                   console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextBeforeGhostFade:', currentTextForUser);
               }
-              // The existing setCurrentFontStyles and dispatchTyping for START_NEW_SEQUENCE should follow.
               if (reply.metadata) { // Ensure metadata exists before trying to set it
                 setCurrentFontStyles(reply.metadata);
               }
-              dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: reply.writing_sequence });
+              dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: sequenceToDispatch });
               dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
               dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
               // lastGhostwriterWordCount will be set after sequence commits
