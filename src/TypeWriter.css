@@ -974,25 +974,24 @@
 }
 
 .typewriter-line .ghost-text-block.cross-fade-outgoing {
-  animation-name: userGhostTextFadeOut;
-  animation-duration: 0.5s; /* Standard duration */
-  animation-timing-function: ease-in-out;
-  animation-fill-mode: forwards; /* Keep final state (opacity: 0) */
-  /* position: absolute; /* Set via inline style in PaperDisplay.jsx */
-  /* top: 0;            /* Set via inline style in PaperDisplay.jsx */
-  /* left: 0;           /* Set via inline style in PaperDisplay.jsx */
-  /* width: 100%;       /* Set via inline style in PaperDisplay.jsx */
-  opacity: 1; /* Start fully visible before animation reduces opacity */
+  animation-name: dissolve-out !important;
+  animation-duration: 1.2s !important;
+  animation-timing-function: ease-in-out !important;
+  animation-fill-mode: forwards !important;
+  opacity: 1 !important; /* Start visible */
+  /* position, top, left, width are set inline in PaperDisplay.jsx */
 }
 
 .typewriter-line .ghost-text-block.cross-fade-incoming {
-  animation-name: userGhostTextFadeIn;
-  animation-duration: 0.5s; /* Standard duration */
-  animation-timing-function: ease-in-out;
-  animation-fill-mode: forwards; /* Keep final state (opacity: 1) */
-  opacity: 0; /* Start transparent before animation makes it visible */
+  animation-name: materialize-in !important;
+  animation-duration: 1.2s !important;
+  animation-timing-function: ease-in-out !important;
+  animation-fill-mode: forwards !important;
+  animation-delay: 0.3s !important; /* Delay to allow outgoing to start */
+  opacity: 0 !important; /* Start transparent */
 }
 
+/*
 @keyframes userGhostTextFadeOut {
   0% {
     opacity: 1;
@@ -1010,6 +1009,7 @@
     opacity: 1;
   }
 }
+*/
 
 
 @keyframes smudgeFadeOut {
@@ -1064,4 +1064,40 @@
   position: absolute;
   left: 0; top: 0; z-index: 2;
   animation: afterimageFade 1.25s cubic-bezier(.73,0,.22,1) forwards;
+}
+
+@keyframes dissolve-out {
+  0% {
+    opacity: 1;
+    filter: blur(0) grayscale(0);
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    filter: blur(2px) grayscale(0.2);
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(5px) grayscale(0.5);
+    transform: scale(0.95);
+  }
+}
+
+@keyframes materialize-in {
+  0% {
+    opacity: 0;
+    filter: blur(3px) grayscale(0.3);
+    transform: scale(1.03);
+  }
+  50% {
+    opacity: 0.6;
+    filter: blur(1px) grayscale(0.1);
+    transform: scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0) grayscale(0);
+    transform: scale(1);
+  }
 }
