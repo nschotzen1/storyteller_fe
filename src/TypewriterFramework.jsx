@@ -646,7 +646,8 @@ const TypewriterFramework = (props) => {
   // --- Keyboard Handler ---
   const handleKeyDown = (e) => {
     if (pageTransitionState.pageChangeInProgress || !typingState.typingAllowed) {
-      playEndOfPageSound();
+      if( pageTransitionState.pageChangeInProgress)
+        playEndOfPageSound();
       return;
     }
     const char = e.key === "Enter" ? '\n' : e.key;
