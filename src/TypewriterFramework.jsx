@@ -659,7 +659,7 @@ const TypewriterFramework = (props) => {
     const fullCombinedText = pageText + ghostTextString;
     const currentLines = fullCombinedText.split('\n');
 
-    if (currentLines >= MAX_LINES && e.key !== 'Backspace') {
+    if (currentLines.length >= MAX_LINES && e.key !== 'Backspace') {
       handlePageTurnScroll();
       return;
     }
@@ -1018,6 +1018,7 @@ const TypewriterFramework = (props) => {
       dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
       // The reducer's SEQUENCE_COMPLETE handles resetting fadeState.isActive.
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+      dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
     }
 
     return () => {
@@ -1070,38 +1071,36 @@ const TypewriterFramework = (props) => {
       // (optional: you can disable this block if you never want inactivity autocompletion)
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: true }); // Dispatch true before API call
       fetchTypewriterReply(fullText, sessionId).then(response => {
-        const reply = response.data; // Assuming response.data holds the sequence and metadata
-        let sequenceToDispatch = null;
+        const reply = response.data;
+        let sequenceToDispatch = [];
         let hasFadeActions = false;
 
-        if (reply && reply.writing_sequence && reply.fade_sequence) {
-          sequenceToDispatch = [...reply.writing_sequence, ...reply.fade_sequence];
-          hasFadeActions = reply.fade_sequence.some(action => action.action === 'fade') || reply.writing_sequence.some(action => action.action === 'fade');
-        } else if (reply && reply.writing_sequence) {
-          sequenceToDispatch = reply.writing_sequence;
-          hasFadeActions = reply.writing_sequence.some(action => action.action === 'fade');
+        if (reply) {
+          const writingSequence = reply.writing_seqeunce || [];
+          const fadeSequence = reply.fade_sequence || [];
+          sequenceToDispatch = [...writingSequence, ...fadeSequence];
+          hasFadeActions = sequenceToDispatch.some(action => action.action === 'fade');
         }
 
-        if (sequenceToDispatch) {
+        if (sequenceToDispatch && sequenceToDispatch.length > 0) {
             if (hasFadeActions) {
                 const currentTextForUser = pages[currentPage]?.text || '';
                 setUserTextBeforeGhostFade(currentTextForUser);
                 console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextBeforeGhostFade:', currentTextForUser);
             }
-            if (reply.metadata) { // Ensure metadata exists before trying to set it
+            if (reply && reply.metadata) {
               setCurrentFontStyles(reply.metadata);
             }
             dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: sequenceToDispatch });
             dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
             dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
-            dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false }); // Dispatch false on success
+            dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
         } else {
-          // If no sequence to dispatch, still need to reset isAwaitingApiReply
           dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
         }
       }).catch(error => {
         console.error("Error fetching typewriter reply due to inactivity:", error);
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false }); // Dispatch false on error
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
       });
       return;
     }
@@ -1129,39 +1128,36 @@ const TypewriterFramework = (props) => {
       if (shouldGenerate) {
           dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: true }); // Dispatch true before API call
         fetchTypewriterReply(fullText, sessionId).then(response => {
-          const reply = response.data; // Assuming response.data holds the sequence and metadata
-          let sequenceToDispatch = null;
+          const reply = response.data;
+          let sequenceToDispatch = [];
           let hasFadeActions = false;
 
-          if (reply && reply.writing_sequence && reply.fade_sequence) {
-            sequenceToDispatch = [...reply.writing_sequence, ...reply.fade_sequence];
-            hasFadeActions = reply.fade_sequence.some(action => action.action === 'fade') || reply.writing_sequence.some(action => action.action === 'fade');
-          } else if (reply && reply.writing_sequence) {
-            sequenceToDispatch = reply.writing_sequence;
-            hasFadeActions = reply.writing_sequence.some(action => action.action === 'fade');
+          if (reply) {
+            const writingSequence = reply.writing_seqeunce || [];
+            const fadeSequence = reply.fade_sequence || [];
+            sequenceToDispatch = [...writingSequence, ...fadeSequence];
+            hasFadeActions = sequenceToDispatch.some(action => action.action === 'fade');
           }
 
-          if (sequenceToDispatch) {
+          if (sequenceToDispatch && sequenceToDispatch.length > 0) {
               if (hasFadeActions) {
                   const currentTextForUser = pages[currentPage]?.text || '';
                   setUserTextBeforeGhostFade(currentTextForUser);
                   console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextBeforeGhostFade:', currentTextForUser);
               }
-              if (reply.metadata) { // Ensure metadata exists before trying to set it
+              if (reply && reply.metadata) {
                 setCurrentFontStyles(reply.metadata);
               }
               dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: sequenceToDispatch });
               dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: fullText.length });
               dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
-              dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false }); // Dispatch false on success
-              // lastGhostwriterWordCount will be set after sequence commits
+              dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
           } else {
-            // If no sequence to dispatch, still need to reset isAwaitingApiReply
              dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
           }
         }).catch(error => {
           console.error("Error fetching typewriter reply after shouldGenerate check:", error);
-          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false }); // Dispatch false on error
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
         });
       }
       // If shouldGenerate is false, we are not making an API call, so no need to set isAwaitingApiReply to false here.

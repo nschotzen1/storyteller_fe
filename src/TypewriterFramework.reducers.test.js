@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals'; // For jest.spyOn if needed for Date.now
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 // --- Constants from TypewriterFramework.jsx (Copied for testing) ---
 const INITIAL_SCROLL_MODE = 'cinematic';
@@ -28,7 +28,7 @@ const initialPageTransitionState = {
   nextText: '',
 };
 
-function pageTransitionReducer(state, action) {
+function pageTransitionReducer(state = initialPageTransitionState, action) {
   switch (action.type) {
     case pageTransitionActionTypes.START_PAGE_TURN_SCROLL:
       return {
@@ -108,7 +108,7 @@ const initialTypingState = {
   requestPageTextUpdate: false,
 };
 
-function typingReducer(state, action) {
+function typingReducer(state = initialTypingState, action) {
   switch (action.type) {
     case typingActionTypes.SET_TYPING_ALLOWED:
       return { ...state, typingAllowed: action.payload, requestPageTextUpdate: false };
@@ -176,6 +176,13 @@ const initialGhostwriterState = {
 };
 
 function ghostwriterReducer(state, action) {
+  if (state === undefined) {
+    state = {
+      lastUserInputTime: Date.now(),
+      responseQueued: false,
+      lastGeneratedLength: 0,
+    };
+  }
   switch (action.type) {
     case ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME:
       return { ...state, lastUserInputTime: action.payload };
@@ -185,8 +192,9 @@ function ghostwriterReducer(state, action) {
       return { ...state, lastGeneratedLength: action.payload };
     case ghostwriterActionTypes.RESET_GHOSTWRITER_STATE:
       return {
-        ...initialGhostwriterState, // Uses the original initial state
-        lastUserInputTime: action.payload !== undefined ? action.payload : Date.now(), // Allow overriding time for testing, else now
+        lastUserInputTime: action.payload !== undefined ? action.payload : Date.now(),
+        responseQueued: false,
+        lastGeneratedLength: 0,
       };
     default:
       return state;
@@ -411,7 +419,7 @@ describe('ghostwriterReducer', () => {
 
   beforeEach(() => {
     // Mock Date.now() for consistent lastUserInputTime in initial state and RESET action
-    dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(mockTime);
+    dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(mockTime);
   });
 
   afterEach(() => {

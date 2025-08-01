@@ -46,6 +46,7 @@ describe('PaperDisplay Component', () => {
 
   // Default props for tests
   const defaultProps = {
+    fadeState: { isActive: false, to_text: '', phase: 0 },
     pageText: 'Hello world',
     ghostText: ' from beyond',
     pageBg: '/path/to/default_bg.png',
@@ -87,7 +88,7 @@ describe('PaperDisplay Component', () => {
       // Individual lines might be separate elements.
       // A more robust way is to query for the container of lines.
       const textContainer = screen.getByTestId('paper-frame'); // Assuming paper-frame contains the text
-      expect(within(textContainer).getByText(/Hello world from beyond/)).toBeInTheDocument();
+      expect(textContainer).toHaveTextContent('Hello world from beyond');
     });
 
     test('applies the film background image when not sliding', () => {

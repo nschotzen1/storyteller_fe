@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom'; // For extended matchers like .toBeDisabled()
 import PageNavigation from './components/typewriter/PageNavigation';
+import { vi, describe, it, expect, beforeEach, test } from 'vitest';
 
 // Define default props and styling constants that PageNavigation expects
 const DEFAULT_STYLING_PROPS = {
@@ -17,8 +18,8 @@ const DEFAULT_STYLING_PROPS = {
 
 
 describe('PageNavigation Component', () => {
-  const mockOnPrevPage = jest.fn();
-  const mockOnNextPage = jest.fn();
+  const mockOnPrevPage = vi.fn();
+  const mockOnNextPage = vi.fn();
 
   const defaultProps = {
     currentPage: 0,
@@ -31,8 +32,7 @@ describe('PageNavigation Component', () => {
 
   beforeEach(() => {
     // Clear mock call history before each test
-    mockOnPrevPage.mockClear();
-    mockOnNextPage.mockClear();
+    vi.clearAllMocks();
   });
 
   test('renders correctly with initial props', () => {

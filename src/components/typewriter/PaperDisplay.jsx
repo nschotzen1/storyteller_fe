@@ -138,6 +138,7 @@ const PaperDisplay = ({
   
   const renderSlideWrapper = () => (
     <div
+      data-testid="film-slide-wrapper-div"
       className="film-slide-wrapper animating"
       style={{
         transform: `translateX(${getSlideX()}%)`,
@@ -154,6 +155,7 @@ const PaperDisplay = ({
     >
       {/* Outgoing film/paper */}
       <div
+        data-testid="prev-bg-slide"
         className="film-bg-slide"
         style={{
           backgroundImage: `url('${prevFilmBgUrl}')`,
@@ -178,7 +180,7 @@ const PaperDisplay = ({
               return (
                 <div className="typewriter-line" key={idx}>
                   {line}
-                  {isLastLine && showCursor && ( // Assuming showCursor is still relevant for sliding text
+                  {isLastLine && showCursor && line.length > 0 && ( // Assuming showCursor is still relevant for sliding text
                     <span className="striker-cursor" />
                   )}
                 </div>
@@ -189,6 +191,7 @@ const PaperDisplay = ({
       </div>
       {/* Incoming film/paper */}
       <div
+        data-testid="next-bg-slide"
         className="film-bg-slide"
         style={{
           backgroundImage: `url('${nextFilmBgUrl}')`,
@@ -213,7 +216,7 @@ const PaperDisplay = ({
               return (
                 <div className="typewriter-line" key={idx}>
                   {line}
-                  {isLastLine && showCursor && (
+                  {isLastLine && showCursor && line.length > 0 && (
                     <span className="striker-cursor" />
                   )}
                 </div>
@@ -234,7 +237,7 @@ const PaperDisplay = ({
   );
 
   return (
-    <div className="typewriter-paper-frame" style={{ height: `${FRAME_HEIGHT}px` }}>
+    <div data-testid="paper-frame" className="typewriter-paper-frame" style={{ height: `${FRAME_HEIGHT}px` }}>
       <div className="paper-scroll-area" ref={scrollRef}
         style={{
           height: `${scrollAreaHeight}px`,
@@ -249,6 +252,7 @@ const PaperDisplay = ({
         {!isSliding && (
           <>
             <div
+              data-testid="film-background-div"
               className="film-background"
               style={{
                 position: 'absolute',
@@ -389,11 +393,11 @@ const PaperDisplay = ({
                           const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
                           const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
                           
-                          if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
+                          if (charGlobalIndex >= pageTextLength && ghostLetters.length > 0) {
                             // Only animate the most recently added ghost letter
                             const ghostIdx = charGlobalIndex - pageTextLength;
-                            const isLastGhost = ghostIdx === ghostText.length - 1;
-                            const g = ghostText[ghostIdx];
+                            const isLastGhost = ghostIdx === ghostLetters.length - 1;
+                            const g = ghostLetters[ghostIdx];
                             return (
                               <span
                                 key={charKey}
@@ -426,8 +430,9 @@ const PaperDisplay = ({
                           {processedSegments}
 
                             
-                              {isLastLineOfRenderedSet && showCursor && (
+                              {isLastLineOfRenderedSet && showCursor && line.length > 0 && (
                                 <span
+                                  data-testid="striker-cursor-element"
                                   className={"striker-cursor"}
                                   ref={strikerRef}
                                   style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}

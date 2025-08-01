@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import Keyboard from './components/typewriter/Keyboard'; // Adjust path as needed
 import '@testing-library/jest-dom'; // For extended matchers
+import { vi, describe, it, expect, beforeEach, test } from 'vitest';
 
 // Constants that Keyboard expects as props
 const SPECIAL_KEY_TEXT = 'THE XEROFAG'; // This is also part of the keys array
@@ -22,10 +23,10 @@ const allKeys = [
 const allKeyTextures = allKeys.map(key => `/textures/keys/${key.replace(/\s+/g, '_').toUpperCase()}_1.png`);
 
 describe('Keyboard Component', () => {
-  const mockOnKeyPress = jest.fn();
-  const mockOnXerofagPress = jest.fn();
-  const mockOnSpacebarPress = jest.fn();
-  const mockPlayEndOfPageSound = jest.fn();
+  const mockOnKeyPress = vi.fn();
+  const mockOnXerofagPress = vi.fn();
+  const mockOnSpacebarPress = vi.fn();
+  const mockPlayEndOfPageSound = vi.fn();
 
   const defaultProps = {
     keys: allKeys,
@@ -44,7 +45,7 @@ describe('Keyboard Component', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Mock Math.random for predictable styling in tests if needed,
     // though testing exact random styles is brittle.
     // For now, we primarily test class application and presence.

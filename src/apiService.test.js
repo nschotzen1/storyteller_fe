@@ -2,21 +2,21 @@ import {
   fetchNextFilmImage,
   fetchTypewriterReply,
   fetchShouldGenerateContinuation,
-  // SERVER constant is not explicitly exported by apiService.js,
-  // but it's used internally. We'll construct the expected URL based on the path.
 } from './apiService';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-// The SERVER constant is 'http://localhost:5001' as defined in apiService.js
 const SERVER_URL = 'http://localhost:5001';
 
 describe('apiService', () => {
   beforeEach(() => {
-    global.fetch = jest.fn();
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({}),
+    });
   });
 
   afterEach(() => {
-    // Clean up the mock after each test
-    global.fetch.mockClear();
+    vi.restoreAllMocks();
   });
 
   describe('fetchNextFilmImage', () => {
@@ -141,71 +141,53 @@ describe('apiService', () => {
     const currentText = 'Current story text.';
     const latestAddition = 'A new sentence.';
     const latestPauseSeconds = 5.5;
+    const lastGhostwriterWordCount = 10;
 
-    it('should successfully fetch and return true for shouldGenerate', async () => {
+    it('should successfully fetch and return json response', async () => {
       const mockApiResponse = { shouldGenerate: true };
       global.fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => mockApiResponse,
       });
 
-      const result = await fetchShouldGenerateContinuation(currentText, latestAddition, latestPauseSeconds);
+      const result = await fetchShouldGenerateContinuation(currentText, latestAddition, latestPauseSeconds, lastGhostwriterWordCount);
 
       expect(global.fetch).toHaveBeenCalledWith(
         endpoint,
         expect.objectContaining({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ currentText, latestAddition, latestPauseSeconds }),
+          body: JSON.stringify({ currentText, latestAddition, latestPauseSeconds, lastGhostwriterWordCount }),
         })
       );
-      expect(result).toEqual({ data: mockApiResponse, error: null });
+      expect(result).toEqual(mockApiResponse);
     });
 
-    it('should successfully fetch and return false for shouldGenerate', async () => {
-      const mockApiResponse = { shouldGenerate: false };
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockApiResponse,
-      });
+    it('should return json response on API error', async () => {
+        const mockErrorResponse = { error: 'some error' };
+        global.fetch.mockResolvedValueOnce({
+            ok: false,
+            status: 403,
+            statusText: 'Forbidden',
+            json: async () => mockErrorResponse,
+        });
 
-      const result = await fetchShouldGenerateContinuation(currentText, latestAddition, latestPauseSeconds);
+        const result = await fetchShouldGenerateContinuation(currentText, latestAddition, latestPauseSeconds, lastGhostwriterWordCount);
 
-      expect(global.fetch).toHaveBeenCalledWith(endpoint, expect.anything());
-      expect(result).toEqual({ data: mockApiResponse, error: null });
+        expect(global.fetch).toHaveBeenCalledWith(endpoint, expect.anything());
+        expect(result).toEqual(mockErrorResponse);
     });
 
-    it('should handle API error for fetchShouldGenerateContinuation', async () => {
-      global.fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 403,
-        statusText: 'Forbidden',
-      });
-
-      const result = await fetchShouldGenerateContinuation(currentText, latestAddition, latestPauseSeconds);
-
-      expect(global.fetch).toHaveBeenCalledWith(endpoint, expect.anything());
-      expect(result).toEqual({
-        data: null,
-        error: { message: 'API error: 403 Forbidden', status: 403 },
-      });
-    });
-
-    it('should handle network error for fetchShouldGenerateContinuation', async () => {
+    it('should reject on network error', async () => {
       const networkError = new Error('Failed to connect');
       global.fetch.mockRejectedValueOnce(networkError);
 
-      const result = await fetchShouldGenerateContinuation(currentText, latestAddition, latestPauseSeconds);
-
-      expect(global.fetch).toHaveBeenCalledWith(endpoint, expect.anything());
-      expect(result).toEqual({
-        data: null,
-        error: { message: 'Failed to connect' },
-      });
+      await expect(fetchShouldGenerateContinuation(currentText, latestAddition, latestPauseSeconds, lastGhostwriterWordCount))
+        .rejects.toThrow('Failed to connect');
     });
 
     it('should not call fetch when latestAddition is empty', async () => {
-      const result = await fetchShouldGenerateContinuation(currentText, '', latestPauseSeconds);
+      const result = await fetchShouldGenerateContinuation(currentText, '', latestPauseSeconds, lastGhostwriterWordCount);
 
       expect(global.fetch).not.toHaveBeenCalled();
       expect(result).toEqual({ data: { shouldGenerate: false }, error: null });
