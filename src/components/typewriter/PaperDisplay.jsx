@@ -79,9 +79,6 @@ const PaperDisplay = ({
   STRIKER_CURSOR_OFFSET_LEFT,
   SLIDE_DIRECTION_LEFT, // To compare with slideDir
 }) => {
-  const [outgoingGhostInfo, setOutgoingGhostInfo] = React.useState({ text: '', key: null });
-  const [incomingGhostInfo, setIncomingGhostInfo] = React.useState({ text: '', key: null });
-
   // Apply font styles
   const textStyles = {
     zIndex: TYPEWRITER_TEXT_Z_INDEX,
@@ -104,33 +101,6 @@ const PaperDisplay = ({
     if (currentFontStyles.font_size) textStyles.fontSize = currentFontStyles.font_size;
     if (currentFontStyles.font_color) textStyles.color = currentFontStyles.font_color;
   }
-
-  React.useEffect(() => {
-    if (fadeState.isActive) {
-        const sUserText = String(userText || '');
-        const currentGhostText = String(fadeState.to_text || '').startsWith(sUserText)
-            ? String(fadeState.to_text || '').slice(sUserText.length)
-            : String(fadeState.to_text || '');
-
-        // When a new phase comes in from props.fadeState, the current 'incoming' becomes 'outgoing'
-        setOutgoingGhostInfo(prevIncoming => {
-            // Only set outgoing if the phase is actually different and incoming wasn't empty.
-            // This prevents setting outgoing on the very first phase or if content was identical.
-            if (prevIncoming.key !== null && prevIncoming.key !== `phase-${fadeState.phase}`) {
-                return { ...prevIncoming, key: `outgoing-${prevIncoming.key}` }; // Ensure a new key for outgoing
-            }
-            return { text: '', key: null }; // No outgoing if it's the first meaningful phase
-        });
-
-        // Set the new 'incoming' text based on the current fadeState from props
-        setIncomingGhostInfo({ text: currentGhostText, key: `phase-${fadeState.phase}` });
-
-    } else {
-        // When fading stops, clear both
-        setOutgoingGhostInfo({ text: '', key: null });
-        setIncomingGhostInfo({ text: '', key: null });
-    }
-  }, [fadeState.isActive, fadeState.to_text, fadeState.phase, userText]);
 
   // --- PAGE SLIDE JSX (forwards/backwards) ---
   // This function was moved from TypewriterFramework.jsx
@@ -269,92 +239,39 @@ const PaperDisplay = ({
               className="typewriter-text film-overlay-text"
               style={textStyles} // Apply the combined styles here
             >
-                {fadeState && fadeState.isActive ? (
-                (() => {
-                  // Inside the (() => { ... })() block for fadeState.isActive
-                  const sUserText = String(userText || ''); // Destructured prop
-                  const sToText = String(fadeState.to_text || '');
-
-                  const ghostTextForCurrentPhase = sToText.startsWith(sUserText) ? sToText.slice(sUserText.length) : sToText;
-
-                  console.log('[FadeRender-Simple] userText (prefix):', sUserText);
-                  console.log('[FadeRender-Simple] fadeState.to_text:', fadeState.to_text);
-                  console.log('[FadeRender-Simple] ghostTextForCurrentPhase:', ghostTextForCurrentPhase);
-                  console.log('[FadeRender-Simple] fadeState.phase:', fadeState.phase, 'time:', Date.now());
-
-                  // Helper to render text with <br /> tags for newlines
-                  const renderTextWithLineBreaks = (text) => {
-                      return text.split('\n').map((line, index, array) => (
-                          <React.Fragment key={index}>
-                              {line}
-                              {index < array.length - 1 && <br />}
-                          </React.Fragment>
-                      ));
-                  };
-
-                  // Logging for the state passed from TypewriterFramework
-                  console.log('[FadeRender-Crossfade] Parent fadeState:', fadeState);
-                  // Logging for internal component states
-                  console.log('[FadeRender-Crossfade] sUserText:', sUserText);
-                  console.log('[FadeRender-Crossfade] incomingGhostInfo:', incomingGhostInfo);
-                  console.log('[FadeRender-Crossfade] outgoingGhostInfo:', outgoingGhostInfo);
-
-                  return (
-      <div className="typewriter-line">
-        <span style={{ display: 'inline-block', verticalAlign: 'baseline' }}>
-          {sUserText && (
-            <span style={{ display: 'inline' }}>
-              {renderTextWithLineBreaks(sUserText)}
-            </span>
-          )}
-          {/* Container for cross-fading ghost texts */}
-          <span style={{ display: 'inline-block', position: 'relative', verticalAlign: 'baseline' }} className="cross-fade-ghost-container">
-            {outgoingGhostInfo.text && outgoingGhostInfo.key && (
-              <span
-                key={outgoingGhostInfo.key}
-                className="ghost-text-block cross-fade-outgoing"
-                style={{ display: 'inline-block', position: 'absolute', top: 0, left: 0 }}
-              >
-                {/* --- ENHANCED: Fade out each char as smudge/afterimage --- */}
-                {outgoingGhostInfo.text.split('').map((char, i) => (
-                  <span
-                    key={i}
-                    style={{ position: 'relative', display: 'inline-block', minWidth: '0.7ch' }}
-                  >
+              {fadeState && fadeState.isActive ? (
+                <div className="typewriter-line">
+                  {/* Using a key on the container ensures React re-mounts it on phase change, restarting the animations. */}
+                  {/* The use of CSS Grid here is a clean way to stack the outgoing and incoming text on top of each other. */}
+                  {/* The grid container will automatically size to the larger of the two text blocks. */}
+                  <span key={`fade-phase-${fadeState.phase}`} style={{ display: 'grid', placeContent: 'start' }}>
+                    {/* Text Fading Out: Renders the 'prev_text' from the state */}
                     <span
-                      className="smudge-fade-out"
-                      style={{ animationDelay: `${i * 0.042}s` }}
+                      className="ghost-text-block cross-fade-outgoing"
+                      style={{ gridArea: '1 / 1' }}
                     >
-                      {char === '\n' ? <br /> : char}
+                      {(fadeState.prev_text || '').split('\n').map((line, index, array) => (
+                        <React.Fragment key={`out-${index}`}>
+                          {line}
+                          {index < array.length - 1 && <br />}
+                        </React.Fragment>
+                      ))}
                     </span>
+                    {/* Text Fading In: Renders the 'to_text' from the state */}
                     <span
-                      className="afterimage-fade"
-                      style={{ animationDelay: `${i * 0.042 + 0.13}s` }}
+                      className="ghost-text-block cross-fade-incoming"
+                      style={{ gridArea: '1 / 1' }}
                     >
-                      {char === '\n' ? <br /> : char}
+                      {(fadeState.to_text || '').split('\n').map((line, index, array) => (
+                        <React.Fragment key={`in-${index}`}>
+                          {line}
+                          {index < array.length - 1 && <br />}
+                        </React.Fragment>
+                      ))}
                     </span>
                   </span>
-                ))}
-              </span>
-            )}
-            {incomingGhostInfo.text && incomingGhostInfo.key && (
-              <span
-                key={incomingGhostInfo.key}
-                className="ghost-text-block cross-fade-incoming"
-                style={{ display: 'inline-block' }}
-              >
-                {/* Appear instantly, or add a subtle fade-in if you want */}
-                {incomingGhostInfo.text.split('').map((char, i) => (
-                  <span key={i}>{char === '\n' ? <br /> : char}</span>
-                ))}
-              </span>
-            )}
-          </span>
-        </span>
-      </div>
-    );
-  })()
-)  : (
+                </div>
+              ) : (
                 (() => {
                   const pageTextLength = pageText.length;
                   const ghostTextString = Array.isArray(ghostText)

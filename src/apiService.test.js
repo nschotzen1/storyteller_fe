@@ -1,9 +1,8 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   fetchNextFilmImage,
   fetchTypewriterReply,
   fetchShouldGenerateContinuation,
-  // SERVER constant is not explicitly exported by apiService.js,
-  // but it's used internally. We'll construct the expected URL based on the path.
 } from './apiService';
 
 // The SERVER constant is 'http://localhost:5001' as defined in apiService.js
@@ -11,12 +10,13 @@ const SERVER_URL = 'http://localhost:5001';
 
 describe('apiService', () => {
   beforeEach(() => {
-    global.fetch = jest.fn();
+    // Mock global fetch using vitest
+    global.fetch = vi.fn();
   });
 
   afterEach(() => {
-    // Clean up the mock after each test
-    global.fetch.mockClear();
+    // Clear all mocks after each test
+    vi.clearAllMocks();
   });
 
   describe('fetchNextFilmImage', () => {
