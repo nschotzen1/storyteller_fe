@@ -1001,7 +1001,6 @@ const TypewriterFramework = (props) => {
     typingState.isProcessingSequence, 
     typingState.actionSequence, 
     typingState.currentActionIndex, 
-    typingState.fadeState.isActive, 
     // typingState.currentGhostText, // Removed as per instruction
     dispatchTyping, 
     dispatchGhostwriter, 
