@@ -1,17 +1,5 @@
 import React from 'react';
 
-// Animation classes for ghost characters
-const GHOST_ANIMATION_CLASSES = [
-  'ghost-char-materialize',
-  'ghost-char-shimmer',
-  'ghost-char-pulse'
-];
-
-// Helper function to get a random animation class
-const getRandomAnimationClass = () => {
-  return GHOST_ANIMATION_CLASSES[Math.floor(Math.random() * GHOST_ANIMATION_CLASSES.length)];
-};
-
 // This component will handle the rendering of the paper, text, film background,
 // and the page slide animations.
 
@@ -37,14 +25,12 @@ const PaperDisplay = ({
   nextFilmBgUrl, // Renamed from pageTransitionState.nextFilmBgUrl
   prevText, // Renamed from pageTransitionState.prevText
   nextText, // Renamed from pageTransitionState.nextText
-  userText,
 
   // Constants for layout and styling
   MAX_LINES,
   TOP_OFFSET,
   BOTTOM_PADDING,
   FRAME_HEIGHT,
-  // LINE_HEIGHT, // Not directly used in JSX, but in calculation of NEEDED_HEIGHT
   FILM_HEIGHT, // Used in film-background style
   
   // Calculated layout values
@@ -83,34 +69,22 @@ const PaperDisplay = ({
   const textStyles = {
     zIndex: TYPEWRITER_TEXT_Z_INDEX,
     position: 'relative',
-    // Default font style if nothing is provided.
-    // These might be overridden by currentFontStyles
-    fontFamily: "'Special Elite', cursive", // Example default
-    fontSize: '1.8rem', // Example default
-    color: '#3b1d15', // Example default
+    fontFamily: "'Special Elite', cursive",
+    fontSize: '1.8rem',
+    color: '#3b1d15',
   };
 
-  // Prepare ghost letters for display, whether it's an array or a string
-  const ghostLetters = Array.isArray(ghostText)
-  ? ghostText
-  : (ghostText || '').split('').map((char, idx) => ({ char, ghost: false, key: idx }));
-
-  
   if (currentFontStyles) {
     if (currentFontStyles.font) textStyles.fontFamily = currentFontStyles.font;
     if (currentFontStyles.font_size) textStyles.fontSize = currentFontStyles.font_size;
     if (currentFontStyles.font_color) textStyles.color = currentFontStyles.font_color;
   }
 
-  // --- PAGE SLIDE JSX (forwards/backwards) ---
-  // This function was moved from TypewriterFramework.jsx
-  const getSlideX = () => slideDir === SLIDE_DIRECTION_LEFT ? slideX : -slideX;
-  
   const renderSlideWrapper = () => (
     <div
       className="film-slide-wrapper animating"
       style={{
-        transform: `translateX(${getSlideX()}%)`,
+        transform: `translateX(${slideDir === SLIDE_DIRECTION_LEFT ? slideX : -slideX}%)`,
         transition: isSliding ? `transform ${SLIDE_DURATION_MS}ms cubic-bezier(0.5,0.15,0.35,1)` : 'none',
         width: FILM_SLIDE_WRAPPER_WIDTH,
         height: '100%',
@@ -122,7 +96,6 @@ const PaperDisplay = ({
         pointerEvents: 'none',
       }}
     >
-      {/* Outgoing film/paper */}
       <div
         className="film-bg-slide"
         style={{
@@ -138,26 +111,17 @@ const PaperDisplay = ({
           position: 'relative',
         }}
       >
-        <div style={{
-          position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
-          display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none',
-        }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none' }}>
           <div className="typewriter-text film-overlay-text" style={{ paddingTop: TOP_OFFSET, paddingBottom: BOTTOM_PADDING }}>
-            {prevText.split('\n').slice(0, MAX_LINES).map((line, idx, arr) => {
-              const isLastLine = idx === arr.length - 1;
-              return (
-                <div className="typewriter-line" key={idx}>
-                  {line}
-                  {isLastLine && showCursor && ( // Assuming showCursor is still relevant for sliding text
-                    <span className="striker-cursor" />
-                  )}
-                </div>
-              );
-            })}
+            {prevText.split('\n').slice(0, MAX_LINES).map((line, idx, arr) => (
+              <div className="typewriter-line" key={idx}>
+                {line}
+                {idx === arr.length - 1 && showCursor && <span className="striker-cursor" />}
+              </div>
+            ))}
           </div>
         </div>
       </div>
-      {/* Incoming film/paper */}
       <div
         className="film-bg-slide"
         style={{
@@ -173,49 +137,110 @@ const PaperDisplay = ({
           position: 'relative',
         }}
       >
-        <div style={{
-          position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
-          display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none',
-        }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none' }}>
           <div className="typewriter-text film-overlay-text" style={{ paddingTop: TOP_OFFSET, paddingBottom: BOTTOM_PADDING }}>
-            {nextText.split('\n').slice(0, MAX_LINES).map((line, idx, arr) => {
-              const isLastLine = idx === arr.length - 1;
-              return (
-                <div className="typewriter-line" key={idx}>
-                  {line}
-                  {isLastLine && showCursor && (
-                    <span className="striker-cursor" />
-                  )}
-                </div>
-              );
-            })}
+            {nextText.split('\n').slice(0, MAX_LINES).map((line, idx, arr) => (
+              <div className="typewriter-line" key={idx}>
+                {line}
+                {idx === arr.length - 1 && showCursor && <span className="striker-cursor" />}
+              </div>
+            ))}
           </div>
         </div>
       </div>
-      {/* Flicker/dust overlay, optional */}
-      <div className="film-flicker-overlay" style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: FILM_FLICKER_OVERLAY_Z_INDEX,
-        background: `url('${FILM_FLICKER_OVERLAY_TEXTURE_URL}'), ${FILM_FLICKER_OVERLAY_GRADIENT}`,
-        opacity: FILM_FLICKER_OVERLAY_OPACITY,
-        mixBlendMode: FILM_FLICKER_OVERLAY_BLEND_MODE,
-        animation: FILM_FLICKER_OVERLAY_ANIMATION,
-      }} />
+      <div className="film-flicker-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: FILM_FLICKER_OVERLAY_Z_INDEX, background: `url('${FILM_FLICKER_OVERLAY_TEXTURE_URL}'), ${FILM_FLICKER_OVERLAY_GRADIENT}`, opacity: FILM_FLICKER_OVERLAY_OPACITY, mixBlendMode: FILM_FLICKER_OVERLAY_BLEND_MODE, animation: FILM_FLICKER_OVERLAY_ANIMATION }} />
+    </div>
+  );
+
+  const renderNormalText = () => {
+    const pageTextLength = pageText.length;
+    const ghostTextString = Array.isArray(ghostText) ? ghostText.map(g => g.char).join('') : (ghostText || '');
+    const fullCombinedText = pageText + ghostTextString;
+    const originalLines = fullCombinedText.split('\n');
+    const allLinesToRender = originalLines.slice(0, MAX_LINES);
+
+    return allLinesToRender.map((line, lineIdx) => {
+      const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
+      let currentLineGlobalStartOffset = 0;
+      for (let i = 0; i < lineIdx; i++) {
+        currentLineGlobalStartOffset += originalLines[i].length + 1;
+      }
+      let currentOffsetWithinLine = 0;
+      const segments = line.includes(SPECIAL_KEY_TEXT) ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g')) : [line];
+      const processedSegments = segments.map((segment, segmentIdx) => {
+        if (segment === SPECIAL_KEY_TEXT) {
+          const segmentKey = `seg-${lineIdx}-${segmentIdx}-xerofag`;
+          currentOffsetWithinLine += segment.length;
+          return <span key={segmentKey} className="xerofag-highlight">{segment}</span>;
+        } else {
+          const segmentChars = segment.split('').map((char, charIdxInSegment) => {
+            const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
+            const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
+            if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
+              const ghostIdx = charGlobalIndex - pageTextLength;
+              const g = ghostText[ghostIdx];
+              return (
+                <span
+                  key={charKey}
+                  className={"ghost-char" + (g.justAppeared ? " ghost-char-materialize" : "")}
+                  style={{ display: 'inline-block' }}
+                >
+                  {g.char}
+                </span>
+              );
+            } else {
+              return char;
+            }
+          });
+          currentOffsetWithinLine += segment.length;
+          return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
+        }
+      });
+
+      return (
+        <div key={lineIdx} className="typewriter-line" ref={isLastLineOfRenderedSet ? lastLineRef : null}>
+          <span className="last-line-content">
+            {processedSegments}
+            {isLastLineOfRenderedSet && showCursor && (
+              <span
+                className={"striker-cursor"}
+                ref={strikerRef}
+                style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
+              />
+            )}
+          </span>
+        </div>
+      );
+    });
+  };
+
+  const renderAnimatingFade = () => (
+    <div className="typewriter-line">
+      <span key={`fade-phase-${fadeState.phase}`} style={{ display: 'grid', placeContent: 'start' }}>
+        <span className="ghost-text-block cross-fade-outgoing" style={{ gridArea: '1 / 1' }}>
+          {(fadeState.prev_text || '').split('\n').map((line, index, array) => (
+            <React.Fragment key={`out-${index}`}>
+              {line}
+              {index < array.length - 1 && <br />}
+            </React.Fragment>
+          ))}
+        </span>
+        <span className="ghost-text-block cross-fade-incoming" style={{ gridArea: '1 / 1' }}>
+          {(fadeState.to_text || '').split('\n').map((line, index, array) => (
+            <React.Fragment key={`in-${index}`}>
+              {line}
+              {index < array.length - 1 && <br />}
+            </React.Fragment>
+          ))}
+        </span>
+      </span>
     </div>
   );
 
   return (
     <div className="typewriter-paper-frame" style={{ height: `${FRAME_HEIGHT}px` }}>
-      <div className="paper-scroll-area" ref={scrollRef}
-        style={{
-          height: `${scrollAreaHeight}px`,
-          maxHeight: `${FRAME_HEIGHT}px`,
-          overflowY: neededHeight > FRAME_HEIGHT ? 'auto' : 'hidden',
-          position: 'relative',
-          width: '100%',
-        }}
-      >
+      <div className="paper-scroll-area" ref={scrollRef} style={{ height: `${scrollAreaHeight}px`, maxHeight: `${FRAME_HEIGHT}px`, overflowY: neededHeight > FRAME_HEIGHT ? 'auto' : 'hidden', position: 'relative', width: '100%' }}>
         {isSliding && renderSlideWrapper()}
-
         {!isSliding && (
           <>
             <div
@@ -235,212 +260,8 @@ const PaperDisplay = ({
                 opacity: FILM_BACKGROUND_OPACITY,
               }}
             />
-            <div
-              className="typewriter-text film-overlay-text"
-              style={textStyles} // Apply the combined styles here
-            >
-              {fadeState && fadeState.isActive && fadeState.isAnimating ? (
-                // State: FADE IS ACTIVELY ANIMATING
-                <div className="typewriter-line">
-                  <span key={`fade-phase-${fadeState.phase}`} style={{ display: 'grid', placeContent: 'start' }}>
-                    <span
-                      className="ghost-text-block cross-fade-outgoing"
-                      style={{ gridArea: '1 / 1' }}
-                    >
-                      {(fadeState.prev_text || '').split('\n').map((line, index, array) => (
-                        <React.Fragment key={`out-${index}`}>
-                          {line}
-                          {index < array.length - 1 && <br />}
-                        </React.Fragment>
-                      ))}
-                    </span>
-                    <span
-                      className="ghost-text-block cross-fade-incoming"
-                      style={{ gridArea: '1 / 1' }}
-                    >
-                      {(fadeState.to_text || '').split('\n').map((line, index, array) => (
-                        <React.Fragment key={`in-${index}`}>
-                          {line}
-                          {index < array.length - 1 && <br />}
-                        </React.Fragment>
-                      ))}
-                    </span>
-                  </span>
-                </div>
-              ) : (
-                // State: NOT FADING, OR PAUSED DURING FADE
-                // In both cases, we render the current pageText, which is the source of truth.
-                // During a pause, pageText has been updated by the fade action's timeout.
-                (() => {
-                  const pageTextLength = pageText.length;
-                  const ghostTextString = Array.isArray(ghostText)
-                      ? ghostText.map(g => g.char).join('')
-                      : (ghostText || '');
-                    const fullCombinedText = pageText + ghostTextString;
-                  const originalLines = fullCombinedText.split('\n');
-
-                  const allLinesToRender = originalLines.slice(0, MAX_LINES);
-
-                  return allLinesToRender.map((line, lineIdx) => {
-                    const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
-
-                    let currentLineGlobalStartOffset = 0;
-                    for(let i=0; i < lineIdx; i++) {
-                      currentLineGlobalStartOffset += originalLines[i].length + 1;
-                    }
-
-                    let currentOffsetWithinLine = 0;
-
-                    const segments = line.includes(SPECIAL_KEY_TEXT)
-                      ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
-                      : [line];
-
-                    const processedSegments = segments.map((segment, segmentIdx) => {
-                      if (segment === SPECIAL_KEY_TEXT) {
-                        const segmentKey = `seg-${lineIdx}-${segmentIdx}-xerofag`;
-                        currentOffsetWithinLine += segment.length;
-                        return <span key={segmentKey} className="xerofag-highlight">{segment}</span>;
-                      } else {
-                        const segmentChars = segment.split('').map((char, charIdxInSegment) => {
-                          const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
-                          const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
-
-                          if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
-                            // Only animate the most recently added ghost letter
-                            const ghostIdx = charGlobalIndex - pageTextLength;
-                            const isLastGhost = ghostIdx === ghostText.length - 1;
-                            const g = ghostText[ghostIdx];
-                            return (
-                              <span
-                                key={charKey}
-                                className={
-                                  "ghost-char" + (g.justAppeared ? " ghost-char-materialize" : "")
-                                }
-                                style={{ display: 'inline-block' }}
-                              >
-                                {g.char}
-                              </span>
-
-                            );
-                          } else {
-                            return char;
-                          }
-
-                        });
-                        currentOffsetWithinLine += segment.length;
-                        return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
-                      }
-                    });
-
-                    return (
-                      <div
-                        key={lineIdx}
-                        className="typewriter-line"
-                        ref={isLastLineOfRenderedSet ? lastLineRef : null}
-                      >
-                        <span className="last-line-content">
-                          {processedSegments}
-
-
-                              {isLastLineOfRenderedSet && showCursor && (
-                                <span
-                                  className={"striker-cursor"}
-                                  ref={strikerRef}
-                                  style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
-                                />
-                              )}
-
-                        </span>
-                      </div>
-                    );
-                  });
-                })()
-              )}
-                (() => {
-                  const pageTextLength = pageText.length;
-                  const ghostTextString = Array.isArray(ghostText)
-                      ? ghostText.map(g => g.char).join('')
-                      : (ghostText || '');
-                    const fullCombinedText = pageText + ghostTextString;
-                  const originalLines = fullCombinedText.split('\n');
-
-                  const allLinesToRender = originalLines.slice(0, MAX_LINES);
-                  
-                  return allLinesToRender.map((line, lineIdx) => {
-                    const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
-                    
-                    let currentLineGlobalStartOffset = 0;
-                    for(let i=0; i < lineIdx; i++) {
-                      currentLineGlobalStartOffset += originalLines[i].length + 1; 
-                    }
-
-                    let currentOffsetWithinLine = 0; 
-                    
-                    const segments = line.includes(SPECIAL_KEY_TEXT)
-                      ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
-                      : [line]; 
-
-                    const processedSegments = segments.map((segment, segmentIdx) => {
-                      if (segment === SPECIAL_KEY_TEXT) {
-                        const segmentKey = `seg-${lineIdx}-${segmentIdx}-xerofag`;
-                        currentOffsetWithinLine += segment.length;
-                        return <span key={segmentKey} className="xerofag-highlight">{segment}</span>;
-                      } else {
-                        const segmentChars = segment.split('').map((char, charIdxInSegment) => {
-                          const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
-                          const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
-                          
-                          if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
-                            // Only animate the most recently added ghost letter
-                            const ghostIdx = charGlobalIndex - pageTextLength;
-                            const isLastGhost = ghostIdx === ghostText.length - 1;
-                            const g = ghostText[ghostIdx];
-                            return (
-                              <span
-                                key={charKey}
-                                className={
-                                  "ghost-char" + (g.justAppeared ? " ghost-char-materialize" : "")
-                                }
-                                style={{ display: 'inline-block' }}
-                              >
-                                {g.char}
-                              </span>
-
-                            );
-                          } else {
-                            return char;
-                          }
-
-                        });
-                        currentOffsetWithinLine += segment.length;
-                        return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
-                      }
-                    });
-
-                    return (
-                      <div
-                        key={lineIdx}
-                        className="typewriter-line"
-                        ref={isLastLineOfRenderedSet ? lastLineRef : null}
-                      >
-                        <span className="last-line-content">
-                          {processedSegments}
-
-                            
-                              {isLastLineOfRenderedSet && showCursor && (
-                                <span
-                                  className={"striker-cursor"}
-                                  ref={strikerRef}
-                                  style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
-                                />
-                              )}
-
-                        </span>
-                      </div>
-                    );
-                  });
-                })()
-              )}
+            <div className="typewriter-text film-overlay-text" style={textStyles}>
+              {fadeState && fadeState.isActive && fadeState.isAnimating ? renderAnimatingFade() : renderNormalText()}
             </div>
           </>
         )}
