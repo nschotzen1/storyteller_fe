@@ -231,6 +231,7 @@ const typingActionTypes = {
   START_NEW_SEQUENCE: 'START_NEW_SEQUENCE', // payload: writing_sequence array
   PROCESS_NEXT_ACTION: 'PROCESS_NEXT_ACTION', // no payload, increments currentActionIndex
   UPDATE_GHOST_TEXT: 'UPDATE_GHOST_TEXT', // payload: new string for currentGhostText
+  SET_FADE_STATE: 'SET_FADE_STATE',       // payload: { isActive, to_text, phase }
   SEQUENCE_COMPLETE: 'SEQUENCE_COMPLETE',   // no payload, resets sequence processing flags
   CANCEL_SEQUENCE: 'CANCEL_SEQUENCE', // no payload, similar to SEQUENCE_COMPLETE for interruption
   RETYPE_ACTION: 'RETYPE_ACTION', // New action type for retyping
@@ -249,6 +250,7 @@ const initialTypingState = {
   currentActionIndex: 0,
   currentGhostText: [],
   isProcessingSequence: false,
+  fadeState: { isActive: false, to_text: '', phase: 0 },
   preFadeSnapshot: null,
   allInitialFadesCompleted: false,
   isProcessingInitialFadeSequence: false,
@@ -277,6 +279,7 @@ function typingReducer(state, action) {
         currentActionIndex: 0,
         currentGhostText: '',
         isProcessingSequence: false,
+        fadeState: { isActive: false, to_text: '', phase: 0 },
       };
     case typingActionTypes.HANDLE_BACKSPACE:
       if (state.inputBuffer.length === 0) { // If input buffer is empty
@@ -289,6 +292,7 @@ function typingReducer(state, action) {
             currentActionIndex: 0,
             currentGhostText: '', // Clear ghost text on cancel
             isProcessingSequence: false,
+            fadeState: { isActive: false, to_text: '', phase: 0 },
             requestPageTextUpdate: false, // No page text update from cancelling a sequence this way
           };
         }
@@ -306,8 +310,10 @@ function typingReducer(state, action) {
         currentActionIndex: 0,
         currentGhostText: '',
         isProcessingSequence: true,
+        fadeState: { isActive: false, to_text: '', phase: 0 },
         preFadeSnapshot: null,
         allInitialFadesCompleted: false,
+        typingAllowed: true,
         isProcessingInitialFadeSequence: action.payload.some(item => item.action === 'fade'),
         inputBuffer: '', // Clear input buffer when a new sequence starts
         typingAllowed: action.payload.length > 0 && action.payload[0].action === 'pause', // Disable input if first action is not pause
@@ -318,6 +324,17 @@ function typingReducer(state, action) {
         const nextAction = state.actionSequence[newIndex];
         // Set typingAllowed based on the next action
         const newTypingAllowed = nextAction.action === 'pause';
+        if (nextAction.action !== 'fade') {
+          // If the next action is not a fade, deactivate current fade state visuals
+          // Consider full reset: { isActive: false, to_text: '', phase: 0 } if prev_text continuity isn't strictly needed for non-fade actions
+          return {
+            ...state,
+            currentActionIndex: newIndex,
+            fadeState: { ...state.fadeState, isActive: false },
+            typingAllowed: newTypingAllowed,
+          };
+        }
+        // If next action is a fade, keep fadeState as is (isActive: true will be set by the fade action itself)
         return { ...state, currentActionIndex: newIndex, typingAllowed: newTypingAllowed };
       }
       // If no more actions, currentActionIndex will be out of bounds, sequence completion is handled by useEffect.
@@ -340,6 +357,7 @@ function typingReducer(state, action) {
         currentActionIndex: 0,
         currentGhostText: '', // Cleared as the content is committed by user or fade action.
         isProcessingSequence: false,
+        fadeState: { isActive: false, to_text: '', phase: 0 }, // Reset fade display
         typingAllowed: true, // Allow typing when sequence is complete
         // preFadeSnapshot, allInitialFadesCompleted, isProcessingInitialFadeSequence are NOT reset here.
       };
@@ -351,6 +369,7 @@ function typingReducer(state, action) {
         currentActionIndex: 0,
         currentGhostText: '', /* Clear ghost text on cancel */
         isProcessingSequence: false,
+        fadeState: { isActive: false, to_text: '', phase: 0 },
         preFadeSnapshot: null, /* Reset snapshot on cancel */
         allInitialFadesCompleted: false, /* Reset fades completed on cancel */
         isProcessingInitialFadeSequence: false,
@@ -1001,6 +1020,7 @@ const TypewriterFramework = (props) => {
     typingState.isProcessingSequence, 
     typingState.actionSequence, 
     typingState.currentActionIndex, 
+    typingState.fadeState.isActive,
     // typingState.currentGhostText, // Removed as per instruction
     dispatchTyping, 
     dispatchGhostwriter, 

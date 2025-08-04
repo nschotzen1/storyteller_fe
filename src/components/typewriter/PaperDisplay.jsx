@@ -269,90 +269,177 @@ const PaperDisplay = ({
               className="typewriter-text film-overlay-text"
               style={textStyles} // Apply the combined styles here
             >
-              {(() => {
-                const pageTextLength = pageText.length;
-                const ghostTextString = Array.isArray(ghostText)
-                    ? ghostText.map(g => g.char).join('')
-                    : (ghostText || '');
-                  const fullCombinedText = pageText + ghostTextString;
-                const originalLines = fullCombinedText.split('\n');
+                {fadeState && fadeState.isActive ? (
+                (() => {
+                  // Inside the (() => { ... })() block for fadeState.isActive
+                  const sUserText = String(userText || ''); // Destructured prop
+                  const sToText = String(fadeState.to_text || '');
 
-                const allLinesToRender = originalLines.slice(0, MAX_LINES);
+                  const ghostTextForCurrentPhase = sToText.startsWith(sUserText) ? sToText.slice(sUserText.length) : sToText;
 
-                return allLinesToRender.map((line, lineIdx) => {
-                  const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
+                  console.log('[FadeRender-Simple] userText (prefix):', sUserText);
+                  console.log('[FadeRender-Simple] fadeState.to_text:', fadeState.to_text);
+                  console.log('[FadeRender-Simple] ghostTextForCurrentPhase:', ghostTextForCurrentPhase);
+                  console.log('[FadeRender-Simple] fadeState.phase:', fadeState.phase, 'time:', Date.now());
 
-                  let currentLineGlobalStartOffset = 0;
-                  for(let i=0; i < lineIdx; i++) {
-                    currentLineGlobalStartOffset += originalLines[i].length + 1;
-                  }
+                  // Helper to render text with <br /> tags for newlines
+                  const renderTextWithLineBreaks = (text) => {
+                      return text.split('\n').map((line, index, array) => (
+                          <React.Fragment key={index}>
+                              {line}
+                              {index < array.length - 1 && <br />}
+                          </React.Fragment>
+                      ));
+                  };
 
-                  let currentOffsetWithinLine = 0;
-
-                  const segments = line.includes(SPECIAL_KEY_TEXT)
-                    ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
-                    : [line];
-
-                  const processedSegments = segments.map((segment, segmentIdx) => {
-                    if (segment === SPECIAL_KEY_TEXT) {
-                      const segmentKey = `seg-${lineIdx}-${segmentIdx}-xerofag`;
-                      currentOffsetWithinLine += segment.length;
-                      return <span key={segmentKey} className="xerofag-highlight">{segment}</span>;
-                    } else {
-                      const segmentChars = segment.split('').map((char, charIdxInSegment) => {
-                        const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
-                        const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
-
-                        if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
-                          // Only animate the most recently added ghost letter
-                          const ghostIdx = charGlobalIndex - pageTextLength;
-                          const isLastGhost = ghostIdx === ghostText.length - 1;
-                          const g = ghostText[ghostIdx];
-                          return (
-                            <span
-                              key={charKey}
-                              className={
-                                "ghost-char" + (g.justAppeared ? " ghost-char-materialize" : "")
-                              }
-                              style={{ display: 'inline-block' }}
-                            >
-                              {g.char}
-                            </span>
-
-                          );
-                        } else {
-                          return char;
-                        }
-
-                      });
-                      currentOffsetWithinLine += segment.length;
-                      return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
-                    }
-                  });
+                  // Logging for the state passed from TypewriterFramework
+                  console.log('[FadeRender-Crossfade] Parent fadeState:', fadeState);
+                  // Logging for internal component states
+                  console.log('[FadeRender-Crossfade] sUserText:', sUserText);
+                  console.log('[FadeRender-Crossfade] incomingGhostInfo:', incomingGhostInfo);
+                  console.log('[FadeRender-Crossfade] outgoingGhostInfo:', outgoingGhostInfo);
 
                   return (
-                    <div
-                      key={lineIdx}
-                      className="typewriter-line"
-                      ref={isLastLineOfRenderedSet ? lastLineRef : null}
+      <div className="typewriter-line">
+        <span style={{ display: 'inline-block', verticalAlign: 'baseline' }}>
+          {sUserText && (
+            <span style={{ display: 'inline' }}>
+              {renderTextWithLineBreaks(sUserText)}
+            </span>
+          )}
+          {/* Container for cross-fading ghost texts */}
+          <span style={{ display: 'inline-block', position: 'relative', verticalAlign: 'baseline' }} className="cross-fade-ghost-container">
+            {outgoingGhostInfo.text && outgoingGhostInfo.key && (
+              <span
+                key={outgoingGhostInfo.key}
+                className="ghost-text-block cross-fade-outgoing"
+                style={{ display: 'inline-block', position: 'absolute', top: 0, left: 0 }}
+              >
+                {/* --- ENHANCED: Fade out each char as smudge/afterimage --- */}
+                {outgoingGhostInfo.text.split('').map((char, i) => (
+                  <span
+                    key={i}
+                    style={{ position: 'relative', display: 'inline-block', minWidth: '0.7ch' }}
+                  >
+                    <span
+                      className="smudge-fade-out"
+                      style={{ animationDelay: `${i * 0.042}s` }}
                     >
-                      <span className="last-line-content">
-                        {processedSegments}
+                      {char === '\n' ? <br /> : char}
+                    </span>
+                    <span
+                      className="afterimage-fade"
+                      style={{ animationDelay: `${i * 0.042 + 0.13}s` }}
+                    >
+                      {char === '\n' ? <br /> : char}
+                    </span>
+                  </span>
+                ))}
+              </span>
+            )}
+            {incomingGhostInfo.text && incomingGhostInfo.key && (
+              <span
+                key={incomingGhostInfo.key}
+                className="ghost-text-block cross-fade-incoming"
+                style={{ display: 'inline-block' }}
+              >
+                {/* Appear instantly, or add a subtle fade-in if you want */}
+                {incomingGhostInfo.text.split('').map((char, i) => (
+                  <span key={i}>{char === '\n' ? <br /> : char}</span>
+                ))}
+              </span>
+            )}
+          </span>
+        </span>
+      </div>
+    );
+  })()
+)  : (
+                (() => {
+                  const pageTextLength = pageText.length;
+                  const ghostTextString = Array.isArray(ghostText)
+                      ? ghostText.map(g => g.char).join('')
+                      : (ghostText || '');
+                    const fullCombinedText = pageText + ghostTextString;
+                  const originalLines = fullCombinedText.split('\n');
 
+                  const allLinesToRender = originalLines.slice(0, MAX_LINES);
 
-                            {isLastLineOfRenderedSet && showCursor && (
+                  return allLinesToRender.map((line, lineIdx) => {
+                    const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
+
+                    let currentLineGlobalStartOffset = 0;
+                    for(let i=0; i < lineIdx; i++) {
+                      currentLineGlobalStartOffset += originalLines[i].length + 1;
+                    }
+
+                    let currentOffsetWithinLine = 0;
+
+                    const segments = line.includes(SPECIAL_KEY_TEXT)
+                      ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
+                      : [line];
+
+                    const processedSegments = segments.map((segment, segmentIdx) => {
+                      if (segment === SPECIAL_KEY_TEXT) {
+                        const segmentKey = `seg-${lineIdx}-${segmentIdx}-xerofag`;
+                        currentOffsetWithinLine += segment.length;
+                        return <span key={segmentKey} className="xerofag-highlight">{segment}</span>;
+                      } else {
+                        const segmentChars = segment.split('').map((char, charIdxInSegment) => {
+                          const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
+                          const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
+
+                          if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
+                            // Only animate the most recently added ghost letter
+                            const ghostIdx = charGlobalIndex - pageTextLength;
+                            const isLastGhost = ghostIdx === ghostText.length - 1;
+                            const g = ghostText[ghostIdx];
+                            return (
                               <span
-                                className={"striker-cursor"}
-                                ref={strikerRef}
-                                style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
-                              />
-                            )}
+                                key={charKey}
+                                className={
+                                  "ghost-char" + (g.justAppeared ? " ghost-char-materialize" : "")
+                                }
+                                style={{ display: 'inline-block' }}
+                              >
+                                {g.char}
+                              </span>
 
-                      </span>
-                    </div>
-                  );
-                });
-              })()}
+                            );
+                          } else {
+                            return char;
+                          }
+
+                        });
+                        currentOffsetWithinLine += segment.length;
+                        return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
+                      }
+                    });
+
+                    return (
+                      <div
+                        key={lineIdx}
+                        className="typewriter-line"
+                        ref={isLastLineOfRenderedSet ? lastLineRef : null}
+                      >
+                        <span className="last-line-content">
+                          {processedSegments}
+
+
+                              {isLastLineOfRenderedSet && showCursor && (
+                                <span
+                                  className={"striker-cursor"}
+                                  ref={strikerRef}
+                                  style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
+                                />
+                              )}
+
+                        </span>
+                      </div>
+                    );
+                  });
+                })()
+              )}
             </div>
           </>
         )}
