@@ -308,7 +308,6 @@ function typingReducer(state, action) {
         isProcessingSequence: true,
         preFadeSnapshot: null,
         allInitialFadesCompleted: false,
-        typingAllowed: true,
         isProcessingInitialFadeSequence: action.payload.some(item => item.action === 'fade'),
         inputBuffer: '', // Clear input buffer when a new sequence starts
         typingAllowed: action.payload.length > 0 && action.payload[0].action === 'pause', // Disable input if first action is not pause
