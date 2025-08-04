@@ -239,13 +239,10 @@ const PaperDisplay = ({
               className="typewriter-text film-overlay-text"
               style={textStyles} // Apply the combined styles here
             >
-              {fadeState && fadeState.isActive ? (
+              {fadeState && fadeState.isActive && fadeState.isAnimating ? (
+                // State: FADE IS ACTIVELY ANIMATING
                 <div className="typewriter-line">
-                  {/* Using a key on the container ensures React re-mounts it on phase change, restarting the animations. */}
-                  {/* The use of CSS Grid here is a clean way to stack the outgoing and incoming text on top of each other. */}
-                  {/* The grid container will automatically size to the larger of the two text blocks. */}
                   <span key={`fade-phase-${fadeState.phase}`} style={{ display: 'grid', placeContent: 'start' }}>
-                    {/* Text Fading Out: Renders the 'prev_text' from the state */}
                     <span
                       className="ghost-text-block cross-fade-outgoing"
                       style={{ gridArea: '1 / 1' }}
@@ -257,7 +254,6 @@ const PaperDisplay = ({
                         </React.Fragment>
                       ))}
                     </span>
-                    {/* Text Fading In: Renders the 'to_text' from the state */}
                     <span
                       className="ghost-text-block cross-fade-incoming"
                       style={{ gridArea: '1 / 1' }}
@@ -272,6 +268,94 @@ const PaperDisplay = ({
                   </span>
                 </div>
               ) : (
+                // State: NOT FADING, OR PAUSED DURING FADE
+                // In both cases, we render the current pageText, which is the source of truth.
+                // During a pause, pageText has been updated by the fade action's timeout.
+                (() => {
+                  const pageTextLength = pageText.length;
+                  const ghostTextString = Array.isArray(ghostText)
+                      ? ghostText.map(g => g.char).join('')
+                      : (ghostText || '');
+                    const fullCombinedText = pageText + ghostTextString;
+                  const originalLines = fullCombinedText.split('\n');
+
+                  const allLinesToRender = originalLines.slice(0, MAX_LINES);
+
+                  return allLinesToRender.map((line, lineIdx) => {
+                    const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
+
+                    let currentLineGlobalStartOffset = 0;
+                    for(let i=0; i < lineIdx; i++) {
+                      currentLineGlobalStartOffset += originalLines[i].length + 1;
+                    }
+
+                    let currentOffsetWithinLine = 0;
+
+                    const segments = line.includes(SPECIAL_KEY_TEXT)
+                      ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
+                      : [line];
+
+                    const processedSegments = segments.map((segment, segmentIdx) => {
+                      if (segment === SPECIAL_KEY_TEXT) {
+                        const segmentKey = `seg-${lineIdx}-${segmentIdx}-xerofag`;
+                        currentOffsetWithinLine += segment.length;
+                        return <span key={segmentKey} className="xerofag-highlight">{segment}</span>;
+                      } else {
+                        const segmentChars = segment.split('').map((char, charIdxInSegment) => {
+                          const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
+                          const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
+
+                          if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
+                            // Only animate the most recently added ghost letter
+                            const ghostIdx = charGlobalIndex - pageTextLength;
+                            const isLastGhost = ghostIdx === ghostText.length - 1;
+                            const g = ghostText[ghostIdx];
+                            return (
+                              <span
+                                key={charKey}
+                                className={
+                                  "ghost-char" + (g.justAppeared ? " ghost-char-materialize" : "")
+                                }
+                                style={{ display: 'inline-block' }}
+                              >
+                                {g.char}
+                              </span>
+
+                            );
+                          } else {
+                            return char;
+                          }
+
+                        });
+                        currentOffsetWithinLine += segment.length;
+                        return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
+                      }
+                    });
+
+                    return (
+                      <div
+                        key={lineIdx}
+                        className="typewriter-line"
+                        ref={isLastLineOfRenderedSet ? lastLineRef : null}
+                      >
+                        <span className="last-line-content">
+                          {processedSegments}
+
+
+                              {isLastLineOfRenderedSet && showCursor && (
+                                <span
+                                  className={"striker-cursor"}
+                                  ref={strikerRef}
+                                  style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
+                                />
+                              )}
+
+                        </span>
+                      </div>
+                    );
+                  });
+                })()
+              )}
                 (() => {
                   const pageTextLength = pageText.length;
                   const ghostTextString = Array.isArray(ghostText)
