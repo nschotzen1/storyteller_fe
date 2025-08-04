@@ -438,7 +438,7 @@ const TypewriterFramework = (props) => {
   } = typingState;
 
   const [ghostwriterState, dispatchGhostwriter] = useReducer(ghostwriterReducer, initialGhostwriterState);
-  const [userTextBeforeGhostFade, setUserTextBeforeGhostFade] = useState('');
+  const [userTextPrefix, setUserTextPrefix] = useState('');
   const [isGhostwritingDisabledPostFade, setIsGhostwritingDisabledPostFade] = useState(false);
   const [wordCountAtFadeEnd, setWordCountAtFadeEnd] = useState(0);
   const {
@@ -753,11 +753,11 @@ const TypewriterFramework = (props) => {
     return () => clearInterval(interval);
   }, [keyTextures]);
 
-  // --- Reset userTextBeforeGhostFade ---
+  // --- Reset userTextPrefix ---
   useEffect(() => {
     if (!typingState.isProcessingSequence) {
-      setUserTextBeforeGhostFade('');
-      console.log('[Fade] Sequence not processing. Cleared userTextBeforeGhostFade.');
+      setUserTextPrefix('');
+      console.log('[Fade] Sequence not processing. Cleared userTextPrefix.');
     }
   }, [typingState.isProcessingSequence]);
 
@@ -913,11 +913,11 @@ const TypewriterFramework = (props) => {
           break;
         case 'fade': {
           timeoutId = setTimeout(() => {
-            // After the delay, update the page's text to the new text from the fade action.
+            // After the delay, update the page's text to be the user's original prefix plus the new faded text.
             setPages(prev => {
               const updatedPages = [...prev];
               if (updatedPages[currentPage]) {
-                updatedPages[currentPage] = { ...updatedPages[currentPage], text: currentAction.to_text };
+                updatedPages[currentPage] = { ...updatedPages[currentPage], text: userTextPrefix + currentAction.to_text };
               }
               return updatedPages;
             });
@@ -959,16 +959,16 @@ const TypewriterFramework = (props) => {
 
       const currentPageText = pages[currentPage]?.text || '';
 
-      if (userTextBeforeGhostFade !== '') {
-        // If userTextBeforeGhostFade is set, it means a fade sequence has likely just completed.
+      if (userTextPrefix !== '') {
+        // If userTextPrefix is set, it means a fade sequence has likely just completed.
         // The page text should be what was captured before the fade.
-        const currentText = userTextBeforeGhostFade; // Capture for consistent use
+        const currentText = userTextPrefix; // Capture for consistent use
         setPages(prev => {
           const updatedPages = [...prev];
           if (updatedPages[currentPage]) {
             updatedPages[currentPage] = { ...updatedPages[currentPage], text: currentText };
           }
-          console.log('[SequenceComplete] Applied userTextBeforeGhostFade. Text set to:', currentText);
+          console.log('[SequenceComplete] Applied userTextPrefix. Text set to:', currentText);
           return updatedPages;
         });
 
@@ -1030,7 +1030,7 @@ const TypewriterFramework = (props) => {
     currentPage, 
     setPages,
     typingState.isProcessingInitialFadeSequence,
-    userTextBeforeGhostFade, // Added
+    userTextPrefix, // Added
     typingState.preFadeSnapshot, // Added
     props.shouldGenerateTypeWriterResponse, // Added
     setIsGhostwritingDisabledPostFade, // Added
@@ -1080,8 +1080,8 @@ const TypewriterFramework = (props) => {
         if (sequenceToDispatch) {
             if (hasFadeActions) {
                 const currentTextForUser = pages[currentPage]?.text || '';
-                setUserTextBeforeGhostFade(currentTextForUser);
-                console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextBeforeGhostFade:', currentTextForUser);
+                setUserTextPrefix(currentTextForUser);
+                console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextPrefix:', currentTextForUser);
             }
             if (reply.metadata) { // Ensure metadata exists before trying to set it
               setCurrentFontStyles(reply.metadata);
@@ -1139,8 +1139,8 @@ const TypewriterFramework = (props) => {
           if (sequenceToDispatch) {
               if (hasFadeActions) {
                   const currentTextForUser = pages[currentPage]?.text || '';
-                  setUserTextBeforeGhostFade(currentTextForUser);
-                  console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextBeforeGhostFade:', currentTextForUser);
+                  setUserTextPrefix(currentTextForUser);
+                  console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextPrefix:', currentTextForUser);
               }
               if (reply.metadata) { // Ensure metadata exists before trying to set it
                 setCurrentFontStyles(reply.metadata);
