@@ -231,7 +231,6 @@ const typingActionTypes = {
   START_NEW_SEQUENCE: 'START_NEW_SEQUENCE', // payload: writing_sequence array
   PROCESS_NEXT_ACTION: 'PROCESS_NEXT_ACTION', // no payload, increments currentActionIndex
   UPDATE_GHOST_TEXT: 'UPDATE_GHOST_TEXT', // payload: new string for currentGhostText
-  SET_FADE_STATE: 'SET_FADE_STATE',       // payload: { isActive, to_text, phase }
   SEQUENCE_COMPLETE: 'SEQUENCE_COMPLETE',   // no payload, resets sequence processing flags
   CANCEL_SEQUENCE: 'CANCEL_SEQUENCE', // no payload, similar to SEQUENCE_COMPLETE for interruption
   RETYPE_ACTION: 'RETYPE_ACTION', // New action type for retyping
@@ -250,7 +249,6 @@ const initialTypingState = {
   currentActionIndex: 0,
   currentGhostText: [],
   isProcessingSequence: false,
-  fadeState: { isActive: false, isAnimating: false, to_text: '', phase: 0 },
   preFadeSnapshot: null,
   allInitialFadesCompleted: false,
   isProcessingInitialFadeSequence: false,
@@ -279,7 +277,6 @@ function typingReducer(state, action) {
         currentActionIndex: 0,
         currentGhostText: '',
         isProcessingSequence: false,
-        fadeState: { isActive: false, isAnimating: false, to_text: '', phase: 0 },
       };
     case typingActionTypes.HANDLE_BACKSPACE:
       if (state.inputBuffer.length === 0) { // If input buffer is empty
@@ -292,7 +289,6 @@ function typingReducer(state, action) {
             currentActionIndex: 0,
             currentGhostText: '', // Clear ghost text on cancel
             isProcessingSequence: false,
-            fadeState: { isActive: false, to_text: '', phase: 0 },
             requestPageTextUpdate: false, // No page text update from cancelling a sequence this way
           };
         }
@@ -310,7 +306,6 @@ function typingReducer(state, action) {
         currentActionIndex: 0,
         currentGhostText: '',
         isProcessingSequence: true,
-        fadeState: { isActive: false, to_text: '', phase: 0 },
         preFadeSnapshot: null,
         allInitialFadesCompleted: false,
         typingAllowed: true,
@@ -324,17 +319,6 @@ function typingReducer(state, action) {
         const nextAction = state.actionSequence[newIndex];
         // Set typingAllowed based on the next action
         const newTypingAllowed = nextAction.action === 'pause';
-        if (nextAction.action !== 'fade') {
-          // If the next action is not a fade, deactivate current fade state visuals
-          // Consider full reset: { isActive: false, to_text: '', phase: 0 } if prev_text continuity isn't strictly needed for non-fade actions
-          return {
-            ...state,
-            currentActionIndex: newIndex,
-            fadeState: { ...state.fadeState, isActive: false },
-            typingAllowed: newTypingAllowed,
-          };
-        }
-        // If next action is a fade, keep fadeState as is (isActive: true will be set by the fade action itself)
         return { ...state, currentActionIndex: newIndex, typingAllowed: newTypingAllowed };
       }
       // If no more actions, currentActionIndex will be out of bounds, sequence completion is handled by useEffect.
@@ -357,7 +341,6 @@ function typingReducer(state, action) {
         currentActionIndex: 0,
         currentGhostText: '', // Cleared as the content is committed by user or fade action.
         isProcessingSequence: false,
-        fadeState: { isActive: false, isAnimating: false, to_text: '', phase: 0 }, // Reset fade display
         typingAllowed: true, // Allow typing when sequence is complete
         // preFadeSnapshot, allInitialFadesCompleted, isProcessingInitialFadeSequence are NOT reset here.
       };
@@ -369,7 +352,6 @@ function typingReducer(state, action) {
         currentActionIndex: 0,
         currentGhostText: '', /* Clear ghost text on cancel */
         isProcessingSequence: false,
-        fadeState: { isActive: false, isAnimating: false, to_text: '', phase: 0 },
         preFadeSnapshot: null, /* Reset snapshot on cancel */
         allInitialFadesCompleted: false, /* Reset fades completed on cancel */
         isProcessingInitialFadeSequence: false,
@@ -785,9 +767,10 @@ const TypewriterFramework = (props) => {
     if (typingState.isProcessingSequence && typingState.currentActionIndex < typingState.actionSequence.length) {
       const currentAction = typingState.actionSequence[typingState.currentActionIndex];
 
-      // This logic is now driven by the `isAnimating` flag in fadeState
-      if (typingState.fadeState.isActive && !typingState.fadeState.isAnimating && !['fade', 'pause'].includes(currentAction.action)) {
-        dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, isAnimating: false, to_text: '', phase: 0 } });
+      // Refined Fade Deactivation Logic: Part 1
+      // If fade was active and current action is not a fade, deactivate fade first.
+      if (typingState.fadeState.isActive && currentAction.action !== 'fade') {
+        dispatchTyping({ type: typingActionTypes.SET_FADE_STATE, payload: { isActive: false, to_text: '', phase: 0 } });
       }
 
       if (currentAction.action === 'fade' && !typingState.preFadeSnapshot) {
@@ -911,20 +894,8 @@ const TypewriterFramework = (props) => {
           }, currentAction.delay);
           break;
         case 'fade': {
-          // Set the state to start the animation in PaperDisplay
-          dispatchTyping({
-            type: typingActionTypes.SET_FADE_STATE,
-            payload: {
-              isActive: true,
-              isAnimating: true, // Start animating
-              prev_text: typingState.fadeState.to_text || (pages[currentPage]?.text || '') + (Array.isArray(typingState.currentGhostText) ? typingState.currentGhostText.map(g=>g.char).join('') : typingState.currentGhostText || ''),
-              to_text: currentAction.to_text,
-              phase: currentAction.phase,
-            },
-          });
-
-          // After the animation duration, commit the text and stop animating
           timeoutId = setTimeout(() => {
+            // After the delay, simply update the page's text to the new text.
             setPages(prev => {
               const updatedPages = [...prev];
               if (updatedPages[currentPage]) {
@@ -932,18 +903,7 @@ const TypewriterFramework = (props) => {
               }
               return updatedPages;
             });
-
-            // Set isAnimating to false, so PaperDisplay renders static text for the pause
-            dispatchTyping({
-              type: typingActionTypes.SET_FADE_STATE,
-              payload: {
-                ...typingState.fadeState,
-                to_text: currentAction.to_text, // ensure to_text is up to date
-                phase: currentAction.phase,
-                isAnimating: false,
-              },
-            });
-
+            // Then, proceed to the next action in the sequence.
             dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
           }, currentAction.delay);
           break;
