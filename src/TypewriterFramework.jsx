@@ -913,7 +913,7 @@ const TypewriterFramework = (props) => {
           break;
         case 'fade': {
           timeoutId = setTimeout(() => {
-            // After the delay, simply update the page's text to the new text.
+            // After the delay, update the page's text to the new text from the fade action.
             setPages(prev => {
               const updatedPages = [...prev];
               if (updatedPages[currentPage]) {
@@ -921,6 +921,8 @@ const TypewriterFramework = (props) => {
               }
               return updatedPages;
             });
+            // Also clear any ghost text from the initial writing sequence.
+            dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: '' });
             // Then, proceed to the next action in the sequence.
             dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
           }, currentAction.delay);
