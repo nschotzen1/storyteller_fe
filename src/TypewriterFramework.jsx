@@ -438,7 +438,6 @@ const TypewriterFramework = (props) => {
   } = typingState;
 
   const [ghostwriterState, dispatchGhostwriter] = useReducer(ghostwriterReducer, initialGhostwriterState);
-  const [userTextBeforeGhostFade, setUserTextBeforeGhostFade] = useState('');
   const [isGhostwritingDisabledPostFade, setIsGhostwritingDisabledPostFade] = useState(false);
   const [wordCountAtFadeEnd, setWordCountAtFadeEnd] = useState(0);
   const {
@@ -753,14 +752,6 @@ const TypewriterFramework = (props) => {
     return () => clearInterval(interval);
   }, [keyTextures]);
 
-  // --- Reset userTextBeforeGhostFade ---
-  useEffect(() => {
-    if (!typingState.isProcessingSequence) {
-      setUserTextBeforeGhostFade('');
-      console.log('[Fade] Sequence not processing. Cleared userTextBeforeGhostFade.');
-    }
-  }, [typingState.isProcessingSequence]);
-
   // --- Re-enable Ghostwriting Post-Fade ---
   useEffect(() => {
     if (isGhostwritingDisabledPostFade && pages[currentPage]) {
@@ -964,59 +955,56 @@ const TypewriterFramework = (props) => {
 
       const currentPageText = pages[currentPage]?.text || '';
 
-      if (userTextBeforeGhostFade !== '') {
-        // If userTextBeforeGhostFade is set, it means a fade sequence has likely just completed.
-        // The page text should be what was captured before the fade.
-        const currentText = userTextBeforeGhostFade; // Capture for consistent use
-        setPages(prev => {
-          const updatedPages = [...prev];
-          if (updatedPages[currentPage]) {
-            updatedPages[currentPage] = { ...updatedPages[currentPage], text: currentText };
-          }
-          console.log('[SequenceComplete] Applied userTextBeforeGhostFade. Text set to:', currentText);
-          return updatedPages;
-        });
+      // --- Find last fade action ---
+      const lastFadeAction = [...typingState.actionSequence].reverse().find(action => action.action === 'fade');
 
-        const words = currentText.trim().split(/\s+/).filter(Boolean).length;
-        setWordCountAtFadeEnd(words);
-        setIsGhostwritingDisabledPostFade(true);
-        console.log(`[GhostwriterControl] Disabled post-fade. Word count at end: ${words}. User needs to type ${MIN_USER_WORDS_TO_REENABLE_GHOSTWRITER} more words.`);
+      if (lastFadeAction) {
+          const finalFadeText = lastFadeAction.to_text;
 
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentText.length });
-        const ghostwriterWords = words; // Use the same word count
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: ghostwriterWords });
-        // userTextBeforeGhostFade is reset by its own useEffect when isProcessingSequence becomes false after SEQUENCE_COMPLETE.
-      } else if (finalGhostTextOfSequence && !typingState.fadeState.isActive && !typingState.allInitialFadesCompleted) {
-        // Standard commit logic if not ending with a fade that used userTextBeforeGhostFade,
-        // and no fade is active (e.g. a type sequence that ends)
-        const textToCommit = currentPageText + finalGhostTextOfSequence;
-        const textToCommitLines = textToCommit.split('\n').length;
-        const newTextForPage =
-          textToCommitLines > MAX_LINES
-            ? textToCommit.split('\n').slice(0, MAX_LINES).join('\n')
-            : textToCommit;
+          setPages(prev => {
+              const updatedPages = [...prev];
+              if (updatedPages[currentPage]) {
+                  updatedPages[currentPage] = { ...updatedPages[currentPage], text: finalFadeText };
+              }
+              console.log('[SequenceComplete] Fade sequence ended. Text set to:', finalFadeText);
+              return updatedPages;
+          });
 
-        setPages(prev => {
-          const updatedPages = [...prev];
-          if (updatedPages[currentPage]) {
-            updatedPages[currentPage] = { ...updatedPages[currentPage], text: newTextForPage };
-          }
-          return updatedPages;
-        });
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
-        const ghostwriterWords = finalGhostTextOfSequence.trim().split(/\s+/).filter(Boolean).length;
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: ghostwriterWords });
-      } else if (!typingState.fadeState.isActive && !typingState.allInitialFadesCompleted) {
-        // If no ghost text to commit and no fade was active (e.g. empty sequence or just pauses)
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentPageText.length });
-        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: 0 });
+          const words = finalFadeText.trim().split(/\s+/).filter(Boolean).length;
+          setWordCountAtFadeEnd(words);
+          setIsGhostwritingDisabledPostFade(true);
+          console.log(`[GhostwriterControl] Disabled post-fade. Word count at end: ${words}. User needs to type ${MIN_USER_WORDS_TO_REENABLE_GHOSTWRITER} more words.`);
+
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: finalFadeText.length });
+          const ghostwriterWords = words;
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: ghostwriterWords });
+
+      } else if (finalGhostTextOfSequence) {
+          // Standard commit logic for sequences without fades (e.g., just 'type' actions)
+          const textToCommit = currentPageText + finalGhostTextOfSequence;
+          const textToCommitLines = textToCommit.split('\n').length;
+          const newTextForPage =
+              textToCommitLines > MAX_LINES
+                  ? textToCommit.split('\n').slice(0, MAX_LINES).join('\n')
+                  : textToCommit;
+
+          setPages(prev => {
+              const updatedPages = [...prev];
+              if (updatedPages[currentPage]) {
+                  updatedPages[currentPage] = { ...updatedPages[currentPage], text: newTextForPage };
+              }
+              return updatedPages;
+          });
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
+          const ghostwriterWords = finalGhostTextOfSequence.trim().split(/\s+/).filter(Boolean).length;
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: ghostwriterWords });
+      } else {
+          // If no ghost text to commit and no fade was active (e.g. empty sequence or just pauses)
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: currentPageText.length });
+          dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: 0 });
       }
-      // If fadeState.isActive is true here, it implies the last action was a fade.
-      // The text setting for userTextBeforeGhostFade (if applicable) is handled above.
-      // The SET_FADE_STATE in SEQUENCE_COMPLETE in the reducer will turn off visuals.
 
       dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
-      // The reducer's SEQUENCE_COMPLETE handles resetting fadeState.isActive.
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
     }
 
@@ -1083,11 +1071,6 @@ const TypewriterFramework = (props) => {
         }
 
         if (sequenceToDispatch) {
-            if (hasFadeActions) {
-                const currentTextForUser = pages[currentPage]?.text || '';
-                setUserTextBeforeGhostFade(currentTextForUser);
-                console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextBeforeGhostFade:', currentTextForUser);
-            }
             if (reply.metadata) { // Ensure metadata exists before trying to set it
               setCurrentFontStyles(reply.metadata);
             }
@@ -1142,11 +1125,6 @@ const TypewriterFramework = (props) => {
           }
 
           if (sequenceToDispatch) {
-              if (hasFadeActions) {
-                  const currentTextForUser = pages[currentPage]?.text || '';
-                  setUserTextBeforeGhostFade(currentTextForUser);
-                  console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextBeforeGhostFade:', currentTextForUser);
-              }
               if (reply.metadata) { // Ensure metadata exists before trying to set it
                 setCurrentFontStyles(reply.metadata);
               }
@@ -1340,7 +1318,6 @@ const TypewriterFramework = (props) => {
         nextFilmBgUrl={nextFilmBgUrl}
         prevText={prevText}
         nextText={nextText}
-        userText={userTextBeforeGhostFade}
         MAX_LINES={MAX_LINES}
         TOP_OFFSET={TOP_OFFSET}
         BOTTOM_PADDING={BOTTOM_PADDING}

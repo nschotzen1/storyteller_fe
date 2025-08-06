@@ -1101,3 +1101,7 @@
     transform: scale(1);
   }
 }
+
+.fade-content-incoming {
+  animation: materialize-in 1.2s ease-in-out forwards;
+}

@@ -5,15 +5,17 @@ import TypewriterFramework from './TypewriterFramework';
 import '@testing-library/jest-dom';
 import { MAX_LINES as ACTUAL_MAX_LINES, DEFAULT_FILM_BG_URL } from './TypewriterFramework'; // Import constants
 
+import { vi } from 'vitest';
+
 // Mock API services
-jest.mock('./apiService', () => ({
-  fetchNextFilmImage: jest.fn(), // Default mock setup in beforeEach
-  fetchTypewriterReply: jest.fn().mockResolvedValue({ data: { content: 'mock AI reply' }, error: null }),
-  fetchShouldGenerateContinuation: jest.fn().mockResolvedValue({ data: { shouldGenerate: false }, error: null }),
+vi.mock('./apiService', () => ({
+  fetchNextFilmImage: vi.fn(), // Default mock setup in beforeEach
+  fetchTypewriterReply: vi.fn().mockResolvedValue({ data: { content: 'mock AI reply' }, error: null }),
+  fetchShouldGenerateContinuation: vi.fn().mockResolvedValue({ data: { shouldGenerate: false }, error: null }),
 }));
 
 // Mock utility functions (sound)
-jest.mock('./utils', () => {
+vi.mock('./utils', () => {
   const originalUtils = jest.requireActual('./utils');
   return {
     ...originalUtils,
@@ -28,10 +30,10 @@ jest.mock('./utils', () => {
 const localStorageMock = (() => {
   let store = {};
   return {
-    getItem: jest.fn((key) => store[key] || null),
-    setItem: jest.fn((key, value) => { store[key] = value.toString(); }),
-    clear: jest.fn(() => { store = {}; }),
-    removeItem: jest.fn(key => delete store[key]),
+    getItem: vi.fn((key) => store[key] || null),
+    setItem: vi.fn((key, value) => { store[key] = value.toString(); }),
+    clear: vi.fn(() => { store = {}; }),
+    removeItem: vi.fn(key => delete store[key]),
   };
 })();
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
@@ -43,7 +45,7 @@ import { playKeySound, playEnterSound, playEndOfPageSound } from './utils';
 
 describe('TypewriterFramework Integration Tests', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     localStorageMock.clear();
     localStorageMock.setItem('sessionId', 'test-session-id-123');
 
@@ -53,12 +55,12 @@ describe('TypewriterFramework Integration Tests', () => {
     fetchShouldGenerateContinuation.mockResolvedValue({ data: { shouldGenerate: false }, error: null });
 
 
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    // jest.runAllTimers(); // Ensure all timers are run before moving to next test
-    jest.useRealTimers();
+    // vi.runAllTimers(); // Ensure all timers are run before moving to next test
+    vi.useRealTimers();
   });
 
   const typeCharacter = (charKey) => {
@@ -79,7 +81,7 @@ describe('TypewriterFramework Integration Tests', () => {
     typeCharacter('H');
     typeCharacter('I');
     
-    act(() => { jest.advanceTimersByTime(250); }); // Advance for 2 * TYPING_ANIMATION_INTERVAL + buffer
+    act(() => { vi.advanceTimersByTime(250); }); // Advance for 2 * TYPING_ANIMATION_INTERVAL + buffer
 
     await waitFor(() => {
       // PaperDisplay renders lines. We expect one line element containing "HI"
@@ -90,12 +92,12 @@ describe('TypewriterFramework Integration Tests', () => {
     });
 
     pressEnter(container.firstChild); // container.firstChild is the .typewriter-container div
-    act(() => { jest.advanceTimersByTime(150); }); // TYPING_ANIMATION_INTERVAL for the newline
+    act(() => { vi.advanceTimersByTime(150); }); // TYPING_ANIMATION_INTERVAL for the newline
 
     typeCharacter('T');
-    act(() => { jest.advanceTimersByTime(150); });
+    act(() => { vi.advanceTimersByTime(150); });
     typeCharacter('O');
-    act(() => { jest.advanceTimersByTime(150); });
+    act(() => { vi.advanceTimersByTime(150); });
     
     await waitFor(() => {
       const lineElements = container.querySelectorAll('.typewriter-line .last-line-content');
@@ -116,10 +118,10 @@ describe('TypewriterFramework Integration Tests', () => {
     // Type MAX_LINES lines
     for (let i = 0; i < ACTUAL_MAX_LINES; i++) {
       typeCharacter('A'); // Type a character
-      act(() => { jest.advanceTimersByTime(150); }); // Allow character to process
+      act(() => { vi.advanceTimersByTime(150); }); // Allow character to process
       if (i < ACTUAL_MAX_LINES -1) { // Press Enter for all but the last line to make them distinct lines
           pressEnter(typewriterContainerDiv);
-          act(() => { jest.advanceTimersByTime(150); }); // Allow newline to process
+          act(() => { vi.advanceTimersByTime(150); }); // Allow newline to process
       }
     }
     
@@ -127,7 +129,7 @@ describe('TypewriterFramework Integration Tests', () => {
     // The next key press (Enter or character) should trigger the page turn.
     // Let's press Enter to trigger it.
     pressEnter(typewriterContainerDiv);
-    act(() => { jest.advanceTimersByTime(150); }); // For the Enter key to be processed by input buffer
+    act(() => { vi.advanceTimersByTime(150); }); // For the Enter key to be processed by input buffer
 
     // Page turn logic involves:
     // 1. playEndOfPageSound
@@ -137,13 +139,13 @@ describe('TypewriterFramework Integration Tests', () => {
     
     expect(playEndOfPageSound).toHaveBeenCalled();
     
-    act(() => { jest.advanceTimersByTime(900 + 10); }); // Scroll up animation + buffer
+    act(() => { vi.advanceTimersByTime(900 + 10); }); // Scroll up animation + buffer
 
     await waitFor(() => {
       expect(fetchNextFilmImage).toHaveBeenCalled();
     });
 
-    act(() => { jest.advanceTimersByTime(1200 + 10); }); // Slide animation + buffer
+    act(() => { vi.advanceTimersByTime(1200 + 10); }); // Slide animation + buffer
     
     // Verify new page content
     await waitFor(() => {
@@ -183,7 +185,7 @@ describe('TypewriterFramework Integration Tests', () => {
     // --- Create Page 1 ---
     PAGE1_TEXT.split('').forEach(char => {
       typeCharacter(char === '.' ? 'M' : char); // Use 'M' for '.' as '.' is not on keyboard
-      act(() => jest.advanceTimersByTime(150));
+      act(() => vi.advanceTimersByTime(150));
     });
     await waitFor(() => expect(screen.getByText(PAGE1_TEXT.replace('.','M'))).toBeInTheDocument());
 
@@ -191,12 +193,12 @@ describe('TypewriterFramework Integration Tests', () => {
     // --- Trigger Page Turn to Page 2 ---
     for (let i = 0; i < ACTUAL_MAX_LINES -1; i++) { // -1 because PAGE1_TEXT is already one line
       pressEnter(typewriterContainerDiv);
-      act(() => jest.advanceTimersByTime(150));
+      act(() => vi.advanceTimersByTime(150));
       typeCharacter('X'); // Fill lines
-      act(() => jest.advanceTimersByTime(150));
+      act(() => vi.advanceTimersByTime(150));
     }
     pressEnter(typewriterContainerDiv); // This should trigger the page turn
-    act(() => jest.advanceTimersByTime(150 + 900 + 1200 + 100)); // Input processing + scroll + fetch + slide + buffer
+    act(() => vi.advanceTimersByTime(150 + 900 + 1200 + 100)); // Input processing + scroll + fetch + slide + buffer
     
     await waitFor(() => {
       const filmBackground = screen.getByTestId('film-background-div');
@@ -207,14 +209,14 @@ describe('TypewriterFramework Integration Tests', () => {
     // --- Create Page 2 ---
     PAGE2_TEXT.split('').forEach(char => {
       typeCharacter(char === '.' ? 'M' : char);
-      act(() => jest.advanceTimersByTime(150));
+      act(() => vi.advanceTimersByTime(150));
     });
     await waitFor(() => expect(screen.getByText(PAGE2_TEXT.replace('.','M'))).toBeInTheDocument());
 
     // --- Click Prev Button ---
     const prevButton = screen.getByText('← Prev');
     fireEvent.click(prevButton);
-    act(() => jest.advanceTimersByTime(1200 + 100)); // Slide duration + buffer
+    act(() => vi.advanceTimersByTime(1200 + 100)); // Slide duration + buffer
 
     await waitFor(() => {
       // Should show Page 1 content and background (which was default at start)
@@ -229,7 +231,7 @@ describe('TypewriterFramework Integration Tests', () => {
     // --- Click Next Button ---
     const nextButton = screen.getByText('Next →');
     fireEvent.click(nextButton);
-    act(() => jest.advanceTimersByTime(1200 + 100)); // Slide duration + buffer
+    act(() => vi.advanceTimersByTime(1200 + 100)); // Slide duration + buffer
 
     await waitFor(() => {
       // Should show Page 2 content and background
@@ -265,11 +267,11 @@ describe('TypewriterFramework Integration Tests', () => {
     // Trigger fetchTypewriterReply via inactivity
     // Simulate a key press to set lastUserInputTime
     fireEvent.keyDown(container.firstChild, { key: 'A', code: 'KeyA' });
-    act(() => { jest.advanceTimersByTime(150); }); // Allow key press to register
+    act(() => { vi.advanceTimersByTime(150); }); // Allow key press to register
 
     // Advance timers for inactivity check (GHOSTWRITER_AI_TRIGGER_INTERVAL is 1000ms)
     // and inactivity threshold (15s)
-    act(() => { jest.advanceTimersByTime(16000); }); // > 15s + GHOSTWRITER_AI_TRIGGER_INTERVAL
+    act(() => { vi.advanceTimersByTime(16000); }); // > 15s + GHOSTWRITER_AI_TRIGGER_INTERVAL
 
     await waitFor(() => expect(fetchTypewriterReply).toHaveBeenCalledTimes(1));
 
@@ -292,7 +294,7 @@ describe('TypewriterFramework Integration Tests', () => {
     // 13 chars * 30ms = 390ms. 11 chars * 30ms = 330ms.
     // Total: 20(action) + 390(typing) + 30(pause) + 20(action) + 330(typing) = 790ms.
     // Adding a safety buffer.
-    act(() => { jest.advanceTimersByTime(1000); }); // Increased buffer for writing sequence
+    act(() => { vi.advanceTimersByTime(1000); }); // Increased buffer for writing sequence
 
     await waitFor(() => {
       const lineElements = container.querySelectorAll('.typewriter-line .last-line-content');
@@ -310,42 +312,36 @@ describe('TypewriterFramework Integration Tests', () => {
 
     // Verify fade_sequence processing
     // Fade 1
-    act(() => { jest.advanceTimersByTime(100); }); // Delay for fade phase 1
+    act(() => { vi.advanceTimersByTime(100); }); // Delay for fade phase 1
     await waitFor(() => {
       const lineContent = container.querySelector('.typewriter-line .last-line-content');
       expect(lineContent.textContent).toBe("Faded text 1");
     });
 
     // Fade 2
-    act(() => { jest.advanceTimersByTime(80); }); // Delay for fade phase 2
+    act(() => { vi.advanceTimersByTime(80); }); // Delay for fade phase 2
     await waitFor(() => {
       const lineContent = container.querySelector('.typewriter-line .last-line-content');
       expect(lineContent.textContent).toBe("Faded text 2");
     });
 
     // Fade 3 (to empty)
-    act(() => { jest.advanceTimersByTime(60); }); // Delay for fade phase 3
+    act(() => { vi.advanceTimersByTime(60); }); // Delay for fade phase 3
     await waitFor(() => {
       const lineContent = container.querySelector('.typewriter-line .last-line-content');
       expect(lineContent.textContent).toBe("");
     });
 
-    // Verify Final State (Text Reverts to userTextBeforeGhostFade)
-    // After fade sequence, text should revert to what was on page before fade started.
-    // In this test, userTextBeforeGhostFade was set when the sequence (containing fades) began.
-    // At that point, pageText was empty, and currentGhostText was being populated by writing_sequence.
-    // The snapshot for userTextBeforeGhostFade is taken from (pages[currentPage]?.text || '') + currentGhostTextString.
-    // So it should be "Initial text. More text."
-    // Sequence completion logic needs time.
-    act(() => { jest.advanceTimersByTime(100); }); // Buffer for sequence completion logic
+    // Verify Final State (Text is the content of the last fade)
+    // After the entire sequence completes, the page text should be the `to_text` of the *last* fade action.
+    // In this test's mock data, the last fade action has `to_text: ""`.
+    act(() => { vi.advanceTimersByTime(100); }); // Buffer for sequence completion logic
 
     await waitFor(() => {
-      const lineElements = container.querySelectorAll('.typewriter-line .last-line-content');
-      expect(lineElements.length).toBeGreaterThanOrEqual(1);
-      // This assertion needs to match how userTextBeforeGhostFade is set and restored.
-      // userTextBeforeGhostFade is set with the pageText + ghostText right before the first 'fade' action.
-      // In this case, it would be "Initial text. More text."
-      expect(lineElements[0].textContent).toBe(expectedTextAfterWriting);
+      // The content should now be permanently set to the final fade's content.
+      const lineContent = container.querySelector('.typewriter-line');
+      // It might be a single line element that is empty.
+      expect(lineContent.textContent).toBe("");
     });
   });
 });

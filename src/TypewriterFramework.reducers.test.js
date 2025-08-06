@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals'; // For jest.spyOn if needed for Date.now
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // --- Constants from TypewriterFramework.jsx (Copied for testing) ---
 const INITIAL_SCROLL_MODE = 'cinematic';
@@ -411,7 +411,7 @@ describe('ghostwriterReducer', () => {
 
   beforeEach(() => {
     // Mock Date.now() for consistent lastUserInputTime in initial state and RESET action
-    dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(mockTime);
+    dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(mockTime);
   });
 
   afterEach(() => {
