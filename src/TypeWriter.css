@@ -963,32 +963,32 @@
 }
 
 /* Cross-Fade Animation for Ghost Text Phases */
-/* Container styles are primarily inline in JSX for now */
-/* .cross-fade-ghost-container {} */
+.cross-fade-ghost-container {
+  position: relative;
+  min-height: 1em;
+  width: 100%;
+  /* Ensure proper stacking context for absolutely positioned children */
+  isolation: isolate;
+}
 
 /* Base for animated blocks within a typewriter line */
 .typewriter-line .ghost-text-block {
   /* display: inline-block; /* Set via inline style in PaperDisplay.jsx */
   /* vertical-align: baseline; /* Suggested for inline-block alignment */
   opacity: 0; /* Default to transparent; fade-in will make it visible, fade-out starts from visible */
+  will-change: opacity, transform, filter; /* Optimize for animation */
 }
 
 .typewriter-line .ghost-text-block.cross-fade-outgoing {
-  animation-name: dissolve-out !important;
-  animation-duration: 1.2s !important;
-  animation-timing-function: ease-in-out !important;
-  animation-fill-mode: forwards !important;
-  opacity: 1 !important; /* Start visible */
+  animation: dissolve-out 1.4s ease-in-out forwards;
+  opacity: 1; /* Start visible */
   /* position, top, left, width are set inline in PaperDisplay.jsx */
 }
 
 .typewriter-line .ghost-text-block.cross-fade-incoming {
-  animation-name: materialize-in !important;
-  animation-duration: 1.2s !important;
-  animation-timing-function: ease-in-out !important;
-  animation-fill-mode: forwards !important;
-  animation-delay: 0.3s !important; /* Delay to allow outgoing to start */
-  opacity: 0 !important; /* Start transparent */
+  animation: materialize-in 1.4s ease-in-out 0.4s forwards;
+  opacity: 0; /* Start transparent */
+  /* Delay to allow outgoing to start dissolving first */
 }
 
 /*
