@@ -8,10 +8,19 @@ import React, { useState, useEffect } from 'react';
 import MysteryMessenger from './Messanger';
 import CurtainIntro from './CurtainIntro';
 import NarrativeScene from './NarrativeScene';
-// import TypewriterFramework from './TypewriterFramework';
+import TypewriterFramework from './TypewriterFramework';
 import SeerPage from './pages/SeerPage';
+import WellDemoPage from './pages/WellDemoPage';
 
 
+// AUTOMATICALLY SWITCHED TO DEMO PAGE
+function App() {
+  return (
+    <WellDemoPage />
+  );
+}
+
+// ORIGINAL APP
 // function App() {
 //   const [curtainLifted, setCurtainLifted] = useState(false);
 //   const [flipped, setFlipped] = useState(false);
@@ -21,9 +30,9 @@ import SeerPage from './pages/SeerPage';
 //   const [locationLineVisible, setLocationLineVisible] = useState(false);
 //   const [shouldFadeText, setShouldFadeText] = useState(false);
 //   const [hasFadedOut, setHasFadedOut] = useState(false);
-
-
-
+// 
+// 
+// 
 //   // ✨ Trigger second line after timecard shows
 //   useEffect(() => {
 //     if (showTimecard) {
@@ -31,21 +40,21 @@ import SeerPage from './pages/SeerPage';
 //       return () => clearTimeout(timeout);
 //     }
 //   }, [showTimecard]);
-
+// 
 //   useEffect(() => {
 //     if (showCircleFade) {
 //       const timeout = setTimeout(() => {
 //         setShowTimecard(false);
 //         setLocationLineVisible(false);
 //       }, 11000); // 2.5 seconds after the iris begins (or longer if needed)
-  
+//   
 //       return () => clearTimeout(timeout);
 //     }
 //   }, [showCircleFade]);
-  
-
-  
-
+//   
+// 
+//   
+// 
 //   return (
 //     <div className="w-full h-full bg-black flex items-center justify-center">
 //       <div
@@ -64,17 +73,17 @@ import SeerPage from './pages/SeerPage';
 //                 className="w-full h-full object-contain rounded-xl shadow-xl"
 //               />
 //             </div>
-
+// 
 //             {/* Back side of the card (chat) */}
 //             <div className="flip-card-back">
 //               <MysteryMessenger
 //                 start={flipped}
 //                 onCurtainDropComplete={() => {
 //                   setCurtainShouldExpand(true);
-                
+//                 
 //                   setTimeout(() => setShowTimecard(true), 4000); // Line 1
 //                   setTimeout(() => setLocationLineVisible(true), 5500); // Line 2
-                
+//                 
 //                   setTimeout(() => setShowCircleFade(true), 8500); // Iris
 //                   setTimeout(() => setShouldFadeText(true), 11500); // Start fade
 //                   setTimeout(() => {
@@ -83,21 +92,21 @@ import SeerPage from './pages/SeerPage';
 //                     setLocationLineVisible(false);
 //                     setShouldFadeText(false);
 //                   }, 14000);
-                
+//                 
 //                 }}
 //               />
-
-            
+// 
+//             
 //               {showCircleFade && (
 //                 <div className="iris-mask pointer-events-none absolute inset-0 z-50">
 //                   <div className="iris-circle" />
 //                 </div>
 //               )}
-
+// 
 //             </div>
 //           </div>
 //         </div>
-
+// 
 //           <AnimatePresence>
 //     {hasFadedOut && (
 //       <motion.div
@@ -110,10 +119,10 @@ import SeerPage from './pages/SeerPage';
 //       </motion.div>
 //     )}
 //   </AnimatePresence>
-
+// 
 //   {/* Curtain overlays the card only until it's lifted */}
 //   {!curtainLifted && <CurtainIntro onReveal={() => setCurtainLifted(true)} />}
-
+// 
 //         <AnimatePresence>
 //         {showTimecard && !hasFadedOut && (
 //   <motion.div
@@ -133,9 +142,9 @@ import SeerPage from './pages/SeerPage';
 //   </motion.div>
 // )}
 //       </AnimatePresence>
-      
-
-        
+//       
+// 
+//         
 //       </div>
 //     </div>
 //   );
@@ -143,15 +152,14 @@ import SeerPage from './pages/SeerPage';
 
 
 
-
-function App() {
-  return (
-    <div className="w-screen h-screen bg-black text-white overflow-hidden">
-      <TypewriterFramework /> 
-      {/* <SeerPage /> */}
-    </div>
-  );
-}
+// function App() {
+//   return (
+//     <div className="w-screen h-screen bg-black text-white overflow-hidden">
+//       <TypewriterFramework /> 
+//       {/* <SeerPage /> */}
+//     </div>
+//   );
+// }
 
 
 
