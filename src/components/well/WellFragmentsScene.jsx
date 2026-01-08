@@ -81,10 +81,10 @@ const WellFragmentsScene = ({
                 spriteKey: getRandomSpriteKey(),
                 durationMs,
                 createdAt: Date.now(),
-                // Position & Scale - Centered and Smaller (Distant)
-                x: 45 + Math.random() * 10, // 45% to 55% (Center)
-                y: 75 + Math.random() * 10, // 65% to 75% (Lower)
-                rot: -10 + Math.random() * 20, // -10 to +10 deg
+                // Position & Rotation - Subtle variation around the well center
+                x: 47 + Math.random() * 6, // 47% to 53%
+                y: 62 + Math.random() * 8, // 62% to 70%
+                rot: -4 + Math.random() * 8, // -4 to +4 deg
                 scale: 0.35 + Math.random() * 0.20, // 0.35 to 0.55 (Much smaller/Distant)
             };
 
@@ -175,17 +175,6 @@ const WellFragmentsScene = ({
 
     // --- RENDER ---
 
-    const getFragmentStyle = () => {
-        if (!currentFragment) return {};
-        return {
-            left: `${currentFragment.x}%`,
-            top: `${currentFragment.y}%`,
-            transform: `translate(-50%, -50%) rotateX(45deg) rotate(${currentFragment.rot}deg) scale(${currentFragment.scale})`,
-            fontFamily: currentFragment.font,
-            color: currentFragment.color || '#423d33',
-        };
-    };
-
     return (
         <div className="wellScene">
             {/* Background Layer */}
@@ -193,26 +182,24 @@ const WellFragmentsScene = ({
                 <img className="wellBg" src={backgroundSrc} alt="Well Interior" />
             )}
 
-            {/* Fragment Layer */}
+            {/* Text Layer */}
             {currentFragment && (
                 <div
                     key={currentFragment.id}
-                    className={`fragment ${phase}`}
-                    style={getFragmentStyle()}
+                    className={`wellTextLayer ${phase}`}
+                    style={{
+                        left: `${currentFragment.x}%`,
+                        top: `${currentFragment.y}%`,
+                        transform: `translate(-50%, -50%) rotate(${currentFragment.rot}deg)`,
+                    }}
                     onClick={handleFragmentClick}
                 >
-                    <img
-                        className="fragmentImg"
-                        src={`/well/fragments/${currentFragment.spriteKey}.png`}
-                        alt="Paper Fragment"
-                        draggable={false}
-                    />
                     <div
-                        className="fragmentText"
+                        className="wellText"
+                        data-text={currentFragment.text}
                         style={{
-                            fontSize: `${currentFragment.size}px`,
-                            fontFamily: currentFragment.font,
-                            color: currentFragment.color
+                            fontSize: `${Math.max(currentFragment.size || 0, 42)}px`,
+                            fontFamily: currentFragment.font
                         }}
                     >
                         {currentFragment.text}

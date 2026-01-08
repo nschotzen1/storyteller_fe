@@ -33,7 +33,7 @@ export const fetchFragmentPayload = async () => {
     text: phrases[Math.floor(Math.random() * phrases.length)],
     font: "serif",
     color: colors[Math.floor(Math.random() * colors.length)],
-    size: 14 + Math.floor(Math.random() * 8), // 14px to 22px
+    size: 26 + Math.floor(Math.random() * 16), // 26px to 42px (Much Bigger)
     seconds_surfacing: 6 + Math.floor(Math.random() * 5) // 6 to 11 seconds
   };
 };
