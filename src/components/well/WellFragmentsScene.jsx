@@ -83,9 +83,9 @@ const WellFragmentsScene = ({
                 createdAt: Date.now(),
                 // Position & Scale - Centered and Smaller (Distant)
                 x: 45 + Math.random() * 10, // 45% to 55% (Center)
-                y: 45 + Math.random() * 10, // 45% to 55% (Center)
+                y: 75 + Math.random() * 10, // 65% to 75% (Lower)
                 rot: -10 + Math.random() * 20, // -10 to +10 deg
-                scale: 0.55 + Math.random() * 0.20, // 0.55 to 0.75 (Smaller/Deeper)
+                scale: 0.35 + Math.random() * 0.20, // 0.35 to 0.55 (Much smaller/Distant)
             };
 
             setCurrentFragment(newFragment);
@@ -180,7 +180,7 @@ const WellFragmentsScene = ({
         return {
             left: `${currentFragment.x}%`,
             top: `${currentFragment.y}%`,
-            transform: `translate(-50%, -50%) rotate(${currentFragment.rot}deg) scale(${currentFragment.scale})`,
+            transform: `translate(-50%, -50%) rotateX(45deg) rotate(${currentFragment.rot}deg) scale(${currentFragment.scale})`,
             fontFamily: currentFragment.font,
             color: currentFragment.color || '#423d33',
         };

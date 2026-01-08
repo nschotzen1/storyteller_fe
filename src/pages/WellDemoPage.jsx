@@ -23,7 +23,7 @@ const WellDemoPage = () => {
             <div className="flex-1 relative overflow-hidden">
                 <WellFragmentsScene
                     backgroundSrc="/well/well_background.png"
-                    fragmentSpriteKeys={['fragment_02']}
+                    fragmentSpriteKeys={['fragment_01', 'fragment_02', 'fragment_04']}
                     fetchFragment={fetchFragmentPayload}
                     onSave={handleSave}
                 />
