@@ -1,0 +1,451 @@
+.wellScene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+  /* Ensure enough height if container is flexible */
+  overflow: hidden;
+  background-color: #0d1117;
+  /* Dark fallback */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Times New Roman', serif;
+  user-select: none;
+
+  /* 3D Perspective for floating effect */
+  perspective: 800px;
+}
+
+.wellBg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Container for the fragment to handle positioning and rotation */
+.fragment {
+  position: absolute;
+  z-index: 10;
+  width: 340px;
+  /* Base width, scalable */
+  height: auto;
+  cursor: grab;
+  will-change: transform, opacity, filter;
+  /* transition: transform 0.2s ease-out; */
+  /* Interfere with animations? */
+  pointer-events: auto;
+  transform-style: preserve-3d;
+}
+
+.fragment::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 78%;
+  height: 28%;
+  border: 2px solid rgba(210, 170, 120, 0.32);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.5);
+  opacity: 0;
+  filter: blur(1px);
+  pointer-events: none;
+}
+
+.fragment::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 92%;
+  height: 60%;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 214, 160, 0.18), transparent 55%),
+    radial-gradient(circle at 50% 60%, rgba(20, 12, 8, 0.5), transparent 70%);
+  mix-blend-mode: screen;
+  opacity: 0.45;
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+/* Text-only layer centered in the well */
+.wellTextLayer {
+  position: absolute;
+  z-index: 5;
+  pointer-events: auto;
+}
+
+.wellTextLayer::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 140%;
+  height: 120%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 50% 55%, rgba(255, 210, 150, 0.22), rgba(0, 0, 0, 0) 70%);
+  filter: blur(16px);
+  opacity: 0.7;
+  z-index: -2;
+  pointer-events: none;
+}
+
+.wellTextLayer.surfacing {
+  animation: textReveal 1.6s ease-out forwards;
+}
+
+.wellTextLayer.floating {
+  animation: textFloat 6s ease-in-out infinite;
+}
+
+.wellTextLayer.sinking,
+.wellTextLayer.captured {
+  animation: textFadeOut 5.5s ease-in forwards;
+  pointer-events: none;
+}
+
+.wellText {
+  position: relative;
+  width: 520px;
+  max-width: 80vw;
+  text-align: center;
+  pointer-events: none;
+
+  color: #e7c892;
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.65),
+    0 0 6px rgba(255, 222, 170, 0.55),
+    0 0 12px rgba(170, 95, 35, 0.4);
+
+  font-weight: 500;
+  line-height: 1.22;
+  letter-spacing: 0.02em;
+  mix-blend-mode: screen;
+
+  /* Prevent overflow */
+  max-height: 60%;
+  overflow: hidden;
+  padding: 2px;
+  opacity: 1;
+  filter: none;
+  transform: rotate(-4deg) scale(1.15);
+  animation: textBurn 7s ease-in-out infinite;
+}
+
+.wellText::before {
+  content: '';
+  position: absolute;
+  inset: -22% -10%;
+  background: radial-gradient(circle at 50% 55%, rgba(255, 210, 150, 0.4), rgba(0, 0, 0, 0) 72%);
+  filter: blur(14px);
+  z-index: -1;
+}
+
+.wellText::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 115%;
+  height: 1.9em;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(95, 60, 25, 0.5), rgba(0, 0, 0, 0));
+  filter: blur(8px);
+  opacity: 0.65;
+  z-index: -1;
+}
+
+/* Water reflection */
+.wellText::before {
+  content: attr(data-text);
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 100%;
+  transform: translate(-50%, -12%) scaleY(-1);
+  color: #d8b477;
+  opacity: 0.35;
+  filter: blur(1.4px);
+  text-shadow:
+    0 0 6px rgba(120, 70, 25, 0.35);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 80%);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 80%);
+  animation: reflectRipple 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes textBurn {
+  0%,
+  100% {
+    opacity: 0.78;
+    filter: blur(0.2px);
+  }
+
+  50% {
+    opacity: 0.92;
+    filter: blur(0.45px);
+  }
+}
+
+@keyframes reflectRipple {
+  0%,
+  100% {
+    transform: translate(-50%, -12%) scaleY(-1) skewX(0deg);
+    filter: blur(1.2px);
+    opacity: 0.28;
+  }
+
+  50% {
+    transform: translate(-50%, -8%) scaleY(-1) skewX(-1.5deg);
+    filter: blur(1.8px);
+    opacity: 0.38;
+  }
+}
+
+@keyframes textReveal {
+  0% {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0.3px);
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes textFloat {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translateY(0);
+  }
+
+  50% {
+    transform: translate(-50%, -50%) translateY(-10px);
+  }
+}
+
+@keyframes textFadeOut {
+  0% {
+    opacity: 0.9;
+    filter: blur(0.3px);
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  40% {
+    opacity: 0.7;
+    filter: blur(1px);
+    transform: translate(-50%, -50%) scale(1.03);
+  }
+
+  75% {
+    opacity: 0.35;
+    filter: blur(2.6px);
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+
+  100% {
+    opacity: 0;
+    filter: blur(4.8px);
+    transform: translate(-50%, -50%) scale(1.12);
+  }
+}
+
+/* ANIMATIONS */
+
+/* 
+     Phase A: Surface 
+     Starts deep/small/blurry, rises to normal 
+  */
+.fragment.surfacing {
+  animation: surfaceIn 1.2s ease-out forwards;
+}
+
+.fragment.surfacing::before {
+  animation: rippleOut 1.2s ease-out forwards;
+}
+
+@keyframes surfaceIn {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4) translateY(50px);
+    filter: blur(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) translateY(0);
+    filter: blur(0.5px);
+    /* Slight underwater blur remains */
+  }
+}
+
+/* 
+     Phase B: Floating 
+     Gentle bobbing
+  */
+.fragment.floating {
+  animation: floatBob 6s ease-in-out infinite;
+}
+
+.fragment.floating::before {
+  animation: ripplePulse 5s ease-in-out infinite;
+  opacity: 0.25;
+}
+
+.fragment.floating .wellText {
+  animation: textShimmer 4.6s ease-in-out infinite;
+}
+
+@keyframes floatBob {
+
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translateY(0);
+  }
+
+  50% {
+    transform: translate(-50%, -50%) translateY(-10px);
+  }
+}
+
+/* 
+     Phase C: Sinking
+     Fades out, drifts down, blurs more
+  */
+.fragment.sinking {
+  animation: sinkOut 2s ease-in forwards;
+  pointer-events: none;
+  /* Hard to catch once sinking starts, but logic allows it if clicked fast */
+}
+
+.fragment.sinking::before {
+  animation: rippleOut 1.6s ease-out forwards;
+}
+
+.fragment.sinking .wellText {
+  animation: textDissolve 2s ease-in forwards;
+}
+
+@keyframes sinkOut {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    filter: blur(0.5px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6) translateY(60px);
+    filter: blur(10px);
+  }
+}
+
+/* 
+     Phase D: Captured
+     Flash bright, then lift up out of water
+  */
+.fragment.captured {
+  animation: captureUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  cursor: default;
+}
+
+.fragment.captured .wellText {
+  animation: textDissolve 0.8s ease-in forwards;
+}
+
+@keyframes captureUp {
+  0% {
+    filter: brightness(1.5) blur(0);
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  30% {
+    filter: brightness(2);
+    transform: translate(-50%, -50%) scale(1.1);
+    /* Pop effect */
+  }
+
+  100% {
+    opacity: 0;
+    filter: brightness(1);
+    transform: translate(-50%, -50%) scale(1.2) translateY(-100px);
+    /* Lift out */
+  }
+}
+
+@keyframes rippleOut {
+  0% {
+    opacity: 0.12;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+
+  60% {
+    opacity: 0.28;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.35);
+  }
+}
+
+@keyframes ripplePulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.92);
+    opacity: 0.12;
+  }
+
+  50% {
+    transform: translate(-50%, -50%) scale(1.05);
+    opacity: 0.26;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(0.92);
+    opacity: 0.12;
+  }
+}
+
+@keyframes textShimmer {
+
+  0%,
+  100% {
+    opacity: 0.9;
+    filter: blur(0.2px);
+  }
+
+  50% {
+    opacity: 1;
+    filter: blur(0.6px);
+  }
+}
+
+@keyframes textDissolve {
+  0% {
+    opacity: 0.85;
+    filter: blur(0.4px);
+    transform: translate(-50%, -50%) scale(1) rotate(-2deg);
+  }
+
+  70% {
+    opacity: 0.4;
+    filter: blur(1.8px);
+    transform: translate(-50%, -50%) scale(0.96) rotate(-2deg);
+  }
+
+  100% {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translate(-50%, -50%) scale(0.92) rotate(-2deg);
+  }
+}
