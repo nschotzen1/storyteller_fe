@@ -75,189 +75,42 @@
   pointer-events: none;
 }
 
-/* Text-only layer centered in the well */
-.wellTextLayer {
-  position: absolute;
-  z-index: 5;
-  pointer-events: auto;
-}
-
-.wellTextLayer::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 140%;
-  height: 120%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle at 50% 55%, rgba(255, 210, 150, 0.22), rgba(0, 0, 0, 0) 70%);
-  filter: blur(16px);
-  opacity: 0.7;
-  z-index: -2;
-  pointer-events: none;
-}
-
-.wellTextLayer.surfacing {
-  animation: textReveal 1.6s ease-out forwards;
-}
-
-.wellTextLayer.floating {
-  animation: textFloat 6s ease-in-out infinite;
-}
-
-.wellTextLayer.sinking,
-.wellTextLayer.captured {
-  animation: textFadeOut 5.5s ease-in forwards;
-  pointer-events: none;
-}
-
 .wellText {
-  position: relative;
-  width: 520px;
-  max-width: 80vw;
+  position: absolute;
+  top: 62%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-3deg) scale(1.7);
+  width: 90%;
   text-align: center;
   pointer-events: none;
 
-  color: #e7c892;
+  color: #a5811c;
   text-shadow:
-    0 0 2px rgba(0, 0, 0, 0.65),
-    0 0 6px rgba(255, 222, 170, 0.55),
-    0 0 12px rgba(170, 95, 35, 0.4);
+    0 0 2px rgba(0, 0, 0, 0.8),
+    0 0 10px rgba(255, 240, 200, 1),
+    0 0 22px rgba(255, 170, 70, 0.95),
+    0 0 44px rgba(180, 70, 20, 0.85),
+    0 0 70px rgba(120, 35, 10, 0.7);
 
   font-weight: 500;
-  line-height: 1.22;
-  letter-spacing: 0.02em;
+  line-height: 1.25;
   mix-blend-mode: screen;
 
   /* Prevent overflow */
-  max-height: 60%;
+  max-height: 80%;
   overflow: hidden;
   padding: 2px;
   opacity: 1;
   filter: none;
-  transform: rotate(-4deg) scale(1.15);
-  animation: textBurn 7s ease-in-out infinite;
 }
 
 .wellText::before {
   content: '';
   position: absolute;
-  inset: -22% -10%;
-  background: radial-gradient(circle at 50% 55%, rgba(255, 210, 150, 0.4), rgba(0, 0, 0, 0) 72%);
-  filter: blur(14px);
+  inset: -18% -8%;
+  background: radial-gradient(circle at 50% 55%, rgba(255, 215, 150, 0.55), rgba(0, 0, 0, 0) 70%);
+  filter: blur(10px);
   z-index: -1;
-}
-
-.wellText::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 115%;
-  height: 1.9em;
-  transform: translate(-50%, -50%);
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(95, 60, 25, 0.5), rgba(0, 0, 0, 0));
-  filter: blur(8px);
-  opacity: 0.65;
-  z-index: -1;
-}
-
-/* Water reflection */
-.wellText::before {
-  content: attr(data-text);
-  position: absolute;
-  left: 50%;
-  top: 100%;
-  width: 100%;
-  transform: translate(-50%, -12%) scaleY(-1);
-  color: #d8b477;
-  opacity: 0.35;
-  filter: blur(1.4px);
-  text-shadow:
-    0 0 6px rgba(120, 70, 25, 0.35);
-  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 80%);
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 80%);
-  animation: reflectRipple 5.5s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes textBurn {
-  0%,
-  100% {
-    opacity: 0.78;
-    filter: blur(0.2px);
-  }
-
-  50% {
-    opacity: 0.92;
-    filter: blur(0.45px);
-  }
-}
-
-@keyframes reflectRipple {
-  0%,
-  100% {
-    transform: translate(-50%, -12%) scaleY(-1) skewX(0deg);
-    filter: blur(1.2px);
-    opacity: 0.28;
-  }
-
-  50% {
-    transform: translate(-50%, -8%) scaleY(-1) skewX(-1.5deg);
-    filter: blur(1.8px);
-    opacity: 0.38;
-  }
-}
-
-@keyframes textReveal {
-  0% {
-    opacity: 0;
-    filter: blur(8px);
-    transform: translate(-50%, -50%) scale(0.85);
-  }
-
-  100% {
-    opacity: 1;
-    filter: blur(0.3px);
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-@keyframes textFloat {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) translateY(0);
-  }
-
-  50% {
-    transform: translate(-50%, -50%) translateY(-10px);
-  }
-}
-
-@keyframes textFadeOut {
-  0% {
-    opacity: 0.9;
-    filter: blur(0.3px);
-    transform: translate(-50%, -50%) scale(1);
-  }
-
-  40% {
-    opacity: 0.7;
-    filter: blur(1px);
-    transform: translate(-50%, -50%) scale(1.03);
-  }
-
-  75% {
-    opacity: 0.35;
-    filter: blur(2.6px);
-    transform: translate(-50%, -50%) scale(1.08);
-  }
-
-  100% {
-    opacity: 0;
-    filter: blur(4.8px);
-    transform: translate(-50%, -50%) scale(1.12);
-  }
 }
 
 /* ANIMATIONS */

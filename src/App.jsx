@@ -11,12 +11,13 @@ import NarrativeScene from './NarrativeScene';
 import TypewriterFramework from './TypewriterFramework';
 import SeerPage from './pages/SeerPage';
 import WellDemoPage from './pages/WellDemoPage';
+import StorytellerApiWorkbench from './components/storyteller/StorytellerApiWorkbench';
 
 
 // AUTOMATICALLY SWITCHED TO DEMO PAGE
 function App() {
   return (
-    <WellDemoPage />
+    <StorytellerApiWorkbench />
   );
 }
 
