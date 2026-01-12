@@ -1,0 +1,714 @@
+.apiWorkbench {
+  --accent: #d8b67f;
+  --accent-strong: #e6c897;
+  --accent-glow: rgba(216, 182, 127, 0.35);
+  --paper: rgba(216, 198, 160, 0.14);
+  --mist: rgba(255, 255, 255, 0.04);
+  --danger: #ff8b8b;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, rgba(76, 63, 47, 0.45), transparent 55%),
+    linear-gradient(160deg, #0f1218, #1a1511 60%, #0d0f13);
+  color: #f1e7d2;
+  padding: 32px 24px 56px;
+  font-family: 'Space Mono', monospace;
+}
+
+.theme-archivist {
+  --accent: #d8b67f;
+  --accent-strong: #e6c897;
+  --accent-glow: rgba(216, 182, 127, 0.35);
+  --paper: rgba(216, 198, 160, 0.18);
+}
+
+.theme-hunter {
+  --accent: #9bb1c3;
+  --accent-strong: #c2d4e2;
+  --accent-glow: rgba(155, 177, 195, 0.35);
+  --paper: rgba(140, 160, 178, 0.14);
+}
+
+.theme-oracle {
+  --accent: #e3c88b;
+  --accent-strong: #f5dfb2;
+  --accent-glow: rgba(227, 200, 139, 0.35);
+  --paper: rgba(235, 219, 188, 0.2);
+}
+
+.theme-defiler {
+  --accent: #b48aa8;
+  --accent-strong: #d4b0c5;
+  --accent-glow: rgba(180, 138, 168, 0.35);
+  --paper: rgba(172, 130, 156, 0.16);
+}
+
+.workbenchHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.7);
+  margin-bottom: 6px;
+}
+
+.workbenchHeader h1 {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(28px, 4vw, 42px);
+  margin: 0 0 6px;
+}
+
+.subhead {
+  max-width: 520px;
+  color: rgba(241, 231, 210, 0.75);
+  margin: 0;
+}
+
+.subheadTone {
+  color: rgba(241, 231, 210, 0.65);
+}
+
+.headerControls {
+  display: grid;
+  gap: 12px;
+  min-width: min(360px, 100%);
+}
+
+.headerControls label,
+.panel label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.7);
+}
+
+.headerControls input,
+.panel input,
+.panel textarea,
+.panel select {
+  background: rgba(15, 18, 24, 0.85);
+  border: 1px solid rgba(241, 231, 210, 0.2);
+  color: #f1e7d2;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-family: 'Space Mono', monospace;
+}
+
+.playerControls {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.playerMeta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.playerMeta label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.7);
+}
+
+.playerMeta input,
+.playerMeta select {
+  background: rgba(15, 18, 24, 0.85);
+  border: 1px solid rgba(241, 231, 210, 0.2);
+  color: #f1e7d2;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-family: 'Space Mono', monospace;
+}
+
+.playerTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.playerTab {
+  border-radius: 999px;
+  border: 1px solid rgba(241, 231, 210, 0.2);
+  padding: 6px 14px;
+  background: rgba(15, 18, 24, 0.65);
+  color: rgba(241, 231, 210, 0.85);
+  font-family: 'Space Mono', monospace;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.playerTab.active {
+  border-color: var(--accent-strong);
+  box-shadow: 0 6px 16px var(--accent-glow);
+  color: #f1e7d2;
+  transform: translateY(-1px);
+}
+
+.workbenchGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.panel {
+  background: rgba(15, 18, 24, 0.82);
+  border: 1px solid rgba(241, 231, 210, 0.12);
+  border-radius: 16px;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+}
+
+.panel.wide {
+  grid-column: 1 / -1;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.panelHeader h2 {
+  margin: 0;
+  font-size: 18px;
+  font-family: 'IM Fell English', serif;
+}
+
+.primary,
+.ghost {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-family: 'Space Mono', monospace;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primary {
+  background: var(--accent);
+  color: #1b1207;
+  box-shadow: 0 8px 18px var(--accent-glow);
+}
+
+.primary:disabled,
+.ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.ghost {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: #f1e7d2;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.primary:hover:not(:disabled),
+.ghost:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.primary:focus-visible,
+.ghost:focus-visible,
+.cardShell:focus-visible,
+.voiceChip:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.toggleRow,
+.filterRow,
+.listRow,
+.formGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.toggleRow {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.filterRow {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.listRow {
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.formGrid {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.formGrid .formSpan {
+  grid-column: 1 / -1;
+}
+
+.inlineToggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(241, 231, 210, 0.7);
+  font-size: 12px;
+}
+
+.jsonBlock {
+  background: rgba(9, 11, 16, 0.6);
+  border-radius: 12px;
+  border: 1px solid rgba(241, 231, 210, 0.1);
+  padding: 12px;
+}
+
+.jsonBlock p {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.jsonBlock pre {
+  margin: 0;
+  max-height: 220px;
+  overflow: auto;
+  font-size: 11px;
+  white-space: pre-wrap;
+  color: #f1e7d2;
+}
+
+.errorBanner {
+  border: 1px solid rgba(255, 120, 120, 0.4);
+  background: rgba(255, 120, 120, 0.12);
+  padding: 10px 14px;
+  border-radius: 12px;
+  margin-bottom: 18px;
+  color: #ffb5b5;
+}
+
+.cardSection {
+  margin-top: 32px;
+}
+
+.arenaSection {
+  margin-top: 28px;
+  display: grid;
+  gap: 16px;
+}
+
+.arenaHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.arenaHeader h2 {
+  margin: 0 0 4px;
+  font-family: 'IM Fell English', serif;
+}
+
+.arenaControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.arenaBlock {
+  background: rgba(15, 18, 24, 0.72);
+  border-radius: 16px;
+  border: 1px solid rgba(241, 231, 210, 0.12);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.arenaBlock h3 {
+  margin: 0;
+  font-size: 16px;
+  font-family: 'IM Fell English', serif;
+}
+
+.arenaStorytellers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.arenaStorytellerChip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 231, 210, 0.2);
+  background: rgba(9, 11, 16, 0.6);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.arenaMeta {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  color: rgba(241, 231, 210, 0.6);
+}
+
+.arenaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.arenaCard {
+  display: grid;
+  gap: 8px;
+}
+
+.arenaCard .cardActions {
+  display: none;
+}
+
+.arenaCard .cardFace {
+  cursor: default;
+}
+
+.voicesBlock {
+  margin-bottom: 18px;
+}
+
+.voicesLabel {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  color: rgba(241, 231, 210, 0.55);
+}
+
+.storytellerVoicesBar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.voiceChip {
+  border: 1px solid rgba(241, 231, 210, 0.2);
+  background: rgba(15, 18, 24, 0.65);
+  border-radius: 999px;
+  padding: 6px 12px;
+  color: #f1e7d2;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.voiceChip.active {
+  border-color: var(--accent-strong);
+  box-shadow: 0 6px 16px var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+.voiceStatus {
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: rgba(241, 231, 210, 0.6);
+}
+
+.voiceStatus.active {
+  color: rgba(166, 216, 178, 0.9);
+}
+
+.voiceStatus.in_mission {
+  color: rgba(236, 180, 120, 0.9);
+}
+
+.voiceStatus.inactive {
+  color: rgba(241, 231, 210, 0.45);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cardHeaderControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.layoutToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(9, 11, 16, 0.6);
+  border-radius: 999px;
+  padding: 6px 10px;
+  border: 1px solid rgba(241, 231, 210, 0.15);
+  font-size: 12px;
+}
+
+.layoutToggle span {
+  color: rgba(241, 231, 210, 0.6);
+}
+
+.layoutToggle button {
+  border: none;
+  background: transparent;
+  color: rgba(241, 231, 210, 0.75);
+  font-family: 'Space Mono', monospace;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.layoutToggle .toggleActive {
+  background: var(--paper);
+  color: #f1e7d2;
+}
+
+.spreadSelect {
+  display: inline-grid;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.7);
+}
+
+.spreadSelect select {
+  background: rgba(15, 18, 24, 0.85);
+  border: 1px solid rgba(241, 231, 210, 0.2);
+  color: #f1e7d2;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-family: 'Space Mono', monospace;
+}
+
+.cardHeader h2 {
+  font-family: 'IM Fell English', serif;
+  margin: 0 0 4px;
+}
+
+.cardMeta {
+  background: var(--paper);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.7);
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.cardShell {
+  background: rgba(14, 17, 22, 0.9);
+  border: 1px solid rgba(241, 231, 210, 0.15);
+  border-radius: 16px;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.cardShell.selected {
+  border-color: var(--accent-strong);
+  box-shadow: 0 10px 24px var(--accent-glow);
+}
+
+.cardShell.spread {
+  cursor: pointer;
+}
+
+.cardInner {
+  position: relative;
+  min-height: 280px;
+  transform-style: preserve-3d;
+  transition: transform 0.6s ease;
+}
+
+.cardInner.flipped {
+  transform: rotateY(180deg);
+}
+
+.cardFace {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(241, 231, 210, 0.12);
+  background: rgba(10, 12, 18, 0.9);
+  display: grid;
+  grid-template-rows: 160px 1fr;
+  cursor: pointer;
+}
+
+.cardBack {
+  transform: rotateY(180deg);
+}
+
+.cardImage {
+  background: rgba(8, 10, 14, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.cardImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cardPlaceholder {
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.6);
+  text-align: center;
+  padding: 12px;
+}
+
+.cardContent {
+  padding: 12px;
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.75);
+}
+
+.cardContent h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #f1e7d2;
+}
+
+.cardMetaLine {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: rgba(241, 231, 210, 0.65);
+}
+
+.cardActions {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.cardSpreadStage {
+  position: relative;
+  min-height: 420px;
+  padding: 24px 12px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(8, 10, 14, 0.65), rgba(15, 18, 24, 0.3));
+  overflow: hidden;
+}
+
+.cardSpreadSurface {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(216, 198, 160, 0.06), transparent 55%),
+    repeating-linear-gradient(
+      30deg,
+      rgba(255, 255, 255, 0.015),
+      rgba(255, 255, 255, 0.015) 6px,
+      rgba(0, 0, 0, 0.02) 6px,
+      rgba(0, 0, 0, 0.02) 12px
+    );
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.cardSpreadRow {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 380px;
+}
+
+.cardSpreadItem {
+  position: absolute;
+  left: 50%;
+  top: 40px;
+  transform: translateX(var(--spread-x)) translateY(calc(var(--spread-y) + var(--spread-lift, 0px) + var(--hover-lift, 0px)))
+    rotate(var(--spread-rot)) scale(var(--spread-scale, 1));
+  transition: transform 0.35s ease, box-shadow 0.2s ease;
+}
+
+.cardSpreadItem.selected {
+  --spread-lift: -18px;
+  --spread-scale: 1.03;
+}
+
+.cardSpreadItem:hover {
+  --hover-lift: -8px;
+}
+
+.emptyState {
+  color: rgba(241, 231, 210, 0.6);
+  font-size: 13px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(241, 231, 210, 0.2);
+}
+
+@media (max-width: 720px) {
+  .workbenchHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .headerControls {
+    width: 100%;
+  }
+
+  .panelHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .listRow {
+    grid-template-columns: 1fr;
+  }
+
+  .cardHeaderControls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .cardSpreadStage {
+    overflow-x: auto;
+  }
+
+  .cardSpreadRow {
+    min-width: 720px;
+  }
+
+  .cardSpreadItem {
+    top: 24px;
+  }
+}
