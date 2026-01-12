@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import './StorytellerApiWorkbench.css';
 import CardSpread, { SPREAD_PRESETS } from './CardSpread';
 import EntityCard from './EntityCard';
@@ -54,6 +54,9 @@ const THEMES = {
   }
 };
 
+const DEFAULT_FRAGMENT_TEXT =
+  'A wind-scoured pass with a rusted watchtower and a lone courier arriving at dusk.';
+
 const coerceStorytellers = (payload) => {
   if (!payload) return [];
   if (Array.isArray(payload)) return payload;
@@ -61,6 +64,48 @@ const coerceStorytellers = (payload) => {
   if (Array.isArray(payload.items)) return payload.items;
   return [];
 };
+
+const createPlayerState = (index) => ({
+  id: `player-${index + 1}`,
+  label: `Player ${index + 1}`,
+  fragmentText: DEFAULT_FRAGMENT_TEXT,
+  includeCards: true,
+  includeFront: true,
+  includeBack: true,
+  debugMode: true,
+  entityResponse: null,
+  storytellerResponse: null,
+  storytellerListResponse: null,
+  storytellerDetailResponse: null,
+  entitiesListResponse: null,
+  entityRefreshResponse: null,
+  missionResponse: null,
+  error: null,
+  busy: false,
+  cards: [],
+  cardFlips: {},
+  selectedCards: {},
+  cardLayoutMode: 'grid',
+  spreadPreset: 'arc',
+  activeStorytellerTheme: 'archivist',
+  activeStorytellerId: '',
+  storytellerCount: 3,
+  generateKeyImages: false,
+  entitiesFilter: {
+    mainEntityId: '',
+    isSubEntity: 'all'
+  },
+  selectedStorytellerId: '',
+  selectedEntityId: '',
+  refreshNote: 'Focus on hidden dangers or secret factions.',
+  missionForm: {
+    entityId: '',
+    storytellerId: '',
+    storytellingPoints: 12,
+    message: 'Investigate the source of the whispering lanterns.',
+    duration: 3
+  }
+});
 
 const pickThemeKey = (storyteller, index) => {
   const name = `${storyteller?.name || ''}`.toLowerCase();
@@ -75,66 +120,46 @@ const pickThemeKey = (storyteller, index) => {
 const StorytellerApiWorkbench = () => {
   const [apiBaseUrl, setApiBaseUrl] = useState('http://localhost:5001');
   const [sessionId, setSessionId] = useState('demo-1');
-  const [fragmentText, setFragmentText] = useState(
-    'A wind-scoured pass with a rusted watchtower and a lone courier arriving at dusk.'
-  );
-
-  const [includeCards, setIncludeCards] = useState(true);
-  const [includeFront, setIncludeFront] = useState(true);
-  const [includeBack, setIncludeBack] = useState(true);
-  const [debugMode, setDebugMode] = useState(true);
-
-  const [entityResponse, setEntityResponse] = useState(null);
-  const [storytellerResponse, setStorytellerResponse] = useState(null);
-  const [storytellerListResponse, setStorytellerListResponse] = useState(null);
-  const [storytellerDetailResponse, setStorytellerDetailResponse] = useState(null);
-  const [entitiesListResponse, setEntitiesListResponse] = useState(null);
-  const [entityRefreshResponse, setEntityRefreshResponse] = useState(null);
-  const [missionResponse, setMissionResponse] = useState(null);
-  const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(false);
-
-  const [cards, setCards] = useState([]);
-  const [cardFlips, setCardFlips] = useState({});
-  const [selectedCards, setSelectedCards] = useState({});
-  const [cardLayoutMode, setCardLayoutMode] = useState('grid');
-  const [spreadPreset, setSpreadPreset] = useState('arc');
-
-  const [activeStorytellerTheme, setActiveStorytellerTheme] = useState('archivist');
-  const [activeStorytellerId, setActiveStorytellerId] = useState('');
-
-  const [storytellerCount, setStorytellerCount] = useState(3);
-  const [generateKeyImages, setGenerateKeyImages] = useState(false);
-
-  const [entitiesFilter, setEntitiesFilter] = useState({
-    mainEntityId: '',
-    isSubEntity: 'all'
-  });
-
-  const [selectedStorytellerId, setSelectedStorytellerId] = useState('');
-  const [selectedEntityId, setSelectedEntityId] = useState('');
-
-  const [refreshNote, setRefreshNote] = useState('Focus on hidden dangers or secret factions.');
-
-  const [missionForm, setMissionForm] = useState({
-    entityId: '',
-    storytellerId: '',
-    storytellingPoints: 12,
-    message: 'Investigate the source of the whispering lanterns.',
-    duration: 3
-  });
+  const [playersCount, setPlayersCount] = useState(1);
+  const [players, setPlayers] = useState([createPlayerState(0)]);
+  const [activePlayerIndex, setActivePlayerIndex] = useState(0);
+  const [arenaCards, setArenaCards] = useState([]);
+  const [arenaStorytellers, setArenaStorytellers] = useState([]);
 
   const baseUrl = useMemo(() => {
     if (!apiBaseUrl) return '';
     return apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
   }, [apiBaseUrl]);
 
+  useEffect(() => {
+    setPlayers((prev) => {
+      const next = prev.slice(0, playersCount);
+      if (next.length < playersCount) {
+        for (let index = next.length; index < playersCount; index += 1) {
+          next.push(createPlayerState(index));
+        }
+      }
+      return next;
+    });
+  }, [playersCount]);
+
+  useEffect(() => {
+    setActivePlayerIndex((prev) => Math.min(prev, Math.max(playersCount - 1, 0)));
+  }, [playersCount]);
+
+  const updatePlayerAt = (index, updater) => {
+    setPlayers((prev) => prev.map((player, playerIndex) => (playerIndex === index ? updater(player) : player)));
+  };
+
+  const activePlayer = players[activePlayerIndex] || players[0];
+
   const storytellerVoices = useMemo(() => {
+    if (!activePlayer) return [];
     const combined = [];
-    coerceStorytellers(storytellerResponse).forEach((item, index) => {
+    coerceStorytellers(activePlayer.storytellerResponse).forEach((item, index) => {
       combined.push({ sourceIndex: index, ...item });
     });
-    coerceStorytellers(storytellerListResponse).forEach((item, index) => {
+    coerceStorytellers(activePlayer.storytellerListResponse).forEach((item, index) => {
       combined.push({ sourceIndex: index + 100, ...item });
     });
     const byId = new Map();
@@ -150,9 +175,9 @@ const StorytellerApiWorkbench = () => {
       });
     });
     return Array.from(byId.values());
-  }, [storytellerResponse, storytellerListResponse]);
+  }, [activePlayer]);
 
-  const activeThemeTone = THEMES[activeStorytellerTheme]?.tone || '';
+  const activeThemeTone = THEMES[activePlayer?.activeStorytellerTheme || 'archivist']?.tone || '';
 
   const getCardKey = (card, index) => card.entityId || card.entityName || `card-${index}`;
 
@@ -167,183 +192,319 @@ const StorytellerApiWorkbench = () => {
     return payload;
   };
 
-  const handleCardToggle = (cardKey) => {
-    setCardFlips((prev) => ({ ...prev, [cardKey]: !prev[cardKey] }));
+  const handleCardToggle = (playerIndex, cardKey) => {
+    updatePlayerAt(playerIndex, (player) => ({
+      ...player,
+      cardFlips: { ...player.cardFlips, [cardKey]: !player.cardFlips[cardKey] }
+    }));
   };
 
-  const handleCardSelect = (cardKey) => {
-    setSelectedCards((prev) => ({ ...prev, [cardKey]: !prev[cardKey] }));
+  const handleCardSelect = (playerIndex, cardKey) => {
+    updatePlayerAt(playerIndex, (player) => ({
+      ...player,
+      selectedCards: { ...player.selectedCards, [cardKey]: !player.selectedCards[cardKey] }
+    }));
   };
 
   const handleTextToEntity = async () => {
-    setBusy(true);
-    setError(null);
+    const playerIndex = activePlayerIndex;
+    const player = players[playerIndex];
+    if (!player) return;
+    updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: true, error: null }));
     try {
       const payload = await requestJson('/api/textToEntity', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          text: fragmentText,
-          includeCards,
-          includeFront,
-          includeBack,
-          debug: debugMode
+          playerId: player.id,
+          text: player.fragmentText,
+          includeCards: player.includeCards,
+          includeFront: player.includeFront,
+          includeBack: player.includeBack,
+          debug: player.debugMode
         })
       });
-      setEntityResponse(payload);
       const nextCards = clampCards(payload?.cards || []);
-      setCards(nextCards);
-      setCardFlips({});
-      setSelectedCards({});
+      updatePlayerAt(playerIndex, (prev) => ({
+        ...prev,
+        entityResponse: payload,
+        cards: nextCards,
+        cardFlips: {},
+        selectedCards: {}
+      }));
     } catch (err) {
-      setError(err.message);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, error: err.message }));
     } finally {
-      setBusy(false);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: false }));
     }
   };
 
   const handleTextToStoryteller = async () => {
-    setBusy(true);
-    setError(null);
+    const playerIndex = activePlayerIndex;
+    const player = players[playerIndex];
+    if (!player) return;
+    updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: true, error: null }));
     try {
       const payload = await requestJson('/api/textToStoryteller', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          text: fragmentText,
-          count: Number(storytellerCount),
-          generateKeyImages,
+          playerId: player.id,
+          text: player.fragmentText,
+          count: Number(player.storytellerCount),
+          generateKeyImages: player.generateKeyImages,
           mockImage: true,
-          debug: debugMode
+          debug: player.debugMode
         })
       });
-      setStorytellerResponse(payload);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, storytellerResponse: payload }));
     } catch (err) {
-      setError(err.message);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, error: err.message }));
     } finally {
-      setBusy(false);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: false }));
     }
   };
 
   const handleLoadStorytellers = async () => {
-    setBusy(true);
-    setError(null);
+    const playerIndex = activePlayerIndex;
+    const player = players[playerIndex];
+    if (!player) return;
+    updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: true, error: null }));
     try {
-      const payload = await requestJson(`/api/storytellers${buildQuery({ sessionId })}`);
-      setStorytellerListResponse(payload);
+      const payload = await requestJson(
+        `/api/storytellers${buildQuery({ sessionId, playerId: player.id })}`
+      );
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, storytellerListResponse: payload }));
     } catch (err) {
-      setError(err.message);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, error: err.message }));
     } finally {
-      setBusy(false);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: false }));
     }
   };
 
   const handleLoadStorytellerDetail = async () => {
-    if (!selectedStorytellerId) {
-      setError('Select a storyteller ID to load details.');
+    const playerIndex = activePlayerIndex;
+    const player = players[playerIndex];
+    if (!player) return;
+    if (!player.selectedStorytellerId) {
+      updatePlayerAt(playerIndex, (prev) => ({
+        ...prev,
+        error: 'Select a storyteller ID to load details.'
+      }));
       return;
     }
-    setBusy(true);
-    setError(null);
+    updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: true, error: null }));
     try {
       const payload = await requestJson(
-        `/api/storytellers/${selectedStorytellerId}${buildQuery({ sessionId })}`
+        `/api/storytellers/${player.selectedStorytellerId}${buildQuery({
+          sessionId,
+          playerId: player.id
+        })}`
       );
-      setStorytellerDetailResponse(payload);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, storytellerDetailResponse: payload }));
     } catch (err) {
-      setError(err.message);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, error: err.message }));
     } finally {
-      setBusy(false);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: false }));
     }
   };
 
   const handleLoadEntities = async () => {
-    setBusy(true);
-    setError(null);
+    const playerIndex = activePlayerIndex;
+    const player = players[playerIndex];
+    if (!player) return;
+    updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: true, error: null }));
     try {
       const payload = await requestJson(
         `/api/entities${buildQuery({
           sessionId,
-          mainEntityId: entitiesFilter.mainEntityId,
-          isSubEntity: entitiesFilter.isSubEntity === 'all' ? undefined : entitiesFilter.isSubEntity
+          playerId: player.id,
+          mainEntityId: player.entitiesFilter.mainEntityId,
+          isSubEntity:
+            player.entitiesFilter.isSubEntity === 'all'
+              ? undefined
+              : player.entitiesFilter.isSubEntity
         })}`
       );
-      setEntitiesListResponse(payload);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, entitiesListResponse: payload }));
     } catch (err) {
-      setError(err.message);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, error: err.message }));
     } finally {
-      setBusy(false);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: false }));
     }
   };
 
   const handleRefreshEntity = async () => {
-    if (!selectedEntityId) {
-      setError('Select an entity ID to refresh.');
+    const playerIndex = activePlayerIndex;
+    const player = players[playerIndex];
+    if (!player) return;
+    if (!player.selectedEntityId) {
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, error: 'Select an entity ID to refresh.' }));
       return;
     }
-    setBusy(true);
-    setError(null);
+    updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: true, error: null }));
     try {
-      const payload = await requestJson(`/api/entities/${selectedEntityId}/refresh`, {
+      const payload = await requestJson(`/api/entities/${player.selectedEntityId}/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          note: refreshNote,
-          debug: debugMode
+          playerId: player.id,
+          note: player.refreshNote,
+          debug: player.debugMode
         })
       });
-      setEntityRefreshResponse(payload);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, entityRefreshResponse: payload }));
     } catch (err) {
-      setError(err.message);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, error: err.message }));
     } finally {
-      setBusy(false);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: false }));
     }
   };
 
   const handleSendMission = async () => {
-    const entityId = missionForm.entityId || selectedEntityId;
-    const storytellerId = missionForm.storytellerId || selectedStorytellerId;
+    const playerIndex = activePlayerIndex;
+    const player = players[playerIndex];
+    if (!player) return;
+    const entityId = player.missionForm.entityId || player.selectedEntityId;
+    const storytellerId = player.missionForm.storytellerId || player.selectedStorytellerId;
     if (!entityId || !storytellerId) {
-      setError('Select both an entity and storyteller for the mission.');
+      updatePlayerAt(playerIndex, (prev) => ({
+        ...prev,
+        error: 'Select both an entity and storyteller for the mission.'
+      }));
       return;
     }
-    setBusy(true);
-    setError(null);
+    updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: true, error: null }));
     try {
       const payload = await requestJson('/api/sendStorytellerToEntity', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
+          playerId: player.id,
           entityId,
           storytellerId,
-          storytellingPoints: Number(missionForm.storytellingPoints),
-          message: missionForm.message,
-          duration: Number(missionForm.duration),
-          debug: debugMode
+          storytellingPoints: Number(player.missionForm.storytellingPoints),
+          message: player.missionForm.message,
+          duration: Number(player.missionForm.duration),
+          debug: player.debugMode
         })
       });
-      setMissionResponse(payload);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, missionResponse: payload }));
     } catch (err) {
-      setError(err.message);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, error: err.message }));
     } finally {
-      setBusy(false);
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: false }));
     }
   };
 
   const handleSelectVoice = (voice) => {
+    const playerIndex = activePlayerIndex;
     if (!voice) return;
-    setActiveStorytellerId(voice.id);
-    setActiveStorytellerTheme(voice.themeKey || 'archivist');
+    updatePlayerAt(playerIndex, (prev) => ({
+      ...prev,
+      activeStorytellerId: voice.id,
+      activeStorytellerTheme: voice.themeKey || 'archivist'
+    }));
   };
 
-  const selectedCardsCount = Object.values(selectedCards).filter(Boolean).length;
+  const handleAddSelectedCardsToArena = () => {
+    const playerIndex = activePlayerIndex;
+    const player = players[playerIndex];
+    if (!player) return;
+    const selectedKeys = Object.keys(player.selectedCards).filter((key) => player.selectedCards[key]);
+    if (selectedKeys.length === 0) {
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, error: 'Select cards to add to the arena.' }));
+      return;
+    }
+    setArenaCards((prev) => {
+      const next = [...prev];
+      const existing = new Set(prev.map((item) => item.id));
+      selectedKeys.forEach((key) => {
+        const card = player.cards.find((item, index) => getCardKey(item, index) === key);
+        if (!card) return;
+        const id = `${player.id}:${key}`;
+        if (existing.has(id)) return;
+        next.push({
+          id,
+          card,
+          playerId: player.id,
+          playerLabel: player.label
+        });
+        existing.add(id);
+      });
+      return next;
+    });
+  };
+
+  const handleAddStorytellerToArena = () => {
+    const playerIndex = activePlayerIndex;
+    const player = players[playerIndex];
+    if (!player) return;
+    const storytellerId = player.activeStorytellerId || player.selectedStorytellerId;
+    if (!storytellerId) {
+      updatePlayerAt(playerIndex, (prev) => ({
+        ...prev,
+        error: 'Select a storyteller voice or ID to add to the arena.'
+      }));
+      return;
+    }
+    const storyteller =
+      storytellerVoices.find((voice) => voice.id === storytellerId) ||
+      coerceStorytellers(player.storytellerListResponse).find(
+        (item) => item.id === storytellerId || item._id === storytellerId
+      );
+    if (!storyteller) {
+      updatePlayerAt(playerIndex, (prev) => ({
+        ...prev,
+        error: 'Unable to resolve storyteller details for the arena.'
+      }));
+      return;
+    }
+    setArenaStorytellers((prev) => {
+      const next = [...prev];
+      const id = `${player.id}:${storytellerId}`;
+      if (prev.some((item) => item.id === id)) return prev;
+      next.push({
+        id,
+        storyteller,
+        playerId: player.id,
+        playerLabel: player.label
+      });
+      return next;
+    });
+  };
+
+  const handleClearArena = () => {
+    setArenaCards([]);
+    setArenaStorytellers([]);
+  };
+
+  const selectedCardsCount = Object.values(activePlayer?.selectedCards || {}).filter(Boolean).length;
+
+  const activeThemeClass = activePlayer?.activeStorytellerTheme || 'archivist';
+
+  const activeBusy = activePlayer?.busy;
+  const activeError = activePlayer?.error;
+
+  const renderPlayerTab = (player, index) => (
+    <button
+      key={player.id}
+      type="button"
+      className={`playerTab ${index === activePlayerIndex ? 'active' : ''}`}
+      onClick={() => setActivePlayerIndex(index)}
+    >
+      {player.label}
+    </button>
+  );
+
+  if (!activePlayer) return null;
 
   return (
-    <div className={`apiWorkbench theme-${activeStorytellerTheme}`}>
+    <div className={`apiWorkbench theme-${activeThemeClass}`}>
       <header className="workbenchHeader">
         <div>
           <p className="eyebrow">Storyteller Backend Console</p>
@@ -374,9 +535,45 @@ const StorytellerApiWorkbench = () => {
         </div>
       </header>
 
-      {error && (
+      <section className="playerControls">
+        <div className="playerMeta">
+          <label>
+            Players
+            <select value={playersCount} onChange={(event) => setPlayersCount(Number(event.target.value))}>
+              {[1, 2, 3, 4].map((count) => (
+                <option key={count} value={count}>
+                  {count}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Active Player ID
+            <input
+              type="text"
+              value={activePlayer.id}
+              onChange={(event) =>
+                updatePlayerAt(activePlayerIndex, (prev) => ({ ...prev, id: event.target.value }))
+              }
+            />
+          </label>
+          <label>
+            Active Player Label
+            <input
+              type="text"
+              value={activePlayer.label}
+              onChange={(event) =>
+                updatePlayerAt(activePlayerIndex, (prev) => ({ ...prev, label: event.target.value }))
+              }
+            />
+          </label>
+        </div>
+        <div className="playerTabs">{players.map(renderPlayerTab)}</div>
+      </section>
+
+      {activeError && (
         <div className="errorBanner" role="alert">
-          {error}
+          {activeError}
         </div>
       )}
 
@@ -384,63 +581,98 @@ const StorytellerApiWorkbench = () => {
         <div className="panel">
           <div className="panelHeader">
             <h2>Text to Entity</h2>
-            <button type="button" className="primary" onClick={handleTextToEntity} disabled={busy}>
-              {busy ? 'Working...' : 'Generate Entities'}
+            <button
+              type="button"
+              className="primary"
+              onClick={handleTextToEntity}
+              disabled={activeBusy}
+            >
+              {activeBusy ? 'Working...' : 'Generate Entities'}
             </button>
           </div>
           <label>
             Input Fragment
             <textarea
               rows="4"
-              value={fragmentText}
-              onChange={(event) => setFragmentText(event.target.value)}
+              value={activePlayer.fragmentText}
+              onChange={(event) =>
+                updatePlayerAt(activePlayerIndex, (prev) => ({
+                  ...prev,
+                  fragmentText: event.target.value
+                }))
+              }
             />
           </label>
           <div className="toggleRow">
             <label>
               <input
                 type="checkbox"
-                checked={includeCards}
-                onChange={(event) => setIncludeCards(event.target.checked)}
+                checked={activePlayer.includeCards}
+                onChange={(event) =>
+                  updatePlayerAt(activePlayerIndex, (prev) => ({
+                    ...prev,
+                    includeCards: event.target.checked
+                  }))
+                }
               />
               Include cards
             </label>
             <label>
               <input
                 type="checkbox"
-                checked={includeFront}
-                onChange={(event) => setIncludeFront(event.target.checked)}
+                checked={activePlayer.includeFront}
+                onChange={(event) =>
+                  updatePlayerAt(activePlayerIndex, (prev) => ({
+                    ...prev,
+                    includeFront: event.target.checked
+                  }))
+                }
               />
               Include front
             </label>
             <label>
               <input
                 type="checkbox"
-                checked={includeBack}
-                onChange={(event) => setIncludeBack(event.target.checked)}
+                checked={activePlayer.includeBack}
+                onChange={(event) =>
+                  updatePlayerAt(activePlayerIndex, (prev) => ({
+                    ...prev,
+                    includeBack: event.target.checked
+                  }))
+                }
               />
               Include back
             </label>
             <label>
               <input
                 type="checkbox"
-                checked={debugMode}
-                onChange={(event) => setDebugMode(event.target.checked)}
+                checked={activePlayer.debugMode}
+                onChange={(event) =>
+                  updatePlayerAt(activePlayerIndex, (prev) => ({
+                    ...prev,
+                    debugMode: event.target.checked
+                  }))
+                }
               />
               Debug/mock
             </label>
           </div>
           <div className="jsonBlock">
             <p>Response</p>
-            <pre>{safeJson(entityResponse) || 'Run the request to see JSON.'}</pre>
+            <pre>{safeJson(activePlayer.entityResponse) || 'Run the request to see JSON.'}</pre>
           </div>
         </div>
 
         <div className="panel">
           <div className="panelHeader">
             <h2>Text to Storyteller</h2>
-            <button type="button" className="primary" onClick={handleTextToStoryteller} disabled={busy}>
-              {busy ? 'Working...' : 'Generate Storytellers'}
+            <button
+              type="button"
+              className="primary"
+              onClick={handleTextToStoryteller}
+              disabled={activeBusy}
+            >
+              {activeBusy ? 'Working...' : 'Generate Storytellers'}
             </button>
           </div>
           <label>
@@ -449,29 +681,39 @@ const StorytellerApiWorkbench = () => {
               type="number"
               min="1"
               max="10"
-              value={storytellerCount}
-              onChange={(event) => setStorytellerCount(event.target.value)}
+              value={activePlayer.storytellerCount}
+              onChange={(event) =>
+                updatePlayerAt(activePlayerIndex, (prev) => ({
+                  ...prev,
+                  storytellerCount: event.target.value
+                }))
+              }
             />
           </label>
           <label className="inlineToggle">
             <input
               type="checkbox"
-              checked={generateKeyImages}
-              onChange={(event) => setGenerateKeyImages(event.target.checked)}
+              checked={activePlayer.generateKeyImages}
+              onChange={(event) =>
+                updatePlayerAt(activePlayerIndex, (prev) => ({
+                  ...prev,
+                  generateKeyImages: event.target.checked
+                }))
+              }
             />
             Generate key images
           </label>
           <div className="jsonBlock">
             <p>Response</p>
-            <pre>{safeJson(storytellerResponse) || 'Run the request to see JSON.'}</pre>
+            <pre>{safeJson(activePlayer.storytellerResponse) || 'Run the request to see JSON.'}</pre>
           </div>
         </div>
 
         <div className="panel">
           <div className="panelHeader">
             <h2>Storyteller Listing</h2>
-            <button type="button" className="ghost" onClick={handleLoadStorytellers} disabled={busy}>
-              {busy ? 'Loading...' : 'Load Storytellers'}
+            <button type="button" className="ghost" onClick={handleLoadStorytellers} disabled={activeBusy}>
+              {activeBusy ? 'Loading...' : 'Load Storytellers'}
             </button>
           </div>
           <div className="listRow">
@@ -480,29 +722,34 @@ const StorytellerApiWorkbench = () => {
               <input
                 type="text"
                 placeholder="Paste storyteller id"
-                value={selectedStorytellerId}
-                onChange={(event) => setSelectedStorytellerId(event.target.value)}
+                value={activePlayer.selectedStorytellerId}
+                onChange={(event) =>
+                  updatePlayerAt(activePlayerIndex, (prev) => ({
+                    ...prev,
+                    selectedStorytellerId: event.target.value
+                  }))
+                }
               />
             </label>
-            <button type="button" className="primary" onClick={handleLoadStorytellerDetail} disabled={busy}>
+            <button type="button" className="primary" onClick={handleLoadStorytellerDetail} disabled={activeBusy}>
               Load Detail
             </button>
           </div>
           <div className="jsonBlock">
             <p>Response</p>
-            <pre>{safeJson(storytellerListResponse) || 'Load storytellers to see JSON.'}</pre>
+            <pre>{safeJson(activePlayer.storytellerListResponse) || 'Load storytellers to see JSON.'}</pre>
           </div>
           <div className="jsonBlock">
             <p>Detail Response</p>
-            <pre>{safeJson(storytellerDetailResponse) || 'Load a storyteller detail.'}</pre>
+            <pre>{safeJson(activePlayer.storytellerDetailResponse) || 'Load a storyteller detail.'}</pre>
           </div>
         </div>
 
         <div className="panel">
           <div className="panelHeader">
             <h2>Entity Listing</h2>
-            <button type="button" className="ghost" onClick={handleLoadEntities} disabled={busy}>
-              {busy ? 'Loading...' : 'Load Entities'}
+            <button type="button" className="ghost" onClick={handleLoadEntities} disabled={activeBusy}>
+              {activeBusy ? 'Loading...' : 'Load Entities'}
             </button>
           </div>
           <div className="filterRow">
@@ -510,18 +757,24 @@ const StorytellerApiWorkbench = () => {
               Main Entity ID
               <input
                 type="text"
-                value={entitiesFilter.mainEntityId}
+                value={activePlayer.entitiesFilter.mainEntityId}
                 onChange={(event) =>
-                  setEntitiesFilter((prev) => ({ ...prev, mainEntityId: event.target.value }))
+                  updatePlayerAt(activePlayerIndex, (prev) => ({
+                    ...prev,
+                    entitiesFilter: { ...prev.entitiesFilter, mainEntityId: event.target.value }
+                  }))
                 }
               />
             </label>
             <label>
               Sub-entities
               <select
-                value={entitiesFilter.isSubEntity}
+                value={activePlayer.entitiesFilter.isSubEntity}
                 onChange={(event) =>
-                  setEntitiesFilter((prev) => ({ ...prev, isSubEntity: event.target.value }))
+                  updatePlayerAt(activePlayerIndex, (prev) => ({
+                    ...prev,
+                    entitiesFilter: { ...prev.entitiesFilter, isSubEntity: event.target.value }
+                  }))
                 }
               >
                 <option value="all">All</option>
@@ -536,11 +789,16 @@ const StorytellerApiWorkbench = () => {
               <input
                 type="text"
                 placeholder="Paste entity id"
-                value={selectedEntityId}
-                onChange={(event) => setSelectedEntityId(event.target.value)}
+                value={activePlayer.selectedEntityId}
+                onChange={(event) =>
+                  updatePlayerAt(activePlayerIndex, (prev) => ({
+                    ...prev,
+                    selectedEntityId: event.target.value
+                  }))
+                }
               />
             </label>
-            <button type="button" className="primary" onClick={handleRefreshEntity} disabled={busy}>
+            <button type="button" className="primary" onClick={handleRefreshEntity} disabled={activeBusy}>
               Refresh Entity
             </button>
           </div>
@@ -548,25 +806,30 @@ const StorytellerApiWorkbench = () => {
             Refresh Note
             <textarea
               rows="2"
-              value={refreshNote}
-              onChange={(event) => setRefreshNote(event.target.value)}
+              value={activePlayer.refreshNote}
+              onChange={(event) =>
+                updatePlayerAt(activePlayerIndex, (prev) => ({
+                  ...prev,
+                  refreshNote: event.target.value
+                }))
+              }
             />
           </label>
           <div className="jsonBlock">
             <p>Response</p>
-            <pre>{safeJson(entitiesListResponse) || 'Load entities to see JSON.'}</pre>
+            <pre>{safeJson(activePlayer.entitiesListResponse) || 'Load entities to see JSON.'}</pre>
           </div>
           <div className="jsonBlock">
             <p>Refresh Response</p>
-            <pre>{safeJson(entityRefreshResponse) || 'Refresh an entity to see JSON.'}</pre>
+            <pre>{safeJson(activePlayer.entityRefreshResponse) || 'Refresh an entity to see JSON.'}</pre>
           </div>
         </div>
 
         <div className="panel wide">
           <div className="panelHeader">
             <h2>Mission Dispatch</h2>
-            <button type="button" className="primary" onClick={handleSendMission} disabled={busy}>
-              {busy ? 'Sending...' : 'Send Storyteller'}
+            <button type="button" className="primary" onClick={handleSendMission} disabled={activeBusy}>
+              {activeBusy ? 'Sending...' : 'Send Storyteller'}
             </button>
           </div>
           <div className="formGrid">
@@ -574,9 +837,12 @@ const StorytellerApiWorkbench = () => {
               Entity ID
               <input
                 type="text"
-                value={missionForm.entityId}
+                value={activePlayer.missionForm.entityId}
                 onChange={(event) =>
-                  setMissionForm((prev) => ({ ...prev, entityId: event.target.value }))
+                  updatePlayerAt(activePlayerIndex, (prev) => ({
+                    ...prev,
+                    missionForm: { ...prev.missionForm, entityId: event.target.value }
+                  }))
                 }
                 placeholder="Uses selected entity if empty"
               />
@@ -585,9 +851,12 @@ const StorytellerApiWorkbench = () => {
               Storyteller ID
               <input
                 type="text"
-                value={missionForm.storytellerId}
+                value={activePlayer.missionForm.storytellerId}
                 onChange={(event) =>
-                  setMissionForm((prev) => ({ ...prev, storytellerId: event.target.value }))
+                  updatePlayerAt(activePlayerIndex, (prev) => ({
+                    ...prev,
+                    missionForm: { ...prev.missionForm, storytellerId: event.target.value }
+                  }))
                 }
                 placeholder="Uses selected storyteller if empty"
               />
@@ -597,11 +866,11 @@ const StorytellerApiWorkbench = () => {
               <input
                 type="number"
                 min="1"
-                value={missionForm.storytellingPoints}
+                value={activePlayer.missionForm.storytellingPoints}
                 onChange={(event) =>
-                  setMissionForm((prev) => ({
+                  updatePlayerAt(activePlayerIndex, (prev) => ({
                     ...prev,
-                    storytellingPoints: event.target.value
+                    missionForm: { ...prev.missionForm, storytellingPoints: event.target.value }
                   }))
                 }
               />
@@ -611,9 +880,12 @@ const StorytellerApiWorkbench = () => {
               <input
                 type="number"
                 min="1"
-                value={missionForm.duration}
+                value={activePlayer.missionForm.duration}
                 onChange={(event) =>
-                  setMissionForm((prev) => ({ ...prev, duration: event.target.value }))
+                  updatePlayerAt(activePlayerIndex, (prev) => ({
+                    ...prev,
+                    missionForm: { ...prev.missionForm, duration: event.target.value }
+                  }))
                 }
               />
             </label>
@@ -621,16 +893,19 @@ const StorytellerApiWorkbench = () => {
               Mission Message
               <textarea
                 rows="3"
-                value={missionForm.message}
+                value={activePlayer.missionForm.message}
                 onChange={(event) =>
-                  setMissionForm((prev) => ({ ...prev, message: event.target.value }))
+                  updatePlayerAt(activePlayerIndex, (prev) => ({
+                    ...prev,
+                    missionForm: { ...prev.missionForm, message: event.target.value }
+                  }))
                 }
               />
             </label>
           </div>
           <div className="jsonBlock">
             <p>Response</p>
-            <pre>{safeJson(missionResponse) || 'Send a mission to see JSON.'}</pre>
+            <pre>{safeJson(activePlayer.missionResponse) || 'Send a mission to see JSON.'}</pre>
           </div>
         </div>
       </section>
@@ -641,14 +916,14 @@ const StorytellerApiWorkbench = () => {
             <p className="voicesLabel">Storyteller Voices</p>
             <StorytellerVoicesBar
               storytellers={storytellerVoices}
-              activeId={activeStorytellerId}
+              activeId={activePlayer.activeStorytellerId}
               onSelect={handleSelectVoice}
             />
           </div>
         )}
         <div className="cardHeader">
           <div>
-            <h2>Entity Cards</h2>
+            <h2>{activePlayer.label} Deck</h2>
             <p>Loaded from Text to Entity (max 8). Select cards and flip front/back.</p>
           </div>
           <div className="cardHeaderControls">
@@ -656,23 +931,35 @@ const StorytellerApiWorkbench = () => {
               <span>Layout</span>
               <button
                 type="button"
-                className={cardLayoutMode === 'grid' ? 'toggleActive' : ''}
-                onClick={() => setCardLayoutMode('grid')}
+                className={activePlayer.cardLayoutMode === 'grid' ? 'toggleActive' : ''}
+                onClick={() =>
+                  updatePlayerAt(activePlayerIndex, (prev) => ({ ...prev, cardLayoutMode: 'grid' }))
+                }
               >
                 Grid
               </button>
               <button
                 type="button"
-                className={cardLayoutMode === 'spread' ? 'toggleActive' : ''}
-                onClick={() => setCardLayoutMode('spread')}
+                className={activePlayer.cardLayoutMode === 'spread' ? 'toggleActive' : ''}
+                onClick={() =>
+                  updatePlayerAt(activePlayerIndex, (prev) => ({ ...prev, cardLayoutMode: 'spread' }))
+                }
               >
                 Spread
               </button>
             </div>
-            {cardLayoutMode === 'spread' && (
+            {activePlayer.cardLayoutMode === 'spread' && (
               <label className="spreadSelect">
                 Spread
-                <select value={spreadPreset} onChange={(event) => setSpreadPreset(event.target.value)}>
+                <select
+                  value={activePlayer.spreadPreset}
+                  onChange={(event) =>
+                    updatePlayerAt(activePlayerIndex, (prev) => ({
+                      ...prev,
+                      spreadPreset: event.target.value
+                    }))
+                  }
+                >
                   {SPREAD_PRESETS.map((preset) => (
                     <option key={preset.id} value={preset.id}>
                       {preset.label}
@@ -682,17 +969,20 @@ const StorytellerApiWorkbench = () => {
               </label>
             )}
             <div className="cardMeta">Selected: {selectedCardsCount}</div>
+            <button type="button" className="ghost" onClick={handleAddSelectedCardsToArena}>
+              Add Selected to Arena
+            </button>
           </div>
         </div>
-        {cardLayoutMode === 'grid' ? (
+        {activePlayer.cardLayoutMode === 'grid' ? (
           <div className="cardGrid">
-            {cards.length === 0 && (
+            {activePlayer.cards.length === 0 && (
               <div className="emptyState">No cards loaded yet. Run Text to Entity with cards.</div>
             )}
-            {cards.map((card, index) => {
+            {activePlayer.cards.map((card, index) => {
               const cardKey = getCardKey(card, index);
-              const flipped = cardFlips[cardKey];
-              const selected = selectedCards[cardKey];
+              const flipped = activePlayer.cardFlips[cardKey];
+              const selected = activePlayer.selectedCards[cardKey];
               const frontUrl = resolveAssetUrl(baseUrl, card.front?.imageUrl);
               const backUrl = resolveAssetUrl(baseUrl, card.back?.imageUrl);
               return (
@@ -704,26 +994,26 @@ const StorytellerApiWorkbench = () => {
                   flipped={flipped}
                   selected={selected}
                   layoutMode="grid"
-                  onFlip={() => handleCardToggle(cardKey)}
-                  onSelect={() => handleCardSelect(cardKey)}
+                  onFlip={() => handleCardToggle(activePlayerIndex, cardKey)}
+                  onSelect={() => handleCardSelect(activePlayerIndex, cardKey)}
                 />
               );
             })}
           </div>
         ) : (
           <>
-            {cards.length === 0 ? (
+            {activePlayer.cards.length === 0 ? (
               <div className="emptyState">No cards loaded yet. Run Text to Entity with cards.</div>
             ) : (
               <CardSpread
-                cards={cards}
-                presetId={spreadPreset}
+                cards={activePlayer.cards}
+                presetId={activePlayer.spreadPreset}
                 getCardKey={getCardKey}
-                selectedMap={selectedCards}
+                selectedMap={activePlayer.selectedCards}
                 renderCard={(card, index) => {
                   const cardKey = getCardKey(card, index);
-                  const flipped = cardFlips[cardKey];
-                  const selected = selectedCards[cardKey];
+                  const flipped = activePlayer.cardFlips[cardKey];
+                  const selected = activePlayer.selectedCards[cardKey];
                   const frontUrl = resolveAssetUrl(baseUrl, card.front?.imageUrl);
                   const backUrl = resolveAssetUrl(baseUrl, card.back?.imageUrl);
                   return (
@@ -734,8 +1024,8 @@ const StorytellerApiWorkbench = () => {
                       flipped={flipped}
                       selected={selected}
                       layoutMode="spread"
-                      onFlip={() => handleCardToggle(cardKey)}
-                      onSelect={() => handleCardSelect(cardKey)}
+                      onFlip={() => handleCardToggle(activePlayerIndex, cardKey)}
+                      onSelect={() => handleCardSelect(activePlayerIndex, cardKey)}
                     />
                   );
                 }}
@@ -743,6 +1033,66 @@ const StorytellerApiWorkbench = () => {
             )}
           </>
         )}
+      </section>
+
+      <section className="arenaSection">
+        <div className="arenaHeader">
+          <div>
+            <h2>Arena</h2>
+            <p>Shared space for entities and storytellers placed by any player.</p>
+          </div>
+          <div className="arenaControls">
+            <button type="button" className="ghost" onClick={handleAddStorytellerToArena}>
+              Add Storyteller to Arena
+            </button>
+            <button type="button" className="ghost" onClick={handleClearArena}>
+              Clear Arena
+            </button>
+          </div>
+        </div>
+        <div className="arenaBlock">
+          <h3>Storytellers</h3>
+          {arenaStorytellers.length === 0 ? (
+            <div className="emptyState">No storytellers placed yet.</div>
+          ) : (
+            <div className="arenaStorytellers">
+              {arenaStorytellers.map((item) => (
+                <div key={item.id} className="arenaStorytellerChip">
+                  <span>{item.storyteller?.name || item.storyteller?.id || 'Storyteller'}</span>
+                  <span className="arenaMeta">{item.playerLabel}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="arenaBlock">
+          <h3>Entities</h3>
+          {arenaCards.length === 0 ? (
+            <div className="emptyState">No entity cards placed yet.</div>
+          ) : (
+            <div className="arenaGrid">
+              {arenaCards.map((item) => {
+                const frontUrl = resolveAssetUrl(baseUrl, item.card.front?.imageUrl);
+                const backUrl = resolveAssetUrl(baseUrl, item.card.back?.imageUrl);
+                return (
+                  <div key={item.id} className="arenaCard">
+                    <EntityCard
+                      card={item.card}
+                      frontUrl={frontUrl}
+                      backUrl={backUrl}
+                      flipped={false}
+                      selected={false}
+                      layoutMode="grid"
+                      onFlip={() => {}}
+                      onSelect={() => {}}
+                    />
+                    <div className="arenaMeta">{item.playerLabel}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );

@@ -24,9 +24,16 @@ function App() {
 The UI defaults the API base URL to `http://localhost:5001` and a demo session ID.
 Change the inputs at the top of the page if you need a different host or session.
 
+## Multiplayer Setup
+
+The workbench supports 1–4 players sharing the same `sessionId`.
+Each player has their own `playerId`, deck, entities, and storytellers, and can switch screens with the player tabs.
+Use the Arena section to place selected cards or storytellers into the shared view.
+
 ## Supported Routes
 
 All routes are called against the configured API base URL.
+Every request includes the shared `sessionId` plus a per-player `playerId` (body for POST, query string for GET).
 
 ### POST `/api/textToEntity`
 
@@ -40,17 +47,17 @@ Card image URLs are resolved against the base URL so `/assets/...` works locally
 Generates storyteller personas from a fragment.
 The workbench exposes the `count`, `generateKeyImages`, and `debug` inputs, and always sets `mockImage` to `true`.
 
-### GET `/api/storytellers?sessionId=...`
+### GET `/api/storytellers?sessionId=...&playerId=...`
 
 Lists storytellers for the current session.
 The panel shows the raw response and lets you pick an ID for detail lookup.
 
-### GET `/api/storytellers/:id?sessionId=...`
+### GET `/api/storytellers/:id?sessionId=...&playerId=...`
 
 Fetches a storyteller detail and mission history.
 The workbench uses the selected storyteller ID input.
 
-### GET `/api/entities?sessionId=...&mainEntityId=...&isSubEntity=...`
+### GET `/api/entities?sessionId=...&playerId=...&mainEntityId=...&isSubEntity=...`
 
 Lists entities for a session with optional filters.
 Filters are available in the Entity Listing panel.
