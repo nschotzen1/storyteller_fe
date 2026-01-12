@@ -2,22 +2,27 @@ import './index.css';
 import './FlipCard.css';
 import './CurtainIntro.css';
 
-import { motion, AnimatePresence } from 'framer-motion';
-
-import React, { useState, useEffect } from 'react';
-import MysteryMessenger from './Messanger';
-import CurtainIntro from './CurtainIntro';
-import NarrativeScene from './NarrativeScene';
-import TypewriterFramework from './TypewriterFramework';
-import SeerPage from './pages/SeerPage';
-import WellDemoPage from './pages/WellDemoPage';
+import React, { useState } from 'react';
 import StorytellerApiWorkbench from './components/storyteller/StorytellerApiWorkbench';
+import PlayerLogin from './pages/PlayerLogin';
 
 
 // AUTOMATICALLY SWITCHED TO DEMO PAGE
 function App() {
+  const [login, setLogin] = useState(null);
+
+  if (!login) {
+    return <PlayerLogin onSubmit={setLogin} />;
+  }
+
   return (
-    <StorytellerApiWorkbench />
+    <StorytellerApiWorkbench
+      key={`${login.sessionId}-${login.playerName}`}
+      initialSessionId={login.sessionId}
+      initialPlayerName={login.playerName}
+      initialPlayerId={login.playerId}
+      lockPrimaryPlayerId
+    />
   );
 }
 

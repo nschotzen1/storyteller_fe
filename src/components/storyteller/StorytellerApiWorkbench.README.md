@@ -72,6 +72,16 @@ The workbench includes a note field and the `debug` toggle.
 Dispatches a mission using `entityId`, `storytellerId`, `storytellingPoints`, `message`, and `duration`.
 The mission form defaults can be overridden in the panel.
 
+### GET `/api/sessions/:sessionId/players`
+
+Returns the current players in a session (the login page uses it to show a count).
+Expected payloads are either `{ count: number }` or `{ players: [] }`.
+
+### POST `/api/sessions/:sessionId/players`
+
+Registers a new player in a session.
+The login page sends `{ playerName }` and can accept `{ playerId }` or `{ id }` in the response.
+
 ## Card Controls
 
 - Select: toggles a selection state for a card.
