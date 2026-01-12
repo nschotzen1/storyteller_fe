@@ -3,6 +3,7 @@ import './StorytellerApiWorkbench.css';
 import CardSpread, { SPREAD_PRESETS } from './CardSpread';
 import EntityCard from './EntityCard';
 import StorytellerVoicesBar from './StorytellerVoicesBar';
+import { fetchSessionPlayers } from '../../api/storytellerSession';
 
 const clampCards = (cards) => {
   if (!Array.isArray(cards)) return [];
@@ -65,47 +66,54 @@ const coerceStorytellers = (payload) => {
   return [];
 };
 
-const createPlayerState = (index) => ({
-  id: `player-${index + 1}`,
-  label: `Player ${index + 1}`,
-  fragmentText: DEFAULT_FRAGMENT_TEXT,
-  includeCards: true,
-  includeFront: true,
-  includeBack: true,
-  debugMode: true,
-  entityResponse: null,
-  storytellerResponse: null,
-  storytellerListResponse: null,
-  storytellerDetailResponse: null,
-  entitiesListResponse: null,
-  entityRefreshResponse: null,
-  missionResponse: null,
-  error: null,
-  busy: false,
-  cards: [],
-  cardFlips: {},
-  selectedCards: {},
-  cardLayoutMode: 'grid',
-  spreadPreset: 'arc',
-  activeStorytellerTheme: 'archivist',
-  activeStorytellerId: '',
-  storytellerCount: 3,
-  generateKeyImages: false,
-  entitiesFilter: {
-    mainEntityId: '',
-    isSubEntity: 'all'
-  },
-  selectedStorytellerId: '',
-  selectedEntityId: '',
-  refreshNote: 'Focus on hidden dangers or secret factions.',
-  missionForm: {
-    entityId: '',
-    storytellerId: '',
-    storytellingPoints: 12,
-    message: 'Investigate the source of the whispering lanterns.',
-    duration: 3
-  }
-});
+const createPlayerState = (index, options = {}) => {
+  const name = typeof options.playerName === 'string' ? options.playerName.trim() : '';
+  const explicitId = typeof options.playerId === 'string' ? options.playerId.trim() : '';
+  const isPrimary = index === 0 && (name || explicitId);
+  const id = isPrimary ? (explicitId || name) : `player-${index + 1}`;
+  const label = isPrimary ? (name || explicitId) : `Player ${index + 1}`;
+  return {
+    id,
+    label,
+    fragmentText: DEFAULT_FRAGMENT_TEXT,
+    includeCards: true,
+    includeFront: true,
+    includeBack: true,
+    debugMode: true,
+    entityResponse: null,
+    storytellerResponse: null,
+    storytellerListResponse: null,
+    storytellerDetailResponse: null,
+    entitiesListResponse: null,
+    entityRefreshResponse: null,
+    missionResponse: null,
+    error: null,
+    busy: false,
+    cards: [],
+    cardFlips: {},
+    selectedCards: {},
+    cardLayoutMode: 'grid',
+    spreadPreset: 'arc',
+    activeStorytellerTheme: 'archivist',
+    activeStorytellerId: '',
+    storytellerCount: 3,
+    generateKeyImages: false,
+    entitiesFilter: {
+      mainEntityId: '',
+      isSubEntity: 'all'
+    },
+    selectedStorytellerId: '',
+    selectedEntityId: '',
+    refreshNote: 'Focus on hidden dangers or secret factions.',
+    missionForm: {
+      entityId: '',
+      storytellerId: '',
+      storytellingPoints: 12,
+      message: 'Investigate the source of the whispering lanterns.',
+      duration: 3
+    }
+  };
+};
 
 const pickThemeKey = (storyteller, index) => {
   const name = `${storyteller?.name || ''}`.toLowerCase();
@@ -117,14 +125,22 @@ const pickThemeKey = (storyteller, index) => {
   return keys[index % keys.length];
 };
 
-const StorytellerApiWorkbench = () => {
+const StorytellerApiWorkbench = ({
+  initialSessionId = 'demo-1',
+  initialPlayerName = '',
+  initialPlayerId = '',
+  lockPrimaryPlayerId = false
+}) => {
   const [apiBaseUrl, setApiBaseUrl] = useState('http://localhost:5001');
-  const [sessionId, setSessionId] = useState('demo-1');
+  const [sessionId, setSessionId] = useState(initialSessionId);
   const [playersCount, setPlayersCount] = useState(1);
-  const [players, setPlayers] = useState([createPlayerState(0)]);
+  const [players, setPlayers] = useState([
+    createPlayerState(0, { playerName: initialPlayerName, playerId: initialPlayerId })
+  ]);
   const [activePlayerIndex, setActivePlayerIndex] = useState(0);
   const [arenaCards, setArenaCards] = useState([]);
   const [arenaStorytellers, setArenaStorytellers] = useState([]);
+  const [sessionPlayers, setSessionPlayers] = useState([]);
 
   const baseUrl = useMemo(() => {
     if (!apiBaseUrl) return '';
@@ -146,6 +162,46 @@ const StorytellerApiWorkbench = () => {
   useEffect(() => {
     setActivePlayerIndex((prev) => Math.min(prev, Math.max(playersCount - 1, 0)));
   }, [playersCount]);
+
+  useEffect(() => {
+    if (!baseUrl || !sessionId.trim()) {
+      setSessionPlayers([]);
+      return;
+    }
+
+    let isActive = true;
+    const loadPlayers = async () => {
+      try {
+        const payload = await fetchSessionPlayers(baseUrl, sessionId.trim());
+        const list = Array.isArray(payload?.players) ? payload.players : [];
+        if (isActive) setSessionPlayers(list);
+      } catch (err) {
+        if (isActive) setSessionPlayers([]);
+      }
+    };
+
+    loadPlayers();
+    return () => {
+      isActive = false;
+    };
+  }, [baseUrl, sessionId]);
+
+  useEffect(() => {
+    if (sessionPlayers.length === 0) return;
+
+    setPlayers((prev) =>
+      sessionPlayers.map((item, index) => {
+        const playerId = item.playerId || item.id || '';
+        const playerName = item.playerName || item.name || playerId || `Player ${index + 1}`;
+        const existing = prev.find((player) => player.id === playerId);
+        if (existing) {
+          return { ...existing, id: playerId, label: playerName };
+        }
+        return createPlayerState(index, { playerName, playerId });
+      })
+    );
+    setPlayersCount(sessionPlayers.length);
+  }, [sessionPlayers]);
 
   const updatePlayerAt = (index, updater) => {
     setPlayers((prev) => prev.map((player, playerIndex) => (playerIndex === index ? updater(player) : player)));
@@ -192,6 +248,18 @@ const StorytellerApiWorkbench = () => {
     return payload;
   };
 
+  const getPlayerIdForRequest = (playerIndex, player) => {
+    const playerId = player?.id?.trim();
+    if (!playerId) {
+      updatePlayerAt(playerIndex, (prev) => ({
+        ...prev,
+        error: 'Set a player ID before making requests.'
+      }));
+      return null;
+    }
+    return playerId;
+  };
+
   const handleCardToggle = (playerIndex, cardKey) => {
     updatePlayerAt(playerIndex, (player) => ({
       ...player,
@@ -210,6 +278,8 @@ const StorytellerApiWorkbench = () => {
     const playerIndex = activePlayerIndex;
     const player = players[playerIndex];
     if (!player) return;
+    const playerId = getPlayerIdForRequest(playerIndex, player);
+    if (!playerId) return;
     updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: true, error: null }));
     try {
       const payload = await requestJson('/api/textToEntity', {
@@ -217,7 +287,7 @@ const StorytellerApiWorkbench = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          playerId: player.id,
+          playerId,
           text: player.fragmentText,
           includeCards: player.includeCards,
           includeFront: player.includeFront,
@@ -244,6 +314,8 @@ const StorytellerApiWorkbench = () => {
     const playerIndex = activePlayerIndex;
     const player = players[playerIndex];
     if (!player) return;
+    const playerId = getPlayerIdForRequest(playerIndex, player);
+    if (!playerId) return;
     updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: true, error: null }));
     try {
       const payload = await requestJson('/api/textToStoryteller', {
@@ -251,7 +323,7 @@ const StorytellerApiWorkbench = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          playerId: player.id,
+          playerId,
           text: player.fragmentText,
           count: Number(player.storytellerCount),
           generateKeyImages: player.generateKeyImages,
@@ -271,10 +343,12 @@ const StorytellerApiWorkbench = () => {
     const playerIndex = activePlayerIndex;
     const player = players[playerIndex];
     if (!player) return;
+    const playerId = getPlayerIdForRequest(playerIndex, player);
+    if (!playerId) return;
     updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: true, error: null }));
     try {
       const payload = await requestJson(
-        `/api/storytellers${buildQuery({ sessionId, playerId: player.id })}`
+        `/api/storytellers${buildQuery({ sessionId, playerId })}`
       );
       updatePlayerAt(playerIndex, (prev) => ({ ...prev, storytellerListResponse: payload }));
     } catch (err) {
@@ -288,6 +362,8 @@ const StorytellerApiWorkbench = () => {
     const playerIndex = activePlayerIndex;
     const player = players[playerIndex];
     if (!player) return;
+    const playerId = getPlayerIdForRequest(playerIndex, player);
+    if (!playerId) return;
     if (!player.selectedStorytellerId) {
       updatePlayerAt(playerIndex, (prev) => ({
         ...prev,
@@ -300,7 +376,7 @@ const StorytellerApiWorkbench = () => {
       const payload = await requestJson(
         `/api/storytellers/${player.selectedStorytellerId}${buildQuery({
           sessionId,
-          playerId: player.id
+          playerId
         })}`
       );
       updatePlayerAt(playerIndex, (prev) => ({ ...prev, storytellerDetailResponse: payload }));
@@ -315,12 +391,14 @@ const StorytellerApiWorkbench = () => {
     const playerIndex = activePlayerIndex;
     const player = players[playerIndex];
     if (!player) return;
+    const playerId = getPlayerIdForRequest(playerIndex, player);
+    if (!playerId) return;
     updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: true, error: null }));
     try {
       const payload = await requestJson(
         `/api/entities${buildQuery({
           sessionId,
-          playerId: player.id,
+          playerId,
           mainEntityId: player.entitiesFilter.mainEntityId,
           isSubEntity:
             player.entitiesFilter.isSubEntity === 'all'
@@ -340,6 +418,8 @@ const StorytellerApiWorkbench = () => {
     const playerIndex = activePlayerIndex;
     const player = players[playerIndex];
     if (!player) return;
+    const playerId = getPlayerIdForRequest(playerIndex, player);
+    if (!playerId) return;
     if (!player.selectedEntityId) {
       updatePlayerAt(playerIndex, (prev) => ({ ...prev, error: 'Select an entity ID to refresh.' }));
       return;
@@ -351,7 +431,7 @@ const StorytellerApiWorkbench = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          playerId: player.id,
+          playerId,
           note: player.refreshNote,
           debug: player.debugMode
         })
@@ -368,6 +448,8 @@ const StorytellerApiWorkbench = () => {
     const playerIndex = activePlayerIndex;
     const player = players[playerIndex];
     if (!player) return;
+    const playerId = getPlayerIdForRequest(playerIndex, player);
+    if (!playerId) return;
     const entityId = player.missionForm.entityId || player.selectedEntityId;
     const storytellerId = player.missionForm.storytellerId || player.selectedStorytellerId;
     if (!entityId || !storytellerId) {
@@ -384,7 +466,7 @@ const StorytellerApiWorkbench = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          playerId: player.id,
+          playerId,
           entityId,
           storytellerId,
           storytellingPoints: Number(player.missionForm.storytellingPoints),
@@ -489,6 +571,8 @@ const StorytellerApiWorkbench = () => {
 
   const activeBusy = activePlayer?.busy;
   const activeError = activePlayer?.error;
+  const isPrimaryPlayerLocked = lockPrimaryPlayerId && Boolean(initialPlayerId) && activePlayerIndex === 0;
+  const hasRegisteredPlayers = sessionPlayers.length > 0;
 
   const renderPlayerTab = (player, index) => (
     <button
@@ -539,12 +623,33 @@ const StorytellerApiWorkbench = () => {
         <div className="playerMeta">
           <label>
             Players
-            <select value={playersCount} onChange={(event) => setPlayersCount(Number(event.target.value))}>
-              {[1, 2, 3, 4].map((count) => (
-                <option key={count} value={count}>
-                  {count}
-                </option>
-              ))}
+            <select
+              value={hasRegisteredPlayers ? activePlayer.id : playersCount}
+              onChange={(event) => {
+                if (hasRegisteredPlayers) {
+                  const selectedId = event.target.value;
+                  const nextIndex = players.findIndex((player) => player.id === selectedId);
+                  if (nextIndex !== -1) setActivePlayerIndex(nextIndex);
+                  return;
+                }
+                setPlayersCount(Number(event.target.value));
+              }}
+            >
+              {hasRegisteredPlayers
+                ? sessionPlayers.map((player, index) => {
+                    const playerId = player.playerId || player.id || `player-${index + 1}`;
+                    const playerName = player.playerName || player.name || playerId;
+                    return (
+                      <option key={playerId} value={playerId}>
+                        {playerName}
+                      </option>
+                    );
+                  })
+                : [1, 2, 3, 4].map((count) => (
+                    <option key={count} value={count}>
+                      {count}
+                    </option>
+                  ))}
             </select>
           </label>
           <label>
@@ -552,6 +657,7 @@ const StorytellerApiWorkbench = () => {
             <input
               type="text"
               value={activePlayer.id}
+              disabled={isPrimaryPlayerLocked}
               onChange={(event) =>
                 updatePlayerAt(activePlayerIndex, (prev) => ({ ...prev, id: event.target.value }))
               }
