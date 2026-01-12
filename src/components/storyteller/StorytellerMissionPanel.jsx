@@ -386,6 +386,19 @@ const StorytellerMissionPanel = ({
                 {storytellerDetail ? (
                   <>
                     <p className="detailTitle">{storytellerDetail.name}</p>
+                    {storytellerDetail.illustration && (
+                      <div className="storytellerIllustrationContainer">
+                        <img
+                          src={
+                            storytellerDetail.illustration.startsWith('http')
+                              ? storytellerDetail.illustration
+                              : `${baseUrl}${storytellerDetail.illustration.startsWith('/') ? '' : '/'}${storytellerDetail.illustration}`
+                          }
+                          alt={`${storytellerDetail.name} illustration`}
+                          className="storytellerIllustration"
+                        />
+                      </div>
+                    )}
                     <p className="detailMeta">
                       Status: <span className={`statusBadge ${storytellerDetail.status}`}>{storytellerDetail.status}</span>
                     </p>

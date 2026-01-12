@@ -215,6 +215,7 @@ const StorytellerApiWorkbench = () => {
           text: fragmentText,
           count: Number(storytellerCount),
           generateKeyImages,
+          mockImage: true,
           debug: debugMode
         })
       });

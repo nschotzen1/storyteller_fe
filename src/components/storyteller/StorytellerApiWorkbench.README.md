@@ -38,7 +38,7 @@ Card image URLs are resolved against the base URL so `/assets/...` works locally
 ### POST `/api/textToStoryteller`
 
 Generates storyteller personas from a fragment.
-The workbench exposes the `count`, `generateKeyImages`, and `debug` inputs.
+The workbench exposes the `count`, `generateKeyImages`, and `debug` inputs, and always sets `mockImage` to `true`.
 
 ### GET `/api/storytellers?sessionId=...`
 
