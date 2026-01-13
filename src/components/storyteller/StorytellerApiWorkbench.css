@@ -386,6 +386,12 @@
   cursor: default;
 }
 
+.arenaSync {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
 .voicesBlock {
   margin-bottom: 18px;
 }
