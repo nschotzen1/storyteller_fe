@@ -1273,6 +1273,16 @@ const StorytellerApiWorkbench = ({
             <h2>Arena</h2>
             <p>Shared space for entities and storytellers placed by any player.</p>
           </div>
+          <div className="arenaSummary">
+            <div className="arenaStat">
+              <span className="arenaStatLabel">Entities</span>
+              <span className="arenaStatValue">{arenaCards.length}</span>
+            </div>
+            <div className="arenaStat">
+              <span className="arenaStatLabel">Storytellers</span>
+              <span className="arenaStatValue">{arenaStorytellers.length}</span>
+            </div>
+          </div>
           <div className="arenaControls">
             <button type="button" className="ghost" onClick={handleAddStorytellerToArena}>
               Add Storyteller to Arena
@@ -1288,7 +1298,7 @@ const StorytellerApiWorkbench = ({
             </button>
           </div>
         </div>
-        <div className="arenaBlock">
+        <div className="arenaBlock arenaStorytellersBlock">
           <h3>Storytellers</h3>
           {arenaStorytellers.length === 0 ? (
             <div className="emptyState">No storytellers placed yet.</div>
@@ -1296,14 +1306,16 @@ const StorytellerApiWorkbench = ({
             <div className="arenaStorytellers">
               {arenaStorytellers.map((item) => (
                 <div key={item.id} className="arenaStorytellerChip">
-                  <span>{item.storyteller?.name || item.storyteller?.id || 'Storyteller'}</span>
+                  <span className="arenaStorytellerName">
+                    {item.storyteller?.name || item.storyteller?.id || 'Storyteller'}
+                  </span>
                   <span className="arenaMeta">{item.playerLabel}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
-        <div className="arenaBlock">
+        <div className="arenaBlock arenaEntitiesBlock">
           <h3>Entities</h3>
           {arenaCards.length === 0 ? (
             <div className="emptyState">No entity cards placed yet.</div>

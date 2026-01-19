@@ -1,0 +1,600 @@
+.arenaScene {
+  --ink: #f1e7d2;
+  --ink-dim: rgba(241, 231, 210, 0.7);
+  --accent: #d8b67f;
+  --accent-strong: #e6c897;
+  --amber: rgba(230, 191, 132, 0.35);
+  --stone: rgba(15, 18, 24, 0.9);
+  --mist: rgba(9, 11, 16, 0.6);
+  min-height: 100vh;
+  padding: 28px 24px 64px;
+  color: var(--ink);
+  background: radial-gradient(circle at top, rgba(90, 72, 50, 0.35), transparent 60%),
+    linear-gradient(160deg, #0c0f14, #1b1712 55%, #0e1016);
+  font-family: 'Space Mono', monospace;
+}
+
+.arenaTopBar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-end;
+}
+
+.arenaTitle h1 {
+  margin: 0 0 6px;
+  font-family: 'Cinzel', serif;
+  font-size: clamp(32px, 4vw, 46px);
+}
+
+.arenaEyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 11px;
+  margin-bottom: 6px;
+  color: rgba(241, 231, 210, 0.6);
+}
+
+.arenaSubhead {
+  margin: 0;
+  max-width: 520px;
+  color: rgba(241, 231, 210, 0.7);
+}
+
+.arenaSession {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.sessionChip {
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: rgba(9, 11, 16, 0.6);
+  border: 1px solid rgba(241, 231, 210, 0.18);
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.7);
+}
+
+.sessionChip span {
+  color: var(--ink);
+  margin-left: 6px;
+}
+
+.ghost,
+.primary {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-family: 'Space Mono', monospace;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primary {
+  background: var(--accent);
+  color: #1b1207;
+  box-shadow: 0 8px 18px rgba(216, 182, 127, 0.35);
+}
+
+.ghost {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(241, 231, 210, 0.25);
+  color: var(--ink);
+}
+
+.ghost.subtle {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.ghost:hover,
+.primary:hover {
+  transform: translateY(-1px);
+}
+
+.arenaSetup {
+  margin-top: 18px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  background: rgba(15, 18, 24, 0.75);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid rgba(241, 231, 210, 0.12);
+}
+
+.arenaSetup label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.7);
+}
+
+.arenaSetup .wide {
+  grid-column: 1 / -1;
+}
+
+.arenaSetup input,
+.arenaSetup textarea,
+.arenaSetup select {
+  background: rgba(9, 11, 16, 0.7);
+  border: 1px solid rgba(241, 231, 210, 0.2);
+  color: var(--ink);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-family: 'Space Mono', monospace;
+}
+
+.arenaSetupActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  grid-column: 1 / -1;
+}
+
+.arenaNotice {
+  margin-top: 16px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(241, 231, 210, 0.15);
+  color: var(--ink-dim);
+}
+
+.arenaLayout {
+  margin-top: 24px;
+  display: grid;
+  gap: 24px;
+}
+
+.arenaTable {
+  display: grid;
+  gap: 16px;
+}
+
+.arenaHex {
+  position: relative;
+  max-width: 980px;
+  margin: 0 auto;
+  aspect-ratio: 1.35 / 1;
+}
+
+.arenaHexSurface {
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  background: radial-gradient(circle at center, rgba(216, 182, 127, 0.12), transparent 60%),
+    linear-gradient(160deg, rgba(12, 14, 20, 0.92), rgba(24, 19, 15, 0.78));
+  border: 1px solid rgba(241, 231, 210, 0.14);
+  box-shadow: inset 0 0 120px rgba(10, 12, 16, 0.85);
+  clip-path: polygon(
+    25% 3%,
+    75% 3%,
+    97% 50%,
+    75% 97%,
+    25% 97%,
+    3% 50%
+  );
+  display: grid;
+  place-items: center;
+}
+
+.arenaCenter {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(90px, 1fr));
+  gap: 14px;
+  padding: 20px;
+  border-radius: 18px;
+  background: rgba(9, 11, 16, 0.5);
+  border: 1px solid rgba(241, 231, 210, 0.16);
+}
+
+.arenaCenterSlot,
+.arenaSideSlot {
+  min-height: 120px;
+  border-radius: 14px;
+  border: 1px dashed rgba(241, 231, 210, 0.2);
+  display: grid;
+  place-items: center;
+  background: rgba(9, 11, 16, 0.35);
+}
+
+.arenaCenterSlot.filled,
+.arenaSideSlot.filled {
+  border: 1px solid rgba(241, 231, 210, 0.25);
+}
+
+.arenaSides {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.arenaSide {
+  position: absolute;
+  display: grid;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.arenaSideLabel {
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.65);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.arenaSideLabel img {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(241, 231, 210, 0.3);
+}
+
+.arenaSideSlots {
+  display: flex;
+  gap: 10px;
+}
+
+.arenaSide-bottom {
+  left: 18%;
+  right: 18%;
+  bottom: -6%;
+  transform: translateY(8px);
+}
+
+.arenaSide-right {
+  right: -6%;
+  top: 30%;
+  transform: rotate(90deg);
+  transform-origin: right center;
+}
+
+.arenaSide-top {
+  left: 18%;
+  right: 18%;
+  top: -8%;
+  transform: rotate(180deg);
+  transform-origin: center;
+}
+
+.arenaSide-left {
+  left: -6%;
+  top: 30%;
+  transform: rotate(-90deg);
+  transform-origin: left center;
+}
+
+.arenaSide.sealed {
+  opacity: 0.35;
+}
+
+.arenaSide.inactive {
+  opacity: 0.7;
+  filter: saturate(0.85);
+}
+
+.arenaPreview {
+  max-width: 360px;
+  margin: 0 auto;
+  border-radius: 16px;
+  padding: 16px;
+  background: rgba(9, 11, 16, 0.7);
+  border: 1px solid rgba(241, 231, 210, 0.15);
+  color: var(--ink-dim);
+  display: grid;
+  gap: 12px;
+}
+
+.arenaPreview .arenaCardFace {
+  height: 160px;
+  border-radius: 12px;
+}
+
+.arenaPreviewText h3 {
+  margin: 0 0 6px;
+  font-family: 'IM Fell English', serif;
+  color: var(--ink);
+}
+
+.arenaPreviewText p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.privateZone {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(180px, 220px) 1fr minmax(180px, 240px);
+  align-items: start;
+}
+
+.deckStack {
+  position: relative;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(9, 11, 16, 0.65);
+  border: 1px solid rgba(241, 231, 210, 0.15);
+  min-height: 220px;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.deckTop {
+  width: 140px;
+  height: 180px;
+  border-radius: 14px;
+  background: linear-gradient(140deg, rgba(20, 24, 32, 0.9), rgba(8, 10, 14, 0.8));
+  border: 1px solid rgba(241, 231, 210, 0.12);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+.deckCount {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(241, 231, 210, 0.2);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.deckFan {
+  position: absolute;
+  left: 50%;
+  top: 36px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.deckStack:hover .deckFan {
+  opacity: 1;
+}
+
+.deckFanCard {
+  width: 60px;
+  height: 80px;
+  transform: rotate(-6deg);
+}
+
+.deckFanCard:nth-child(2) {
+  transform: rotate(0deg);
+}
+
+.deckFanCard:nth-child(3) {
+  transform: rotate(6deg);
+}
+
+.deckActions {
+  margin-top: 190px;
+}
+
+.spreadZone {
+  background: rgba(15, 18, 24, 0.75);
+  border-radius: 18px;
+  border: 1px solid rgba(241, 231, 210, 0.12);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.spreadHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.spreadHeader h2 {
+  margin: 0 0 4px;
+  font-family: 'IM Fell English', serif;
+}
+
+.spreadHeader p {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.6);
+}
+
+.spreadSelect label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.7);
+}
+
+.spreadSelect select {
+  background: rgba(9, 11, 16, 0.7);
+  border: 1px solid rgba(241, 231, 210, 0.2);
+  color: var(--ink);
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-family: 'Space Mono', monospace;
+}
+
+.spreadSurface {
+  position: relative;
+  min-height: 320px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(8, 10, 14, 0.6), rgba(15, 18, 24, 0.35));
+  border: 1px solid rgba(241, 231, 210, 0.12);
+  overflow: hidden;
+}
+
+.spreadSlot {
+  position: absolute;
+  left: var(--slot-x);
+  top: var(--slot-y);
+  transform: translate(-50%, -50%);
+  min-width: 140px;
+  min-height: 180px;
+  border-radius: 16px;
+  border: 1px dashed rgba(241, 231, 210, 0.2);
+  display: grid;
+  place-items: center;
+  color: rgba(241, 231, 210, 0.5);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.spreadSlot.filled {
+  border: none;
+  padding: 0;
+}
+
+.spreadCard {
+  width: 100%;
+}
+
+.spreadSlotLabel {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(9, 11, 16, 0.6);
+  border: 1px solid rgba(241, 231, 210, 0.2);
+}
+
+.storytellerDock {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(9, 11, 16, 0.7);
+  border: 1px solid rgba(241, 231, 210, 0.15);
+}
+
+.storytellerFrame {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 1px solid rgba(241, 231, 210, 0.4);
+  background: radial-gradient(circle at top, rgba(216, 182, 127, 0.35), rgba(9, 11, 16, 0.8));
+  display: grid;
+  place-items: center;
+  color: rgba(241, 231, 210, 0.6);
+  font-size: 12px;
+}
+
+.storytellerFrame img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.storytellerInfo h3 {
+  margin: 0 0 4px;
+  font-family: 'IM Fell English', serif;
+}
+
+.storytellerInfo p {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.6);
+}
+
+.storytellerDock label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(241, 231, 210, 0.7);
+}
+
+.storytellerDock select {
+  background: rgba(9, 11, 16, 0.7);
+  border: 1px solid rgba(241, 231, 210, 0.2);
+  color: var(--ink);
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-family: 'Space Mono', monospace;
+}
+
+.arenaCardMini {
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(9, 11, 16, 0.75);
+  border: 1px solid rgba(241, 231, 210, 0.15);
+  color: var(--ink);
+}
+
+.arenaCardMiniLabel {
+  font-size: 11px;
+  text-align: center;
+}
+
+.arenaCardMiniActions {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.arenaCardFace {
+  height: 110px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(12, 14, 20, 0.7);
+  display: grid;
+  place-items: center;
+}
+
+.arenaCardFace img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.slotMarker {
+  font-size: 11px;
+  color: rgba(241, 231, 210, 0.5);
+}
+
+@media (max-width: 980px) {
+  .arenaHex {
+    aspect-ratio: 1.1 / 1;
+  }
+
+  .privateZone {
+    grid-template-columns: 1fr;
+  }
+
+  .deckActions {
+    margin-top: 160px;
+  }
+}
+
+@media (max-width: 720px) {
+  .arenaHex {
+    aspect-ratio: 1 / 1;
+  }
+
+  .arenaCenter {
+    grid-template-columns: repeat(2, minmax(90px, 1fr));
+  }
+
+  .arenaSide-right,
+  .arenaSide-left {
+    display: none;
+  }
+
+  .arenaSide-top {
+    top: -10%;
+  }
+
+  .arenaSide-bottom {
+    bottom: -10%;
+  }
+}

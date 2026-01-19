@@ -3,7 +3,7 @@ import './FlipCard.css';
 import './CurtainIntro.css';
 
 import React, { useState } from 'react';
-import StorytellerApiWorkbench from './components/storyteller/StorytellerApiWorkbench';
+import StorytellerArenaConsole from './components/storyteller/StorytellerArenaConsole';
 import PlayerLogin from './pages/PlayerLogin';
 
 
@@ -16,7 +16,7 @@ function App() {
   }
 
   return (
-    <StorytellerApiWorkbench
+    <StorytellerArenaConsole
       key={`${login.sessionId}-${login.playerName}`}
       initialSessionId={login.sessionId}
       initialPlayerName={login.playerName}
