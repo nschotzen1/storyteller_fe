@@ -438,7 +438,7 @@ const TypewriterFramework = (props) => {
   } = typingState;
 
   const [ghostwriterState, dispatchGhostwriter] = useReducer(ghostwriterReducer, initialGhostwriterState);
-  const [userTextBeforeGhostFade, setUserTextBeforeGhostFade] = useState('');
+  const [userTextPrefix, setUserTextPrefix] = useState('');
   const [isGhostwritingDisabledPostFade, setIsGhostwritingDisabledPostFade] = useState(false);
   const [wordCountAtFadeEnd, setWordCountAtFadeEnd] = useState(0);
   const {
@@ -753,11 +753,11 @@ const TypewriterFramework = (props) => {
     return () => clearInterval(interval);
   }, [keyTextures]);
 
-  // --- Reset userTextBeforeGhostFade ---
+  // --- Reset userTextPrefix ---
   useEffect(() => {
     if (!typingState.isProcessingSequence) {
-      setUserTextBeforeGhostFade('');
-      console.log('[Fade] Sequence not processing. Cleared userTextBeforeGhostFade.');
+      setUserTextPrefix('');
+      console.log('[Fade] Sequence not processing. Cleared userTextPrefix.');
     }
   }, [typingState.isProcessingSequence]);
 
@@ -912,23 +912,18 @@ const TypewriterFramework = (props) => {
           }, currentAction.delay);
           break;
         case 'fade': {
-          // Dispatch to update PaperDisplay with current fade phase's text and phase number
-          // This will make PaperDisplay render the current state, and its key change should trigger animation
-          dispatchTyping({
-            type: typingActionTypes.SET_FADE_STATE,
-            payload: {
-              isActive: true, // Keep fade active
-              prev_text: typingState.fadeState.to_text || (pages[currentPage]?.text || '') + (Array.isArray(typingState.currentGhostText) ? typingState.currentGhostText.map(g=>g.char).join('') : typingState.currentGhostText || ''), // Previous target or initial text
-              to_text: currentAction.to_text,
-              phase: currentAction.phase
-            }
-          });
-
-          // Log for debugging this specific step
-          console.log('[FadeHandler] Dispatching SET_FADE_STATE for phase:', currentAction.phase, 'to_text:', currentAction.to_text, 'Delay:', currentAction.delay);
-
           timeoutId = setTimeout(() => {
-            console.log('[FadeHandler] Timeout complete for phase:', currentAction.phase, 'Dispatching PROCESS_NEXT_ACTION.');
+            // After the delay, update the page's text to be the user's original prefix plus the new faded text.
+            setPages(prev => {
+              const updatedPages = [...prev];
+              if (updatedPages[currentPage]) {
+                updatedPages[currentPage] = { ...updatedPages[currentPage], text: userTextPrefix + currentAction.to_text };
+              }
+              return updatedPages;
+            });
+            // Also clear any ghost text from the initial writing sequence.
+            dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: '' });
+            // Then, proceed to the next action in the sequence.
             dispatchTyping({ type: typingActionTypes.PROCESS_NEXT_ACTION });
           }, currentAction.delay);
           break;
@@ -964,16 +959,16 @@ const TypewriterFramework = (props) => {
 
       const currentPageText = pages[currentPage]?.text || '';
 
-      if (userTextBeforeGhostFade !== '') {
-        // If userTextBeforeGhostFade is set, it means a fade sequence has likely just completed.
+      if (userTextPrefix !== '') {
+        // If userTextPrefix is set, it means a fade sequence has likely just completed.
         // The page text should be what was captured before the fade.
-        const currentText = userTextBeforeGhostFade; // Capture for consistent use
+        const currentText = userTextPrefix; // Capture for consistent use
         setPages(prev => {
           const updatedPages = [...prev];
           if (updatedPages[currentPage]) {
             updatedPages[currentPage] = { ...updatedPages[currentPage], text: currentText };
           }
-          console.log('[SequenceComplete] Applied userTextBeforeGhostFade. Text set to:', currentText);
+          console.log('[SequenceComplete] Applied userTextPrefix. Text set to:', currentText);
           return updatedPages;
         });
 
@@ -1027,7 +1022,7 @@ const TypewriterFramework = (props) => {
     typingState.isProcessingSequence, 
     typingState.actionSequence, 
     typingState.currentActionIndex, 
-    typingState.fadeState.isActive, 
+    typingState.fadeState.isActive,
     // typingState.currentGhostText, // Removed as per instruction
     dispatchTyping, 
     dispatchGhostwriter, 
@@ -1035,7 +1030,7 @@ const TypewriterFramework = (props) => {
     currentPage, 
     setPages,
     typingState.isProcessingInitialFadeSequence,
-    userTextBeforeGhostFade, // Added
+    userTextPrefix, // Added
     typingState.preFadeSnapshot, // Added
     props.shouldGenerateTypeWriterResponse, // Added
     setIsGhostwritingDisabledPostFade, // Added
@@ -1085,8 +1080,8 @@ const TypewriterFramework = (props) => {
         if (sequenceToDispatch) {
             if (hasFadeActions) {
                 const currentTextForUser = pages[currentPage]?.text || '';
-                setUserTextBeforeGhostFade(currentTextForUser);
-                console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextBeforeGhostFade:', currentTextForUser);
+                setUserTextPrefix(currentTextForUser);
+                console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextPrefix:', currentTextForUser);
             }
             if (reply.metadata) { // Ensure metadata exists before trying to set it
               setCurrentFontStyles(reply.metadata);
@@ -1144,8 +1139,8 @@ const TypewriterFramework = (props) => {
           if (sequenceToDispatch) {
               if (hasFadeActions) {
                   const currentTextForUser = pages[currentPage]?.text || '';
-                  setUserTextBeforeGhostFade(currentTextForUser);
-                  console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextBeforeGhostFade:', currentTextForUser);
+                  setUserTextPrefix(currentTextForUser);
+                  console.log('[Fade] Ghostwriter sequence with fades starting. Saving userTextPrefix:', currentTextForUser);
               }
               if (reply.metadata) { // Ensure metadata exists before trying to set it
                 setCurrentFontStyles(reply.metadata);
@@ -1235,7 +1230,7 @@ const TypewriterFramework = (props) => {
 
   // Update lastGeneratedLength to the length of the fully committed text
   dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: newTextForPage.length });
-  
+
   dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
   dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
 };
@@ -1340,7 +1335,7 @@ const TypewriterFramework = (props) => {
         nextFilmBgUrl={nextFilmBgUrl}
         prevText={prevText}
         nextText={nextText}
-        userText={userTextBeforeGhostFade}
+        userText={userTextPrefix}
         MAX_LINES={MAX_LINES}
         TOP_OFFSET={TOP_OFFSET}
         BOTTOM_PADDING={BOTTOM_PADDING}

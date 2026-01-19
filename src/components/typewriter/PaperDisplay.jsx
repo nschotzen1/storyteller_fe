@@ -98,7 +98,7 @@ const PaperDisplay = ({
   ? ghostText
   : (ghostText || '').split('').map((char, idx) => ({ char, ghost: false, key: idx }));
 
-  
+
   if (currentFontStyles) {
     if (currentFontStyles.font) textStyles.fontFamily = currentFontStyles.font;
     if (currentFontStyles.font_size) textStyles.fontSize = currentFontStyles.font_size;
@@ -135,7 +135,7 @@ const PaperDisplay = ({
   // --- PAGE SLIDE JSX (forwards/backwards) ---
   // This function was moved from TypewriterFramework.jsx
   const getSlideX = () => slideDir === SLIDE_DIRECTION_LEFT ? slideX : -slideX;
-  
+
   const renderSlideWrapper = () => (
     <div
       className="film-slide-wrapper animating"
@@ -364,20 +364,20 @@ const PaperDisplay = ({
                   const originalLines = fullCombinedText.split('\n');
 
                   const allLinesToRender = originalLines.slice(0, MAX_LINES);
-                  
+
                   return allLinesToRender.map((line, lineIdx) => {
                     const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
-                    
+
                     let currentLineGlobalStartOffset = 0;
                     for(let i=0; i < lineIdx; i++) {
-                      currentLineGlobalStartOffset += originalLines[i].length + 1; 
+                      currentLineGlobalStartOffset += originalLines[i].length + 1;
                     }
 
-                    let currentOffsetWithinLine = 0; 
-                    
+                    let currentOffsetWithinLine = 0;
+
                     const segments = line.includes(SPECIAL_KEY_TEXT)
                       ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
-                      : [line]; 
+                      : [line];
 
                     const processedSegments = segments.map((segment, segmentIdx) => {
                       if (segment === SPECIAL_KEY_TEXT) {
@@ -388,7 +388,7 @@ const PaperDisplay = ({
                         const segmentChars = segment.split('').map((char, charIdxInSegment) => {
                           const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
                           const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
-                          
+
                           if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
                             // Only animate the most recently added ghost letter
                             const ghostIdx = charGlobalIndex - pageTextLength;
@@ -425,7 +425,7 @@ const PaperDisplay = ({
                         <span className="last-line-content">
                           {processedSegments}
 
-                            
+
                               {isLastLineOfRenderedSet && showCursor && (
                                 <span
                                   className={"striker-cursor"}

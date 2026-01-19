@@ -41,25 +41,35 @@ export const fetchTypewriterReply = async (text, sessionId) => {
   }
 };
 
-// Use axios or fetch—here’s a fetch version for clarity:
-export async function fetchShouldGenerateContinuation(currentText, latestAddition, latestPauseSeconds, lastGhostwriterWordCount) {
+export const fetchShouldGenerateContinuation = async (currentText, latestAddition, latestPauseSeconds, lastGhostwriterWordCount) => {
   if (!latestAddition) {
+    // Return a consistent shape, even for early exits.
     return { data: { shouldGenerate: false }, error: null };
   }
-  const res = await fetch(`${SERVER}/api/shouldGenerateContinuation`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      currentText,
-      latestAddition,
-      latestPauseSeconds,
-      lastGhostwriterWordCount, // new field!
-    }),
-  });
-  return await res.json();
-}
+  try {
+    const response = await fetch(`${SERVER}/api/shouldGenerateContinuation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        currentText,
+        latestAddition,
+        latestPauseSeconds,
+        lastGhostwriterWordCount, // new field!
+      }),
+    });
+    if (!response.ok) {
+      console.error(`API error in fetchShouldGenerateContinuation: ${response.status} ${response.statusText}`);
+      return { data: null, error: { message: `API error: ${response.status} ${response.statusText}`, status: response.status } };
+    }
+    const data = await response.json();
+    return { data, error: null };
+  } catch (error) {
+    console.error("Network error fetching shouldGenerateContinuation:", error);
+    return { data: null, error: { message: error.message } };
+  }
+};
 
 export const fetchSeerCards = async () => {
   try {
