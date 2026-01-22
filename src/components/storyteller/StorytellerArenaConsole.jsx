@@ -176,17 +176,30 @@ const StorytellerArenaConsole = ({
     let isActive = true;
     const loadPlayers = async () => {
       try {
-        const payload = await fetchSessionPlayers(baseUrl, sessionId.trim());
+        const payload = await fetchSessionPlayers(baseUrl, sessionId.trim(), {
+          mockApiCalls: MOCK_API_CALLS
+        });
         const list = Array.isArray(payload?.players) ? payload.players : [];
         if (!isActive) return;
-        if (list.length) {
-          setPlayers((prev) =>
-            prev.map((player, index) => ({
+        if (!list.length) return;
+        setPlayers((prev) => {
+          const next = prev.slice(0, Math.max(list.length, 1));
+          if (next.length < list.length) {
+            for (let index = next.length; index < list.length; index += 1) {
+              next.push(createPlayerState(index));
+            }
+          }
+          return next.map((player, index) => {
+            const item = list[index];
+            if (!item) return player;
+            return {
               ...player,
-              label: list[index]?.playerName || player.label
-            }))
-          );
-        }
+              id: item.playerId || item.id || player.id,
+              label: item.playerName || player.label
+            };
+          });
+        });
+        setPlayersCount((prev) => Math.max(prev, list.length));
       } catch (err) {
         if (isActive) {
           setNotice('Unable to fetch session players.');
@@ -353,16 +366,21 @@ const StorytellerArenaConsole = ({
         setNotice('Deck is empty.');
         return prev;
       }
-      const nextSlotIndex = prev.spreadSlots.findIndex((slot) => !slot.cardInstanceId);
-      if (nextSlotIndex === -1) {
+      const openSlots = prev.spreadSlots.filter((slot) => !slot.cardInstanceId);
+      if (!openSlots.length) {
         setNotice('No open spread slot.');
         return prev;
       }
-      const [nextCard, ...restDeck] = prev.deck;
-      const nextSlots = prev.spreadSlots.map((slot, index) =>
-        index === nextSlotIndex ? { ...slot, cardInstanceId: nextCard } : slot
-      );
-      return { ...prev, deck: restDeck, spreadSlots: nextSlots };
+      const drawCount = Math.min(openSlots.length, prev.deck.length);
+      const drawnCards = prev.deck.slice(0, drawCount);
+      let drawIndex = 0;
+      const nextSlots = prev.spreadSlots.map((slot) => {
+        if (slot.cardInstanceId || drawIndex >= drawnCards.length) return slot;
+        const nextCardId = drawnCards[drawIndex];
+        drawIndex += 1;
+        return { ...slot, cardInstanceId: nextCardId };
+      });
+      return { ...prev, deck: prev.deck.slice(drawCount), spreadSlots: nextSlots };
     });
   };
 
@@ -581,6 +599,43 @@ const StorytellerArenaConsole = ({
       setCardInstances(nextInstances);
       setArenaSnapshot(JSON.stringify(arena, null, 2));
       setNotice('Arena loaded.');
+    } catch (err) {
+      setNotice(err.message);
+    }
+  };
+
+  const handleSyncSession = async () => {
+    if (!sessionId.trim()) {
+      setNotice('Set a session ID before syncing the session.');
+      return;
+    }
+    try {
+      const payload = await fetchSessionPlayers(baseUrl, sessionId.trim(), {
+        mockApiCalls: MOCK_API_CALLS
+      });
+      const list = Array.isArray(payload?.players) ? payload.players : [];
+      if (list.length) {
+        setPlayers((prev) => {
+          const next = prev.slice(0, Math.max(list.length, 1));
+          if (next.length < list.length) {
+            for (let index = next.length; index < list.length; index += 1) {
+              next.push(createPlayerState(index));
+            }
+          }
+          return next.map((player, index) => {
+            const item = list[index];
+            if (!item) return player;
+            return {
+              ...player,
+              id: item.playerId || item.id || player.id,
+              label: item.playerName || player.label
+            };
+          });
+        });
+        setPlayersCount((prev) => Math.max(prev, list.length));
+      }
+      await handleLoadArena();
+      setNotice('Session synced.');
     } catch (err) {
       setNotice(err.message);
     }
@@ -872,6 +927,9 @@ const StorytellerArenaConsole = ({
           <div className="consolePanel">
             <h3>Arena Sync</h3>
             <div className="consoleButtonRow">
+              <button type="button" className="ghost" onClick={handleSyncSession}>
+                Sync Session
+              </button>
               <button type="button" className="ghost" onClick={handleLoadArena}>
                 Load Arena
               </button>
