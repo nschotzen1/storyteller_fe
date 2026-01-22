@@ -36,6 +36,50 @@ const resolveAssetUrl = (base, url) => {
   return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
+const normalizeArenaCards = (payload) => {
+  const arena = payload?.arena || payload;
+  const cards = arena?.entities || arena?.cards || [];
+  if (!Array.isArray(cards)) return [];
+  return cards
+    .map((item, index) => {
+      if (!item) return null;
+      const card = item.card || item.entity || item;
+      if (!card) return null;
+      const baseId = card.entityId || card.entityName || card.name || `card-${index}`;
+      const playerId = item.playerId || card.playerId || '';
+      const id = item.id || `${playerId || 'player'}:${baseId}`;
+      return {
+        id,
+        card,
+        playerId,
+        playerLabel: item.playerLabel || item.playerName || playerId || 'Player'
+      };
+    })
+    .filter(Boolean);
+};
+
+const normalizeArenaStorytellers = (payload) => {
+  const arena = payload?.arena || payload;
+  const storytellers = arena?.storytellers || [];
+  if (!Array.isArray(storytellers)) return [];
+  return storytellers
+    .map((item, index) => {
+      if (!item) return null;
+      const storyteller = item.storyteller || item;
+      if (!storyteller) return null;
+      const baseId = storyteller.id || storyteller._id || storyteller.name || `storyteller-${index}`;
+      const playerId = item.playerId || storyteller.playerId || '';
+      const id = item.id || `${playerId || 'player'}:${baseId}`;
+      return {
+        id,
+        storyteller,
+        playerId,
+        playerLabel: item.playerLabel || item.playerName || playerId || 'Player'
+      };
+    })
+    .filter(Boolean);
+};
+
 const THEMES = {
   archivist: {
     label: 'Archivist',
@@ -140,6 +184,8 @@ const StorytellerApiWorkbench = ({
   const [activePlayerIndex, setActivePlayerIndex] = useState(0);
   const [arenaCards, setArenaCards] = useState([]);
   const [arenaStorytellers, setArenaStorytellers] = useState([]);
+  const [arenaSaveResponse, setArenaSaveResponse] = useState(null);
+  const [arenaLoadResponse, setArenaLoadResponse] = useState(null);
   const [sessionPlayers, setSessionPlayers] = useState([]);
 
   const baseUrl = useMemo(() => {
@@ -563,6 +609,86 @@ const StorytellerApiWorkbench = ({
   const handleClearArena = () => {
     setArenaCards([]);
     setArenaStorytellers([]);
+  };
+
+  const handleSaveArena = async () => {
+    const playerIndex = activePlayerIndex;
+    const player = players[playerIndex];
+    if (!player) return;
+    const playerId = getPlayerIdForRequest(playerIndex, player);
+    if (!playerId) return;
+    const trimmedSessionId = sessionId.trim();
+    if (!trimmedSessionId) {
+      updatePlayerAt(playerIndex, (prev) => ({
+        ...prev,
+        error: 'Set a session ID before saving the arena.'
+      }));
+      return;
+    }
+    updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: true, error: null }));
+    try {
+      const payload = await requestJson(
+        `/api/sessions/${encodeURIComponent(trimmedSessionId)}/arena`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: trimmedSessionId,
+            playerId,
+            arena: {
+              entities: arenaCards.map((item) => ({
+                id: item.id,
+                playerId: item.playerId,
+                playerLabel: item.playerLabel,
+                card: item.card
+              })),
+              storytellers: arenaStorytellers.map((item) => ({
+                id: item.id,
+                playerId: item.playerId,
+                playerLabel: item.playerLabel,
+                storyteller: item.storyteller
+              }))
+            }
+          })
+        }
+      );
+      setArenaSaveResponse(payload);
+    } catch (err) {
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, error: err.message }));
+    } finally {
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: false }));
+    }
+  };
+
+  const handleLoadArena = async () => {
+    const playerIndex = activePlayerIndex;
+    const player = players[playerIndex];
+    if (!player) return;
+    const playerId = getPlayerIdForRequest(playerIndex, player);
+    if (!playerId) return;
+    const trimmedSessionId = sessionId.trim();
+    if (!trimmedSessionId) {
+      updatePlayerAt(playerIndex, (prev) => ({
+        ...prev,
+        error: 'Set a session ID before loading the arena.'
+      }));
+      return;
+    }
+    updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: true, error: null }));
+    try {
+      const payload = await requestJson(
+        `/api/sessions/${encodeURIComponent(trimmedSessionId)}/arena${buildQuery({ playerId })}`
+      );
+      const nextCards = normalizeArenaCards(payload);
+      const nextStorytellers = normalizeArenaStorytellers(payload);
+      setArenaCards(nextCards);
+      setArenaStorytellers(nextStorytellers);
+      setArenaLoadResponse(payload);
+    } catch (err) {
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, error: err.message }));
+    } finally {
+      updatePlayerAt(playerIndex, (prev) => ({ ...prev, busy: false }));
+    }
   };
 
   const selectedCardsCount = Object.values(activePlayer?.selectedCards || {}).filter(Boolean).length;
@@ -1147,16 +1273,32 @@ const StorytellerApiWorkbench = ({
             <h2>Arena</h2>
             <p>Shared space for entities and storytellers placed by any player.</p>
           </div>
+          <div className="arenaSummary">
+            <div className="arenaStat">
+              <span className="arenaStatLabel">Entities</span>
+              <span className="arenaStatValue">{arenaCards.length}</span>
+            </div>
+            <div className="arenaStat">
+              <span className="arenaStatLabel">Storytellers</span>
+              <span className="arenaStatValue">{arenaStorytellers.length}</span>
+            </div>
+          </div>
           <div className="arenaControls">
             <button type="button" className="ghost" onClick={handleAddStorytellerToArena}>
               Add Storyteller to Arena
+            </button>
+            <button type="button" className="ghost" onClick={handleSaveArena} disabled={activeBusy}>
+              Save Arena
+            </button>
+            <button type="button" className="ghost" onClick={handleLoadArena} disabled={activeBusy}>
+              Load Arena
             </button>
             <button type="button" className="ghost" onClick={handleClearArena}>
               Clear Arena
             </button>
           </div>
         </div>
-        <div className="arenaBlock">
+        <div className="arenaBlock arenaStorytellersBlock">
           <h3>Storytellers</h3>
           {arenaStorytellers.length === 0 ? (
             <div className="emptyState">No storytellers placed yet.</div>
@@ -1164,14 +1306,16 @@ const StorytellerApiWorkbench = ({
             <div className="arenaStorytellers">
               {arenaStorytellers.map((item) => (
                 <div key={item.id} className="arenaStorytellerChip">
-                  <span>{item.storyteller?.name || item.storyteller?.id || 'Storyteller'}</span>
+                  <span className="arenaStorytellerName">
+                    {item.storyteller?.name || item.storyteller?.id || 'Storyteller'}
+                  </span>
                   <span className="arenaMeta">{item.playerLabel}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
-        <div className="arenaBlock">
+        <div className="arenaBlock arenaEntitiesBlock">
           <h3>Entities</h3>
           {arenaCards.length === 0 ? (
             <div className="emptyState">No entity cards placed yet.</div>
@@ -1198,6 +1342,16 @@ const StorytellerApiWorkbench = ({
               })}
             </div>
           )}
+        </div>
+        <div className="arenaSync">
+          <div className="jsonBlock">
+            <p>Save Response</p>
+            <pre>{safeJson(arenaSaveResponse) || 'Save the arena to see JSON.'}</pre>
+          </div>
+          <div className="jsonBlock">
+            <p>Load Response</p>
+            <pre>{safeJson(arenaLoadResponse) || 'Load the arena to see JSON.'}</pre>
+          </div>
         </div>
       </section>
     </div>

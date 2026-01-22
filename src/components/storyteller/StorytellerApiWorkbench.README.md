@@ -82,6 +82,18 @@ Expected payloads are either `{ count: number }` or `{ players: [] }`.
 Registers a new player in a session.
 The login page sends `{ playerName }` and can accept `{ playerId }` or `{ id }` in the response.
 
+### GET `/api/sessions/:sessionId/arena?playerId=...`
+
+Loads the shared arena for a session.
+The workbench uses the active `playerId` and replaces the local arena with the response.
+Expected payloads include `{ arena: { entities: [], storytellers: [] } }` or a top-level arena object.
+
+### POST `/api/sessions/:sessionId/arena`
+
+Persists the shared arena for a session.
+The workbench sends `{ sessionId, playerId, arena: { entities: [], storytellers: [] } }` and includes
+the full card/storyteller payloads plus the originating `playerId`.
+
 ## Card Controls
 
 - Select: toggles a selection state for a card.
