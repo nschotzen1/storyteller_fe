@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './StorytellerArenaConsole.css';
 import ArenaCard from './ArenaCard';
+import EdgeLine from './EdgeLine';
+import RelationshipInput from './RelationshipInput';
 import arenaMap from './arenaMaps/arenaMap.petalHex.v1.json';
 import spreadPresets from './spreads.v1.json';
 import { fetchSessionPlayers } from '../../api/storytellerSession';
+import { validateRelationship, proposeRelationship, fetchArenaState } from '../../api/arenaRelationships.api';
 
 const DEFAULT_FRAGMENT_TEXT =
   'A wind-scoured pass with a rusted watchtower and a lone courier arriving at dusk.';
@@ -138,6 +141,11 @@ const StorytellerArenaConsole = ({
   const [calibrationGroup, setCalibrationGroup] = useState('center');
   const [calibrationSlots, setCalibrationSlots] = useState([]);
   const [calibrationDraft, setCalibrationDraft] = useState(null);
+  const [selectedDeckCards, setSelectedDeckCards] = useState({});
+  const [arenaEdges, setArenaEdges] = useState([]);
+  const [connectionMode, setConnectionMode] = useState('idle');
+  const [pendingConnection, setPendingConnection] = useState(null);
+  const [recentPoints, setRecentPoints] = useState(null);
   const boardRef = useRef(null);
 
   const baseUrl = useMemo(() => {
@@ -211,6 +219,75 @@ const StorytellerArenaConsole = ({
       isActive = false;
     };
   }, [baseUrl, sessionId]);
+
+  // Auto-load arena state on session change for multiplayer sync
+  useEffect(() => {
+    if (!baseUrl || !sessionId.trim()) return;
+    let isActive = true;
+    const loadArenaState = async () => {
+      try {
+        const payload = await requestJson(
+          `/api/sessions/${encodeURIComponent(sessionId.trim())}/arena${buildQuery({
+            playerId: activePlayerId || 'observer',
+            mock_api_calls: MOCK_API_CALLS
+          })}`
+        );
+        if (!isActive) return;
+        const arena = payload?.arena || payload || {};
+        // Merge card definitions and instances from server
+        if (arena.cardDefinitions) {
+          setCardDefinitions((prev) => ({ ...prev, ...arena.cardDefinitions }));
+        }
+        if (arena.cardInstances) {
+          setCardInstances((prev) => ({ ...prev, ...arena.cardInstances }));
+        }
+        // Update arena state if available
+        if (arena.edges && arena.center) {
+          setArenaState((prev) => ({
+            ...prev,
+            edges: { ...prev.edges, ...arena.edges },
+            center: arena.center.length ? arena.center : prev.center
+          }));
+        }
+
+        // Load edges if available
+        if (Array.isArray(arena.graphEdges)) {
+          setArenaEdges(arena.graphEdges);
+        }
+      } catch (err) {
+        // Silent fail for initial load - arena may not exist yet
+      }
+    };
+
+    // Also fetch using new Arena State API (Phase 6)
+    const loadArenaStateFull = async () => {
+      if (!sessionId || !activePlayerId) return;
+      try {
+        const state = await fetchArenaState(sessionId, activePlayerId, baseUrl, {
+          mockApiCalls: MOCK_API_CALLS
+        });
+        if (state && state.edges) {
+          setArenaEdges(state.edges);
+        }
+        if (state && state.scores) {
+          // Merge scores into player objects
+          setPlayers(prev => prev.map(p => ({
+            ...p,
+            score: state.scores[p.id] || p.score || 0
+          })));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch full arena state', err);
+      }
+    };
+
+    loadArenaState();
+    loadArenaStateFull();
+
+    return () => {
+      isActive = false;
+    };
+  }, [baseUrl, sessionId, activePlayerId]);
 
   const updatePlayerAt = (index, updater) => {
     setPlayers((prev) => prev.map((player, idx) => (idx === index ? updater(player) : player)));
@@ -383,6 +460,44 @@ const StorytellerArenaConsole = ({
       return { ...prev, deck: prev.deck.slice(drawCount), spreadSlots: nextSlots };
     });
   };
+
+  const handleToggleDeckCardSelect = (instanceId) => {
+    setSelectedDeckCards((prev) => ({
+      ...prev,
+      [instanceId]: !prev[instanceId]
+    }));
+  };
+
+  const handleDrawSelectedFromGallery = () => {
+    const selectedIds = Object.entries(selectedDeckCards)
+      .filter(([, selected]) => selected)
+      .map(([id]) => id);
+    if (!selectedIds.length) {
+      setNotice('Select cards from the gallery first.');
+      return;
+    }
+    updatePlayerAt(activePlayerIndex, (prev) => {
+      const openSlots = prev.spreadSlots.filter((slot) => !slot.cardInstanceId);
+      if (!openSlots.length) {
+        setNotice('No open spread slot.');
+        return prev;
+      }
+      const cardsToDraw = selectedIds.filter((id) => prev.deck.includes(id));
+      const drawCount = Math.min(openSlots.length, cardsToDraw.length);
+      const drawnCards = cardsToDraw.slice(0, drawCount);
+      let drawIndex = 0;
+      const nextSlots = prev.spreadSlots.map((slot) => {
+        if (slot.cardInstanceId || drawIndex >= drawnCards.length) return slot;
+        const nextCardId = drawnCards[drawIndex];
+        drawIndex += 1;
+        return { ...slot, cardInstanceId: nextCardId };
+      });
+      const remainingDeck = prev.deck.filter((id) => !drawnCards.includes(id));
+      return { ...prev, deck: remainingDeck, spreadSlots: nextSlots };
+    });
+    setSelectedDeckCards({});
+  };
+
 
   const handleReturnToDeck = (slotId) => {
     updatePlayerAt(activePlayerIndex, (prev) => {
@@ -705,13 +820,13 @@ const StorytellerArenaConsole = ({
       ...arenaMap,
       centerSlots: grouped.center
         ? grouped.center.map((slot) => ({
-            id: slot.id,
-            x: slot.x,
-            y: slot.y,
-            w: slot.w,
-            h: slot.h,
-            rotate: slot.rotate
-          }))
+          id: slot.id,
+          x: slot.x,
+          y: slot.y,
+          w: slot.w,
+          h: slot.h,
+          rotate: slot.rotate
+        }))
         : arenaMap.centerSlots,
       sideSlots: Object.keys(arenaMap.sideSlots).reduce((acc, edgeKey) => {
         acc[edgeKey] = (grouped[edgeKey] || arenaMap.sideSlots[edgeKey]).map((slot) => ({
@@ -734,6 +849,80 @@ const StorytellerArenaConsole = ({
     }
   };
 
+  const handleStartConnection = (instanceId) => {
+    setConnectionMode('connecting');
+    setPendingConnection({ sourceId: instanceId });
+    setNotice('Select a target card to connect.');
+  };
+
+  const handleCancelConnection = () => {
+    setConnectionMode('idle');
+    setPendingConnection(null);
+  };
+
+  const handleSelectTarget = (targetId) => {
+    if (connectionMode !== 'connecting' || !pendingConnection) return;
+    if (targetId === pendingConnection.sourceId) {
+      setNotice('Cannot connect card to itself.');
+      return;
+    }
+    setPendingConnection((prev) => ({ ...prev, targetId }));
+    setConnectionMode('entering_text');
+  };
+
+  const handleRelationshipSubmit = async (text) => {
+    if (!pendingConnection?.sourceId || !pendingConnection?.targetId) return;
+
+    setNotice('Forging connection...');
+
+    const sourceCard = cardDefinitions[cardInstances[pendingConnection.sourceId]?.entityId];
+    const targetCard = cardDefinitions[cardInstances[pendingConnection.targetId]?.entityId];
+
+    const result = await proposeRelationship(
+      {
+        sessionId,
+        playerId: activePlayerId,
+        source: {
+          cardId: pendingConnection.sourceId,
+          entityId: sourceCard?.entityId
+        },
+        targets: [
+          {
+            cardId: pendingConnection.targetId,
+            entityId: targetCard?.entityId
+          }
+        ],
+        relationship: {
+          surfaceText: text
+        },
+        mock_api_calls: MOCK_API_CALLS
+      },
+      baseUrl,
+      { mockApiCalls: MOCK_API_CALLS }
+    );
+
+    if (result.verdict === 'accepted' && result.edge) {
+      // Handle single edge or array
+      const edges = Array.isArray(result.edge) ? result.edge : [result.edge];
+      setArenaEdges((prev) => [...prev, ...edges]);
+
+      const points = result.points?.awarded || 0;
+      if (points > 0) {
+        setRecentPoints({ amount: points, id: Date.now() });
+        setPlayers((prev) =>
+          prev.map((p, i) => (i === activePlayerIndex ? { ...p, score: (p.score || 0) + points } : p))
+        );
+      }
+
+      setNotice(`Connection established! +${points} pts`);
+    } else {
+      const reason = result.quality?.reasons?.[0] || 'Relationship rejected';
+      setNotice(`Failed: ${reason}`);
+    }
+
+    handleCancelConnection();
+  };
+
   const renderSlotCard = (instanceId, visibility) => {
     const instance = cardInstances[instanceId];
     if (!instance) return null;
@@ -747,7 +936,21 @@ const StorytellerArenaConsole = ({
         flipped={!instance.faceUp}
         size="sm"
         onFlip={() => handleToggleCardFace(instanceId)}
-      />
+      >
+        {visibility === 'full' && (
+          <div className="card-action-overlay">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStartConnection(instanceId);
+              }}
+            >
+              Connect
+            </button>
+          </div>
+        )}
+      </ArenaCard>
     );
   };
 
@@ -963,15 +1166,75 @@ const StorytellerArenaConsole = ({
             onMouseLeave={handleCalibrationEnd}
           >
             <div className="arenaConsoleBoardInner">
+              {/* Edge Layer */}
+              <svg className="arenaConsoleEdgeLayer" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <defs>
+                  <marker
+                    id="arrowhead"
+                    markerWidth="4"
+                    markerHeight="4"
+                    refX="3"
+                    refY="2"
+                    orient="auto"
+                  >
+                    <polygon points="0 0, 4 2, 0 4" fill="#6b7280" />
+                  </marker>
+                </defs>
+                {arenaEdges.map((edge) => {
+                  // Find positions for source and target
+                  // We need to look through center slots and edge slots to find matching instanceIds
+                  const findSlotPos = (instanceId) => {
+                    if (!instanceId) return null;
+
+                    // Check center
+                    const centerIdx = arenaState.center.findIndex(s => s.cardInstanceId === instanceId);
+                    if (centerIdx !== -1) {
+                      return arenaMap.centerSlots[centerIdx];
+                    }
+
+                    // Check edges
+                    for (const [edgeKey, slots] of Object.entries(arenaState.edges)) {
+                      const slotIdx = slots.findIndex(s => s.cardInstanceId === instanceId);
+                      if (slotIdx !== -1) {
+                        return arenaMap.sideSlots[edgeKey]?.[slotIdx];
+                      }
+                    }
+                    return null;
+                  };
+
+                  const sourcePos = findSlotPos(edge.sourceId);
+                  const targetPos = findSlotPos(edge.targetId);
+
+                  if (!sourcePos || !targetPos) return null;
+
+                  return (
+                    <EdgeLine
+                      key={edge.edgeId}
+                      edge={edge}
+                      fromPosition={{ x: sourcePos.x, y: sourcePos.y }}
+                      toPosition={{ x: targetPos.x, y: targetPos.y }}
+                      isNew={false}
+                    />
+                  );
+                })}
+              </svg>
+
               {arenaMap.centerSlots.map((slot, index) => {
                 const placed = arenaState.center[index];
                 const instanceId = placed?.cardInstanceId;
+                const isConnectionSource =
+                  connectionMode === 'connecting' && pendingConnection?.sourceId === instanceId;
+                const isValidTarget =
+                  connectionMode === 'connecting' && instanceId && instanceId !== pendingConnection?.sourceId;
+                const isInvalidTarget =
+                  connectionMode === 'connecting' && !isValidTarget && !isConnectionSource;
+
                 return (
                   <div
                     key={slot.id}
-                    className={`arenaConsoleSlot center ${showSlotOverlay ? 'debug' : ''} ${
-                      instanceId ? 'filled' : ''
-                    }`}
+                    className={`arenaConsoleSlot center ${showSlotOverlay ? 'debug' : ''} ${instanceId ? 'filled' : ''
+                      } ${isConnectionSource ? 'connection-source' : ''} ${isValidTarget ? 'valid-target' : ''
+                      } ${isInvalidTarget ? 'invalid-target' : ''}`}
                     style={{
                       left: `${slot.x}%`,
                       top: `${slot.y}%`,
@@ -981,6 +1244,7 @@ const StorytellerArenaConsole = ({
                     }}
                     onMouseEnter={() => setHoveredInstanceId(instanceId || '')}
                     onMouseLeave={() => setHoveredInstanceId('')}
+                    onClick={() => isValidTarget && handleSelectTarget(instanceId)}
                   >
                     {instanceId ? (
                       renderSlotCard(instanceId, 'full')
@@ -1006,12 +1270,26 @@ const StorytellerArenaConsole = ({
                         ? 'sealed'
                         : 'back'
                     : 'sealed';
+
+                  const isConnectionSource =
+                    connectionMode === 'connecting' && pendingConnection?.sourceId === instanceId;
+                  const isVisibleTarget = visibility === 'full';
+                  const isValidTarget =
+                    connectionMode === 'connecting' &&
+                    instanceId &&
+                    instanceId !== pendingConnection?.sourceId &&
+                    isVisibleTarget;
+                  const isInvalidTarget =
+                    connectionMode === 'connecting' &&
+                    (!isValidTarget && !isConnectionSource);
+
                   return (
                     <div
                       key={slot.id}
-                      className={`arenaConsoleSlot side ${showSlotOverlay ? 'debug' : ''} ${
-                        instanceId ? 'filled' : ''
-                      } ${edge.isActive ? 'active' : ''}`}
+                      className={`arenaConsoleSlot side ${showSlotOverlay ? 'debug' : ''} ${instanceId ? 'filled' : ''
+                        } ${edge.isActive ? 'active' : ''} ${isConnectionSource ? 'connection-source' : ''
+                        } ${isValidTarget ? 'valid-target' : ''} ${isInvalidTarget ? 'invalid-target' : ''
+                        }`}
                       style={{
                         left: `${slot.x}%`,
                         top: `${slot.y}%`,
@@ -1021,6 +1299,7 @@ const StorytellerArenaConsole = ({
                       }}
                       onMouseEnter={() => setHoveredInstanceId(instanceId || '')}
                       onMouseLeave={() => setHoveredInstanceId('')}
+                      onClick={() => isValidTarget && handleSelectTarget(instanceId)}
                     >
                       {instanceId ? (
                         renderSlotCard(instanceId, visibility)
@@ -1058,48 +1337,92 @@ const StorytellerArenaConsole = ({
                   <span>{slot.id}</span>
                 </div>
               ))}
+
+              {recentPoints && (
+                <div key={recentPoints.id} className="pointsFloater">
+                  +{recentPoints.amount} pts
+                </div>
+              )}
             </div>
           </div>
 
           <div className="arenaConsoleInspect">
-            <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3>Arena Inspect</h3>
-              <p>Hover a card to inspect.</p>
+              {activePlayer?.score > 0 && (
+                <div className="scoreDisplay">
+                  <span>★</span>
+                  <span>{activePlayer.score}</span>
+                </div>
+              )}
             </div>
-            {hoveredCard ? (
-              <div className="arenaConsoleInspectCard">
-                <h4>{hoveredCard.entityName || hoveredCard.name}</h4>
-                {hoveredOwnerId && <span>Owner: {hoveredOwnerId}</span>}
-                <p>{hoveredCard.front?.prompt || hoveredCard.back?.prompt || 'No prompt available.'}</p>
-              </div>
-            ) : (
-              <p className="consoleHint">No card selected.</p>
-            )}
+            <p>Hover a card to inspect.</p>
           </div>
+          {hoveredCard ? (
+            <div className="arenaConsoleInspectCard">
+              <h4>{hoveredCard.entityName || hoveredCard.name}</h4>
+              {hoveredOwnerId && <span>Owner: {hoveredOwnerId}</span>}
+              <p>{hoveredCard.front?.prompt || hoveredCard.back?.prompt || 'No prompt available.'}</p>
+            </div>
+          ) : (
+            <p className="consoleHint">No card selected.</p>
+          )}
         </div>
       </section>
 
       <section className="arenaConsolePrivate">
         <div className="consoleDeck">
           <div className="consoleDeckHeader">
-            <h3>Deck</h3>
+            <h3>Card Gallery</h3>
             <span>{activePlayer?.deck?.length || 0} cards</span>
           </div>
-          <div className="consoleDeckStack">
-            {activePlayer?.deck?.length ? (
-              activePlayer.deck.slice(0, 4).map((instanceId, index) => (
-                <div key={instanceId} className={`consoleDeckCard slot-${index}`}>
-                  {renderSlotCard(instanceId, 'back')}
-                </div>
-              ))
-            ) : (
-              <div className="consoleDeckEmpty">Empty</div>
-            )}
+          {activePlayer?.deck?.length ? (
+            <div className="consoleDeckGallery">
+              {activePlayer.deck.map((instanceId) => {
+                const instance = cardInstances[instanceId];
+                const definition = instance ? cardDefinitions[instance.entityId] : null;
+                const frontUrl = definition?.front?.imageUrl || definition?.imageUrl;
+                const displayName = definition?.entityName || definition?.name || 'Card';
+                const isSelected = Boolean(selectedDeckCards[instanceId]);
+                return (
+                  <div
+                    key={instanceId}
+                    className={`consoleDeckGalleryCard ${isSelected ? 'selected' : ''}`}
+                    onClick={() => handleToggleDeckCardSelect(instanceId)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleToggleDeckCardSelect(instanceId);
+                      }
+                    }}
+                    title={displayName}
+                  >
+                    {frontUrl ? (
+                      <img src={resolveAssetUrl(baseUrl, frontUrl)} alt={displayName} />
+                    ) : (
+                      <span>{displayName}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="consoleDeckStack">
+              <div className="consoleDeckEmpty">Generate entities to fill your deck</div>
+            </div>
+          )}
+          <div className="consoleButtonRow">
+            <button type="button" className="ghost" onClick={handleDrawFromDeck}>
+              Draw All
+            </button>
+            <button type="button" className="primary" onClick={handleDrawSelectedFromGallery}>
+              Draw Selected
+            </button>
           </div>
-          <button type="button" className="primary" onClick={handleDrawFromDeck}>
-            Draw to Spread
-          </button>
         </div>
+
 
         <div className="consoleSpread">
           <div className="consoleSpreadHeader">
@@ -1123,9 +1446,8 @@ const StorytellerArenaConsole = ({
               return (
                 <div
                   key={slot.slotId}
-                  className={`consoleSpreadSlot ${instanceId ? 'filled' : ''} ${
-                    selected ? 'selected' : ''
-                  }`}
+                  className={`consoleSpreadSlot ${instanceId ? 'filled' : ''} ${selected ? 'selected' : ''
+                    }`}
                   style={{
                     left: `${slot.x}%`,
                     top: `${slot.y}%`,
@@ -1198,70 +1520,100 @@ const StorytellerArenaConsole = ({
         DBG
       </button>
 
-      {debugOpen && (
-        <div className="arenaConsoleDebugPanel">
-          <div className="debugRow">
-            <label>
-              <input
-                type="checkbox"
-                checked={showSlotOverlay}
-                onChange={(event) => setShowSlotOverlay(event.target.checked)}
-              />
-              Slot Overlay
-            </label>
-            <label>
-              Edge Reveal
-              <select value={edgeRevealMode} onChange={(event) => setEdgeRevealMode(event.target.value)}>
-                <option value="back">Back Only</option>
-                <option value="sealed">Sealed</option>
-              </select>
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={calibrationMode}
-                onChange={(event) => {
-                  setCalibrationMode(event.target.checked);
-                  setCalibrationDraft(null);
-                }}
-              />
-              Calibrate
-            </label>
-            <button type="button" className="ghost" onClick={() => setDebugDrawerOpen((prev) => !prev)}>
-              {debugDrawerOpen ? 'Hide JSON' : 'Show JSON'}
-            </button>
-          </div>
-          {calibrationMode && (
+      {
+        debugOpen && (
+          <div className="arenaConsoleDebugPanel">
             <div className="debugRow">
               <label>
-                Slot Group
-                <select value={calibrationGroup} onChange={(event) => setCalibrationGroup(event.target.value)}>
-                  <option value="center">Center</option>
-                  {Object.keys(arenaMap.sideSlots).map((edgeKey) => (
-                    <option key={edgeKey} value={edgeKey}>
-                      {edgeKey}
-                    </option>
-                  ))}
+                <input
+                  type="checkbox"
+                  checked={showSlotOverlay}
+                  onChange={(event) => setShowSlotOverlay(event.target.checked)}
+                />
+                Slot Overlay
+              </label>
+              <label>
+                Edge Reveal
+                <select value={edgeRevealMode} onChange={(event) => setEdgeRevealMode(event.target.value)}>
+                  <option value="back">Back Only</option>
+                  <option value="sealed">Sealed</option>
                 </select>
               </label>
-              <button type="button" className="ghost" onClick={() => setCalibrationSlots([])}>
-                Clear
-              </button>
-              <button type="button" className="primary" onClick={handleCopyCalibration}>
-                Copy JSON
+              <label>
+                <input
+                  type="checkbox"
+                  checked={calibrationMode}
+                  onChange={(event) => {
+                    setCalibrationMode(event.target.checked);
+                    setCalibrationDraft(null);
+                  }}
+                />
+                Calibrate
+              </label>
+              <button type="button" className="ghost" onClick={() => setDebugDrawerOpen((prev) => !prev)}>
+                {debugDrawerOpen ? 'Hide JSON' : 'Show JSON'}
               </button>
             </div>
-          )}
-        </div>
-      )}
+            {calibrationMode && (
+              <div className="debugRow">
+                <label>
+                  Slot Group
+                  <select value={calibrationGroup} onChange={(event) => setCalibrationGroup(event.target.value)}>
+                    <option value="center">Center</option>
+                    {Object.keys(arenaMap.sideSlots).map((edgeKey) => (
+                      <option key={edgeKey} value={edgeKey}>
+                        {edgeKey}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button type="button" className="ghost" onClick={() => setCalibrationSlots([])}>
+                  Clear
+                </button>
+                <button type="button" className="primary" onClick={handleCopyCalibration}>
+                  Copy JSON
+                </button>
+              </div>
+            )}
+          </div>
+        )
+      }
 
-      {debugDrawerOpen && (
-        <div className="arenaConsoleDebugDrawer">
-          <h4>Arena JSON</h4>
-          <pre>{arenaSnapshot || JSON.stringify(arenaState, null, 2)}</pre>
-        </div>
-      )}
-    </div>
+      {
+        debugDrawerOpen && (
+          <div className="arenaConsoleDebugDrawer">
+            <h4>Arena JSON</h4>
+            <pre>{arenaSnapshot || JSON.stringify(arenaState, null, 2)}</pre>
+          </div>
+        )
+      }
+
+      {
+        connectionMode === 'entering_text' && pendingConnection && (
+          <RelationshipInput
+            sourceName={
+              cardDefinitions[cardInstances[pendingConnection.sourceId]?.entityId]?.entityName || 'Source'
+            }
+            targetName={
+              cardDefinitions[cardInstances[pendingConnection.targetId]?.entityId]?.entityName || 'Target'
+            }
+            onCancel={handleCancelConnection}
+            onSubmit={handleRelationshipSubmit}
+            onValidate={(text) =>
+              validateRelationship(
+                sessionId,
+                activePlayerId,
+                pendingConnection?.sourceId,
+                pendingConnection?.targetId,
+                text,
+                baseUrl,
+                { mockApiCalls: MOCK_API_CALLS }
+              )
+            }
+          />
+        )
+      }
+    </div >
   );
 };
 
