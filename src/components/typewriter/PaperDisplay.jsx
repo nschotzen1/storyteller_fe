@@ -107,30 +107,19 @@ const PaperDisplay = ({
 
   React.useEffect(() => {
     if (fadeState.isActive) {
-        const sUserText = String(userText || '');
-        const currentGhostText = String(fadeState.to_text || '').startsWith(sUserText)
-            ? String(fadeState.to_text || '').slice(sUserText.length)
-            : String(fadeState.to_text || '');
+        // The full text of the previous phase becomes the outgoing text.
+        // On the first phase, this will be the user's text.
+        setOutgoingGhostInfo({ text: fadeState.prev_text || userText, key: `outgoing-${fadeState.phase - 1}` });
 
-        // When a new phase comes in from props.fadeState, the current 'incoming' becomes 'outgoing'
-        setOutgoingGhostInfo(prevIncoming => {
-            // Only set outgoing if the phase is actually different and incoming wasn't empty.
-            // This prevents setting outgoing on the very first phase or if content was identical.
-            if (prevIncoming.key !== null && prevIncoming.key !== `phase-${fadeState.phase}`) {
-                return { ...prevIncoming, key: `outgoing-${prevIncoming.key}` }; // Ensure a new key for outgoing
-            }
-            return { text: '', key: null }; // No outgoing if it's the first meaningful phase
-        });
-
-        // Set the new 'incoming' text based on the current fadeState from props
-        setIncomingGhostInfo({ text: currentGhostText, key: `phase-${fadeState.phase}` });
+        // The full text of the current phase is the incoming text.
+        setIncomingGhostInfo({ text: fadeState.to_text, key: `incoming-${fadeState.phase}` });
 
     } else {
-        // When fading stops, clear both
+        // When fading stops, clear both.
         setOutgoingGhostInfo({ text: '', key: null });
         setIncomingGhostInfo({ text: '', key: null });
     }
-  }, [fadeState.isActive, fadeState.to_text, fadeState.phase, userText]);
+}, [fadeState.isActive, fadeState.to_text, fadeState.phase, fadeState.prev_text, userText]);
 
   // --- PAGE SLIDE JSX (forwards/backwards) ---
   // This function was moved from TypewriterFramework.jsx
@@ -301,56 +290,26 @@ const PaperDisplay = ({
 
                   return (
       <div className="typewriter-line">
-        <span style={{ display: 'inline-block', verticalAlign: 'baseline' }}>
-          {sUserText && (
-            <span style={{ display: 'inline' }}>
-              {renderTextWithLineBreaks(sUserText)}
-            </span>
+        <div style={{ display: 'inline-block', position: 'relative', verticalAlign: 'baseline' }} className="cross-fade-ghost-container">
+          {outgoingGhostInfo.text && outgoingGhostInfo.key && (
+            <div
+              key={outgoingGhostInfo.key}
+              className="ghost-text-block cross-fade-outgoing"
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%' }}
+            >
+              {renderTextWithLineBreaks(outgoingGhostInfo.text)}
+            </div>
           )}
-          {/* Container for cross-fading ghost texts */}
-          <span style={{ display: 'inline-block', position: 'relative', verticalAlign: 'baseline' }} className="cross-fade-ghost-container">
-            {outgoingGhostInfo.text && outgoingGhostInfo.key && (
-              <span
-                key={outgoingGhostInfo.key}
-                className="ghost-text-block cross-fade-outgoing"
-                style={{ display: 'inline-block', position: 'absolute', top: 0, left: 0 }}
-              >
-                {/* --- ENHANCED: Fade out each char as smudge/afterimage --- */}
-                {outgoingGhostInfo.text.split('').map((char, i) => (
-                  <span
-                    key={i}
-                    style={{ position: 'relative', display: 'inline-block', minWidth: '0.7ch' }}
-                  >
-                    <span
-                      className="smudge-fade-out"
-                      style={{ animationDelay: `${i * 0.042}s` }}
-                    >
-                      {char === '\n' ? <br /> : char}
-                    </span>
-                    <span
-                      className="afterimage-fade"
-                      style={{ animationDelay: `${i * 0.042 + 0.13}s` }}
-                    >
-                      {char === '\n' ? <br /> : char}
-                    </span>
-                  </span>
-                ))}
-              </span>
-            )}
-            {incomingGhostInfo.text && incomingGhostInfo.key && (
-              <span
-                key={incomingGhostInfo.key}
-                className="ghost-text-block cross-fade-incoming"
-                style={{ display: 'inline-block' }}
-              >
-                {/* Appear instantly, or add a subtle fade-in if you want */}
-                {incomingGhostInfo.text.split('').map((char, i) => (
-                  <span key={i}>{char === '\n' ? <br /> : char}</span>
-                ))}
-              </span>
-            )}
-          </span>
-        </span>
+          {incomingGhostInfo.text && incomingGhostInfo.key && (
+            <div
+              key={incomingGhostInfo.key}
+              className="ghost-text-block cross-fade-incoming"
+              style={{ display: 'inline-block' }}
+            >
+              {renderTextWithLineBreaks(incomingGhostInfo.text)}
+            </div>
+          )}
+        </div>
       </div>
     );
   })()

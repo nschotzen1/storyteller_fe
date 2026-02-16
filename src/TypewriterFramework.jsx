@@ -111,6 +111,9 @@ const initialPageTransitionState = {
 };
 
 function pageTransitionReducer(state, action) {
+  if (state === undefined) {
+    return initialPageTransitionState;
+  }
   switch (action.type) {
     case pageTransitionActionTypes.START_PAGE_TURN_SCROLL:
       return {
@@ -196,6 +199,9 @@ const initialGhostwriterState = {
 };
 
 function ghostwriterReducer(state, action) {
+  if (state === undefined) {
+    return initialGhostwriterState;
+  }
   switch (action.type) {
     case ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME:
       return { ...state, lastUserInputTime: action.payload };
@@ -257,6 +263,9 @@ const initialTypingState = {
 };
 
 function typingReducer(state, action) {
+  if (state === undefined) {
+    return initialTypingState;
+  }
   switch (action.type) {
     case typingActionTypes.SET_TYPING_ALLOWED:
       return { ...state, typingAllowed: action.payload, requestPageTextUpdate: false };
@@ -313,7 +322,6 @@ function typingReducer(state, action) {
         fadeState: { isActive: false, to_text: '', phase: 0 },
         preFadeSnapshot: null,
         allInitialFadesCompleted: false,
-        typingAllowed: true,
         isProcessingInitialFadeSequence: action.payload.some(item => item.action === 'fade'),
         inputBuffer: '', // Clear input buffer when a new sequence starts
         typingAllowed: action.payload.length > 0 && action.payload[0].action === 'pause', // Disable input if first action is not pause
