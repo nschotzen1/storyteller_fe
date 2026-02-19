@@ -123,7 +123,7 @@ const PlayerLogin = ({
         </div>
         {submitError && <div className="loginError">{submitError}</div>}
         <button type="submit" className="loginSubmit" disabled={!canSubmit || submitting}>
-          {submitting ? 'Joining…' : 'Enter Workbench'}
+          {submitting ? 'Joining…' : 'Enter Arena'}
         </button>
       </form>
     </div>

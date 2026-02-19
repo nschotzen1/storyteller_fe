@@ -36,7 +36,7 @@ describe('countLines', () => {
 
   it('should count lines correctly with newlines in both typed and ghost text', () => {
     expect(countLines('hello\nworld', 'ghost\ntext')).toBe(3); // "hello\nworldghost\ntext" -> split by \n
-    expect(countLines('typed1\ntyped2', 'ghost1\nghost2\nghost3')).toBe(5);
+    expect(countLines('typed1\ntyped2', 'ghost1\nghost2\nghost3')).toBe(4);
   });
   
   it('should handle typed text ending with newline correctly', () => {
@@ -78,11 +78,7 @@ describe('getRandomTexture', () => {
   });
 
   it('should return null for an empty string key', () => {
-    // Current implementation: ''.replace(/\s+/g, '_').toUpperCase() results in ""
-    // So it would return '/textures/keys/_1.png'.
-    // Depending on desired behavior, this might be acceptable or need adjustment.
-    // For now, testing existing behavior.
-    expect(getRandomTexture('')).toBe('/textures/keys/_1.png');
+    expect(getRandomTexture('')).toBeNull();
   });
 });
 

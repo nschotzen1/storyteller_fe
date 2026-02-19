@@ -1,0 +1,58 @@
+.appShell {
+  min-height: 100vh;
+  position: relative;
+}
+
+.appMain {
+  min-height: 100vh;
+}
+
+.appViewSwitch {
+  position: fixed;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: inline-flex;
+  gap: 0.4rem;
+  padding: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(247, 211, 153, 0.42);
+  background: rgba(12, 9, 7, 0.77);
+  backdrop-filter: blur(7px);
+}
+
+.appViewSwitch button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #fce6c0;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  padding: 0.38rem 0.82rem;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+.appViewSwitch button:hover {
+  border-color: rgba(247, 211, 153, 0.45);
+}
+
+.appViewSwitch button.active {
+  background: linear-gradient(120deg, rgba(251, 208, 129, 0.88), rgba(188, 126, 58, 0.88));
+  color: #221104;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .appViewSwitch {
+    top: 0.5rem;
+    width: calc(100% - 1rem);
+    justify-content: center;
+  }
+
+  .appViewSwitch button {
+    padding: 0.4rem 0.55rem;
+    font-size: 0.73rem;
+  }
+}

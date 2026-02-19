@@ -1,172 +1,95 @@
 import './index.css';
 import './FlipCard.css';
 import './CurtainIntro.css';
+import './App.css';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import StorytellerArenaConsole from './components/storyteller/StorytellerArenaConsole';
 import PlayerLogin from './pages/PlayerLogin';
+import QuestAdventurePage from './pages/QuestAdventurePage';
+import QuestAdminPage from './pages/QuestAdminPage';
+import MemorySpreadPage from './pages/MemorySpreadPage';
+import TypewriterFramework from './TypewriterFramework';
 
+const VIEW = {
+  ARENA: 'arena',
+  TYPEWRITER: 'typewriter',
+  QUEST: 'quest',
+  QUEST_ADMIN: 'quest-admin',
+  MEMORY_SPREAD: 'memory-spread'
+};
 
-// AUTOMATICALLY SWITCHED TO DEMO PAGE
+const VIEW_OPTIONS = [
+  { id: VIEW.ARENA, label: 'Arena' },
+  { id: VIEW.TYPEWRITER, label: 'Typewriter' },
+  { id: VIEW.QUEST, label: 'Quest' },
+  { id: VIEW.QUEST_ADMIN, label: 'Quest Admin' },
+  { id: VIEW.MEMORY_SPREAD, label: 'Memory Spread' }
+];
+
+const readInitialView = () => {
+  if (typeof window === 'undefined') return VIEW.ARENA;
+  const params = new URLSearchParams(window.location.search);
+  const requested = params.get('view');
+  if (requested && Object.values(VIEW).includes(requested)) {
+    return requested;
+  }
+  return VIEW.ARENA;
+};
+
 function App() {
+  const [view, setView] = useState(readInitialView);
   const [login, setLogin] = useState(null);
 
-  if (!login) {
-    return <PlayerLogin onSubmit={setLogin} />;
-  }
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    params.set('view', view);
+    const nextQuery = params.toString();
+    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`;
+    window.history.replaceState({}, '', nextUrl);
+  }, [view]);
+
+  const arenaContent = useMemo(() => {
+    if (!login) {
+      return <PlayerLogin onSubmit={setLogin} />;
+    }
+
+    return (
+      <StorytellerArenaConsole
+        key={`${login.sessionId}-${login.playerName}`}
+        initialSessionId={login.sessionId}
+        initialPlayerName={login.playerName}
+        initialPlayerId={login.playerId}
+        lockPrimaryPlayerId
+      />
+    );
+  }, [login]);
 
   return (
-    <StorytellerArenaConsole
-      key={`${login.sessionId}-${login.playerName}`}
-      initialSessionId={login.sessionId}
-      initialPlayerName={login.playerName}
-      initialPlayerId={login.playerId}
-      lockPrimaryPlayerId
-    />
+    <div className="appShell">
+      <nav className="appViewSwitch" aria-label="App views">
+        {VIEW_OPTIONS.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            className={view === option.id ? 'active' : ''}
+            onClick={() => setView(option.id)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </nav>
+
+      <main className="appMain">
+        {view === VIEW.ARENA && arenaContent}
+        {view === VIEW.TYPEWRITER && <TypewriterFramework />}
+        {view === VIEW.QUEST && <QuestAdventurePage />}
+        {view === VIEW.QUEST_ADMIN && <QuestAdminPage />}
+        {view === VIEW.MEMORY_SPREAD && <MemorySpreadPage />}
+      </main>
+    </div>
   );
 }
-
-// ORIGINAL APP
-// function App() {
-//   const [curtainLifted, setCurtainLifted] = useState(false);
-//   const [flipped, setFlipped] = useState(false);
-//   const [curtainShouldExpand, setCurtainShouldExpand] = useState(false);
-//   const [showTimecard, setShowTimecard] = useState(false);
-//   const [showCircleFade, setShowCircleFade] = useState(false);
-//   const [locationLineVisible, setLocationLineVisible] = useState(false);
-//   const [shouldFadeText, setShouldFadeText] = useState(false);
-//   const [hasFadedOut, setHasFadedOut] = useState(false);
-// 
-// 
-// 
-//   // ✨ Trigger second line after timecard shows
-//   useEffect(() => {
-//     if (showTimecard) {
-//       const timeout = setTimeout(() => setLocationLineVisible(true), 1500);
-//       return () => clearTimeout(timeout);
-//     }
-//   }, [showTimecard]);
-// 
-//   useEffect(() => {
-//     if (showCircleFade) {
-//       const timeout = setTimeout(() => {
-//         setShowTimecard(false);
-//         setLocationLineVisible(false);
-//       }, 11000); // 2.5 seconds after the iris begins (or longer if needed)
-//   
-//       return () => clearTimeout(timeout);
-//     }
-//   }, [showCircleFade]);
-//   
-// 
-//   
-// 
-//   return (
-//     <div className="w-full h-full bg-black flex items-center justify-center">
-//       <div
-//         className={`relative h-[720px] bg-black isolate overflow-hidden transition-all duration-[3000ms] ease-in-out ${
-//           curtainShouldExpand ? 'w-full max-w-screen-xl' : 'w-[360px]'
-//         }`}
-//       >
-//         {/* ✨ Flip card is always mounted */}
-//         <div className="flip-card w-full h-full z-10">
-//           <div className={`flip-card-inner ${flipped ? 'flipped' : ''}`}>
-//             {/* Front side of the card */}
-//             <div className="flip-card-front" onClick={() => setFlipped(true)}>
-//               <img
-//                 src="/tapestries/intro.png"
-//                 alt="Initial Card"
-//                 className="w-full h-full object-contain rounded-xl shadow-xl"
-//               />
-//             </div>
-// 
-//             {/* Back side of the card (chat) */}
-//             <div className="flip-card-back">
-//               <MysteryMessenger
-//                 start={flipped}
-//                 onCurtainDropComplete={() => {
-//                   setCurtainShouldExpand(true);
-//                 
-//                   setTimeout(() => setShowTimecard(true), 4000); // Line 1
-//                   setTimeout(() => setLocationLineVisible(true), 5500); // Line 2
-//                 
-//                   setTimeout(() => setShowCircleFade(true), 8500); // Iris
-//                   setTimeout(() => setShouldFadeText(true), 11500); // Start fade
-//                   setTimeout(() => {
-//                     setHasFadedOut(true); // Final unmount
-//                     setShowTimecard(false);
-//                     setLocationLineVisible(false);
-//                     setShouldFadeText(false);
-//                   }, 14000);
-//                 
-//                 }}
-//               />
-// 
-//             
-//               {showCircleFade && (
-//                 <div className="iris-mask pointer-events-none absolute inset-0 z-50">
-//                   <div className="iris-circle" />
-//                 </div>
-//               )}
-// 
-//             </div>
-//           </div>
-//         </div>
-// 
-//           <AnimatePresence>
-//     {hasFadedOut && (
-//       <motion.div
-//         className="absolute inset-0 z-[100] bg-black letterbox vignette"
-//         initial={{ opacity: 0 }}
-//         animate={{ opacity: 1 }}
-//         transition={{ duration: 2 }}
-//       >
-//         <NarrativeScene visible={hasFadedOut} />
-//       </motion.div>
-//     )}
-//   </AnimatePresence>
-// 
-//   {/* Curtain overlays the card only until it's lifted */}
-//   {!curtainLifted && <CurtainIntro onReveal={() => setCurtainLifted(true)} />}
-// 
-//         <AnimatePresence>
-//         {showTimecard && !hasFadedOut && (
-//   <motion.div
-//     initial={{ opacity: 1 }}
-//     animate={{ opacity: shouldFadeText ? 0 : 1 }}
-//     transition={{ duration: 2 }}
-//     className="absolute inset-0 z-[70] flex flex-col items-center justify-center text-white text-center pointer-events-none space-y-4"
-//   >
-//     <h1 className="text-4xl md:text-6xl font-[Cinzel] tracking-wide drop-shadow-lg">
-//       A few days later…
-//     </h1>
-//     {locationLineVisible && (
-//       <p className="text-xl md:text-2xl font-mono text-yellow-100/90">
-//         in the outskirts of the sun-streaked streets of San Juan
-//       </p>
-//     )}
-//   </motion.div>
-// )}
-//       </AnimatePresence>
-//       
-// 
-//         
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-// function App() {
-//   return (
-//     <div className="w-screen h-screen bg-black text-white overflow-hidden">
-//       <TypewriterFramework /> 
-//       {/* <SeerPage /> */}
-//     </div>
-//   );
-// }
-
-
 
 export default App;
