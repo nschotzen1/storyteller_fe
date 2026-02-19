@@ -1,0 +1,960 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Cormorant+Garamond:wght@500;600;700&family=Spectral:wght@400;500;600&display=swap');
+
+.memorySpreadPage {
+  --tarot-gold: #f6c78a;
+  --tarot-gold-strong: #ffdcae;
+  --tarot-copper: #c18146;
+  --tarot-ink: #fef3dd;
+  --tarot-shadow: #07080d;
+  min-height: 100vh;
+  color: var(--tarot-ink);
+  position: relative;
+  overflow: hidden;
+  padding: 4.7rem 1.25rem 1.4rem;
+  font-family: 'Spectral', 'Times New Roman', serif;
+}
+
+.tarotBackdrop,
+.tarotVeil,
+.tarotSigils {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.tarotBackdrop {
+  z-index: 0;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(219, 136, 65, 0.22), transparent 38%),
+    radial-gradient(circle at 82% 24%, rgba(102, 146, 172, 0.24), transparent 35%),
+    radial-gradient(circle at 46% 85%, rgba(122, 79, 38, 0.26), transparent 46%),
+    linear-gradient(160deg, #07080f 0%, #140f0d 48%, #07080e 100%);
+}
+
+.tarotVeil {
+  z-index: 0;
+  background: url('/textures/film_grain.png') center/cover no-repeat;
+  mix-blend-mode: soft-light;
+  opacity: 0.2;
+}
+
+.tarotSigils {
+  z-index: 0;
+  opacity: 0.24;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(246, 199, 138, 0.07) 0,
+      rgba(246, 199, 138, 0.07) 1px,
+      transparent 1px,
+      transparent 24px
+    ),
+    repeating-linear-gradient(
+      45deg,
+      rgba(99, 147, 170, 0.05) 0,
+      rgba(99, 147, 170, 0.05) 1px,
+      transparent 1px,
+      transparent 30px
+    );
+}
+
+.memorySpreadHeader {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  max-width: 920px;
+  margin: 0 auto 1.2rem;
+}
+
+.memorySpreadEyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: rgba(251, 227, 187, 0.84);
+}
+
+.memorySpreadHeader h1 {
+  margin: 0.24rem 0 0;
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-size: clamp(1.65rem, 4.4vw, 2.7rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.memorySpreadHeader p {
+  margin: 0.5rem auto 0;
+  max-width: 760px;
+  color: rgba(246, 231, 202, 0.9);
+  font-size: 0.98rem;
+}
+
+.memorySpreadMeta {
+  margin: 0.7rem auto 0;
+  max-width: 760px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.memorySpreadMeta span {
+  border: 1px solid rgba(250, 217, 160, 0.32);
+  border-radius: 999px;
+  padding: 0.22rem 0.62rem;
+  background: rgba(10, 10, 12, 0.44);
+  color: rgba(252, 230, 191, 0.88);
+}
+
+.memorySpreadMeta button {
+  border-radius: 999px;
+  border: 1px solid rgba(252, 219, 157, 0.48);
+  padding: 0.26rem 0.7rem;
+  background: transparent;
+  color: rgba(252, 231, 194, 0.92);
+  text-transform: uppercase;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.memorySpreadMeta button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.memorySpreadError {
+  margin-top: 0.55rem !important;
+  color: rgba(255, 184, 141, 0.94) !important;
+  font-size: 0.84rem !important;
+}
+
+.memoryTriptych {
+  position: relative;
+  z-index: 1;
+  max-width: 1240px;
+  min-height: calc(100vh - 10.2rem);
+  margin: 0 auto;
+  display: grid;
+  gap: 1.1rem;
+  grid-template-columns: repeat(3, minmax(230px, 1fr));
+  align-content: center;
+}
+
+.memoryPillarCard,
+.memoryPortalCard,
+.chosenMemoryAnchor,
+.entityDeckCard,
+.connectionModal,
+.connectionModalActions button,
+.connectionModal input,
+.connectionModal select {
+  font: inherit;
+}
+
+.memoryPillarCard {
+  position: relative;
+  overflow: hidden;
+  min-height: 63vh;
+  border-radius: 1.35rem;
+  border: 1px solid rgba(246, 199, 138, 0.46);
+  background: linear-gradient(160deg, rgba(38, 26, 20, 0.9), rgba(8, 9, 13, 0.95));
+  color: var(--tarot-ink);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.72rem;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.44);
+  transition: transform 440ms cubic-bezier(0.22, 1, 0.36, 1), opacity 500ms ease,
+    filter 500ms ease, box-shadow 360ms ease;
+}
+
+.memoryPillarCard > * {
+  position: relative;
+  z-index: 2;
+}
+
+.memoryPillarCard::before {
+  content: '';
+  position: absolute;
+  inset: 0.78rem;
+  border: 1px solid rgba(248, 219, 167, 0.23);
+  border-radius: 0.97rem;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.memoryPillarArt,
+.memoryPortalArt,
+.chosenAnchorArt {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.memoryPillarArt img,
+.memoryPortalArt img,
+.chosenAnchorArt img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.memoryPillarShade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(7, 9, 13, 0.26) 0%, rgba(6, 7, 11, 0.84) 72%);
+}
+
+.memoryPillarCard:hover:not(:disabled) {
+  transform: translateY(-10px) scale(1.01);
+}
+
+.memoryPillarCard:disabled {
+  cursor: default;
+}
+
+.memoryPillarCard h2 {
+  margin: 0;
+  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+  font-size: clamp(1.55rem, 2.9vw, 2.1rem);
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.memoryPillarCard p {
+  margin: 0;
+  color: rgba(251, 241, 224, 0.9);
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.memoryPillarCard.is-selected {
+  border-color: rgba(255, 220, 166, 0.88);
+  box-shadow: 0 28px 54px rgba(0, 0, 0, 0.58), 0 0 0 1px rgba(255, 223, 175, 0.2);
+}
+
+.memoryPillarCard.is-dissolving {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(14vh) scale(0.62);
+  pointer-events: none;
+}
+
+.memoryTriptych.is-collapsing .memoryPillarCard.is-selected {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.memoryPillarCard.tone-embers,
+.memoryPortalCard.tone-embers,
+.chosenMemoryAnchor.tone-embers {
+  background: linear-gradient(160deg, rgba(64, 38, 20, 0.92), rgba(9, 9, 12, 0.95));
+}
+
+.memoryPillarCard.tone-tide,
+.memoryPortalCard.tone-tide,
+.chosenMemoryAnchor.tone-tide {
+  background: linear-gradient(160deg, rgba(22, 47, 63, 0.9), rgba(9, 10, 14, 0.95));
+}
+
+.memoryPillarCard.tone-ivory,
+.memoryPortalCard.tone-ivory,
+.chosenMemoryAnchor.tone-ivory {
+  background: linear-gradient(160deg, rgba(60, 45, 28, 0.92), rgba(12, 10, 8, 0.95));
+}
+
+.memoryArcanaTag {
+  align-self: flex-start;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 0.68rem;
+  border: 1px solid rgba(248, 220, 171, 0.42);
+  border-radius: 999px;
+  padding: 0.22rem 0.62rem;
+  color: rgba(252, 233, 199, 0.9);
+  background: rgba(11, 9, 8, 0.42);
+}
+
+.flipLockPill {
+  margin-top: auto;
+  font-size: 0.73rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(253, 229, 191, 0.84);
+}
+
+.flipLockGlyph {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.95rem;
+  width: 2.08rem;
+  height: 2.08rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(247, 212, 151, 0.42);
+  color: rgba(253, 233, 198, 0.84);
+  background: rgba(9, 10, 13, 0.53);
+  font-size: 1rem;
+}
+
+.memoryCollapseFocus {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.memoryPortalCard {
+  position: relative;
+  overflow: hidden;
+  width: min(470px, 90vw);
+  min-height: 66vh;
+  border-radius: 1.35rem;
+  border: 1px solid rgba(255, 221, 168, 0.72);
+  padding: 1.3rem;
+  box-shadow: 0 34px 60px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(255, 228, 184, 0.24);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.76rem;
+  animation: memoryPortalFocus 620ms cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+.memoryPortalCard > * {
+  position: relative;
+  z-index: 2;
+}
+
+.memoryPortalCard h2 {
+  margin: 0;
+  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+}
+
+.memoryPortalCard p {
+  margin: 0;
+  font-size: 1.08rem;
+  color: rgba(252, 240, 220, 0.93);
+}
+
+@keyframes memoryPortalFocus {
+  0% {
+    opacity: 0.25;
+    transform: translateY(12vh) scale(0.8);
+    filter: blur(3px);
+  }
+
+  42% {
+    opacity: 1;
+    transform: translateY(0) scale(1.05);
+    filter: blur(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(-2vh) scale(1.12);
+  }
+}
+
+.spreadRitualStage {
+  position: relative;
+  z-index: 1;
+  max-width: 1240px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+}
+
+.spreadRitualStage.is-intro .chosenMemoryAnchor {
+  animation: chosenMemorySettle 860ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.spreadRitualStage.is-intro .spreadArenaPanel {
+  animation: revealFromMist 660ms ease-out 190ms both;
+}
+
+.spreadRitualStage.is-intro .entityDeckDock {
+  animation: revealFromMist 660ms ease-out 340ms both;
+}
+
+@keyframes chosenMemorySettle {
+  0% {
+    transform: translateY(16vh) scale(1.18);
+    opacity: 0;
+  }
+
+  65% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(0) scale(0.96);
+    opacity: 1;
+  }
+}
+
+@keyframes revealFromMist {
+  0% {
+    opacity: 0;
+    transform: translateY(22px);
+    filter: blur(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.memoryAnchorBand {
+  display: flex;
+  justify-content: center;
+}
+
+.chosenMemoryAnchor {
+  position: relative;
+  overflow: hidden;
+  width: min(760px, 95%);
+  border-radius: 1.08rem;
+  border: 1px solid rgba(250, 218, 162, 0.72);
+  color: var(--tarot-ink);
+  text-align: left;
+  padding: 1rem 1.16rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.33rem;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.44);
+  transition: transform 320ms ease, box-shadow 320ms ease;
+}
+
+.chosenMemoryAnchor > * {
+  position: relative;
+  z-index: 2;
+}
+
+.chosenMemoryAnchor:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 24px 40px rgba(0, 0, 0, 0.56);
+}
+
+.chosenMemoryAnchor span,
+.chosenMemoryAnchor em {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.74rem;
+  color: rgba(252, 232, 203, 0.92);
+  font-style: normal;
+}
+
+.chosenMemoryAnchor h2 {
+  margin: 0;
+  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+  font-size: clamp(1.35rem, 2.8vw, 1.9rem);
+}
+
+.chosenMemoryAnchor p {
+  margin: 0;
+  color: rgba(250, 234, 208, 0.9);
+}
+
+.spreadArenaPanel {
+  border-radius: 1.2rem;
+  border: 1px solid rgba(246, 206, 145, 0.36);
+  background: linear-gradient(165deg, rgba(10, 11, 15, 0.88), rgba(9, 9, 13, 0.82));
+  padding: 1rem;
+  display: grid;
+  gap: 0.95rem;
+}
+
+.spreadArenaHeading h2 {
+  margin: 0;
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 1.04rem;
+}
+
+.spreadArenaHeading p {
+  margin: 0.25rem 0 0;
+  color: rgba(245, 227, 197, 0.84);
+  font-size: 0.92rem;
+}
+
+.tarotArena {
+  position: relative;
+  min-height: 54vh;
+  border-radius: 1rem;
+  border: 1px dashed rgba(252, 220, 167, 0.36);
+  background:
+    radial-gradient(circle at center, rgba(53, 37, 24, 0.5), rgba(9, 10, 12, 0.82) 60%),
+    linear-gradient(135deg, rgba(37, 27, 20, 0.62), rgba(10, 10, 13, 0.88));
+  overflow: hidden;
+}
+
+.tarotArena::before {
+  content: '';
+  position: absolute;
+  inset: 1rem;
+  border: 1px solid rgba(248, 216, 159, 0.2);
+  border-radius: 0.82rem;
+  pointer-events: none;
+}
+
+.tarotArena.is-drag-over {
+  border-color: rgba(254, 222, 164, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(255, 219, 155, 0.34), 0 0 32px rgba(221, 147, 72, 0.24);
+}
+
+.arenaCenterCard {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(270px, 52vw);
+  border-radius: 0.95rem;
+  border: 1px solid rgba(253, 220, 165, 0.56);
+  background: linear-gradient(150deg, rgba(65, 38, 23, 0.85), rgba(11, 10, 10, 0.92));
+  padding: 0.72rem;
+  text-align: center;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45);
+}
+
+.arenaCenterCard span {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(254, 232, 197, 0.82);
+}
+
+.arenaCenterCard strong {
+  display: block;
+  margin: 0.22rem 0;
+  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+  font-size: 1.2rem;
+  line-height: 1.05;
+}
+
+.arenaCenterCard small {
+  color: rgba(252, 235, 206, 0.72);
+  font-size: 0.78rem;
+}
+
+.arenaCenterImage {
+  width: 100%;
+  max-height: 108px;
+  border-radius: 0.66rem;
+  overflow: hidden;
+  margin-bottom: 0.38rem;
+}
+
+.arenaCenterImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.arenaOrbitSlot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: min(164px, 32vw);
+  min-height: 110px;
+  border-radius: 0.84rem;
+  border: 1px dashed rgba(244, 211, 153, 0.35);
+  background: rgba(13, 13, 18, 0.58);
+  padding: 0.56rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  justify-content: center;
+}
+
+.arenaOrbitSlot.filled {
+  border-style: solid;
+  border-color: rgba(168, 224, 190, 0.56);
+  background: linear-gradient(150deg, rgba(24, 44, 34, 0.62), rgba(11, 13, 16, 0.76));
+}
+
+.orbitLabel {
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(251, 226, 185, 0.72);
+}
+
+.orbitPlaceholder {
+  font-size: 0.78rem;
+  color: rgba(244, 225, 195, 0.66);
+}
+
+.orbitEntityCard strong {
+  display: block;
+  font-size: 0.95rem;
+  line-height: 1.12;
+}
+
+.orbitEntityCard small {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(194, 234, 208, 0.86);
+  font-size: 0.66rem;
+}
+
+.threadLedger {
+  border-top: 1px solid rgba(248, 218, 167, 0.26);
+  padding-top: 0.8rem;
+}
+
+.threadLedger h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.threadLedger p {
+  margin: 0.45rem 0 0;
+  color: rgba(246, 226, 196, 0.74);
+  font-size: 0.9rem;
+}
+
+.threadLedger ul {
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.threadLedger li {
+  border-radius: 0.72rem;
+  border: 1px solid rgba(247, 223, 183, 0.24);
+  background: rgba(10, 10, 12, 0.54);
+  padding: 0.52rem 0.64rem;
+  display: flex;
+  align-items: center;
+  gap: 0.44rem;
+}
+
+.threadLedger li strong {
+  color: rgba(252, 228, 187, 0.94);
+}
+
+.threadLedger li span {
+  color: rgba(255, 206, 134, 0.92);
+}
+
+.threadLedger li em {
+  color: rgba(171, 232, 198, 0.93);
+  font-style: normal;
+}
+
+.entityDeckDock {
+  border-radius: 1.08rem;
+  border: 1px solid rgba(243, 201, 134, 0.34);
+  background: linear-gradient(170deg, rgba(12, 11, 15, 0.92), rgba(8, 8, 11, 0.92));
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.66rem;
+}
+
+.deckDockHeading h3 {
+  margin: 0;
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-size: 0.98rem;
+}
+
+.deckDockHeading p {
+  margin: 0.28rem 0 0;
+  color: rgba(243, 223, 192, 0.8);
+  font-size: 0.88rem;
+}
+
+.entityDeckRow {
+  display: grid;
+  gap: 0.58rem;
+  grid-template-columns: repeat(8, minmax(100px, 1fr));
+}
+
+.entityDeckCard {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(243, 205, 145, 0.5);
+  border-radius: 0.78rem;
+  background: linear-gradient(150deg, rgba(49, 34, 22, 0.8), rgba(10, 10, 12, 0.93));
+  color: var(--tarot-ink);
+  min-height: 98px;
+  padding: 0.58rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+  cursor: grab;
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+  user-select: none;
+}
+
+.entityDeckCard > * {
+  position: relative;
+  z-index: 2;
+}
+
+.entityDeckArt {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.entityDeckArt img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.48;
+}
+
+.entityDeckCard:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 223, 167, 0.76);
+}
+
+.entityDeckCard:active,
+.entityDeckCard.is-dragging {
+  cursor: grabbing;
+  transform: scale(0.97);
+}
+
+.entityDeckCard small {
+  font-size: 0.63rem;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: rgba(247, 223, 186, 0.74);
+}
+
+.entityDeckCard strong {
+  font-size: 0.89rem;
+  line-height: 1.15;
+}
+
+.entityDeckCard span {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(250, 212, 145, 0.82);
+}
+
+.deckEmpty {
+  grid-column: span 8;
+  border-radius: 0.74rem;
+  border: 1px dashed rgba(248, 226, 188, 0.36);
+  padding: 0.72rem;
+  color: rgba(243, 224, 194, 0.78);
+  text-align: center;
+}
+
+.connectionModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(8, 8, 12, 0.76);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.connectionModal {
+  width: min(530px, 100%);
+  border-radius: 1rem;
+  border: 1px solid rgba(252, 220, 163, 0.55);
+  background: linear-gradient(160deg, rgba(34, 24, 16, 0.94), rgba(11, 11, 14, 0.95));
+  box-shadow: 0 24px 44px rgba(0, 0, 0, 0.45);
+  padding: 1rem;
+  display: grid;
+  gap: 0.72rem;
+}
+
+.connectionModal h3 {
+  margin: 0;
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 1.01rem;
+}
+
+.connectionModal p {
+  margin: 0;
+  color: rgba(247, 230, 202, 0.82);
+  font-size: 0.9rem;
+}
+
+.connectionModalPreview {
+  width: 100%;
+  max-height: 150px;
+  border-radius: 0.74rem;
+  overflow: hidden;
+  border: 1px solid rgba(252, 220, 163, 0.32);
+}
+
+.connectionModalPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.connectionModal label {
+  display: grid;
+  gap: 0.34rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  color: rgba(251, 232, 199, 0.9);
+}
+
+.connectionModal input,
+.connectionModal select {
+  border-radius: 0.58rem;
+  border: 1px solid rgba(248, 209, 150, 0.42);
+  background: rgba(10, 10, 13, 0.72);
+  color: var(--tarot-ink);
+  padding: 0.53rem 0.6rem;
+}
+
+.connectionModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.54rem;
+}
+
+.connectionModalActions button {
+  border-radius: 999px;
+  border: 1px solid rgba(251, 219, 160, 0.56);
+  padding: 0.44rem 0.86rem;
+  cursor: pointer;
+  background: linear-gradient(125deg, rgba(255, 214, 144, 0.95), rgba(178, 120, 58, 0.9));
+  color: #2d1708;
+  font-weight: 700;
+}
+
+.connectionModalActions button.ghost {
+  background: transparent;
+  color: rgba(252, 227, 185, 0.93);
+}
+
+@media (max-width: 1180px) {
+  .memoryTriptych {
+    min-height: auto;
+  }
+
+  .memoryPillarCard {
+    min-height: 53vh;
+  }
+
+  .entityDeckRow {
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+  }
+
+  .deckEmpty {
+    grid-column: span 4;
+  }
+}
+
+@media (max-width: 980px) {
+  .memorySpreadPage {
+    padding-top: 4.9rem;
+  }
+
+  .memoryTriptych {
+    grid-template-columns: 1fr;
+    gap: 0.88rem;
+    min-height: auto;
+  }
+
+  .memoryPillarCard {
+    min-height: 24vh;
+  }
+
+  .memoryPortalCard {
+    min-height: 40vh;
+  }
+
+  .tarotArena {
+    min-height: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(148px, 1fr));
+    gap: 0.6rem;
+    padding: 0.84rem;
+  }
+
+  .tarotArena::before {
+    inset: 0.5rem;
+  }
+
+  .arenaCenterCard {
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+    width: auto;
+    grid-column: span 2;
+  }
+
+  .arenaOrbitSlot {
+    position: relative;
+    left: auto !important;
+    top: auto !important;
+    transform: none;
+    width: auto;
+    min-height: 112px;
+  }
+
+  .threadLedger li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 700px) {
+  .memorySpreadHeader h1 {
+    font-size: clamp(1.4rem, 7.2vw, 2rem);
+  }
+
+  .memorySpreadMeta {
+    gap: 0.42rem;
+  }
+
+  .memorySpreadMeta button {
+    font-size: 0.68rem;
+  }
+
+  .spreadArenaPanel,
+  .entityDeckDock {
+    padding: 0.8rem;
+  }
+
+  .entityDeckRow {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+
+  .deckEmpty {
+    grid-column: span 2;
+  }
+
+  .connectionModalActions {
+    flex-wrap: wrap;
+  }
+}

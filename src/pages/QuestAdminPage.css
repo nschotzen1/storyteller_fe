@@ -1,0 +1,350 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Manrope:wght@400;600;700&display=swap');
+
+.questAdminRoot {
+  position: relative;
+  min-height: 100vh;
+  color: #f5ece2;
+  font-family: 'Manrope', 'Trebuchet MS', sans-serif;
+  overflow: hidden;
+}
+
+.questAdminBackdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(247, 181, 94, 0.2), rgba(0, 0, 0, 0) 35%),
+    radial-gradient(circle at 88% 10%, rgba(91, 148, 164, 0.2), rgba(0, 0, 0, 0) 35%),
+    linear-gradient(145deg, #1c1312, #100b0a 48%, #1e1511);
+}
+
+.questAdminPanel {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.questAdminHeader {
+  background: linear-gradient(130deg, rgba(44, 28, 25, 0.86), rgba(18, 12, 12, 0.86));
+  border: 1px solid rgba(241, 196, 135, 0.44);
+  border-radius: 14px;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.questAdminEyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 0.68rem;
+  color: #f7d5a8;
+}
+
+.questAdminHeader h1 {
+  margin: 0.3rem 0 0.35rem;
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-size: clamp(1.4rem, 2.7vw, 2.2rem);
+}
+
+.questAdminHeader p {
+  margin: 0;
+  max-width: 60ch;
+  color: #f0ddc6;
+}
+
+.questAdminMeta {
+  display: grid;
+  align-content: flex-start;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: #f5d6ad;
+}
+
+.questAdminToolbar {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  background: rgba(24, 15, 13, 0.82);
+  border: 1px solid rgba(232, 192, 139, 0.3);
+  border-radius: 12px;
+  padding: 0.75rem;
+}
+
+.questAdminToolbar label {
+  display: grid;
+  gap: 0.33rem;
+  font-size: 0.78rem;
+}
+
+.questAdminToolbar input {
+  border-radius: 8px;
+  border: 1px solid rgba(245, 208, 153, 0.42);
+  background: rgba(16, 11, 10, 0.86);
+  color: #faebd4;
+  padding: 0.5rem 0.6rem;
+}
+
+.questAdminToolbar button {
+  align-self: end;
+  border-radius: 999px;
+  border: 1px solid rgba(252, 213, 152, 0.45);
+  color: #251106;
+  background: linear-gradient(120deg, #efc175, #c17f2f);
+  font-weight: 700;
+  padding: 0.54rem 0.95rem;
+  cursor: pointer;
+}
+
+.questAdminToolbar button.ghost {
+  color: #fbe8cd;
+  background: rgba(34, 22, 16, 0.76);
+}
+
+.questAdminToolbar button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.questAdminNotice {
+  border-radius: 10px;
+  padding: 0.62rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.questAdminNotice.ok {
+  background: rgba(110, 182, 118, 0.2);
+  border: 1px solid rgba(144, 229, 146, 0.45);
+}
+
+.questAdminNotice.error {
+  background: rgba(213, 92, 88, 0.2);
+  border: 1px solid rgba(247, 129, 124, 0.55);
+}
+
+.questAdminBody {
+  display: grid;
+  flex: 1;
+  gap: 0.8rem;
+  grid-template-columns: minmax(200px, 280px) minmax(320px, 1fr) minmax(260px, 340px);
+}
+
+.questAdminSidebar,
+.questAdminEditor,
+.questAdminPreview {
+  border-radius: 12px;
+  border: 1px solid rgba(239, 197, 137, 0.32);
+  background: linear-gradient(150deg, rgba(26, 17, 14, 0.9), rgba(15, 9, 8, 0.88));
+  padding: 0.8rem;
+  min-height: 0;
+  overflow: auto;
+}
+
+.sidebarHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.65rem;
+}
+
+.sidebarHeader h2,
+.questAdminPreview h2 {
+  margin: 0;
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-size: 1.05rem;
+}
+
+.sidebarHeader button,
+.directionEditorHeader button,
+.removeDirection,
+.danger {
+  border-radius: 999px;
+  border: 1px solid rgba(251, 210, 153, 0.4);
+  background: rgba(53, 33, 24, 0.7);
+  color: #fce8ca;
+  padding: 0.42rem 0.68rem;
+  cursor: pointer;
+}
+
+.screenListButton {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(245, 200, 143, 0.22);
+  border-radius: 10px;
+  background: rgba(14, 10, 8, 0.56);
+  color: #f8e6cf;
+  padding: 0.55rem 0.62rem;
+  margin-bottom: 0.52rem;
+  display: grid;
+  gap: 0.2rem;
+  cursor: pointer;
+}
+
+.screenListButton strong {
+  font-size: 0.9rem;
+}
+
+.screenListButton span {
+  font-size: 0.73rem;
+  opacity: 0.75;
+}
+
+.screenListButton.active {
+  border-color: rgba(255, 211, 129, 0.72);
+  background: linear-gradient(130deg, rgba(217, 153, 57, 0.3), rgba(48, 29, 21, 0.84));
+}
+
+.sidebarMessage,
+.editorMessage {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #f0d7b3;
+}
+
+.questAdminEditor {
+  display: grid;
+  align-content: flex-start;
+  gap: 0.7rem;
+}
+
+.questAdminEditor label {
+  display: grid;
+  gap: 0.33rem;
+  font-size: 0.78rem;
+}
+
+.questAdminEditor input,
+.questAdminEditor textarea,
+.questAdminEditor select,
+.directionRow input,
+.directionRow select {
+  border-radius: 8px;
+  border: 1px solid rgba(238, 196, 143, 0.38);
+  background: rgba(16, 11, 9, 0.84);
+  color: #faead3;
+  padding: 0.5rem 0.62rem;
+}
+
+.editorTopRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.editorTopRow .danger {
+  color: #ffe2de;
+  border-color: rgba(255, 144, 129, 0.58);
+  background: rgba(120, 35, 31, 0.55);
+}
+
+.directionEditor {
+  margin-top: 0.3rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.directionEditorHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.directionEditorHeader h3 {
+  margin: 0;
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-size: 1rem;
+}
+
+.directionRow {
+  display: grid;
+  grid-template-columns: 120px 1fr 1fr auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.removeDirection {
+  white-space: nowrap;
+}
+
+.previewCard {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.previewImage {
+  border-radius: 12px;
+  min-height: 220px;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(250, 213, 154, 0.34);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0.8rem;
+}
+
+.previewImage header p {
+  margin: 0;
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  color: #f4d8ad;
+}
+
+.previewImage header h3 {
+  margin: 0.26rem 0;
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-size: 1.14rem;
+}
+
+.previewImage p {
+  margin: 0;
+  font-size: 0.87rem;
+  line-height: 1.3;
+}
+
+.previewDirections {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.previewDirections span {
+  border-radius: 7px;
+  border: 1px solid rgba(246, 203, 141, 0.24);
+  padding: 0.38rem 0.52rem;
+  font-size: 0.78rem;
+  background: rgba(6, 5, 5, 0.35);
+}
+
+@media (max-width: 1200px) {
+  .questAdminBody {
+    grid-template-columns: minmax(180px, 240px) minmax(320px, 1fr);
+  }
+
+  .questAdminPreview {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 980px) {
+  .questAdminHeader {
+    flex-direction: column;
+  }
+
+  .questAdminToolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .questAdminBody {
+    grid-template-columns: 1fr;
+  }
+
+  .directionRow {
+    grid-template-columns: 1fr;
+  }
+}

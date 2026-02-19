@@ -1,0 +1,62 @@
+[
+  {
+    "id": "card-1",
+    "name": "Standard Card",
+    "frontImage": "/cards/2.png",
+    "backImage": "/cards/2.png",
+    "canFlip": true,
+    "gridPosition": { "row": 1, "col": 1 },
+    "size": { "rows": 1, "cols": 1 },
+    "orientation": "horizontal",
+    "isFlipped": false,
+    "storySnippet": "A hidden path reveals itself."
+  },
+  {
+    "id": "card-2",
+    "name": "Wide Card",
+    "frontImage": "/cards/2.png",
+    "backImage": "/cards/2.png",
+    "canFlip": false,
+    "gridPosition": { "row": 1, "col": 2 },
+    "size": { "rows": 1, "cols": 2 },
+    "orientation": "horizontal",
+    "isFlipped": false,
+    "storySnippet": "The stars whisper a warning."
+  },
+  {
+    "id": "card-3",
+    "name": "Tall Card",
+    "frontImage": "/cards/2.png",
+    "backImage": "/cards/2.png",
+    "canFlip": true,
+    "gridPosition": { "row": 2, "col": 1 },
+    "size": { "rows": 2, "cols": 1 },
+    "orientation": "vertical",
+    "isFlipped": false,
+    "storySnippet": "A forgotten memory resurfaces."
+  },
+  {
+    "id": "card-4",
+    "name": "Large Card",
+    "frontImage": "/cards/2.png",
+    "backImage": "/cards/2.png",
+    "canFlip": false,
+    "gridPosition": { "row": 2, "col": 2 },
+    "size": { "rows": 2, "cols": 2 },
+    "orientation": "diagonal",
+    "isFlipped": false,
+    "storySnippet": "An unexpected alliance forms."
+  },
+  {
+    "id": "card-5",
+    "name": "Another Standard Card",
+    "frontImage": "/cards/2.png",
+    "backImage": "/cards/2.png",
+    "canFlip": true,
+    "gridPosition": { "row": 4, "col": 4 },
+    "size": { "rows": 1, "cols": 1 },
+    "orientation": "horizontal",
+    "isFlipped": false,
+    "storySnippet": "The future remains clouded."
+  }
+]

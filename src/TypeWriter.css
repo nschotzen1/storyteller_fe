@@ -1101,3 +1101,45 @@
     transform: scale(1);
   }
 }
+
+/* Simplified fade layers for ghost text */
+.fade-ghost-container {
+  display: inline-grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  align-items: baseline;
+  vertical-align: baseline;
+  position: relative;
+}
+
+.fade-ghost-layer {
+  grid-area: 1 / 1;
+  display: inline;
+  white-space: pre-wrap;
+  pointer-events: none;
+  will-change: opacity, filter;
+}
+
+.fade-ghost-out {
+  opacity: 1;
+  animation: fadeGhostOut 0.65s ease-in forwards;
+}
+
+.fade-ghost-in {
+  opacity: 0;
+  animation: fadeGhostIn 0.65s ease-out forwards;
+}
+
+.fade-ghost-static {
+  opacity: 1;
+}
+
+@keyframes fadeGhostIn {
+  from { opacity: 0; filter: blur(3px); }
+  to { opacity: 1; filter: blur(0); }
+}
+
+@keyframes fadeGhostOut {
+  from { opacity: 1; filter: blur(0); }
+  to { opacity: 0; filter: blur(4px); }
+}

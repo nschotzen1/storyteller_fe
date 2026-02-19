@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
+import { vi } from 'vitest';
 import PaperDisplay from './components/typewriter/PaperDisplay';
 import '@testing-library/jest-dom';
 
@@ -74,20 +75,22 @@ describe('PaperDisplay Component', () => {
   };
   
   beforeEach(() => {
+    vi.useFakeTimers();
     // Reset refs if they were simple mock objects. React.createRef() handles this.
     // If refs were simple objects like { current: null }, you'd reset them here.
     // e.g., mockLastLineRef.current = null;
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   describe('Basic Rendering (Not Sliding)', () => {
     test('renders pageText and ghostText combined', () => {
-      render(<PaperDisplay {...defaultProps} />);
-      // The text is split into lines; check for the combined content within the text container.
-      // Assuming the combined text "Hello world from beyond" will be present.
-      // Individual lines might be separate elements.
-      // A more robust way is to query for the container of lines.
-      const textContainer = screen.getByTestId('paper-frame'); // Assuming paper-frame contains the text
-      expect(within(textContainer).getByText(/Hello world from beyond/)).toBeInTheDocument();
+      const { container } = render(<PaperDisplay {...defaultProps} />);
+      const firstLine = container.querySelector('.typewriter-line .last-line-content');
+      expect(firstLine).not.toBeNull();
+      expect(firstLine.textContent).toContain('Hello world from beyond');
     });
 
     test('applies the film background image when not sliding', () => {
@@ -110,9 +113,9 @@ describe('PaperDisplay Component', () => {
       expect(screen.queryByTestId('striker-cursor-element')).not.toBeInTheDocument();
     });
     
-    test('does not show striker cursor if text is empty, even if showCursor is true', () => {
+    test('shows striker cursor on an empty line when showCursor is true', () => {
         render(<PaperDisplay {...defaultProps} pageText="" ghostText="" showCursor={true} />);
-        expect(screen.queryByTestId('striker-cursor-element')).not.toBeInTheDocument();
+        expect(screen.getByTestId('striker-cursor-element')).toBeInTheDocument();
     });
 
     test('highlights SPECIAL_KEY_TEXT (The Xerofag)', () => {
@@ -126,6 +129,71 @@ describe('PaperDisplay Component', () => {
       render(<PaperDisplay {...defaultProps} pageText="First Line\nSecond Line Is Last" ghostText="" />);
       expect(mockLastLineRef.current).not.toBeNull();
       expect(mockLastLineRef.current.textContent).toContain('Second Line Is Last');
+    });
+
+    test('keeps base text visible during fade and appends fading continuation', () => {
+      const fadeState = { isActive: true, to_text: ' from ghost', phase: 1 };
+      const { container } = render(
+        <PaperDisplay
+          {...defaultProps}
+          pageText="Base"
+          ghostText=""
+          fadeState={fadeState}
+        />
+      );
+
+      const line = container.querySelector('.typewriter-line .last-line-content');
+      expect(line).not.toBeNull();
+      expect(line.textContent).toContain('Base from ghost');
+      expect(container.querySelector('.fade-ghost-container')).toBeInTheDocument();
+    });
+
+    test('crossfades between fade phases without dropping base text', () => {
+      const { container, rerender } = render(
+        <PaperDisplay
+          {...defaultProps}
+          pageText="Base"
+          ghostText=" from beyond"
+          fadeState={{ isActive: true, to_text: ' from beyond', phase: 1 }}
+        />
+      );
+
+      rerender(
+        <PaperDisplay
+          {...defaultProps}
+          pageText="Base"
+          ghostText=" from"
+          fadeState={{ isActive: true, to_text: ' from', phase: 2 }}
+        />
+      );
+
+      const fadeOut = container.querySelector('.fade-ghost-layer.fade-ghost-out');
+      const fadeIn = container.querySelector('.fade-ghost-layer.fade-ghost-in');
+      expect(fadeOut).toBeInTheDocument();
+      expect(fadeIn).toBeInTheDocument();
+      expect(fadeOut.textContent).toContain(' from beyond');
+      expect(fadeIn.textContent).toContain(' from');
+      expect(container.querySelector('.last-line-content')?.textContent).toContain('Base');
+
+      act(() => {
+        vi.advanceTimersByTime(700);
+      });
+
+      expect(container.querySelector('.fade-ghost-layer.fade-ghost-out')).not.toBeInTheDocument();
+    });
+
+    test('shows striker cursor while fade is active when showCursor is true', () => {
+      render(
+        <PaperDisplay
+          {...defaultProps}
+          pageText="Base"
+          ghostText=""
+          showCursor={true}
+          fadeState={{ isActive: true, to_text: ' from ghost', phase: 2 }}
+        />
+      );
+
+      expect(screen.getByTestId('striker-cursor-element')).toBeInTheDocument();
     });
   });
 

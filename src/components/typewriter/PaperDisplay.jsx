@@ -37,7 +37,6 @@ const PaperDisplay = ({
   nextFilmBgUrl, // Renamed from pageTransitionState.nextFilmBgUrl
   prevText, // Renamed from pageTransitionState.prevText
   nextText, // Renamed from pageTransitionState.nextText
-  userText,
 
   // Constants for layout and styling
   MAX_LINES,
@@ -79,8 +78,15 @@ const PaperDisplay = ({
   STRIKER_CURSOR_OFFSET_LEFT,
   SLIDE_DIRECTION_LEFT, // To compare with slideDir
 }) => {
-  const [outgoingGhostInfo, setOutgoingGhostInfo] = React.useState({ text: '', key: null });
-  const [incomingGhostInfo, setIncomingGhostInfo] = React.useState({ text: '', key: null });
+  const FADE_TRANSITION_MS = 650;
+  const fadeTimerRef = React.useRef(null);
+  const lastGhostSnapshotRef = React.useRef('');
+  const [fadeGhost, setFadeGhost] = React.useState({
+    outgoingText: '',
+    incomingText: '',
+    currentText: '',
+    key: 0,
+  });
 
   // Apply font styles
   const textStyles = {
@@ -93,12 +99,6 @@ const PaperDisplay = ({
     color: '#3b1d15', // Example default
   };
 
-  // Prepare ghost letters for display, whether it's an array or a string
-  const ghostLetters = Array.isArray(ghostText)
-  ? ghostText
-  : (ghostText || '').split('').map((char, idx) => ({ char, ghost: false, key: idx }));
-
-  
   if (currentFontStyles) {
     if (currentFontStyles.font) textStyles.fontFamily = currentFontStyles.font;
     if (currentFontStyles.font_size) textStyles.fontSize = currentFontStyles.font_size;
@@ -106,31 +106,118 @@ const PaperDisplay = ({
   }
 
   React.useEffect(() => {
-    if (fadeState.isActive) {
-        const sUserText = String(userText || '');
-        const currentGhostText = String(fadeState.to_text || '').startsWith(sUserText)
-            ? String(fadeState.to_text || '').slice(sUserText.length)
-            : String(fadeState.to_text || '');
+    if (fadeState?.isActive) return;
+    const normalizedGhost = Array.isArray(ghostText)
+      ? ghostText.map((part) => (typeof part?.char === 'string' ? part.char : '')).join('')
+      : String(ghostText || '');
+    lastGhostSnapshotRef.current = normalizedGhost;
+  }, [ghostText, fadeState?.isActive]);
 
-        // When a new phase comes in from props.fadeState, the current 'incoming' becomes 'outgoing'
-        setOutgoingGhostInfo(prevIncoming => {
-            // Only set outgoing if the phase is actually different and incoming wasn't empty.
-            // This prevents setting outgoing on the very first phase or if content was identical.
-            if (prevIncoming.key !== null && prevIncoming.key !== `phase-${fadeState.phase}`) {
-                return { ...prevIncoming, key: `outgoing-${prevIncoming.key}` }; // Ensure a new key for outgoing
-            }
-            return { text: '', key: null }; // No outgoing if it's the first meaningful phase
-        });
-
-        // Set the new 'incoming' text based on the current fadeState from props
-        setIncomingGhostInfo({ text: currentGhostText, key: `phase-${fadeState.phase}` });
-
-    } else {
-        // When fading stops, clear both
-        setOutgoingGhostInfo({ text: '', key: null });
-        setIncomingGhostInfo({ text: '', key: null });
+  React.useEffect(() => {
+    if (fadeTimerRef.current) {
+      clearTimeout(fadeTimerRef.current);
+      fadeTimerRef.current = null;
     }
-  }, [fadeState.isActive, fadeState.to_text, fadeState.phase, userText]);
+
+    if (!fadeState || !fadeState.isActive) {
+      setFadeGhost({
+        outgoingText: '',
+        incomingText: '',
+        currentText: '',
+        key: 0,
+      });
+      return;
+    }
+
+    const nextText = String(fadeState.to_text || '');
+    setFadeGhost((prev) => {
+      const previousVisibleText = prev.incomingText || prev.currentText || lastGhostSnapshotRef.current || '';
+      return {
+        outgoingText: previousVisibleText !== nextText ? previousVisibleText : '',
+        incomingText: nextText,
+        currentText: nextText,
+        key: prev.key + 1,
+      };
+    });
+
+    fadeTimerRef.current = setTimeout(() => {
+      setFadeGhost((prev) => ({
+        ...prev,
+        outgoingText: '',
+        currentText: prev.incomingText,
+      }));
+    }, FADE_TRANSITION_MS);
+
+    return () => {
+      if (fadeTimerRef.current) {
+        clearTimeout(fadeTimerRef.current);
+        fadeTimerRef.current = null;
+      }
+    };
+  }, [fadeState?.isActive, fadeState?.to_text, fadeState?.phase]);
+
+  const renderTextWithLineBreaks = (text = '') => (
+    String(text ?? '').split('\n').map((line, index, array) => (
+      <React.Fragment key={index}>
+        {line}
+        {index < array.length - 1 && <br />}
+      </React.Fragment>
+    ))
+  );
+
+  const renderFadeLines = () => {
+    const baseText = String(pageText ?? '');
+    const lines = baseText.split('\n');
+    const renderedBaseLines = (lines.length ? lines : ['']).slice(0, MAX_LINES);
+    const lastLineIndex = renderedBaseLines.length - 1;
+    const fadeIncomingText = String(fadeGhost.incomingText ?? '');
+    const fadeOutgoingText = String(fadeGhost.outgoingText ?? '');
+    const showOutgoing = fadeOutgoingText.length > 0 && fadeOutgoingText !== fadeIncomingText;
+    const showIncoming = fadeIncomingText.length > 0;
+
+    return renderedBaseLines.map((line, idx) => {
+      const isLastLine = idx === lastLineIndex;
+      return (
+        <div
+          key={`fade-line-${idx}`}
+          className="typewriter-line"
+          ref={isLastLine ? lastLineRef : null}
+        >
+          <span className="last-line-content">
+            {line}
+            {isLastLine && (showOutgoing || showIncoming) && (
+              <span className="fade-ghost-container">
+                {showOutgoing && (
+                  <span
+                    key={`fade-out-${fadeGhost.key}`}
+                    className="fade-ghost-layer fade-ghost-out"
+                  >
+                    {renderTextWithLineBreaks(fadeOutgoingText)}
+                  </span>
+                )}
+                {showIncoming && (
+                  <span
+                    key={`fade-in-${fadeGhost.key}`}
+                    className={`fade-ghost-layer ${showOutgoing ? 'fade-ghost-in' : 'fade-ghost-static'}`}
+                  >
+                    {renderTextWithLineBreaks(fadeIncomingText)}
+                  </span>
+                )}
+              </span>
+            )}
+            {isLastLine && showCursor && (
+              <span
+                className="striker-cursor"
+                data-testid="striker-cursor-element"
+                ref={strikerRef}
+                style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
+              />
+            )}
+          </span>
+        </div>
+      );
+    });
+  };
 
   // --- PAGE SLIDE JSX (forwards/backwards) ---
   // This function was moved from TypewriterFramework.jsx
@@ -139,6 +226,7 @@ const PaperDisplay = ({
   const renderSlideWrapper = () => (
     <div
       className="film-slide-wrapper animating"
+      data-testid="film-slide-wrapper-div"
       style={{
         transform: `translateX(${getSlideX()}%)`,
         transition: isSliding ? `transform ${SLIDE_DURATION_MS}ms cubic-bezier(0.5,0.15,0.35,1)` : 'none',
@@ -155,6 +243,7 @@ const PaperDisplay = ({
       {/* Outgoing film/paper */}
       <div
         className="film-bg-slide"
+        data-testid="prev-bg-slide"
         style={{
           backgroundImage: `url('${prevFilmBgUrl}')`,
           width: '50%',
@@ -173,7 +262,7 @@ const PaperDisplay = ({
           display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none',
         }}>
           <div className="typewriter-text film-overlay-text" style={{ paddingTop: TOP_OFFSET, paddingBottom: BOTTOM_PADDING }}>
-            {prevText.split('\n').slice(0, MAX_LINES).map((line, idx, arr) => {
+            {String(prevText ?? '').split('\n').slice(0, MAX_LINES).map((line, idx, arr) => {
               const isLastLine = idx === arr.length - 1;
               return (
                 <div className="typewriter-line" key={idx}>
@@ -190,6 +279,7 @@ const PaperDisplay = ({
       {/* Incoming film/paper */}
       <div
         className="film-bg-slide"
+        data-testid="next-bg-slide"
         style={{
           backgroundImage: `url('${nextFilmBgUrl}')`,
           width: '50%',
@@ -208,7 +298,7 @@ const PaperDisplay = ({
           display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: 'none',
         }}>
           <div className="typewriter-text film-overlay-text" style={{ paddingTop: TOP_OFFSET, paddingBottom: BOTTOM_PADDING }}>
-            {nextText.split('\n').slice(0, MAX_LINES).map((line, idx, arr) => {
+            {String(nextText ?? '').split('\n').slice(0, MAX_LINES).map((line, idx, arr) => {
               const isLastLine = idx === arr.length - 1;
               return (
                 <div className="typewriter-line" key={idx}>
@@ -234,7 +324,7 @@ const PaperDisplay = ({
   );
 
   return (
-    <div className="typewriter-paper-frame" style={{ height: `${FRAME_HEIGHT}px` }}>
+    <div className="typewriter-paper-frame" data-testid="paper-frame" style={{ height: `${FRAME_HEIGHT}px` }}>
       <div className="paper-scroll-area" ref={scrollRef}
         style={{
           height: `${scrollAreaHeight}px`,
@@ -250,6 +340,7 @@ const PaperDisplay = ({
           <>
             <div
               className="film-background"
+              data-testid="film-background-div"
               style={{
                 position: 'absolute',
                 top: 0,
@@ -270,97 +361,18 @@ const PaperDisplay = ({
               style={textStyles} // Apply the combined styles here
             >
                 {fadeState && fadeState.isActive ? (
+                  renderFadeLines()
+                ) : (
                 (() => {
-                  // Inside the (() => { ... })() block for fadeState.isActive
-                  const sUserText = String(userText || ''); // Destructured prop
-                  const sToText = String(fadeState.to_text || '');
-
-                  const ghostTextForCurrentPhase = sToText.startsWith(sUserText) ? sToText.slice(sUserText.length) : sToText;
-
-                  console.log('[FadeRender-Simple] userText (prefix):', sUserText);
-                  console.log('[FadeRender-Simple] fadeState.to_text:', fadeState.to_text);
-                  console.log('[FadeRender-Simple] ghostTextForCurrentPhase:', ghostTextForCurrentPhase);
-                  console.log('[FadeRender-Simple] fadeState.phase:', fadeState.phase, 'time:', Date.now());
-
-                  // Helper to render text with <br /> tags for newlines
-                  const renderTextWithLineBreaks = (text) => {
-                      return text.split('\n').map((line, index, array) => (
-                          <React.Fragment key={index}>
-                              {line}
-                              {index < array.length - 1 && <br />}
-                          </React.Fragment>
-                      ));
-                  };
-
-                  // Logging for the state passed from TypewriterFramework
-                  console.log('[FadeRender-Crossfade] Parent fadeState:', fadeState);
-                  // Logging for internal component states
-                  console.log('[FadeRender-Crossfade] sUserText:', sUserText);
-                  console.log('[FadeRender-Crossfade] incomingGhostInfo:', incomingGhostInfo);
-                  console.log('[FadeRender-Crossfade] outgoingGhostInfo:', outgoingGhostInfo);
-
-                  return (
-      <div className="typewriter-line">
-        <span style={{ display: 'inline-block', verticalAlign: 'baseline' }}>
-          {sUserText && (
-            <span style={{ display: 'inline' }}>
-              {renderTextWithLineBreaks(sUserText)}
-            </span>
-          )}
-          {/* Container for cross-fading ghost texts */}
-          <span style={{ display: 'inline-block', position: 'relative', verticalAlign: 'baseline' }} className="cross-fade-ghost-container">
-            {outgoingGhostInfo.text && outgoingGhostInfo.key && (
-              <span
-                key={outgoingGhostInfo.key}
-                className="ghost-text-block cross-fade-outgoing"
-                style={{ display: 'inline-block', position: 'absolute', top: 0, left: 0 }}
-              >
-                {/* --- ENHANCED: Fade out each char as smudge/afterimage --- */}
-                {outgoingGhostInfo.text.split('').map((char, i) => (
-                  <span
-                    key={i}
-                    style={{ position: 'relative', display: 'inline-block', minWidth: '0.7ch' }}
-                  >
-                    <span
-                      className="smudge-fade-out"
-                      style={{ animationDelay: `${i * 0.042}s` }}
-                    >
-                      {char === '\n' ? <br /> : char}
-                    </span>
-                    <span
-                      className="afterimage-fade"
-                      style={{ animationDelay: `${i * 0.042 + 0.13}s` }}
-                    >
-                      {char === '\n' ? <br /> : char}
-                    </span>
-                  </span>
-                ))}
-              </span>
-            )}
-            {incomingGhostInfo.text && incomingGhostInfo.key && (
-              <span
-                key={incomingGhostInfo.key}
-                className="ghost-text-block cross-fade-incoming"
-                style={{ display: 'inline-block' }}
-              >
-                {/* Appear instantly, or add a subtle fade-in if you want */}
-                {incomingGhostInfo.text.split('').map((char, i) => (
-                  <span key={i}>{char === '\n' ? <br /> : char}</span>
-                ))}
-              </span>
-            )}
-          </span>
-        </span>
-      </div>
-    );
-  })()
-)  : (
-                (() => {
-                  const pageTextLength = pageText.length;
+                  const pageTextString = String(pageText ?? '');
+                  const pageTextLength = pageTextString.length;
                   const ghostTextString = Array.isArray(ghostText)
                       ? ghostText.map(g => g.char).join('')
-                      : (ghostText || '');
-                    const fullCombinedText = pageText + ghostTextString;
+                      : String(ghostText || '');
+                  const ghostChars = Array.isArray(ghostText)
+                    ? ghostText
+                    : ghostTextString.split('').map((char) => ({ char, justAppeared: false }));
+                    const fullCombinedText = pageTextString + ghostTextString;
                   const originalLines = fullCombinedText.split('\n');
 
                   const allLinesToRender = originalLines.slice(0, MAX_LINES);
@@ -389,11 +401,11 @@ const PaperDisplay = ({
                           const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
                           const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
                           
-                          if (charGlobalIndex >= pageTextLength && ghostText.length > 0) {
+                          if (charGlobalIndex >= pageTextLength && ghostChars.length > 0) {
                             // Only animate the most recently added ghost letter
                             const ghostIdx = charGlobalIndex - pageTextLength;
-                            const isLastGhost = ghostIdx === ghostText.length - 1;
-                            const g = ghostText[ghostIdx];
+                            const isLastGhost = ghostIdx === ghostChars.length - 1;
+                            const g = ghostChars[ghostIdx];
                             return (
                               <span
                                 key={charKey}
@@ -429,6 +441,7 @@ const PaperDisplay = ({
                               {isLastLineOfRenderedSet && showCursor && (
                                 <span
                                   className={"striker-cursor"}
+                                  data-testid="striker-cursor-element"
                                   ref={strikerRef}
                                   style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
                                 />

@@ -1,13 +1,158 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './StorytellerArenaConsole.css';
 import ArenaCard from './ArenaCard';
+import EdgeLine from './EdgeLine';
+import RelationshipInput from './RelationshipInput';
 import arenaMap from './arenaMaps/arenaMap.petalHex.v1.json';
 import spreadPresets from './spreads.v1.json';
 import { fetchSessionPlayers } from '../../api/storytellerSession';
+import { validateRelationship, proposeRelationship, fetchArenaState } from '../../api/arenaRelationships.api';
 
 const DEFAULT_FRAGMENT_TEXT =
   'A wind-scoured pass with a rusted watchtower and a lone courier arriving at dusk.';
 const MOCK_API_CALLS = true;
+const TURN_ACTIONS_PER_TURN = 2;
+const SCENE_CLOCK_MIN = 0;
+const SCENE_CLOCK_MAX = 6;
+const TURN_MOVE_DEFINITIONS = [
+  {
+    id: 'establish',
+    label: 'Establish',
+    detail: 'Ground the scene with a concrete world detail.',
+    ledgerType: 'canon',
+    effects: { momentum: 0, clarity: 1, sceneClock: -1 },
+    text: 'anchors a concrete detail in the shared fiction.'
+  },
+  {
+    id: 'complicate',
+    label: 'Complicate',
+    detail: 'Raise stakes with friction, danger, or conflict.',
+    ledgerType: 'mystery',
+    effects: { momentum: 1, clarity: -1, sceneClock: 1 },
+    text: 'introduces pressure that threatens the current plan.'
+  },
+  {
+    id: 'reveal',
+    label: 'Reveal',
+    detail: 'Expose a hidden truth tied to the world.',
+    ledgerType: 'canon',
+    effects: { momentum: 1, clarity: 1, sceneClock: 1 },
+    text: 'reveals a truth that reframes the scene.'
+  }
+];
+const FLOW_LOOP_ACTIONS = [
+  {
+    id: 'frame',
+    label: 'Frame',
+    detail: 'Declare where we are, what time it is, and what is immediate.',
+    ledgerType: 'canon',
+    effects: { momentum: 0, clarity: 1, sceneClock: -1 },
+    text: 'frames the moment for the table.'
+  },
+  {
+    id: 'invite',
+    label: 'Invite',
+    detail: 'Hand the spotlight to another player.',
+    ledgerType: 'oath',
+    effects: { momentum: 1, clarity: 0, sceneClock: 0 },
+    text: 'invites another voice into the scene.'
+  },
+  {
+    id: 'seal',
+    label: 'Seal',
+    detail: 'Lock a truth into canon before advancing.',
+    ledgerType: 'canon',
+    effects: { momentum: 1, clarity: 1, sceneClock: 0 },
+    text: 'seals a shared truth into canon.'
+  }
+];
+const WORLD_PROFILE_DEFAULT = {
+  worldName: '',
+  mood: '',
+  truth: '',
+  taboo: '',
+  pillars: []
+};
+const SESSION_STATE_DEFAULT = {
+  readyMap: {},
+  focusPlayerKey: '',
+  beatId: 'arrival',
+  phase: 'worldbuild',
+  intent: '',
+  turnOrder: [],
+  turnIndex: 0,
+  ritualActive: false,
+  sceneClock: 2,
+  actionBank: {},
+  diveMode: false,
+  lastSignal: null,
+  ledger: [],
+  anchors: [],
+  pulse: {
+    momentum: 2,
+    clarity: 2
+  },
+  sceneGoal: '',
+  sceneRisk: '',
+  threads: [],
+  lastFlowAction: null,
+  vows: {
+    hush: false,
+    anchor: false,
+    pact: false
+  }
+};
+
+const getWorldProfileKey = (sessionId) =>
+  `storyteller:worldProfile:${sessionId || 'default'}`;
+const getSessionStateKey = (sessionId) =>
+  `storyteller:sessionState:${sessionId || 'default'}`;
+const clampPulseValue = (value) => Math.min(5, Math.max(0, value));
+const clampSceneClockValue = (value) => Math.min(SCENE_CLOCK_MAX, Math.max(SCENE_CLOCK_MIN, value));
+const createActionBank = (keys, value = TURN_ACTIONS_PER_TURN) =>
+  Object.fromEntries((Array.isArray(keys) ? keys : []).map((key) => [key, value]));
+const describeSceneClock = (value) => {
+  if (value <= 1) return 'Calm';
+  if (value <= 3) return 'Tense';
+  if (value <= 5) return 'Critical';
+  return 'Breaking';
+};
+
+const readWorldProfile = (sessionId) => {
+  if (typeof window === 'undefined') return { ...WORLD_PROFILE_DEFAULT };
+  const key = getWorldProfileKey(sessionId);
+  const raw = window.localStorage.getItem(key);
+  if (!raw) return { ...WORLD_PROFILE_DEFAULT };
+  try {
+    return { ...WORLD_PROFILE_DEFAULT, ...JSON.parse(raw) };
+  } catch (error) {
+    return { ...WORLD_PROFILE_DEFAULT };
+  }
+};
+
+const writeWorldProfile = (sessionId, profile) => {
+  if (typeof window === 'undefined') return;
+  const key = getWorldProfileKey(sessionId);
+  window.localStorage.setItem(key, JSON.stringify(profile));
+};
+
+const readSessionState = (sessionId) => {
+  if (typeof window === 'undefined') return { ...SESSION_STATE_DEFAULT };
+  const key = getSessionStateKey(sessionId);
+  const raw = window.localStorage.getItem(key);
+  if (!raw) return { ...SESSION_STATE_DEFAULT };
+  try {
+    return { ...SESSION_STATE_DEFAULT, ...JSON.parse(raw) };
+  } catch (error) {
+    return { ...SESSION_STATE_DEFAULT };
+  }
+};
+
+const writeSessionState = (sessionId, state) => {
+  if (typeof window === 'undefined') return;
+  const key = getSessionStateKey(sessionId);
+  window.localStorage.setItem(key, JSON.stringify(state));
+};
 
 const clampCards = (cards, limit = 8) => {
   if (!Array.isArray(cards)) return [];
@@ -120,6 +265,8 @@ const StorytellerArenaConsole = ({
   const [apiBaseUrl, setApiBaseUrl] = useState('http://localhost:5001');
   const [sessionId, setSessionId] = useState(initialSessionId);
   const [playersCount, setPlayersCount] = useState(1);
+  const [sessionState, setSessionState] = useState(() => readSessionState(initialSessionId));
+  const [selectedPromptId, setSelectedPromptId] = useState('sense');
   const [players, setPlayers] = useState([
     createPlayerState(0, { playerName: initialPlayerName, playerId: initialPlayerId })
   ]);
@@ -138,7 +285,24 @@ const StorytellerArenaConsole = ({
   const [calibrationGroup, setCalibrationGroup] = useState('center');
   const [calibrationSlots, setCalibrationSlots] = useState([]);
   const [calibrationDraft, setCalibrationDraft] = useState(null);
+  const [selectedDeckCards, setSelectedDeckCards] = useState({});
+  const [arenaEdges, setArenaEdges] = useState([]);
+  const [connectionMode, setConnectionMode] = useState('idle');
+  const [pendingConnection, setPendingConnection] = useState(null);
+  const [recentPoints, setRecentPoints] = useState(null);
+  const [worldProfile, setWorldProfile] = useState(() => readWorldProfile(initialSessionId));
+  const [pillarInput, setPillarInput] = useState('');
+  const [ledgerType, setLedgerType] = useState('canon');
+  const [ledgerText, setLedgerText] = useState('');
+  const [anchorInput, setAnchorInput] = useState('');
+  const [threadInput, setThreadInput] = useState('');
   const boardRef = useRef(null);
+  const boardStageRef = useRef(null);
+  const forgePanelRef = useRef(null);
+  const fragmentInputRef = useRef(null);
+  const deckPanelRef = useRef(null);
+  const spreadPanelRef = useRef(null);
+  const worldProfileRef = useRef(null);
 
   const baseUrl = useMemo(() => {
     if (!apiBaseUrl) return '';
@@ -148,6 +312,23 @@ const StorytellerArenaConsole = ({
   const activePlayer = players[activePlayerIndex] || players[0];
   const activePlayerId = activePlayer?.id || '';
   const activeSpread = getSpreadById(activePlayer?.spreadId);
+
+  useEffect(() => {
+    setWorldProfile(readWorldProfile(sessionId));
+  }, [sessionId]);
+
+  useEffect(() => {
+    writeWorldProfile(sessionId, worldProfile);
+  }, [sessionId, worldProfile]);
+
+  useEffect(() => {
+    setSessionState(readSessionState(sessionId));
+    setSelectedPromptId('sense');
+  }, [sessionId]);
+
+  useEffect(() => {
+    writeSessionState(sessionId, sessionState);
+  }, [sessionId, sessionState]);
 
   useEffect(() => {
     setPlayers((prev) => {
@@ -170,6 +351,365 @@ const StorytellerArenaConsole = ({
     const timer = window.setTimeout(() => setNotice(''), 3200);
     return () => window.clearTimeout(timer);
   }, [notice]);
+
+  const hasArenaCards = useMemo(() => {
+    const centerHas = arenaState.center?.some((slot) => slot.cardInstanceId);
+    const edgeHas = Object.values(arenaState.edges || {}).some((slots) =>
+      slots.some((slot) => slot.cardInstanceId)
+    );
+    return Boolean(centerHas || edgeHas);
+  }, [arenaState.center, arenaState.edges]);
+
+  const hasWorldCharter = Boolean(
+    worldProfile.worldName.trim() ||
+      worldProfile.truth.trim() ||
+      (worldProfile.pillars || []).length >= 3
+  );
+
+  const flowSteps = useMemo(() => {
+    const seeded = Boolean(activePlayer?.fragmentText?.trim());
+    const hasEntities = (activePlayer?.deck?.length || 0) > 0;
+    const hasSpread = activePlayer?.spreadSlots?.some((slot) => slot.cardInstanceId);
+    const hasConnections = (arenaEdges?.length || 0) > 0;
+    return [
+      {
+        id: 'charter',
+        title: 'Charter the World',
+        description: 'Name the world, its mood, and 3+ pillars.',
+        done: hasWorldCharter
+      },
+      {
+        id: 'seed',
+        title: 'Seed the World',
+        description: 'Write a fragment that defines place, tone, and tension.',
+        done: seeded
+      },
+      {
+        id: 'forge',
+        title: 'Forge Entities',
+        description: 'Generate characters, factions, and relics to populate the deck.',
+        done: hasEntities
+      },
+      {
+        id: 'spread',
+        title: 'Reveal the Spread',
+        description: 'Draw cards into a private layout before unveiling them.',
+        done: Boolean(hasSpread)
+      },
+      {
+        id: 'arena',
+        title: 'Stage the Arena',
+        description: 'Place shared cards into the central mythspace.',
+        done: hasArenaCards
+      },
+      {
+        id: 'weave',
+        title: 'Weave Connections',
+        description: 'Connect entities to lock in world truths.',
+        done: hasConnections
+      }
+    ];
+  }, [
+    activePlayer?.deck?.length,
+    activePlayer?.fragmentText,
+    activePlayer?.spreadSlots,
+    hasArenaCards,
+    arenaEdges,
+    hasWorldCharter
+  ]);
+
+  const immersionScore = useMemo(() => {
+    const doneCount = flowSteps.filter((step) => step.done).length;
+    if (!flowSteps.length) return 0;
+    return Math.round((doneCount / flowSteps.length) * 100);
+  }, [flowSteps]);
+  const currentFlowStepId =
+    flowSteps.find((step) => !step.done)?.id || flowSteps[flowSteps.length - 1]?.id || '';
+  const currentFlowStep =
+    flowSteps.find((step) => step.id === currentFlowStepId) || flowSteps[flowSteps.length - 1] || null;
+  const currentFlowStepIndex = currentFlowStep
+    ? Math.max(flowSteps.findIndex((step) => step.id === currentFlowStep.id), 0) + 1
+    : 0;
+  const flowGuidance = useMemo(() => {
+    const guidanceByStep = {
+      charter: {
+        mode: 'worldbuild',
+        modeLabel: 'Worldbuild',
+        focus: 'Meta Creation',
+        cue: 'Define canon, tone, and 3+ pillars before play begins.',
+        next: 'Seed the world with a fragment.'
+      },
+      seed: {
+        mode: 'worldbuild',
+        modeLabel: 'Worldbuild',
+        focus: 'World Seed',
+        cue: 'Write a fragment that signals place, mood, and tension.',
+        next: 'Forge the cast and factions.'
+      },
+      forge: {
+        mode: 'worldbuild',
+        modeLabel: 'Worldbuild',
+        focus: 'Entity Forging',
+        cue: 'Generate characters, factions, and relics to populate the deck.',
+        next: 'Reveal a spread of visions.'
+      },
+      spread: {
+        mode: 'immersion',
+        modeLabel: 'Immersion',
+        focus: 'Private Visions',
+        cue: 'Draw cards into a private spread before sharing them.',
+        next: 'Stage the shared arena.'
+      },
+      arena: {
+        mode: 'immersion',
+        modeLabel: 'Immersion',
+        focus: 'Shared Stage',
+        cue: 'Place shared cards into the central mythspace.',
+        next: 'Weave connections into canon.'
+      },
+      weave: {
+        mode: 'action',
+        modeLabel: 'Action',
+        focus: 'Canon Lock-In',
+        cue: 'Connect entities and lock truths before the ritual begins.',
+        next: 'Enter ritual and play turns.'
+      }
+    };
+    const fallback = {
+      mode: 'worldbuild',
+      modeLabel: 'Worldbuild',
+      focus: 'Begin the World',
+      cue: 'Start with a charter that names the world and its rules.',
+      next: 'Seed the world with a fragment.'
+    };
+    const active = guidanceByStep[currentFlowStepId] || fallback;
+    const currentIndex = flowSteps.findIndex((step) => step.id === currentFlowStepId);
+    const nextStep = currentIndex >= 0 ? flowSteps[currentIndex + 1] : null;
+    const next = nextStep?.title || active.next;
+    return { ...active, next };
+  }, [currentFlowStepId, flowSteps]);
+
+  const roleLabels = useMemo(
+    () => ['Lorekeeper', 'Cartographer', 'Warden', 'Oracle'],
+    []
+  );
+
+  const phaseOptions = useMemo(
+    () => [
+      { id: 'worldbuild', label: 'Worldbuild', detail: 'Define canon and seeds.' },
+      { id: 'immersion', label: 'Immersion', detail: 'Lean into presence and mood.' },
+      { id: 'action', label: 'Action', detail: 'Resolve motion and consequence.' }
+    ],
+    []
+  );
+
+  const sceneBeats = useMemo(
+    () => [
+      { id: 'arrival', label: 'Arrival', detail: 'Establish place, tone, and entry.' },
+      { id: 'pressure', label: 'Pressure', detail: 'Introduce friction or an urgent need.' },
+      { id: 'revelation', label: 'Revelation', detail: 'Reveal a truth the world hides.' },
+      { id: 'choice', label: 'Choice', detail: 'Force a decision with a cost.' },
+      { id: 'aftermath', label: 'Aftermath', detail: 'Show consequences and echo.' }
+    ],
+    []
+  );
+
+  const immersionPrompts = useMemo(() => {
+    const mood = worldProfile.mood.trim();
+    const truth = worldProfile.truth.trim();
+    const taboo = worldProfile.taboo.trim();
+    return [
+      {
+        id: 'sense',
+        title: 'Sensory Anchor',
+        text: mood ? `Let the scene breathe with ${mood}.` : 'Name a temperature, scent, or texture.'
+      },
+      {
+        id: 'truth',
+        title: 'Mythic Truth',
+        text: truth ? `Reinforce: ${truth}` : 'Reveal one law of the world.'
+      },
+      {
+        id: 'taboo',
+        title: 'Risk & Taboo',
+        text: taboo ? `Circle the taboo: ${taboo}` : 'Name a forbidden act or cost.'
+      }
+    ];
+  }, [worldProfile.mood, worldProfile.taboo, worldProfile.truth]);
+
+  const getPlayerKey = (player, index) => {
+    if (player?.id?.trim()) return player.id.trim();
+    if (player?.label?.trim()) return player.label.trim();
+    return `player-${index + 1}`;
+  };
+
+  const getPlayerStatus = (player, index) => {
+    const playerKey = getPlayerKey(player, index);
+    if (sessionState.readyMap?.[playerKey]) return { label: 'Ready', tone: 'ready' };
+    if (!player?.id) return { label: 'Unbound', tone: 'waiting' };
+    if (index === activePlayerIndex) return { label: 'Active Focus', tone: 'active' };
+    if (!player?.fragmentText?.trim()) return { label: 'Awaiting Seed', tone: 'waiting' };
+    if (!(player?.deck?.length > 0)) return { label: 'Forging', tone: 'working' };
+    return { label: 'Weaving', tone: 'ready' };
+  };
+
+  const activeBeat =
+    sceneBeats.find((beat) => beat.id === sessionState.beatId) || sceneBeats[0];
+  const promptMap = useMemo(
+    () => Object.fromEntries(immersionPrompts.map((prompt) => [prompt.id, prompt])),
+    [immersionPrompts]
+  );
+  const selectedPrompt = promptMap[selectedPromptId] || immersionPrompts[0];
+  const focusPlayerKey = sessionState.focusPlayerKey;
+  const getPlayerLabelByKey = (playerKey, fallback = 'Unassigned') => {
+    if (!playerKey) return fallback;
+    const match = players
+      .slice(0, playersCount)
+      .find((player, index) => getPlayerKey(player, index) === playerKey);
+    if (!match) return fallback;
+    return match.label || match.id || 'Focus';
+  };
+  const focusPlayerLabel = getPlayerLabelByKey(focusPlayerKey, 'Unclaimed');
+  const turnOrder = Array.isArray(sessionState.turnOrder) ? sessionState.turnOrder : [];
+  const currentTurnKey = turnOrder[sessionState.turnIndex] || '';
+  const currentTurnLabel = getPlayerLabelByKey(currentTurnKey, 'Unassigned');
+  const phaseLabel =
+    phaseOptions.find((phase) => phase.id === sessionState.phase)?.label || 'Worldbuild';
+  const readyCount = players
+    .slice(0, playersCount)
+    .filter((player, index) => sessionState.readyMap?.[getPlayerKey(player, index)]).length;
+  const ledgerEntries = Array.isArray(sessionState.ledger) ? sessionState.ledger : [];
+  const anchors = Array.isArray(sessionState.anchors) ? sessionState.anchors : [];
+  const threads = Array.isArray(sessionState.threads) ? sessionState.threads : [];
+  const sceneGoal = sessionState.sceneGoal || '';
+  const sceneRisk = sessionState.sceneRisk || '';
+  const pulse = sessionState.pulse || { momentum: 2, clarity: 2 };
+  const ritualActive = Boolean(sessionState.ritualActive);
+  const rawSceneClock = Number(sessionState.sceneClock);
+  const sceneClock = clampSceneClockValue(Number.isFinite(rawSceneClock) ? rawSceneClock : 2);
+  const sceneClockLabel = describeSceneClock(sceneClock);
+  const immersionGate = useMemo(
+    () => ({
+      charter: hasWorldCharter,
+      anchors: anchors.length > 0,
+      ready: playersCount > 0 ? readyCount === playersCount : false,
+      ritual: ritualActive
+    }),
+    [anchors.length, hasWorldCharter, playersCount, readyCount, ritualActive]
+  );
+  const ritualGateReady = hasWorldCharter && (playersCount <= 1 || readyCount === playersCount);
+  const actionBank =
+    sessionState.actionBank && typeof sessionState.actionBank === 'object'
+      ? sessionState.actionBank
+      : {};
+  const rawCurrentTurnActions = Number(actionBank[currentTurnKey]);
+  const currentTurnActions = currentTurnKey
+    ? Math.max(
+        0,
+        Number.isFinite(rawCurrentTurnActions) ? rawCurrentTurnActions : TURN_ACTIONS_PER_TURN
+      )
+    : 0;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.render_game_to_text = () => {
+      const payload = {
+        mode: 'arenaConsole',
+        sessionId,
+        phase: sessionState.phase,
+        beat: activeBeat?.label || 'Arrival',
+        focusPlayer: focusPlayerLabel,
+        turnHolder: currentTurnLabel,
+        intent: sessionState.intent || '',
+        world: {
+          name: worldProfile.worldName,
+          mood: worldProfile.mood,
+          truth: worldProfile.truth,
+          taboo: worldProfile.taboo,
+          pillars: worldProfile.pillars || []
+        },
+        anchors,
+        flow: {
+          step: currentFlowStep?.title || '',
+          immersionScore,
+          mode: flowGuidance.modeLabel,
+          next: flowGuidance.next,
+          loop: {
+            lastAction: sessionState.lastFlowAction?.label || '',
+            lastBy: sessionState.lastFlowAction?.by || '',
+            lastAt: sessionState.lastFlowAction?.at || ''
+          },
+          gate: {
+            charter: immersionGate.charter,
+            anchors: immersionGate.anchors,
+            ready: immersionGate.ready,
+            ritual: immersionGate.ritual
+          }
+        },
+        sceneLens: {
+          goal: sceneGoal,
+          stakes: sceneRisk
+        },
+        threads: threads.map((thread) => ({ label: thread.label, heat: thread.heat || 0 })),
+        ledger: ledgerEntries.slice(-6).map((entry) => ({
+          type: entry.type,
+          text: entry.text,
+          by: entry.by || ''
+        })),
+        pulse: {
+          momentum: pulse.momentum,
+          clarity: pulse.clarity
+        },
+        mechanics: {
+          ritualActive,
+          sceneClock,
+          sceneClockLabel,
+          turnActionsLeft: currentTurnActions
+        },
+        roster: players.slice(0, playersCount).map((player, index) => ({
+          key: getPlayerKey(player, index),
+          label: player.label || player.id || `Player ${index + 1}`,
+          ready: Boolean(sessionState.readyMap?.[getPlayerKey(player, index)]),
+          focused: getPlayerKey(player, index) === focusPlayerKey,
+          turn: getPlayerKey(player, index) === currentTurnKey
+        }))
+      };
+      return JSON.stringify(payload);
+    };
+    window.advanceTime = () => {};
+    return () => {
+      delete window.render_game_to_text;
+      delete window.advanceTime;
+    };
+  }, [
+    sessionId,
+    sessionState.phase,
+    sessionState.intent,
+    sessionState.readyMap,
+    focusPlayerLabel,
+    currentTurnLabel,
+    currentTurnKey,
+    focusPlayerKey,
+    worldProfile,
+    activeBeat,
+    currentFlowStep,
+    immersionScore,
+    flowGuidance,
+    immersionGate,
+    ledgerEntries,
+    anchors,
+    pulse,
+    ritualActive,
+    sceneClock,
+    sceneClockLabel,
+    currentTurnActions,
+    players,
+    playersCount,
+    sceneGoal,
+    sceneRisk,
+    threads,
+    sessionState.lastFlowAction
+  ]);
 
   useEffect(() => {
     if (!baseUrl || !sessionId.trim()) return;
@@ -211,6 +751,75 @@ const StorytellerArenaConsole = ({
       isActive = false;
     };
   }, [baseUrl, sessionId]);
+
+  // Auto-load arena state on session change for multiplayer sync
+  useEffect(() => {
+    if (!baseUrl || !sessionId.trim()) return;
+    let isActive = true;
+    const loadArenaState = async () => {
+      try {
+        const payload = await requestJson(
+          `/api/sessions/${encodeURIComponent(sessionId.trim())}/arena${buildQuery({
+            playerId: activePlayerId || 'observer',
+            mock_api_calls: MOCK_API_CALLS
+          })}`
+        );
+        if (!isActive) return;
+        const arena = payload?.arena || payload || {};
+        // Merge card definitions and instances from server
+        if (arena.cardDefinitions) {
+          setCardDefinitions((prev) => ({ ...prev, ...arena.cardDefinitions }));
+        }
+        if (arena.cardInstances) {
+          setCardInstances((prev) => ({ ...prev, ...arena.cardInstances }));
+        }
+        // Update arena state if available
+        if (arena.edges && arena.center) {
+          setArenaState((prev) => ({
+            ...prev,
+            edges: { ...prev.edges, ...arena.edges },
+            center: arena.center.length ? arena.center : prev.center
+          }));
+        }
+
+        // Load edges if available
+        if (Array.isArray(arena.graphEdges)) {
+          setArenaEdges(arena.graphEdges);
+        }
+      } catch (err) {
+        // Silent fail for initial load - arena may not exist yet
+      }
+    };
+
+    // Also fetch using new Arena State API (Phase 6)
+    const loadArenaStateFull = async () => {
+      if (!sessionId || !activePlayerId) return;
+      try {
+        const state = await fetchArenaState(sessionId, activePlayerId, baseUrl, {
+          mockApiCalls: MOCK_API_CALLS
+        });
+        if (state && state.edges) {
+          setArenaEdges(state.edges);
+        }
+        if (state && state.scores) {
+          // Merge scores into player objects
+          setPlayers(prev => prev.map(p => ({
+            ...p,
+            score: state.scores[p.id] || p.score || 0
+          })));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch full arena state', err);
+      }
+    };
+
+    loadArenaState();
+    loadArenaStateFull();
+
+    return () => {
+      isActive = false;
+    };
+  }, [baseUrl, sessionId, activePlayerId]);
 
   const updatePlayerAt = (index, updater) => {
     setPlayers((prev) => prev.map((player, idx) => (idx === index ? updater(player) : player)));
@@ -351,6 +960,555 @@ const StorytellerArenaConsole = ({
     }
   };
 
+  const handleBlendWorldProfile = () => {
+    const lines = [];
+    if (worldProfile.worldName.trim()) lines.push(`World: ${worldProfile.worldName.trim()}`);
+    if (worldProfile.mood.trim()) lines.push(`Mood: ${worldProfile.mood.trim()}`);
+    if (worldProfile.truth.trim()) lines.push(`Founding truth: ${worldProfile.truth.trim()}`);
+    if (worldProfile.taboo.trim()) lines.push(`Taboo: ${worldProfile.taboo.trim()}`);
+    if (worldProfile.pillars?.length) lines.push(`Pillars: ${worldProfile.pillars.join(', ')}`);
+    if (!lines.length) {
+      setNotice('Add world details before blending.');
+      return;
+    }
+    updatePlayerAt(activePlayerIndex, (prev) => {
+      const base = prev.fragmentText?.trim();
+      const addition = lines.join(' | ');
+      const nextText = base ? `${base}\n\n${addition}` : addition;
+      return { ...prev, fragmentText: nextText };
+    });
+    setNotice('World charter blended into fragment.');
+  };
+
+  const handleToggleReady = (playerKey) => {
+    setSessionState((prev) => ({
+      ...prev,
+      readyMap: { ...prev.readyMap, [playerKey]: !prev.readyMap?.[playerKey] }
+    }));
+  };
+
+  const handleSetFocus = (playerKey, index) => {
+    setSessionState((prev) => ({ ...prev, focusPlayerKey: playerKey }));
+    if (typeof index === 'number') {
+      setActivePlayerIndex(index);
+    }
+  };
+
+  const handleAdvanceBeat = () => {
+    const currentIndex = sceneBeats.findIndex((beat) => beat.id === activeBeat?.id);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % sceneBeats.length;
+    setSessionState((prev) => ({ ...prev, beatId: sceneBeats[nextIndex].id }));
+  };
+
+  const handleToggleVow = (vowKey) => {
+    setSessionState((prev) => ({
+      ...prev,
+      vows: { ...prev.vows, [vowKey]: !prev.vows?.[vowKey] }
+    }));
+  };
+
+  const handlePulseAdjust = (key, delta) => {
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      return {
+        ...prev,
+        pulse: {
+          ...nextPulse,
+          [key]: clampPulseValue((nextPulse?.[key] ?? 2) + delta)
+        }
+      };
+    });
+  };
+
+  const handleSceneClockAdjust = (delta) => {
+    setSessionState((prev) => {
+      const previous = Number.isFinite(Number(prev.sceneClock)) ? Number(prev.sceneClock) : 2;
+      const next = clampSceneClockValue(previous + delta);
+      if (next === previous) return prev;
+      return { ...prev, sceneClock: next };
+    });
+  };
+
+  const handleAddPillar = () => {
+    const next = pillarInput.trim();
+    if (!next) return;
+    setWorldProfile((prev) => ({
+      ...prev,
+      pillars: [...(prev.pillars || []), next].slice(0, 6)
+    }));
+    setPillarInput('');
+  };
+
+  const handleRemovePillar = (index) => {
+    setWorldProfile((prev) => ({
+      ...prev,
+      pillars: (prev.pillars || []).filter((_, idx) => idx !== index)
+    }));
+  };
+
+  const handleSetPhase = (phaseId) => {
+    setSessionState((prev) => ({ ...prev, phase: phaseId }));
+  };
+
+  const handleSignal = (label) => {
+    setSessionState((prev) => ({
+      ...prev,
+      lastSignal: { label, at: new Date().toISOString() }
+    }));
+    setNotice(`${label} signal sent.`);
+  };
+
+  const handleToggleDiveMode = () => {
+    setSessionState((prev) => ({ ...prev, diveMode: !prev.diveMode }));
+  };
+
+  const createLedgerEntry = ({ type = 'canon', text, by = 'Table' }) => ({
+    id: window.crypto?.randomUUID?.() || `ledger-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
+    type,
+    text,
+    by,
+    at: new Date().toISOString()
+  });
+
+  const handleAddLedgerEntry = () => {
+    const trimmed = ledgerText.trim();
+    if (!trimmed) {
+      setNotice('Add a ledger entry before committing.');
+      return;
+    }
+    const entry = createLedgerEntry({
+      type: ledgerType,
+      text: trimmed,
+      by: focusPlayerLabel || 'Table'
+    });
+    setSessionState((prev) => ({
+      ...prev,
+      ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+    }));
+    setLedgerText('');
+  };
+
+  const handleAddAnchor = () => {
+    const next = anchorInput.trim();
+    if (!next) return;
+    if (anchors.length >= 3) {
+      setNotice('Anchor limit reached (3). Remove one to add another.');
+      return;
+    }
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const entry = createLedgerEntry({
+        type: 'oath',
+        text: `Anchor set: ${next}`,
+        by: focusPlayerLabel || 'Table'
+      });
+      return {
+        ...prev,
+        anchors: [...(Array.isArray(prev.anchors) ? prev.anchors : []), next].slice(0, 3),
+        pulse: {
+          ...nextPulse,
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setAnchorInput('');
+    setNotice('Anchor pinned to the table.');
+  };
+
+  const handleRemoveAnchor = (index) => {
+    setSessionState((prev) => ({
+      ...prev,
+      anchors: (Array.isArray(prev.anchors) ? prev.anchors : []).filter((_, idx) => idx !== index)
+    }));
+  };
+
+  const handleUpdateSceneLens = (key, value) => {
+    setSessionState((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleClearSceneLens = () => {
+    setSessionState((prev) => ({ ...prev, sceneGoal: '', sceneRisk: '' }));
+  };
+
+  const handleFlowLoopAction = (actionId) => {
+    const action = FLOW_LOOP_ACTIONS.find((item) => item.id === actionId);
+    if (!action) return;
+    const actorLabel = focusPlayerLabel || currentTurnLabel || 'Table';
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const previousClockRaw = Number(prev.sceneClock);
+      const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
+      const entry = createLedgerEntry({
+        type: action.ledgerType,
+        text: `${actorLabel} ${action.text}`,
+        by: actorLabel
+      });
+      return {
+        ...prev,
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + action.effects.momentum),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + action.effects.clarity)
+        },
+        sceneClock: clampSceneClockValue(previousClock + action.effects.sceneClock),
+        lastFlowAction: {
+          id: action.id,
+          label: action.label,
+          by: actorLabel,
+          at: new Date().toISOString()
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    if (action.id === 'invite') {
+      handlePassFocus();
+    }
+    setNotice(`${action.label} logged to the ledger.`);
+  };
+
+  const createThread = (label) => ({
+    id: window.crypto?.randomUUID?.() || `thread-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
+    label,
+    heat: 0
+  });
+
+  const handleAddThread = () => {
+    const next = threadInput.trim();
+    if (!next) return;
+    if (threads.length >= 3) {
+      setNotice('Thread limit reached (3). Resolve one to add another.');
+      return;
+    }
+    setSessionState((prev) => ({
+      ...prev,
+      threads: [...(Array.isArray(prev.threads) ? prev.threads : []), createThread(next)].slice(0, 3)
+    }));
+    setThreadInput('');
+  };
+
+  const handleAdvanceThread = (threadId) => {
+    setSessionState((prev) => {
+      const list = Array.isArray(prev.threads) ? prev.threads : [];
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      let ledgerEntry = null;
+      const nextThreads = list.map((thread) => {
+        if (thread.id !== threadId) return thread;
+        const nextHeat = Math.min(3, (thread.heat || 0) + 1);
+        if ((thread.heat || 0) < 3 && nextHeat === 3) {
+          ledgerEntry = createLedgerEntry({
+            type: 'mystery',
+            text: `Thread flares: ${thread.label}`,
+            by: focusPlayerLabel || 'Table'
+          });
+        }
+        return { ...thread, heat: nextHeat };
+      });
+      return {
+        ...prev,
+        threads: nextThreads,
+        pulse: ledgerEntry
+          ? {
+              ...nextPulse,
+              momentum: clampPulseValue((nextPulse?.momentum ?? 2) + 1)
+            }
+          : nextPulse,
+        ledger: ledgerEntry
+          ? [...(Array.isArray(prev.ledger) ? prev.ledger : []), ledgerEntry].slice(-24)
+          : prev.ledger
+      };
+    });
+  };
+
+  const handleCoolThread = (threadId) => {
+    setSessionState((prev) => ({
+      ...prev,
+      threads: (Array.isArray(prev.threads) ? prev.threads : []).map((thread) =>
+        thread.id === threadId ? { ...thread, heat: Math.max(0, (thread.heat || 0) - 1) } : thread
+      )
+    }));
+  };
+
+  const handleResolveThread = (threadId) => {
+    setSessionState((prev) => {
+      const list = Array.isArray(prev.threads) ? prev.threads : [];
+      const match = list.find((thread) => thread.id === threadId);
+      if (!match) return prev;
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const ledgerEntry = createLedgerEntry({
+        type: 'canon',
+        text: `Thread resolved: ${match.label}`,
+        by: focusPlayerLabel || 'Table'
+      });
+      return {
+        ...prev,
+        threads: list.filter((thread) => thread.id !== threadId),
+        pulse: {
+          ...nextPulse,
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), ledgerEntry].slice(-24)
+      };
+    });
+  };
+
+  const handleRemoveLedgerEntry = (entryId) => {
+    setSessionState((prev) => ({
+      ...prev,
+      ledger: (Array.isArray(prev.ledger) ? prev.ledger : []).filter((entry) => entry.id !== entryId)
+    }));
+  };
+
+  const handleEchoLedgerEntry = (entry) => {
+    if (!entry?.text) return;
+    updatePlayerAt(activePlayerIndex, (prev) => {
+      const existing = (prev.fragmentText || '').trim();
+      const nextText = existing ? `${existing} ${entry.text}` : entry.text;
+      return { ...prev, fragmentText: nextText };
+    });
+    setNotice('Ledger echo added to fragment.');
+  };
+
+  const handleBuildTurnOrder = (mode = 'ready') => {
+    const roster = players.slice(0, playersCount);
+    const keys = roster.map((player, index) => getPlayerKey(player, index));
+    const readyKeys = keys.filter((key) => sessionState.readyMap?.[key]);
+    const nextOrder = mode === 'ready' && readyKeys.length ? readyKeys : keys;
+    setSessionState((prev) => ({
+      ...prev,
+      turnOrder: nextOrder,
+      turnIndex: 0,
+      actionBank: createActionBank(nextOrder)
+    }));
+  };
+
+  const handleAdvanceTurn = () => {
+    if (!turnOrder.length) {
+      setNotice('Build turn order first.');
+      return;
+    }
+    setSessionState((prev) => {
+      const order = Array.isArray(prev.turnOrder) ? prev.turnOrder : [];
+      if (!order.length) return prev;
+      const nextIndex = (prev.turnIndex + 1) % order.length;
+      const nextKey = order[nextIndex];
+      return {
+        ...prev,
+        turnIndex: nextIndex,
+        actionBank: {
+          ...(prev.actionBank || {}),
+          ...(nextKey ? { [nextKey]: TURN_ACTIONS_PER_TURN } : {})
+        }
+      };
+    });
+  };
+
+  const handleStartRitual = () => {
+    if (!flowSteps.find((step) => step.id === 'charter')?.done) {
+      setNotice('Complete the World Charter before starting ritual mode.');
+      scrollToFlowStep('charter');
+      return;
+    }
+    const roster = players.slice(0, playersCount);
+    if (!roster.length) {
+      setNotice('No players available.');
+      return;
+    }
+    const keys = roster.map((player, index) => getPlayerKey(player, index));
+    const readyKeys = keys.filter((key) => sessionState.readyMap?.[key]);
+    const nextOrder = readyKeys.length ? readyKeys : keys;
+    const firstKey = nextOrder[0] || '';
+    const firstIndex = roster.findIndex((player, index) => getPlayerKey(player, index) === firstKey);
+    setSessionState((prev) => {
+      const tableIntent = (prev.intent || '').trim();
+      const ritualEntry = createLedgerEntry({
+        type: 'oath',
+        text: `Ritual opened on ${activeBeat?.label || 'Arrival'}.${
+          tableIntent ? ` Shared intent: ${tableIntent}` : ''
+        }`,
+        by: getPlayerLabelByKey(firstKey, 'Table')
+      });
+      return {
+        ...prev,
+        ritualActive: true,
+        diveMode: true,
+        phase: 'immersion',
+        turnOrder: nextOrder,
+        turnIndex: 0,
+        focusPlayerKey: firstKey || prev.focusPlayerKey,
+        actionBank: createActionBank(nextOrder),
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), ritualEntry].slice(-24)
+      };
+    });
+    if (firstIndex >= 0) {
+      setActivePlayerIndex(firstIndex);
+    }
+    setNotice('Ritual started. Table is in immersion mode.');
+  };
+
+  const handleEndRitual = () => {
+    setSessionState((prev) => {
+      const ritualEntry = createLedgerEntry({
+        type: 'oath',
+        text: 'Ritual closed. Table returns to worldbuild calibration.',
+        by: 'Table'
+      });
+      return {
+        ...prev,
+        ritualActive: false,
+        diveMode: false,
+        phase: 'worldbuild',
+        actionBank: {},
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), ritualEntry].slice(-24)
+      };
+    });
+    setNotice('Ritual ended. Back to worldbuild mode.');
+  };
+
+  const handleApplyTurnMove = (moveId) => {
+    const move = TURN_MOVE_DEFINITIONS.find((item) => item.id === moveId);
+    if (!move) return;
+    if (!ritualActive) {
+      setNotice('Start ritual mode before using turn moves.');
+      return;
+    }
+    if (!currentTurnKey) {
+      setNotice('Build turn order to assign a turn holder.');
+      return;
+    }
+    if (currentTurnActions <= 0) {
+      setNotice('No actions left. Advance turn.');
+      return;
+    }
+    const actorLabel = getPlayerLabelByKey(currentTurnKey, currentTurnKey || 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const previousClockRaw = Number(prev.sceneClock);
+      const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
+      const previousActionsRaw = Number(prev.actionBank?.[currentTurnKey]);
+      const previousActions = Number.isFinite(previousActionsRaw)
+        ? previousActionsRaw
+        : TURN_ACTIONS_PER_TURN;
+      const nextActions = Math.max(0, previousActions - 1);
+      const nextEntry = createLedgerEntry({
+        type: move.ledgerType,
+        text: `${actorLabel} ${move.text}`,
+        by: actorLabel
+      });
+      return {
+        ...prev,
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + move.effects.momentum),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + move.effects.clarity)
+        },
+        sceneClock: clampSceneClockValue(previousClock + move.effects.sceneClock),
+        actionBank: {
+          ...(prev.actionBank || {}),
+          [currentTurnKey]: nextActions
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), nextEntry].slice(-24)
+      };
+    });
+    setNotice(`${actorLabel}: ${move.label}. ${Math.max(0, currentTurnActions - 1)} actions left.`);
+  };
+
+  const handleFocusTurn = () => {
+    if (!currentTurnKey) return;
+    const roster = players.slice(0, playersCount);
+    const turnIndex = roster.findIndex(
+      (player, index) => getPlayerKey(player, index) === currentTurnKey
+    );
+    handleSetFocus(currentTurnKey, turnIndex === -1 ? undefined : turnIndex);
+  };
+
+  const handlePassFocus = () => {
+    const roster = players.slice(0, playersCount);
+    if (!roster.length) return;
+    const order = turnOrder.length
+      ? turnOrder
+      : roster.map((player, index) => getPlayerKey(player, index));
+    if (!order.length) return;
+    const currentKey = order.includes(focusPlayerKey) ? focusPlayerKey : order[0];
+    const currentIndex = order.indexOf(currentKey);
+    const nextKey = order[(currentIndex + 1) % order.length];
+    const nextPlayerIndex = roster.findIndex(
+      (player, index) => getPlayerKey(player, index) === nextKey
+    );
+    handleSetFocus(nextKey, nextPlayerIndex === -1 ? undefined : nextPlayerIndex);
+    setNotice(`Spotlight passed to ${getPlayerLabelByKey(nextKey, 'Table')}.`);
+  };
+
+  const formattedSignalTime = (() => {
+    if (!sessionState.lastSignal?.at || typeof window === 'undefined') return '';
+    const time = new Date(sessionState.lastSignal.at);
+    if (Number.isNaN(time.getTime())) return '';
+    return time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  })();
+
+  const formattedFlowTime = (() => {
+    if (!sessionState.lastFlowAction?.at || typeof window === 'undefined') return '';
+    const time = new Date(sessionState.lastFlowAction.at);
+    if (Number.isNaN(time.getTime())) return '';
+    return time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  })();
+
+  const diveBrief = useMemo(() => {
+    if (!hasWorldCharter) return '';
+    const lines = [];
+    const trimmedName = worldProfile.worldName.trim();
+    const trimmedMood = worldProfile.mood.trim();
+    const trimmedTruth = worldProfile.truth.trim();
+    const trimmedTaboo = worldProfile.taboo.trim();
+    if (trimmedName) lines.push(`World: ${trimmedName}`);
+    if (trimmedMood) lines.push(`Mood: ${trimmedMood}`);
+    if (trimmedTruth) lines.push(`Founding truth: ${trimmedTruth}`);
+    if (trimmedTaboo) lines.push(`Taboo: ${trimmedTaboo}`);
+    if (worldProfile.pillars?.length) lines.push(`Pillars: ${worldProfile.pillars.join(', ')}`);
+    if (sessionState.intent?.trim()) lines.push(`Shared intent: ${sessionState.intent.trim()}`);
+    if (sceneGoal.trim()) lines.push(`Scene goal: ${sceneGoal.trim()}`);
+    if (sceneRisk.trim()) lines.push(`Stakes: ${sceneRisk.trim()}`);
+    if (anchors.length) lines.push(`Anchors: ${anchors.join(' • ')}`);
+    const latestEntry = ledgerEntries[ledgerEntries.length - 1];
+    if (latestEntry?.text) lines.push(`Latest canon: ${latestEntry.text}`);
+    lines.push(`Scene beat: ${activeBeat?.label || 'Arrival'}`);
+    return lines.join('\n');
+  }, [
+    worldProfile.worldName,
+    worldProfile.mood,
+    worldProfile.truth,
+    worldProfile.taboo,
+    worldProfile.pillars,
+    sessionState.intent,
+    sceneGoal,
+    sceneRisk,
+    anchors,
+    ledgerEntries,
+    activeBeat,
+    hasWorldCharter
+  ]);
+
+  const handleApplyDiveBrief = () => {
+    if (!hasWorldCharter) {
+      setNotice('Craft the world charter before generating a dive brief.');
+      return;
+    }
+    updatePlayerAt(activePlayerIndex, (prev) => {
+      const base = prev.fragmentText?.trim();
+      const nextText = base ? `${base}\n\n${diveBrief}` : diveBrief;
+      return { ...prev, fragmentText: nextText };
+    });
+    setNotice('Dive brief added to fragment.');
+  };
+
+  const handleAddPromptToFragment = () => {
+    if (!selectedPrompt?.text) return;
+    updatePlayerAt(activePlayerIndex, (prev) => {
+      const base = prev.fragmentText?.trim();
+      const nextText = base ? `${base}\n\n${selectedPrompt.text}` : selectedPrompt.text;
+      return { ...prev, fragmentText: nextText };
+    });
+    setNotice('Immersion prompt blended into fragment.');
+  };
+
   const handleSpreadChange = (spreadId) => {
     updatePlayerAt(activePlayerIndex, (prev) => ({
       ...prev,
@@ -383,6 +1541,44 @@ const StorytellerArenaConsole = ({
       return { ...prev, deck: prev.deck.slice(drawCount), spreadSlots: nextSlots };
     });
   };
+
+  const handleToggleDeckCardSelect = (instanceId) => {
+    setSelectedDeckCards((prev) => ({
+      ...prev,
+      [instanceId]: !prev[instanceId]
+    }));
+  };
+
+  const handleDrawSelectedFromGallery = () => {
+    const selectedIds = Object.entries(selectedDeckCards)
+      .filter(([, selected]) => selected)
+      .map(([id]) => id);
+    if (!selectedIds.length) {
+      setNotice('Select cards from the gallery first.');
+      return;
+    }
+    updatePlayerAt(activePlayerIndex, (prev) => {
+      const openSlots = prev.spreadSlots.filter((slot) => !slot.cardInstanceId);
+      if (!openSlots.length) {
+        setNotice('No open spread slot.');
+        return prev;
+      }
+      const cardsToDraw = selectedIds.filter((id) => prev.deck.includes(id));
+      const drawCount = Math.min(openSlots.length, cardsToDraw.length);
+      const drawnCards = cardsToDraw.slice(0, drawCount);
+      let drawIndex = 0;
+      const nextSlots = prev.spreadSlots.map((slot) => {
+        if (slot.cardInstanceId || drawIndex >= drawnCards.length) return slot;
+        const nextCardId = drawnCards[drawIndex];
+        drawIndex += 1;
+        return { ...slot, cardInstanceId: nextCardId };
+      });
+      const remainingDeck = prev.deck.filter((id) => !drawnCards.includes(id));
+      return { ...prev, deck: remainingDeck, spreadSlots: nextSlots };
+    });
+    setSelectedDeckCards({});
+  };
+
 
   const handleReturnToDeck = (slotId) => {
     updatePlayerAt(activePlayerIndex, (prev) => {
@@ -705,13 +1901,13 @@ const StorytellerArenaConsole = ({
       ...arenaMap,
       centerSlots: grouped.center
         ? grouped.center.map((slot) => ({
-            id: slot.id,
-            x: slot.x,
-            y: slot.y,
-            w: slot.w,
-            h: slot.h,
-            rotate: slot.rotate
-          }))
+          id: slot.id,
+          x: slot.x,
+          y: slot.y,
+          w: slot.w,
+          h: slot.h,
+          rotate: slot.rotate
+        }))
         : arenaMap.centerSlots,
       sideSlots: Object.keys(arenaMap.sideSlots).reduce((acc, edgeKey) => {
         acc[edgeKey] = (grouped[edgeKey] || arenaMap.sideSlots[edgeKey]).map((slot) => ({
@@ -734,6 +1930,137 @@ const StorytellerArenaConsole = ({
     }
   };
 
+  const handleStartConnection = (instanceId) => {
+    setConnectionMode('connecting');
+    setPendingConnection({ sourceId: instanceId });
+    setNotice('Select a target card to connect.');
+  };
+
+  const handleCancelConnection = () => {
+    setConnectionMode('idle');
+    setPendingConnection(null);
+  };
+
+  useEffect(() => {
+    if (connectionMode === 'idle') return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      handleCancelConnection();
+      setNotice('Connection cancelled.');
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [connectionMode]);
+
+  const handleSelectTarget = (targetId) => {
+    if (connectionMode !== 'connecting' || !pendingConnection) return;
+    if (targetId === pendingConnection.sourceId) {
+      setNotice('Cannot connect card to itself.');
+      return;
+    }
+    setPendingConnection((prev) => ({ ...prev, targetId }));
+    setConnectionMode('entering_text');
+  };
+
+  const handleRelationshipSubmit = async (text) => {
+    if (!pendingConnection?.sourceId || !pendingConnection?.targetId) return;
+
+    setNotice('Forging connection...');
+
+    const sourceCard = cardDefinitions[cardInstances[pendingConnection.sourceId]?.entityId];
+    const targetCard = cardDefinitions[cardInstances[pendingConnection.targetId]?.entityId];
+
+    const result = await proposeRelationship(
+      {
+        sessionId,
+        playerId: activePlayerId,
+        source: {
+          cardId: pendingConnection.sourceId,
+          entityId: sourceCard?.entityId
+        },
+        targets: [
+          {
+            cardId: pendingConnection.targetId,
+            entityId: targetCard?.entityId
+          }
+        ],
+        relationship: {
+          surfaceText: text
+        },
+        mock_api_calls: MOCK_API_CALLS
+      },
+      baseUrl,
+      { mockApiCalls: MOCK_API_CALLS }
+    );
+
+    if (result.verdict === 'accepted' && result.edge) {
+      // Handle single edge or array
+      const edges = Array.isArray(result.edge) ? result.edge : [result.edge];
+      setArenaEdges((prev) => [...prev, ...edges]);
+
+      const points = result.points?.awarded || 0;
+      if (points > 0) {
+        setRecentPoints({ amount: points, id: Date.now() });
+        setPlayers((prev) =>
+          prev.map((p, i) => (i === activePlayerIndex ? { ...p, score: (p.score || 0) + points } : p))
+        );
+      }
+
+      setNotice(`Connection established! +${points} pts`);
+    } else {
+      const reason = result.quality?.reasons?.[0] || 'Relationship rejected';
+      setNotice(`Failed: ${reason}`);
+    }
+
+    handleCancelConnection();
+  };
+
+  const selectedDeckCount = Object.values(selectedDeckCards).filter(Boolean).length;
+  const selectedSpreadCount = selectedSpreadSlots?.length || 0;
+
+  const scrollToFlowStep = (stepId) => {
+    const options = { behavior: 'smooth', block: 'start' };
+    if (stepId === 'charter') {
+      worldProfileRef.current?.scrollIntoView(options);
+      return;
+    }
+    if (stepId === 'seed' || stepId === 'forge') {
+      forgePanelRef.current?.scrollIntoView(options);
+      window.setTimeout(() => fragmentInputRef.current?.focus(), 250);
+      return;
+    }
+    if (stepId === 'spread') {
+      spreadPanelRef.current?.scrollIntoView(options);
+      return;
+    }
+    if (stepId === 'arena' || stepId === 'weave') {
+      boardStageRef.current?.scrollIntoView(options);
+    }
+  };
+
+  const connectionSourceCard = pendingConnection?.sourceId
+    ? cardDefinitions[cardInstances[pendingConnection.sourceId]?.entityId]
+    : null;
+
+  const hoveredCardFrontUrl = hoveredCard
+    ? resolveAssetUrl(baseUrl, hoveredCard.front?.imageUrl || hoveredCard.imageUrl || hoveredCard.back?.imageUrl)
+    : '';
+  const hoveredEdgesCount = hoveredInstanceId
+    ? arenaEdges.filter((edge) => edge.sourceId === hoveredInstanceId || edge.targetId === hoveredInstanceId).length
+    : 0;
+  const hoveredIsInCenter = hoveredInstanceId
+    ? arenaState.center.some((slot) => slot.cardInstanceId === hoveredInstanceId)
+    : false;
+  const hoveredIsOwnedEdgeCard = hoveredInstanceId
+    ? Object.values(arenaState.edges || {}).some((slots) =>
+        (slots || []).some(
+          (slot) => slot.cardInstanceId === hoveredInstanceId && slot.ownerPlayerId === activePlayerId
+        )
+      )
+    : false;
+  const hoveredCanConnect = Boolean(hoveredInstanceId && (hoveredIsInCenter || hoveredIsOwnedEdgeCard));
+
   const renderSlotCard = (instanceId, visibility) => {
     const instance = cardInstances[instanceId];
     if (!instance) return null;
@@ -747,12 +2074,30 @@ const StorytellerArenaConsole = ({
         flipped={!instance.faceUp}
         size="sm"
         onFlip={() => handleToggleCardFace(instanceId)}
-      />
+      >
+        {visibility === 'full' && (
+          <div className="card-action-overlay">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStartConnection(instanceId);
+              }}
+            >
+              Connect
+            </button>
+          </div>
+        )}
+      </ArenaCard>
     );
   };
 
   return (
-    <div className={`arenaConsole theme-${activePlayer?.storyteller?.theme || 'archivist'}`}>
+    <div
+      className={`arenaConsole theme-${activePlayer?.storyteller?.theme || 'archivist'} ${
+        sessionState.diveMode ? 'diveMode' : ''
+      }`}
+    >
       <header className="arenaConsoleTopBar">
         <div className="arenaConsoleTitle">
           <p className="arenaConsoleEyebrow">Storyteller Arena Console</p>
@@ -760,7 +2105,7 @@ const StorytellerArenaConsole = ({
         </div>
         <div className="arenaConsoleTopControls">
           <label>
-            Api Base
+            API Base
             <input value={apiBaseUrl} onChange={(event) => setApiBaseUrl(event.target.value)} />
           </label>
           <label>
@@ -796,6 +2141,624 @@ const StorytellerArenaConsole = ({
 
       <section className="arenaConsoleLayout">
         <aside className="arenaConsoleOperator">
+          <div className="consolePanel flowPanel">
+            <h2>Worldbuilding Flow</h2>
+            <div className="flowProgress">
+              <div className="flowProgressBar" style={{ width: `${immersionScore}%` }} />
+            </div>
+            <p className="flowProgressLabel">{immersionScore}% immersion</p>
+            <div className="flowCompass">
+              <div className="flowCompassHeader">
+                <span>Flow Compass</span>
+                <strong>{flowGuidance.focus}</strong>
+              </div>
+              <p>{flowGuidance.cue}</p>
+              <div className="flowCompassTags">
+                <span className={`flowTag ${flowGuidance.mode}`}>{flowGuidance.modeLabel}</span>
+                <span className={`flowTag ${sessionState.diveMode ? 'active' : ''}`}>
+                  {sessionState.diveMode ? 'Dive On' : 'Dive Off'}
+                </span>
+              </div>
+              <div className="flowCompassNext">
+                <span>Next</span>
+                <strong>{flowGuidance.next}</strong>
+              </div>
+            </div>
+            <div className="flowMap">
+              <div className="flowMapHeader">
+                <span>Flow Map</span>
+                <strong>{flowGuidance.modeLabel}</strong>
+              </div>
+              <div className="flowMapRow">
+                {phaseOptions.map((phase, index) => (
+                  <React.Fragment key={phase.id}>
+                    <span
+                      className={`flowMapStep ${phase.id} ${flowGuidance.mode === phase.id ? 'active' : ''}`}
+                    >
+                      {phase.label}
+                    </span>
+                    {index < phaseOptions.length - 1 && <span className="flowMapArrow">→</span>}
+                  </React.Fragment>
+                ))}
+              </div>
+              <div className="flowMapNow">
+                <span>Now</span>
+                <strong>{currentFlowStep?.title || 'Begin'}</strong>
+              </div>
+            </div>
+            <div className="sceneLens">
+              <div className="sceneLensHeader">
+                <strong>Scene Lens</strong>
+                <span>{sceneGoal || sceneRisk ? 'Aligned' : 'Unset'}</span>
+              </div>
+              <label>
+                Goal
+                <input
+                  value={sceneGoal}
+                  onChange={(event) => handleUpdateSceneLens('sceneGoal', event.target.value)}
+                />
+              </label>
+              <label>
+                Stakes
+                <input
+                  value={sceneRisk}
+                  onChange={(event) => handleUpdateSceneLens('sceneRisk', event.target.value)}
+                />
+              </label>
+              <div className="consoleButtonRow">
+                <button
+                  type="button"
+                  className="ghost subtle"
+                  onClick={handleClearSceneLens}
+                  disabled={!sceneGoal && !sceneRisk}
+                >
+                  Clear Lens
+                </button>
+              </div>
+            </div>
+            <div className="flowSteps">
+              {flowSteps.map((step, index) => (
+                <div
+                  key={step.id}
+                  className={`flowStep ${step.done ? 'done' : ''} ${step.id === currentFlowStepId ? 'current' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => scrollToFlowStep(step.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      scrollToFlowStep(step.id);
+                    }
+                  }}
+                >
+                  <span className="flowStepIndex">{index + 1}</span>
+                  <div>
+                    <div className="flowStepTitleRow">
+                      <strong>{step.title}</strong>
+                      {!step.done && step.id === currentFlowStepId && <span className="flowStepNext">Next</span>}
+                    </div>
+                    <p>{step.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flowSummary">
+              <span>Deck {activePlayer?.deck?.length || 0}</span>
+              <span>Spread {(activePlayer?.spreadSlots || []).filter((slot) => slot.cardInstanceId).length || 0}</span>
+              <span>Arena {hasArenaCards ? 'Active' : 'Empty'}</span>
+              <span>Links {arenaEdges?.length || 0}</span>
+              <span>Threads {threads.length}/3</span>
+            </div>
+            <div className="flowMeta">
+              <div>
+                <span>Focus</span>
+                <strong>{focusPlayerLabel}</strong>
+              </div>
+              <div>
+                <span>Scene Beat</span>
+                <strong>{activeBeat?.label || 'Arrival'}</strong>
+              </div>
+              <div>
+                <span>Mode</span>
+                <strong>{phaseLabel}</strong>
+              </div>
+            </div>
+            <div className="flowGate">
+              <div className="flowGateHeader">
+                <strong>Immersion Gate</strong>
+                <span>{ritualActive ? 'Open' : 'Closed'}</span>
+              </div>
+              <div className="flowGateList">
+                <span className={immersionGate.charter ? 'ready' : ''}>Charter</span>
+                <span className={immersionGate.anchors ? 'ready' : ''}>Anchors</span>
+                <span className={immersionGate.ready ? 'ready' : ''}>
+                  Ready {readyCount}/{playersCount}
+                </span>
+              </div>
+              <div className="consoleButtonRow">
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={handleStartRitual}
+                  disabled={ritualActive || !ritualGateReady}
+                >
+                  Open Ritual
+                </button>
+                <button type="button" className="ghost" onClick={handleToggleDiveMode}>
+                  {sessionState.diveMode ? 'Exit Dive' : 'Enter Dive'}
+                </button>
+              </div>
+            </div>
+            <div className="flowLoop">
+              <div className="flowLoopHeader">
+                <strong>Immersion Loop</strong>
+                <span>{sessionState.lastFlowAction?.label ? 'Active' : 'Idle'}</span>
+              </div>
+              <p>Frame → Invite → Seal to keep the table fully in-world.</p>
+              <div className="flowLoopButtons">
+                {FLOW_LOOP_ACTIONS.map((action) => (
+                  <button
+                    key={action.id}
+                    type="button"
+                    className="ghost subtle"
+                    title={action.detail}
+                    onClick={() => handleFlowLoopAction(action.id)}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+              {sessionState.lastFlowAction?.label && (
+                <div className="flowLoopMeta">
+                  <span>{sessionState.lastFlowAction.by || 'Table'}</span>
+                  {formattedFlowTime && <em>{formattedFlowTime}</em>}
+                </div>
+              )}
+            </div>
+            <div className="flowNextActions">
+              {(() => {
+                if (currentFlowStepId === 'charter') {
+                  return (
+                    <button type="button" className="primary" onClick={() => scrollToFlowStep('charter')}>
+                      Open Charter
+                    </button>
+                  );
+                }
+                if (currentFlowStepId === 'forge') {
+                  return (
+                    <button type="button" className="primary" onClick={handleTextToEntity} disabled={activePlayer?.busy}>
+                      Generate Entities
+                    </button>
+                  );
+                }
+                if (currentFlowStepId === 'spread') {
+                  return (
+                    <button type="button" className="primary" onClick={handleDrawFromDeck} disabled={!activePlayer?.deck?.length}>
+                      Draw to Spread
+                    </button>
+                  );
+                }
+                if (currentFlowStepId === 'arena') {
+                  return (
+                    <button type="button" className="ghost" onClick={() => scrollToFlowStep('spread')}>
+                      Go to Spread
+                    </button>
+                  );
+                }
+                if (currentFlowStepId === 'weave') {
+                  return (
+                    <button type="button" className="ghost" onClick={() => scrollToFlowStep('arena')}>
+                      Go to Arena
+                    </button>
+                  );
+                }
+                return (
+                  <button type="button" className="ghost" onClick={() => scrollToFlowStep('seed')}>
+                    Edit Fragment
+                  </button>
+                );
+              })()}
+              <button type="button" className="ghost subtle" onClick={() => scrollToFlowStep(currentFlowStepId)}>
+                Jump
+              </button>
+            </div>
+            <p className="consoleHint">Progress tracks the active player and shared arena state.</p>
+          </div>
+
+          <div className="consolePanel worldProfilePanel" ref={worldProfileRef}>
+            <h3>World Charter</h3>
+            <label>
+              World Name
+              <input
+                value={worldProfile.worldName}
+                onChange={(event) =>
+                  setWorldProfile((prev) => ({ ...prev, worldName: event.target.value }))
+                }
+              />
+            </label>
+            <label>
+              Core Mood
+              <input
+                value={worldProfile.mood}
+                onChange={(event) => setWorldProfile((prev) => ({ ...prev, mood: event.target.value }))}
+              />
+            </label>
+            <label className="wide">
+              Founding Truth
+              <textarea
+                value={worldProfile.truth}
+                onChange={(event) => setWorldProfile((prev) => ({ ...prev, truth: event.target.value }))}
+              />
+            </label>
+            <label>
+              Taboo
+              <input
+                value={worldProfile.taboo}
+                onChange={(event) => setWorldProfile((prev) => ({ ...prev, taboo: event.target.value }))}
+              />
+            </label>
+            <div className="worldPillars">
+              <div className="worldPillarsHeader">
+                <strong>World Pillars</strong>
+                <span>{(worldProfile.pillars || []).length}/6</span>
+              </div>
+              <div className="worldPillarsList">
+                {(worldProfile.pillars || []).map((pillar, index) => (
+                  <button
+                    key={`${pillar}-${index}`}
+                    type="button"
+                    className="worldPillarChip"
+                    onClick={() => handleRemovePillar(index)}
+                  >
+                    {pillar}
+                    <span>×</span>
+                  </button>
+                ))}
+                {!worldProfile.pillars?.length && (
+                  <p className="consoleHint">Add 3-6 canon pillars to guide play.</p>
+                )}
+              </div>
+              <div className="worldPillarsInput">
+                <input
+                  value={pillarInput}
+                  placeholder="Add pillar..."
+                  onChange={(event) => setPillarInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      handleAddPillar();
+                    }
+                  }}
+                />
+                <button type="button" className="ghost" onClick={handleAddPillar}>
+                  Add
+                </button>
+              </div>
+            </div>
+            <div className="consoleButtonRow">
+              <button type="button" className="ghost" onClick={() => setWorldProfile({ ...WORLD_PROFILE_DEFAULT })}>
+                Clear
+              </button>
+              <button type="button" className="primary" onClick={handleBlendWorldProfile}>
+                Blend into Fragment
+              </button>
+            </div>
+          </div>
+
+          <div className="consolePanel ledgerPanel">
+            <h3>World Ledger</h3>
+            <div className="ledgerForm">
+              <label>
+                Type
+                <select value={ledgerType} onChange={(event) => setLedgerType(event.target.value)}>
+                  <option value="canon">Canon</option>
+                  <option value="location">Location</option>
+                  <option value="faction">Faction</option>
+                  <option value="mystery">Mystery</option>
+                  <option value="oath">Oath</option>
+                </select>
+              </label>
+              <label className="wide">
+                Entry
+                <textarea
+                  rows={2}
+                  value={ledgerText}
+                  placeholder="Record a truth, a vow, or an emerging tension..."
+                  onChange={(event) => setLedgerText(event.target.value)}
+                />
+              </label>
+              <div className="consoleButtonRow">
+                <button type="button" className="primary" onClick={handleAddLedgerEntry}>
+                  Commit
+                </button>
+                <button type="button" className="ghost" onClick={() => setLedgerText('')}>
+                  Clear
+                </button>
+              </div>
+            </div>
+            <div className="ledgerList">
+              {ledgerEntries.length ? (
+                ledgerEntries.slice().reverse().slice(0, 6).map((entry) => (
+                  <div key={entry.id} className="ledgerEntry">
+                    <div className="ledgerEntryHeader">
+                      <span className={`ledgerType ${entry.type}`}>{entry.type}</span>
+                      <span className="ledgerMeta">{entry.by || 'Table'}</span>
+                    </div>
+                    <p>{entry.text}</p>
+                    <div className="ledgerActions">
+                      <button type="button" className="ghost subtle" onClick={() => handleEchoLedgerEntry(entry)}>
+                        Echo to Fragment
+                      </button>
+                      <button type="button" className="ghost subtle" onClick={() => handleRemoveLedgerEntry(entry.id)}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="consoleHint">Log canon beats so the table shares the same truth.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="consolePanel threadPanel">
+            <h3>Mythic Threads</h3>
+            <div className="threadList">
+              {threads.length ? (
+                threads.map((thread) => (
+                  <div key={thread.id} className="threadRow">
+                    <div>
+                      <strong>{thread.label}</strong>
+                      <div className="threadHeat">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                          <span key={`${thread.id}-heat-${index}`} className={index < (thread.heat || 0) ? 'active' : ''} />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="threadActions">
+                      <button type="button" className="ghost subtle" onClick={() => handleAdvanceThread(thread.id)}>
+                        Heat +
+                      </button>
+                      <button type="button" className="ghost subtle" onClick={() => handleCoolThread(thread.id)}>
+                        Cool
+                      </button>
+                      <button type="button" className="ghost subtle" onClick={() => handleResolveThread(thread.id)}>
+                        Resolve
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="consoleHint">Track 1-3 stakes the table keeps returning to.</p>
+              )}
+            </div>
+            <div className="threadInput">
+              <input
+                value={threadInput}
+                placeholder="Add thread..."
+                onChange={(event) => setThreadInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    handleAddThread();
+                  }
+                }}
+              />
+              <button type="button" className="ghost" onClick={handleAddThread}>
+                Add
+              </button>
+            </div>
+            <p className="consoleHint">Heat 3 sparks canon and raises momentum.</p>
+          </div>
+
+          <div className="consolePanel immersionPanel">
+            <h3>Immersion Toolkit</h3>
+            <div className="immersionPrompts">
+              {immersionPrompts.map((prompt) => (
+                <button
+                  key={prompt.id}
+                  type="button"
+                  className={prompt.id === selectedPromptId ? 'active' : ''}
+                  onClick={() => setSelectedPromptId(prompt.id)}
+                >
+                  <strong>{prompt.title}</strong>
+                  <span>{prompt.text}</span>
+                </button>
+              ))}
+            </div>
+            <div className="beatList">
+              {sceneBeats.map((beat) => (
+                <button
+                  key={beat.id}
+                  type="button"
+                  className={beat.id === activeBeat?.id ? 'active' : ''}
+                  onClick={() => setSessionState((prev) => ({ ...prev, beatId: beat.id }))}
+                >
+                  <strong>{beat.label}</strong>
+                  <span>{beat.detail}</span>
+                </button>
+              ))}
+            </div>
+            <div className="consoleButtonRow">
+              <button type="button" className="ghost" onClick={handleAddPromptToFragment}>
+                Whisper Into Fragment
+              </button>
+              <button type="button" className="primary" onClick={handleAdvanceBeat}>
+                Advance Beat
+              </button>
+            </div>
+            <div className="anchorPanel">
+              <div className="anchorHeader">
+                <strong>World Anchors</strong>
+                <span>{anchors.length}/3</span>
+              </div>
+              <div className="anchorList">
+                {anchors.map((anchor, index) => (
+                  <button
+                    key={`${anchor}-${index}`}
+                    type="button"
+                    className="anchorChip"
+                    onClick={() => handleRemoveAnchor(index)}
+                  >
+                    {anchor}
+                    <span>×</span>
+                  </button>
+                ))}
+                {!anchors.length && (
+                  <p className="consoleHint">Pin 1-3 truths to keep the table grounded in canon.</p>
+                )}
+              </div>
+              <div className="anchorInput">
+                <input
+                  value={anchorInput}
+                  placeholder="Add anchor..."
+                  onChange={(event) => setAnchorInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      handleAddAnchor();
+                    }
+                  }}
+                />
+                <button type="button" className="ghost" onClick={handleAddAnchor}>
+                  Pin
+                </button>
+              </div>
+            </div>
+            <div className="immersionVows">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={sessionState.vows?.hush || false}
+                  onChange={() => handleToggleVow('hush')}
+                />
+                Hush
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={sessionState.vows?.anchor || false}
+                  onChange={() => handleToggleVow('anchor')}
+                />
+                Anchor
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={sessionState.vows?.pact || false}
+                  onChange={() => handleToggleVow('pact')}
+                />
+                Pact
+              </label>
+            </div>
+            <p className="consoleHint">Rituals persist per session to support deep immersion.</p>
+          </div>
+
+          <div className="consolePanel diveBriefPanel">
+            <h3>Dive Brief</h3>
+            <div className="diveBriefBody">
+              {diveBrief ? (
+                <pre>{diveBrief}</pre>
+              ) : (
+                <p className="consoleHint">Fill the World Charter to generate a dive brief.</p>
+              )}
+            </div>
+            <div className="consoleButtonRow">
+              <button type="button" className="primary" onClick={handleApplyDiveBrief} disabled={!diveBrief}>
+                Send Brief to Fragment
+              </button>
+              <button type="button" className="ghost" onClick={handleToggleDiveMode}>
+                {sessionState.diveMode ? 'Exit Dive' : 'Enter Dive'}
+              </button>
+            </div>
+          </div>
+
+          <div className="consolePanel sessionPanel">
+            <h3>Session Rhythm</h3>
+            <div className="phasePicker">
+              {phaseOptions.map((phase) => (
+                <button
+                  key={phase.id}
+                  type="button"
+                  className={`phaseButton ${sessionState.phase === phase.id ? 'active' : ''}`}
+                  onClick={() => handleSetPhase(phase.id)}
+                >
+                  <strong>{phase.label}</strong>
+                  <span>{phase.detail}</span>
+                </button>
+              ))}
+            </div>
+            <label className="wide">
+              Shared Intent
+              <textarea
+                rows={2}
+                value={sessionState.intent || ''}
+                onChange={(event) => setSessionState((prev) => ({ ...prev, intent: event.target.value }))}
+              />
+            </label>
+            <div className="signalRow">
+              <button type="button" className="ghost" onClick={() => handleSignal('Rally')}>
+                Rally
+              </button>
+              <button type="button" className="ghost" onClick={() => handleSignal('Silence')}>
+                Silence
+              </button>
+              <button type="button" className="ghost" onClick={() => handleSignal('Breathe')}>
+                Breathe
+              </button>
+              <button type="button" className="primary" onClick={handleToggleDiveMode}>
+                {sessionState.diveMode ? 'Exit Dive' : 'Enter Dive'}
+              </button>
+            </div>
+            {sessionState.lastSignal?.label && (
+              <div className="signalBadge">
+                <strong>{sessionState.lastSignal.label}</strong>
+                {formattedSignalTime && <span>{formattedSignalTime}</span>}
+              </div>
+            )}
+            <div className="pulsePanel">
+              <div className="pulseRow">
+                <div>
+                  <strong>Momentum</strong>
+                  <span>Energy in the room</span>
+                </div>
+                <div className="pulseControls">
+                  <button type="button" className="ghost subtle" onClick={() => handlePulseAdjust('momentum', -1)}>
+                    -
+                  </button>
+                  <div className="pulseMeter">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <span key={`momentum-${index}`} className={index <= pulse.momentum ? 'active' : ''} />
+                    ))}
+                  </div>
+                  <button type="button" className="ghost subtle" onClick={() => handlePulseAdjust('momentum', 1)}>
+                    +
+                  </button>
+                </div>
+              </div>
+              <div className="pulseRow">
+                <div>
+                  <strong>Clarity</strong>
+                  <span>Shared understanding</span>
+                </div>
+                <div className="pulseControls">
+                  <button type="button" className="ghost subtle" onClick={() => handlePulseAdjust('clarity', -1)}>
+                    -
+                  </button>
+                  <div className="pulseMeter">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <span key={`clarity-${index}`} className={index <= pulse.clarity ? 'active' : ''} />
+                    ))}
+                  </div>
+                  <button type="button" className="ghost subtle" onClick={() => handlePulseAdjust('clarity', 1)}>
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p className="consoleHint">Signals guide pacing without breaking immersion.</p>
+          </div>
+
           <div className="consolePanel">
             <h2>Operator</h2>
             <label>
@@ -837,11 +2800,12 @@ const StorytellerArenaConsole = ({
             </label>
           </div>
 
-          <div className="consolePanel">
+          <div className="consolePanel" ref={forgePanelRef}>
             <h3>Entity Forge</h3>
             <label className="wide">
               Fragment
               <textarea
+                ref={fragmentInputRef}
                 value={activePlayer?.fragmentText || ''}
                 rows={4}
                 onChange={(event) =>
@@ -950,68 +2914,306 @@ const StorytellerArenaConsole = ({
               </select>
             </label>
           </div>
-        </aside>
 
-        <div className="arenaConsoleBoardStage">
-          <div
-            className={`arenaConsoleBoard ${calibrationMode ? 'calibrating' : ''}`}
-            ref={boardRef}
-            style={{ backgroundImage: `url(${arenaMap.backgroundImage})` }}
-            onMouseDown={handleCalibrationStart}
-            onMouseMove={handleCalibrationMove}
-            onMouseUp={handleCalibrationEnd}
-            onMouseLeave={handleCalibrationEnd}
-          >
-            <div className="arenaConsoleBoardInner">
-              {arenaMap.centerSlots.map((slot, index) => {
-                const placed = arenaState.center[index];
-                const instanceId = placed?.cardInstanceId;
+          <div className="consolePanel presencePanel">
+            <h3>Multiplayer Presence</h3>
+            <div className="presenceList">
+              {players.slice(0, playersCount).map((player, index) => {
+                const role = roleLabels[index % roleLabels.length];
+                const status = getPlayerStatus(player, index);
+                const label = player?.label || player?.id || `Player ${index + 1}`;
+                const initials = label
+                  .split(' ')
+                  .map((part) => part[0])
+                  .join('')
+                  .slice(0, 2)
+                  .toUpperCase();
+                const playerKey = getPlayerKey(player, index);
+                const isFocused = playerKey === focusPlayerKey;
+                const isTurn = playerKey === currentTurnKey;
                 return (
                   <div
-                    key={slot.id}
-                    className={`arenaConsoleSlot center ${showSlotOverlay ? 'debug' : ''} ${
-                      instanceId ? 'filled' : ''
-                    }`}
-                    style={{
-                      left: `${slot.x}%`,
-                      top: `${slot.y}%`,
-                      width: `${slot.w}%`,
-                      height: `${slot.h}%`,
-                      transform: `translate(-50%, -50%) rotate(${slot.rotate}deg)`
-                    }}
-                    onMouseEnter={() => setHoveredInstanceId(instanceId || '')}
-                    onMouseLeave={() => setHoveredInstanceId('')}
+                    key={player.id || player.label || index}
+                    className={`presenceRow ${isFocused ? 'focused' : ''} ${isTurn ? 'turn' : ''}`}
                   >
-                    {instanceId ? (
-                      renderSlotCard(instanceId, 'full')
-                    ) : (
-                      <span className="arenaConsoleSlotMarker">{slot.id}</span>
-                    )}
-                    {showSlotOverlay && <span className="arenaConsoleSlotTag">{slot.id}</span>}
+                    <div className="presenceIdentity">
+                      <div className="presenceAvatar">{initials || `P${index + 1}`}</div>
+                      <div className="presenceInfo">
+                        <strong>{label}</strong>
+                        <span>{role}</span>
+                      </div>
+                    </div>
+                    <div className="presenceActions">
+                      <button
+                        type="button"
+                        className={`presenceChip ${sessionState.readyMap?.[playerKey] ? 'active' : ''}`}
+                        onClick={() => handleToggleReady(playerKey)}
+                      >
+                        Ready
+                      </button>
+                      <button
+                        type="button"
+                        className={`presenceChip ${isFocused ? 'focus' : ''}`}
+                        onClick={() => handleSetFocus(playerKey, index)}
+                      >
+                        Focus
+                      </button>
+                      <span className={`presenceStatus ${status.tone}`}>{status.label}</span>
+                    </div>
                   </div>
                 );
               })}
+            </div>
+            <div className="presenceTurnOrder">
+              <div className="presenceTurnHeader">
+                <strong>Turn Order</strong>
+                <span>{currentTurnLabel}</span>
+              </div>
+              <div className="presenceTurnChips">
+                {turnOrder.map((playerKey) => {
+                  const match = players
+                    .slice(0, playersCount)
+                    .find((player, index) => getPlayerKey(player, index) === playerKey);
+                  const label = match?.label || match?.id || playerKey;
+                  const isActive = playerKey === currentTurnKey;
+                  return (
+                    <span key={playerKey} className={isActive ? 'active' : ''}>
+                      {label}
+                    </span>
+                  );
+                })}
+                {!turnOrder.length && <span className="empty">No turn order yet.</span>}
+              </div>
+              <div className="consoleButtonRow">
+                <button type="button" className="ghost" onClick={() => handleBuildTurnOrder('ready')}>
+                  From Ready
+                </button>
+                <button type="button" className="ghost" onClick={() => handleBuildTurnOrder('all')}>
+                  All Seats
+                </button>
+                <button type="button" className="ghost" onClick={handleAdvanceTurn} disabled={!turnOrder.length}>
+                  Advance
+                </button>
+                <button type="button" className="primary" onClick={handleFocusTurn} disabled={!currentTurnKey}>
+                  Focus Turn
+                </button>
+                <button type="button" className="ghost" onClick={handlePassFocus}>
+                  Pass Focus
+                </button>
+              </div>
+            </div>
+            <div className="presenceMechanics">
+              <div className="presenceMechanicsHeader">
+                <strong>Table Mechanics</strong>
+                <span>{ritualActive ? 'Ritual Live' : 'Staging'}</span>
+              </div>
+              <div className="sceneClockRow">
+                <span>Scene Pressure</span>
+                <div
+                  className="sceneClockMeter"
+                  aria-label={`Scene pressure ${sceneClock} of ${SCENE_CLOCK_MAX}`}
+                >
+                  {Array.from({ length: SCENE_CLOCK_MAX + 1 }).map((_, index) => (
+                    <span key={`scene-clock-${index}`} className={index <= sceneClock ? 'active' : ''} />
+                  ))}
+                </div>
+                <em>{sceneClockLabel}</em>
+              </div>
+              <div className="sceneClockControls">
+                <button type="button" className="ghost subtle" onClick={() => handleSceneClockAdjust(-1)}>
+                  Ease
+                </button>
+                <button type="button" className="ghost subtle" onClick={() => handleSceneClockAdjust(1)}>
+                  Press
+                </button>
+              </div>
+              <div className="turnActionRow">
+                <span>
+                  {currentTurnKey
+                    ? `${currentTurnLabel} actions ${currentTurnActions}/${TURN_ACTIONS_PER_TURN}`
+                    : 'Build turn order to unlock table moves.'}
+                </span>
+                <div className="turnMoveButtons">
+                  {TURN_MOVE_DEFINITIONS.map((move) => (
+                    <button
+                      key={move.id}
+                      type="button"
+                      className="ghost subtle"
+                      title={move.detail}
+                      onClick={() => handleApplyTurnMove(move.id)}
+                      disabled={!ritualActive || !currentTurnKey || currentTurnActions <= 0}
+                    >
+                      {move.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="consoleButtonRow">
+                <button type="button" className="ghost" onClick={handleStartRitual} disabled={ritualActive}>
+                  Start Ritual
+                </button>
+                <button type="button" className="ghost" onClick={handleEndRitual} disabled={!ritualActive}>
+                  End Ritual
+                </button>
+              </div>
+            </div>
+            <p className="consoleHint">
+              Session {sessionId} • {playersCount} seats • Ready {readyCount}/{playersCount}
+            </p>
+          </div>
+        </aside>
 
-              {edgeAssignments.map((edge) => {
-                const slots = arenaMap.sideSlots[edge.edgeKey] || [];
-                const stateSlots = arenaState.edges[edge.edgeKey] || [];
-                return slots.map((slot, index) => {
-                  const placed = stateSlots[index];
+        <div className="arenaConsoleBoardStage" ref={boardStageRef}>
+          {connectionMode === 'connecting' && pendingConnection?.sourceId && (
+            <div className="arenaConsoleConnectionBanner">
+              <div className="arenaConsoleConnectionBannerText">
+                <strong>Connection Mode</strong>
+                <span>
+                  {connectionSourceCard?.entityName || connectionSourceCard?.name || 'Source'} → Select a target card
+                </span>
+              </div>
+              <button type="button" className="ghost" onClick={handleCancelConnection}>
+                Cancel (Esc)
+              </button>
+            </div>
+          )}
+          <div className="arenaConsoleStageRail">
+            <div className="arenaConsoleStageRailStat">
+              <span>Scene Beat</span>
+              <strong>{activeBeat?.label || 'Arrival'}</strong>
+            </div>
+            <div className="arenaConsoleStageRailStat">
+              <span>Focused Player</span>
+              <strong>{focusPlayerLabel}</strong>
+            </div>
+            <div className="arenaConsoleStageRailStat">
+              <span>Turn Holder</span>
+              <strong>{currentTurnLabel}</strong>
+            </div>
+            <div className="arenaConsoleStageRailChips">
+              <span>{`Ready ${readyCount}/${playersCount}`}</span>
+              <span>{ritualActive ? 'Ritual Live' : 'Ritual Staging'}</span>
+              <span>{`Pressure ${sceneClock}/${SCENE_CLOCK_MAX}`}</span>
+              {currentTurnKey && <span>{`Actions ${currentTurnActions}/${TURN_ACTIONS_PER_TURN}`}</span>}
+              {currentFlowStep && <span>{`Step ${currentFlowStepIndex}/${flowSteps.length}`}</span>}
+              {currentFlowStep && <span>{currentFlowStep.title}</span>}
+              {sceneGoal && <span>{`Goal ${sceneGoal}`}</span>}
+              {sceneRisk && <span>{`Stakes ${sceneRisk}`}</span>}
+              {threads.length > 0 && <span>{`Threads ${threads.length}`}</span>}
+              <span>{`Mode ${phaseLabel}`}</span>
+              <span>{`World ${worldProfile.worldName || 'Unnamed'}`}</span>
+              <span>{`Mood ${worldProfile.mood || 'Unwritten'}`}</span>
+            </div>
+            <div className="arenaConsoleStageRailActions">
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => currentFlowStepId && scrollToFlowStep(currentFlowStepId)}
+                disabled={!currentFlowStepId}
+              >
+                Open Step
+              </button>
+              <button type="button" className="primary" onClick={handleAdvanceBeat}>
+                Advance Beat
+              </button>
+            </div>
+          </div>
+
+          <div className="arenaConsoleBoardViewport">
+            <div
+              className={`arenaConsoleBoard ${calibrationMode ? 'calibrating' : ''}`}
+              ref={boardRef}
+              style={{ backgroundImage: `url(${arenaMap.backgroundImage})` }}
+              onMouseDown={handleCalibrationStart}
+              onMouseMove={handleCalibrationMove}
+              onMouseUp={handleCalibrationEnd}
+              onMouseLeave={handleCalibrationEnd}
+            >
+              <div className="arenaConsoleBoardInner">
+                {/* Edge Layer */}
+                <svg className="arenaConsoleEdgeLayer" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <defs>
+                    <marker
+                      id="arrowhead"
+                      markerWidth="4"
+                      markerHeight="4"
+                      refX="3"
+                      refY="2"
+                      orient="auto"
+                    >
+                      <polygon points="0 0, 4 2, 0 4" fill="#6b7280" />
+                    </marker>
+                  </defs>
+                  {arenaEdges.map((edge) => {
+                    // Find positions for source and target
+                    // We need to look through center slots and edge slots to find matching instanceIds
+                    const findSlotPos = (instanceId) => {
+                      if (!instanceId) return null;
+
+                      // Check center
+                      const centerIdx = arenaState.center.findIndex((s) => s.cardInstanceId === instanceId);
+                      if (centerIdx !== -1) {
+                        return arenaMap.centerSlots[centerIdx];
+                      }
+
+                      // Check edges
+                      for (const [edgeKey, slots] of Object.entries(arenaState.edges)) {
+                        const slotIdx = slots.findIndex((s) => s.cardInstanceId === instanceId);
+                        if (slotIdx !== -1) {
+                          return arenaMap.sideSlots[edgeKey]?.[slotIdx];
+                        }
+                      }
+                      return null;
+                    };
+
+                    const sourcePos = findSlotPos(edge.sourceId);
+                    const targetPos = findSlotPos(edge.targetId);
+
+                    if (!sourcePos || !targetPos) return null;
+
+                    return (
+                      <EdgeLine
+                        key={edge.edgeId}
+                        edge={edge}
+                        fromPosition={{ x: sourcePos.x, y: sourcePos.y }}
+                        toPosition={{ x: targetPos.x, y: targetPos.y }}
+                        isNew={false}
+                      />
+                    );
+                  })}
+                </svg>
+
+                <div className="arenaConsoleEdgeLabels">
+                  {edgeAssignments.map((edge) => {
+                    const label = edge.player?.label || edge.player?.id || edge.edgeKey;
+                    return (
+                      <div
+                        key={`label-${edge.edgeKey}`}
+                        className={`arenaConsoleEdgeLabel edge-${edge.edgeKey} ${edge.isActive ? 'active' : ''}`}
+                      >
+                        <span className="edgeLabelName">{label}</span>
+                        {edge.isActive && <span className="edgeLabelRole">You</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {arenaMap.centerSlots.map((slot, index) => {
+                  const placed = arenaState.center[index];
                   const instanceId = placed?.cardInstanceId;
-                  const isOwner = placed?.ownerPlayerId === activePlayerId;
-                  const visibility = instanceId
-                    ? isOwner
-                      ? 'full'
-                      : edgeRevealMode === 'sealed'
-                        ? 'sealed'
-                        : 'back'
-                    : 'sealed';
+                  const isConnectionSource =
+                    connectionMode === 'connecting' && pendingConnection?.sourceId === instanceId;
+                  const isValidTarget =
+                    connectionMode === 'connecting' && instanceId && instanceId !== pendingConnection?.sourceId;
+                  const isInvalidTarget =
+                    connectionMode === 'connecting' && !isValidTarget && !isConnectionSource;
+
                   return (
                     <div
                       key={slot.id}
-                      className={`arenaConsoleSlot side ${showSlotOverlay ? 'debug' : ''} ${
-                        instanceId ? 'filled' : ''
-                      } ${edge.isActive ? 'active' : ''}`}
+                      className={`arenaConsoleSlot center ${showSlotOverlay ? 'debug' : ''} ${instanceId ? 'filled' : ''
+                        } ${isConnectionSource ? 'connection-source' : ''} ${isValidTarget ? 'valid-target' : ''
+                        } ${isInvalidTarget ? 'invalid-target' : ''}`}
                       style={{
                         left: `${slot.x}%`,
                         top: `${slot.y}%`,
@@ -1021,97 +3223,234 @@ const StorytellerArenaConsole = ({
                       }}
                       onMouseEnter={() => setHoveredInstanceId(instanceId || '')}
                       onMouseLeave={() => setHoveredInstanceId('')}
+                      onClick={() => isValidTarget && handleSelectTarget(instanceId)}
                     >
                       {instanceId ? (
-                        renderSlotCard(instanceId, visibility)
+                        renderSlotCard(instanceId, 'full')
                       ) : (
                         <span className="arenaConsoleSlotMarker">{slot.id}</span>
                       )}
                       {showSlotOverlay && <span className="arenaConsoleSlotTag">{slot.id}</span>}
                     </div>
                   );
-                });
-              })}
+                })}
 
-              {calibrationDraft && (
-                <div
-                  className="arenaConsoleCalibrationDraft"
-                  style={{
-                    left: `${calibrationDraft.x}%`,
-                    top: `${calibrationDraft.y}%`,
-                    width: `${calibrationDraft.w}%`,
-                    height: `${calibrationDraft.h}%`
-                  }}
-                />
-              )}
-              {calibrationSlots.map((slot) => (
-                <div
-                  key={`${slot.group}-${slot.id}`}
-                  className="arenaConsoleCalibrationSlot"
-                  style={{
-                    left: `${slot.x}%`,
-                    top: `${slot.y}%`,
-                    width: `${slot.w}%`,
-                    height: `${slot.h}%`
-                  }}
-                >
-                  <span>{slot.id}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+                {edgeAssignments.map((edge) => {
+                  const slots = arenaMap.sideSlots[edge.edgeKey] || [];
+                  const stateSlots = arenaState.edges[edge.edgeKey] || [];
+                  return slots.map((slot, index) => {
+                    const placed = stateSlots[index];
+                    const instanceId = placed?.cardInstanceId;
+                    const isOwner = placed?.ownerPlayerId === activePlayerId;
+                    const visibility = instanceId
+                      ? isOwner
+                        ? 'full'
+                        : edgeRevealMode === 'sealed'
+                          ? 'sealed'
+                          : 'back'
+                      : 'sealed';
 
-          <div className="arenaConsoleInspect">
-            <div>
-              <h3>Arena Inspect</h3>
-              <p>Hover a card to inspect.</p>
-            </div>
-            {hoveredCard ? (
-              <div className="arenaConsoleInspectCard">
-                <h4>{hoveredCard.entityName || hoveredCard.name}</h4>
-                {hoveredOwnerId && <span>Owner: {hoveredOwnerId}</span>}
-                <p>{hoveredCard.front?.prompt || hoveredCard.back?.prompt || 'No prompt available.'}</p>
+                    const isConnectionSource =
+                      connectionMode === 'connecting' && pendingConnection?.sourceId === instanceId;
+                    const isVisibleTarget = visibility === 'full';
+                    const isValidTarget =
+                      connectionMode === 'connecting' &&
+                      instanceId &&
+                      instanceId !== pendingConnection?.sourceId &&
+                      isVisibleTarget;
+                    const isInvalidTarget =
+                      connectionMode === 'connecting' &&
+                      (!isValidTarget && !isConnectionSource);
+
+                    return (
+                      <div
+                        key={slot.id}
+                        className={`arenaConsoleSlot side ${showSlotOverlay ? 'debug' : ''} ${instanceId ? 'filled' : ''
+                          } ${edge.isActive ? 'active' : ''} ${isConnectionSource ? 'connection-source' : ''
+                          } ${isValidTarget ? 'valid-target' : ''} ${isInvalidTarget ? 'invalid-target' : ''
+                          }`}
+                        style={{
+                          left: `${slot.x}%`,
+                          top: `${slot.y}%`,
+                          width: `${slot.w}%`,
+                          height: `${slot.h}%`,
+                          transform: `translate(-50%, -50%) rotate(${slot.rotate}deg)`
+                        }}
+                        onMouseEnter={() => setHoveredInstanceId(instanceId || '')}
+                        onMouseLeave={() => setHoveredInstanceId('')}
+                        onClick={() => isValidTarget && handleSelectTarget(instanceId)}
+                      >
+                        {instanceId ? (
+                          renderSlotCard(instanceId, visibility)
+                        ) : (
+                          <span className="arenaConsoleSlotMarker">{slot.id}</span>
+                        )}
+                        {showSlotOverlay && <span className="arenaConsoleSlotTag">{slot.id}</span>}
+                      </div>
+                    );
+                  });
+                })}
+
+                {calibrationDraft && (
+                  <div
+                    className="arenaConsoleCalibrationDraft"
+                    style={{
+                      left: `${calibrationDraft.x}%`,
+                      top: `${calibrationDraft.y}%`,
+                      width: `${calibrationDraft.w}%`,
+                      height: `${calibrationDraft.h}%`
+                    }}
+                  />
+                )}
+                {calibrationSlots.map((slot) => (
+                  <div
+                    key={`${slot.group}-${slot.id}`}
+                    className="arenaConsoleCalibrationSlot"
+                    style={{
+                      left: `${slot.x}%`,
+                      top: `${slot.y}%`,
+                      width: `${slot.w}%`,
+                      height: `${slot.h}%`
+                    }}
+                  >
+                    <span>{slot.id}</span>
+                  </div>
+                ))}
+
+                {recentPoints && (
+                  <div key={recentPoints.id} className="pointsFloater">
+                    +{recentPoints.amount} pts
+                  </div>
+                )}
               </div>
-            ) : (
-              <p className="consoleHint">No card selected.</p>
-            )}
+            </div>
+
+            <div className="arenaConsoleInspect">
+              <div className="arenaConsoleInspectHeader">
+                <h3>Arena Inspect</h3>
+                <div className="arenaConsoleInspectHeaderRight">
+                  {activePlayer?.score > 0 && (
+                    <div className="scoreDisplay">
+                      <span>★</span>
+                      <span>{activePlayer.score}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {hoveredCard ? (
+                <div className="arenaConsoleInspectCard">
+                  <div className="arenaConsoleInspectMedia">
+                    {hoveredCardFrontUrl ? (
+                      <img src={hoveredCardFrontUrl} alt={hoveredCard.entityName || hoveredCard.name} />
+                    ) : (
+                      <div className="arenaConsoleInspectFallback">
+                        {(hoveredCard.entityName || hoveredCard.name || '•')[0]}
+                      </div>
+                    )}
+                  </div>
+                  <div className="arenaConsoleInspectBody">
+                    <h4>{hoveredCard.entityName || hoveredCard.name}</h4>
+                    <div className="arenaConsoleInspectMeta">
+                      {hoveredOwnerId && <span>Owner: {hoveredOwnerId}</span>}
+                      {hoveredEdgesCount > 0 && <span>{hoveredEdgesCount} link{hoveredEdgesCount === 1 ? '' : 's'}</span>}
+                    </div>
+                    <p>{hoveredCard.front?.prompt || hoveredCard.back?.prompt || 'No prompt available.'}</p>
+                    {hoveredCanConnect && connectionMode === 'idle' && (
+                      <button type="button" className="primary" onClick={() => handleStartConnection(hoveredInstanceId)}>
+                        Connect
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="consoleHint">Hover a card to inspect.</p>
+              )}
+            </div>
           </div>
         </div>
       </section>
 
       <section className="arenaConsolePrivate">
-        <div className="consoleDeck">
+        <div className="consoleDeck" ref={deckPanelRef}>
           <div className="consoleDeckHeader">
-            <h3>Deck</h3>
-            <span>{activePlayer?.deck?.length || 0} cards</span>
+            <h3>Card Gallery</h3>
+            <span>
+              {activePlayer?.deck?.length || 0} cards
+              {selectedDeckCount ? ` • ${selectedDeckCount} selected` : ''}
+            </span>
           </div>
-          <div className="consoleDeckStack">
-            {activePlayer?.deck?.length ? (
-              activePlayer.deck.slice(0, 4).map((instanceId, index) => (
-                <div key={instanceId} className={`consoleDeckCard slot-${index}`}>
-                  {renderSlotCard(instanceId, 'back')}
-                </div>
-              ))
-            ) : (
-              <div className="consoleDeckEmpty">Empty</div>
-            )}
+          {activePlayer?.deck?.length ? (
+            <div className="consoleDeckGallery">
+              {activePlayer.deck.map((instanceId) => {
+                const instance = cardInstances[instanceId];
+                const definition = instance ? cardDefinitions[instance.entityId] : null;
+                const frontUrl = definition?.front?.imageUrl || definition?.imageUrl;
+                const displayName = definition?.entityName || definition?.name || 'Card';
+                const isSelected = Boolean(selectedDeckCards[instanceId]);
+                return (
+                  <div
+                    key={instanceId}
+                    className={`consoleDeckGalleryCard ${isSelected ? 'selected' : ''}`}
+                    onClick={() => handleToggleDeckCardSelect(instanceId)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleToggleDeckCardSelect(instanceId);
+                      }
+                    }}
+                    title={displayName}
+                  >
+                    {frontUrl ? (
+                      <img src={resolveAssetUrl(baseUrl, frontUrl)} alt={displayName} />
+                    ) : (
+                      <span>{displayName}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="consoleDeckStack">
+              <div className="consoleDeckEmpty">Generate entities to fill your deck</div>
+            </div>
+          )}
+          <div className="consoleButtonRow">
+            <button type="button" className="ghost" onClick={handleDrawFromDeck} disabled={!activePlayer?.deck?.length}>
+              Draw All
+            </button>
+            <button
+              type="button"
+              className="primary"
+              onClick={handleDrawSelectedFromGallery}
+              disabled={!selectedDeckCount}
+            >
+              Draw Selected
+            </button>
           </div>
-          <button type="button" className="primary" onClick={handleDrawFromDeck}>
-            Draw to Spread
-          </button>
         </div>
 
-        <div className="consoleSpread">
+
+        <div className="consoleSpread" ref={spreadPanelRef}>
           <div className="consoleSpreadHeader">
             <div>
               <h3>Private Spread</h3>
-              <p>{activeSpread?.label} formation</p>
+              <p>
+                {activeSpread?.label} formation{selectedSpreadCount ? ` • ${selectedSpreadCount} selected` : ''}
+              </p>
             </div>
             <div className="consoleSpreadActions">
-              <button type="button" className="ghost" onClick={() => placeSelectedCards('edge')}>
+              <button type="button" className="ghost" onClick={() => placeSelectedCards('edge')} disabled={!selectedSpreadCount}>
                 Place to Edge
               </button>
-              <button type="button" className="primary" onClick={() => placeSelectedCards('center')}>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => placeSelectedCards('center')}
+                disabled={!selectedSpreadCount}
+              >
                 Place to Center
               </button>
             </div>
@@ -1123,9 +3462,8 @@ const StorytellerArenaConsole = ({
               return (
                 <div
                   key={slot.slotId}
-                  className={`consoleSpreadSlot ${instanceId ? 'filled' : ''} ${
-                    selected ? 'selected' : ''
-                  }`}
+                  className={`consoleSpreadSlot ${instanceId ? 'filled' : ''} ${selected ? 'selected' : ''
+                    }`}
                   style={{
                     left: `${slot.x}%`,
                     top: `${slot.y}%`,
@@ -1198,70 +3536,102 @@ const StorytellerArenaConsole = ({
         DBG
       </button>
 
-      {debugOpen && (
-        <div className="arenaConsoleDebugPanel">
-          <div className="debugRow">
-            <label>
-              <input
-                type="checkbox"
-                checked={showSlotOverlay}
-                onChange={(event) => setShowSlotOverlay(event.target.checked)}
-              />
-              Slot Overlay
-            </label>
-            <label>
-              Edge Reveal
-              <select value={edgeRevealMode} onChange={(event) => setEdgeRevealMode(event.target.value)}>
-                <option value="back">Back Only</option>
-                <option value="sealed">Sealed</option>
-              </select>
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={calibrationMode}
-                onChange={(event) => {
-                  setCalibrationMode(event.target.checked);
-                  setCalibrationDraft(null);
-                }}
-              />
-              Calibrate
-            </label>
-            <button type="button" className="ghost" onClick={() => setDebugDrawerOpen((prev) => !prev)}>
-              {debugDrawerOpen ? 'Hide JSON' : 'Show JSON'}
-            </button>
-          </div>
-          {calibrationMode && (
+      {
+        debugOpen && (
+          <div className="arenaConsoleDebugPanel">
             <div className="debugRow">
               <label>
-                Slot Group
-                <select value={calibrationGroup} onChange={(event) => setCalibrationGroup(event.target.value)}>
-                  <option value="center">Center</option>
-                  {Object.keys(arenaMap.sideSlots).map((edgeKey) => (
-                    <option key={edgeKey} value={edgeKey}>
-                      {edgeKey}
-                    </option>
-                  ))}
+                <input
+                  type="checkbox"
+                  checked={showSlotOverlay}
+                  onChange={(event) => setShowSlotOverlay(event.target.checked)}
+                />
+                Slot Overlay
+              </label>
+              <label>
+                Edge Reveal
+                <select value={edgeRevealMode} onChange={(event) => setEdgeRevealMode(event.target.value)}>
+                  <option value="back">Back Only</option>
+                  <option value="sealed">Sealed</option>
                 </select>
               </label>
-              <button type="button" className="ghost" onClick={() => setCalibrationSlots([])}>
-                Clear
-              </button>
-              <button type="button" className="primary" onClick={handleCopyCalibration}>
-                Copy JSON
+              <label>
+                <input
+                  type="checkbox"
+                  checked={calibrationMode}
+                  onChange={(event) => {
+                    setCalibrationMode(event.target.checked);
+                    setCalibrationDraft(null);
+                  }}
+                />
+                Calibrate
+              </label>
+              <button type="button" className="ghost" onClick={() => setDebugDrawerOpen((prev) => !prev)}>
+                {debugDrawerOpen ? 'Hide JSON' : 'Show JSON'}
               </button>
             </div>
-          )}
-        </div>
-      )}
+            {calibrationMode && (
+              <div className="debugRow">
+                <label>
+                  Slot Group
+                  <select value={calibrationGroup} onChange={(event) => setCalibrationGroup(event.target.value)}>
+                    <option value="center">Center</option>
+                    {Object.keys(arenaMap.sideSlots).map((edgeKey) => (
+                      <option key={edgeKey} value={edgeKey}>
+                        {edgeKey}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button type="button" className="ghost" onClick={() => setCalibrationSlots([])}>
+                  Clear
+                </button>
+                <button type="button" className="primary" onClick={handleCopyCalibration}>
+                  Copy JSON
+                </button>
+              </div>
+            )}
+          </div>
+        )
+      }
 
-      {debugDrawerOpen && (
-        <div className="arenaConsoleDebugDrawer">
-          <h4>Arena JSON</h4>
-          <pre>{arenaSnapshot || JSON.stringify(arenaState, null, 2)}</pre>
-        </div>
-      )}
-    </div>
+      {
+        debugDrawerOpen && (
+          <div className="arenaConsoleDebugDrawer">
+            <h4>Arena JSON</h4>
+            <pre>{arenaSnapshot || JSON.stringify(arenaState, null, 2)}</pre>
+          </div>
+        )
+      }
+
+      {
+        connectionMode === 'entering_text' && pendingConnection && (() => {
+          const sourceCard = cardDefinitions[cardInstances[pendingConnection.sourceId]?.entityId];
+          const targetCard = cardDefinitions[cardInstances[pendingConnection.targetId]?.entityId];
+          return (
+            <RelationshipInput
+              sourceName={sourceCard?.entityName || sourceCard?.name || 'Source'}
+              targetName={targetCard?.entityName || targetCard?.name || 'Target'}
+              sourceImage={sourceCard?.front?.imageUrl ? resolveAssetUrl(baseUrl, sourceCard.front.imageUrl) : null}
+              targetImage={targetCard?.front?.imageUrl ? resolveAssetUrl(baseUrl, targetCard.front.imageUrl) : null}
+              onCancel={handleCancelConnection}
+              onSubmit={handleRelationshipSubmit}
+              onValidate={(text) =>
+                validateRelationship(
+                  sessionId,
+                  activePlayerId,
+                  pendingConnection?.sourceId,
+                  pendingConnection?.targetId,
+                  text,
+                  baseUrl,
+                  { mockApiCalls: MOCK_API_CALLS }
+                )
+              }
+            />
+          );
+        })()
+      }
+    </div >
   );
 };
 

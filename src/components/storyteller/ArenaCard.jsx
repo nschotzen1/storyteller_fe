@@ -16,7 +16,8 @@ const ArenaCard = ({
   onFlip,
   onSelect,
   selected = false,
-  label
+  label,
+  children
 }) => {
   const displayName = card?.entityName || card?.name || 'Unknown';
   const entityId = card?.entityId || card?.entity_id || card?.id || '';
@@ -59,6 +60,7 @@ const ArenaCard = ({
           {showBack ? 'Show Front' : 'Show Back'}
         </button>
       )}
+      {children}
     </div>
   );
 };
