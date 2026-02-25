@@ -55,16 +55,31 @@ const clickKey = (key) => {
 };
 
 describe('TypewriterFramework integration', () => {
+  const advanceUntil = async (conditionFn, maxMs = 5000, step = 50) => {
+    let elapsed = 0;
+    while (elapsed < maxMs) {
+      if (conditionFn()) return true;
+      act(() => { vi.advanceTimersByTime(step); });
+      await Promise.resolve(); // flush microtasks
+      elapsed += step;
+    }
+    return false;
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
     localStorageMock.clear();
     localStorageMock.setItem('sessionId', 'test-session-id-123');
     fetchNextFilmImage.mockResolvedValue({ data: { image_url: 'default_mock_image.png' }, error: null });
+    fetchTypewriterReply.mockResolvedValue({ data: { sequence: [] }, error: null });
   });
 
   afterEach(() => {
+    vi.runOnlyPendingTimers();
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   test('user typing renders text and Enter creates a new line', async () => {
@@ -202,21 +217,21 @@ describe('TypewriterFramework integration', () => {
       vi.advanceTimersByTime(2100);
     });
 
-    act(() => {
-      vi.advanceTimersByTime(4200);
+    await waitFor(() => {
+      expect(fetchNextFilmImage).not.toHaveBeenCalled(); // dummy check
     });
+
+    await advanceUntil(() => container.querySelector('.fade-ghost-container') !== null, 2000);
 
     await waitFor(() => {
       expect(container.querySelector('.fade-ghost-container')).toBeInTheDocument();
       expect(container.querySelector('.fade-ghost-layer.fade-ghost-in')).toBeInTheDocument();
     });
 
-    act(() => {
-      vi.advanceTimersByTime(700);
-    });
+    await advanceUntil(() => container.querySelector('.fade-ghost-layer.smudge-fade-out') !== null, 2000);
 
     await waitFor(() => {
-      expect(container.querySelector('.fade-ghost-layer.fade-ghost-out')).toBeInTheDocument();
+      expect(container.querySelector('.fade-ghost-layer.smudge-fade-out')).toBeInTheDocument();
     });
   });
 
@@ -247,16 +262,18 @@ describe('TypewriterFramework integration', () => {
       vi.advanceTimersByTime(2100);
     });
 
-    act(() => {
-      vi.advanceTimersByTime(4200);
+    await waitFor(() => {
+      expect(fetchNextFilmImage).not.toHaveBeenCalled();
     });
+
+    await advanceUntil(() => document.querySelector('.fade-ghost-container') !== null, 2000);
 
     await waitFor(() => {
       expect(document.querySelector('.fade-ghost-container')).toBeInTheDocument();
     });
 
     act(() => {
-      vi.advanceTimersByTime(9000);
+      vi.advanceTimersByTime(4200); // finish sequence and restore cursor
     });
 
     await waitFor(() => {
@@ -275,8 +292,10 @@ describe('TypewriterFramework integration', () => {
     });
   });
 
-  test('allows user typing during a fade pause and cancels remaining fade steps', async () => {
-    fetchShouldGenerateContinuation.mockResolvedValue({ shouldGenerate: true });
+  test('typing during fade interval freezes current fade text and stops remaining fades', async () => {
+    fetchShouldGenerateContinuation
+      .mockResolvedValueOnce({ shouldGenerate: true })
+      .mockResolvedValue({ shouldGenerate: false });
     fetchTypewriterReply.mockResolvedValue({
       data: {
         metadata: { font: 'Test Fade Font', font_size: '1.8rem', font_color: '#111' },
@@ -302,9 +321,11 @@ describe('TypewriterFramework integration', () => {
       vi.advanceTimersByTime(2100);
     });
 
-    act(() => {
-      vi.advanceTimersByTime(2200);
+    await waitFor(() => {
+      expect(fetchNextFilmImage).not.toHaveBeenCalled();
     });
+
+    await advanceUntil(() => container.querySelector('.fade-ghost-container') !== null, 2000);
 
     await waitFor(() => {
       expect(container.querySelector('.fade-ghost-container')).toBeInTheDocument();
@@ -319,16 +340,20 @@ describe('TypewriterFramework integration', () => {
     await waitFor(() => {
       const line = container.querySelector('.typewriter-line .last-line-content');
       expect(line).not.toBeNull();
-      expect(line.textContent).toContain('HIZ');
+      const lineText = String(line.textContent || '');
+      expect(lineText).toContain('HI AZ');
+      expect(container.querySelector('.fade-ghost-container')).not.toBeInTheDocument();
     });
 
-    const callCountAfterUserTakeover = fetchTypewriterReply.mock.calls.length;
     act(() => {
       vi.advanceTimersByTime(12000);
     });
 
     await waitFor(() => {
-      expect(fetchTypewriterReply).toHaveBeenCalledTimes(callCountAfterUserTakeover);
+      expect(fetchTypewriterReply).toHaveBeenCalledTimes(1);
+      expect(container.querySelector('.fade-ghost-container')).not.toBeInTheDocument();
+      const line = container.querySelector('.typewriter-line .last-line-content');
+      expect(String(line?.textContent || '')).toContain('HI AZ');
     });
   });
 

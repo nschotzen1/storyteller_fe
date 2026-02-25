@@ -93,6 +93,27 @@ describe('PaperDisplay Component', () => {
       expect(firstLine.textContent).toContain('Hello world from beyond');
     });
 
+    test('applies ghost metadata style only to ghost text glyphs', () => {
+      const { container } = render(
+        <PaperDisplay
+          {...defaultProps}
+          pageText="Base"
+          ghostText=" Ghost"
+          currentFontStyles={{ font: 'Courier New', font_size: '2.2rem', font_color: '#123456' }}
+        />
+      );
+
+      const textLayer = container.querySelector('.typewriter-text');
+      expect(textLayer).not.toBeNull();
+      expect(textLayer.style.fontFamily).toContain('Special Elite');
+
+      const ghostGlyph = container.querySelector('.ghost-char');
+      expect(ghostGlyph).not.toBeNull();
+      expect(ghostGlyph.style.fontFamily).toContain('Courier New');
+      expect(ghostGlyph.style.fontSize).toBe('2.2rem');
+      expect(ghostGlyph.style.color).toBe('rgb(18, 52, 86)');
+    });
+
     test('applies the film background image when not sliding', () => {
       render(<PaperDisplay {...defaultProps} pageBg="/specific/bg.png" />);
       const filmBgDiv = screen.getByTestId('film-background-div');
@@ -158,6 +179,10 @@ describe('PaperDisplay Component', () => {
         />
       );
 
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+
       rerender(
         <PaperDisplay
           {...defaultProps}
@@ -167,9 +192,11 @@ describe('PaperDisplay Component', () => {
         />
       );
 
-      const fadeOut = container.querySelector('.fade-ghost-layer.fade-ghost-out');
+      const fadeOut = container.querySelector('.fade-ghost-layer.smudge-fade-out');
+      const fadeOutAfterimage = container.querySelector('.fade-ghost-layer.afterimage-fade');
       const fadeIn = container.querySelector('.fade-ghost-layer.fade-ghost-in');
       expect(fadeOut).toBeInTheDocument();
+      expect(fadeOutAfterimage).toBeInTheDocument();
       expect(fadeIn).toBeInTheDocument();
       expect(fadeOut.textContent).toContain(' from beyond');
       expect(fadeIn.textContent).toContain(' from');
@@ -179,7 +206,8 @@ describe('PaperDisplay Component', () => {
         vi.advanceTimersByTime(700);
       });
 
-      expect(container.querySelector('.fade-ghost-layer.fade-ghost-out')).not.toBeInTheDocument();
+      expect(container.querySelector('.fade-ghost-layer.smudge-fade-out')).not.toBeInTheDocument();
+      expect(container.querySelector('.fade-ghost-layer.afterimage-fade')).not.toBeInTheDocument();
     });
 
     test('shows striker cursor while fade is active when showCursor is true', () => {

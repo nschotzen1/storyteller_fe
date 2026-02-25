@@ -14,6 +14,7 @@ const MOCK_API_CALLS = true;
 const TURN_ACTIONS_PER_TURN = 2;
 const SCENE_CLOCK_MIN = 0;
 const SCENE_CLOCK_MAX = 6;
+const PRESENCE_TOKEN_MAX = 3;
 const TURN_MOVE_DEFINITIONS = [
   {
     id: 'establish',
@@ -38,6 +39,32 @@ const TURN_MOVE_DEFINITIONS = [
     ledgerType: 'canon',
     effects: { momentum: 1, clarity: 1, sceneClock: 1 },
     text: 'reveals a truth that reframes the scene.'
+  }
+];
+const SPOTLIGHT_MOVES = [
+  {
+    id: 'show',
+    label: 'Show',
+    detail: 'Reveal a concrete detail in-scene.',
+    ledgerType: 'canon',
+    effects: { momentum: 0, clarity: 1 },
+    text: 'shows a concrete detail to everyone.'
+  },
+  {
+    id: 'ask',
+    label: 'Ask',
+    detail: 'Invite another voice to add color or truth.',
+    ledgerType: 'oath',
+    effects: { momentum: 0, clarity: 1 },
+    text: 'asks the table to deepen the moment.'
+  },
+  {
+    id: 'offer',
+    label: 'Offer',
+    detail: 'Offer a risk or promise to move forward.',
+    ledgerType: 'mystery',
+    effects: { momentum: 1, clarity: 0 },
+    text: 'offers a cost that propels the scene.'
   }
 ];
 const FLOW_LOOP_ACTIONS = [
@@ -96,6 +123,7 @@ const SESSION_STATE_DEFAULT = {
   sceneRisk: '',
   threads: [],
   lastFlowAction: null,
+  presenceTokens: {},
   vows: {
     hush: false,
     anchor: false,
@@ -588,6 +616,19 @@ const StorytellerArenaConsole = ({
   const rawSceneClock = Number(sessionState.sceneClock);
   const sceneClock = clampSceneClockValue(Number.isFinite(rawSceneClock) ? rawSceneClock : 2);
   const sceneClockLabel = describeSceneClock(sceneClock);
+  const presenceTokens =
+    sessionState.presenceTokens && typeof sessionState.presenceTokens === 'object'
+      ? sessionState.presenceTokens
+      : {};
+  const getPresenceTokenCount = (playerKey) => {
+    if (!playerKey) return 0;
+    const raw = Number(presenceTokens[playerKey]);
+    if (Number.isFinite(raw)) return Math.max(0, Math.min(PRESENCE_TOKEN_MAX, raw));
+    return PRESENCE_TOKEN_MAX;
+  };
+  const spotlightKey = focusPlayerKey || currentTurnKey;
+  const spotlightLabel = getPlayerLabelByKey(spotlightKey, 'Unassigned');
+  const spotlightTokens = spotlightKey ? getPresenceTokenCount(spotlightKey) : 0;
   const immersionGate = useMemo(
     () => ({
       charter: hasWorldCharter,
@@ -609,6 +650,34 @@ const StorytellerArenaConsole = ({
         Number.isFinite(rawCurrentTurnActions) ? rawCurrentTurnActions : TURN_ACTIONS_PER_TURN
       )
     : 0;
+  const immersionPrimer = useMemo(() => {
+    const lines = [];
+    const name = worldProfile.worldName.trim();
+    const mood = worldProfile.mood.trim();
+    const truth = worldProfile.truth.trim();
+    const taboo = worldProfile.taboo.trim();
+    if (name) lines.push(`World: ${name}`);
+    if (mood) lines.push(`Mood: ${mood}`);
+    if (truth) lines.push(`Founding Truth: ${truth}`);
+    if (taboo) lines.push(`Taboo: ${taboo}`);
+    if (sceneGoal.trim() || sceneRisk.trim()) {
+      lines.push(
+        `Scene Lens: ${sceneGoal.trim() || 'Untitled'}${sceneRisk.trim() ? ` | Stakes: ${sceneRisk.trim()}` : ''}`
+      );
+    }
+    if (anchors.length) lines.push(`Anchors: ${anchors.join(', ')}`);
+    if (activeBeat?.label) lines.push(`Beat: ${activeBeat.label}`);
+    return lines.join('\n').trim();
+  }, [
+    worldProfile.worldName,
+    worldProfile.mood,
+    worldProfile.truth,
+    worldProfile.taboo,
+    sceneGoal,
+    sceneRisk,
+    anchors,
+    activeBeat
+  ]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -634,6 +703,7 @@ const StorytellerArenaConsole = ({
           immersionScore,
           mode: flowGuidance.modeLabel,
           next: flowGuidance.next,
+          primer: immersionPrimer,
           loop: {
             lastAction: sessionState.lastFlowAction?.label || '',
             lastBy: sessionState.lastFlowAction?.by || '',
@@ -664,14 +734,19 @@ const StorytellerArenaConsole = ({
           ritualActive,
           sceneClock,
           sceneClockLabel,
-          turnActionsLeft: currentTurnActions
+          turnActionsLeft: currentTurnActions,
+          spotlight: {
+            player: spotlightLabel,
+            tokens: spotlightTokens
+          }
         },
         roster: players.slice(0, playersCount).map((player, index) => ({
           key: getPlayerKey(player, index),
           label: player.label || player.id || `Player ${index + 1}`,
           ready: Boolean(sessionState.readyMap?.[getPlayerKey(player, index)]),
           focused: getPlayerKey(player, index) === focusPlayerKey,
-          turn: getPlayerKey(player, index) === currentTurnKey
+          turn: getPlayerKey(player, index) === currentTurnKey,
+          tokens: getPresenceTokenCount(getPlayerKey(player, index))
         }))
       };
       return JSON.stringify(payload);
@@ -708,7 +783,11 @@ const StorytellerArenaConsole = ({
     sceneGoal,
     sceneRisk,
     threads,
-    sessionState.lastFlowAction
+    sessionState.lastFlowAction,
+    immersionPrimer,
+    spotlightLabel,
+    spotlightTokens,
+    presenceTokens
   ]);
 
   useEffect(() => {
@@ -1164,6 +1243,85 @@ const StorytellerArenaConsole = ({
       handlePassFocus();
     }
     setNotice(`${action.label} logged to the ledger.`);
+  };
+
+  const handleApplyImmersionPrimer = () => {
+    const primer = immersionPrimer.trim();
+    if (!primer) {
+      setNotice('Build the primer from the charter and scene lens first.');
+      return;
+    }
+    updatePlayerAt(activePlayerIndex, (prev) => {
+      const existing = (prev.fragmentText || '').trim();
+      const nextText = existing
+        ? `${existing}\n\nImmersion Primer:\n${primer}`
+        : `Immersion Primer:\n${primer}`;
+      return { ...prev, fragmentText: nextText };
+    });
+    setNotice('Immersion primer sent to fragment.');
+  };
+
+  const handleSpotlightMove = (moveId) => {
+    const move = SPOTLIGHT_MOVES.find((item) => item.id === moveId);
+    if (!move) return;
+    if (!spotlightKey) {
+      setNotice('Set focus or turn holder to use spotlight moves.');
+      return;
+    }
+    if (spotlightTokens <= 0) {
+      setNotice('No spotlight tokens left. Refresh tokens to continue.');
+      return;
+    }
+    const actorLabel = spotlightLabel || 'Table';
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const previousTokensRaw = Number(prev.presenceTokens?.[spotlightKey]);
+      const previousTokens = Number.isFinite(previousTokensRaw)
+        ? previousTokensRaw
+        : PRESENCE_TOKEN_MAX;
+      const nextTokens = Math.max(0, previousTokens - 1);
+      const entry = createLedgerEntry({
+        type: move.ledgerType,
+        text: `${actorLabel} ${move.text}`,
+        by: actorLabel
+      });
+      return {
+        ...prev,
+        presenceTokens: {
+          ...(prev.presenceTokens || {}),
+          [spotlightKey]: nextTokens
+        },
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + move.effects.momentum),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + move.effects.clarity)
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setNotice(`${actorLabel}: ${move.label} logged.`);
+  };
+
+  const handleRefreshPresenceTokens = () => {
+    const roster = players.slice(0, playersCount);
+    if (!roster.length) return;
+    const keys = roster.map((player, index) => getPlayerKey(player, index));
+    setSessionState((prev) => {
+      const refreshed = Object.fromEntries(keys.map((key) => [key, PRESENCE_TOKEN_MAX]));
+      const entry = createLedgerEntry({
+        type: 'oath',
+        text: 'Table refreshes spotlight tokens.',
+        by: 'Table'
+      });
+      return {
+        ...prev,
+        presenceTokens: {
+          ...(prev.presenceTokens || {}),
+          ...refreshed
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setNotice('Spotlight tokens refreshed.');
   };
 
   const createThread = (label) => ({
@@ -2216,6 +2374,21 @@ const StorytellerArenaConsole = ({
                 </button>
               </div>
             </div>
+            <div className="flowPrimer">
+              <div className="flowPrimerHeader">
+                <strong>Immersion Primer</strong>
+                <span>{immersionPrimer ? 'Ready' : 'Draft'}</span>
+              </div>
+              {immersionPrimer ? <pre>{immersionPrimer}</pre> : <p>Fill the charter + lens to draft a primer.</p>}
+              <div className="consoleButtonRow">
+                <button type="button" className="primary" onClick={handleApplyImmersionPrimer} disabled={!immersionPrimer}>
+                  Send Primer
+                </button>
+                <button type="button" className="ghost" onClick={() => scrollToFlowStep('seed')}>
+                  Open Fragment
+                </button>
+              </div>
+            </div>
             <div className="flowSteps">
               {flowSteps.map((step, index) => (
                 <div
@@ -2931,6 +3104,7 @@ const StorytellerArenaConsole = ({
                 const playerKey = getPlayerKey(player, index);
                 const isFocused = playerKey === focusPlayerKey;
                 const isTurn = playerKey === currentTurnKey;
+                const tokenCount = getPresenceTokenCount(playerKey);
                 return (
                   <div
                     key={player.id || player.label || index}
@@ -2958,6 +3132,11 @@ const StorytellerArenaConsole = ({
                       >
                         Focus
                       </button>
+                      <div className="presenceTokens" aria-label={`Spotlight tokens ${tokenCount} of ${PRESENCE_TOKEN_MAX}`}>
+                        {Array.from({ length: PRESENCE_TOKEN_MAX }).map((_, tokenIndex) => (
+                          <span key={`${playerKey}-token-${tokenIndex}`} className={tokenIndex < tokenCount ? 'active' : ''} />
+                        ))}
+                      </div>
                       <span className={`presenceStatus ${status.tone}`}>{status.label}</span>
                     </div>
                   </div>
@@ -3047,6 +3226,35 @@ const StorytellerArenaConsole = ({
                     </button>
                   ))}
                 </div>
+              </div>
+              <div className="spotlightRow">
+                <span>Spotlight Tokens</span>
+                <div
+                  className="spotlightMeter"
+                  aria-label={`Spotlight tokens ${spotlightTokens} of ${PRESENCE_TOKEN_MAX}`}
+                >
+                  {Array.from({ length: PRESENCE_TOKEN_MAX }).map((_, index) => (
+                    <span key={`spotlight-token-${index}`} className={index < spotlightTokens ? 'active' : ''} />
+                  ))}
+                </div>
+                <em>{spotlightLabel}</em>
+              </div>
+              <div className="spotlightMoves">
+                {SPOTLIGHT_MOVES.map((move) => (
+                  <button
+                    key={move.id}
+                    type="button"
+                    className="ghost subtle"
+                    title={move.detail}
+                    onClick={() => handleSpotlightMove(move.id)}
+                    disabled={!spotlightKey || spotlightTokens <= 0}
+                  >
+                    {move.label}
+                  </button>
+                ))}
+                <button type="button" className="ghost" onClick={handleRefreshPresenceTokens}>
+                  Refresh Tokens
+                </button>
               </div>
               <div className="consoleButtonRow">
                 <button type="button" className="ghost" onClick={handleStartRitual} disabled={ritualActive}>

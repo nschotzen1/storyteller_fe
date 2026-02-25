@@ -4,47 +4,53 @@
 @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Uncial+Antiqua&family=Special+Elite&family=Cormorant+Garamond:wght@600&family=EB+Garamond&family=MedievalSharp&display=swap');
 
 .key-style-1 {
-    font-family: 'Uncial Antiqua', serif;
-    font-size: 1.3rem;
-    color: #e2dfd4;
-  }
-  .key-style-2 {
-    font-family: 'EB Garamond', serif;
-    font-size: 1.5rem;
-    color: #ccc;
-  }
-  .key-style-3 {
-    font-family: 'Special Elite', monospace;
-    font-size: 1.1rem;
-    color: #ddd;
-  }
-  .key-style-4 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1.7rem;
-    color: #faf5e9;
-  }
-  .key-style-5 {
-    font-family: 'IM Fell English SC', serif;
-    font-size: 1.6rem;
-    color: #d6cab0;
-  }
-  .key-style-6 {
-    font-family: 'MedievalSharp', cursive;
-    font-size: 1.5rem;
-    color: #eee;
-  }
+  font-family: 'Uncial Antiqua', serif;
+  font-size: 1.3rem;
+  color: #e2dfd4;
+}
 
-  .key-engraved-glyph::after {
-    content: '𐌔'; /* or any arcane rune */
-    font-family: 'Uncial Antiqua';
-    font-size: 1rem;
-    color: rgba(255,255,255,0.08);
-    position: absolute;
-    bottom: 4px;
-    right: 4px;
-  }
-  
-  
+.key-style-2 {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.5rem;
+  color: #ccc;
+}
+
+.key-style-3 {
+  font-family: 'Special Elite', monospace;
+  font-size: 1.1rem;
+  color: #ddd;
+}
+
+.key-style-4 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.7rem;
+  color: #faf5e9;
+}
+
+.key-style-5 {
+  font-family: 'IM Fell English SC', serif;
+  font-size: 1.6rem;
+  color: #d6cab0;
+}
+
+.key-style-6 {
+  font-family: 'MedievalSharp', cursive;
+  font-size: 1.5rem;
+  color: #eee;
+}
+
+.key-engraved-glyph::after {
+  content: '𐌔';
+  /* or any arcane rune */
+  font-family: 'Uncial Antiqua';
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.08);
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+}
+
+
 /* Main container */
 .typewriter-container {
   position: relative;
@@ -65,8 +71,13 @@
 
 /* Subtle paper shift to simulate breathing */
 @keyframes paperSettle {
-  0% { transform: rotate(0.1deg) translateY(0px); }
-  100% { transform: rotate(-0.1deg) translateY(0.5px); }
+  0% {
+    transform: rotate(0.1deg) translateY(0px);
+  }
+
+  100% {
+    transform: rotate(-0.1deg) translateY(0.5px);
+  }
 }
 
 
@@ -85,14 +96,15 @@
   mix-blend-mode: multiply;
   filter: contrast(1.1);
   text-shadow:
-    0.5px 0.5px rgba(0,0,0,0.15),
-    -0.5px -0.5px rgba(0,0,0,0.08);
-  padding: 100px 0 0 0; /* <--- Start 100px below top! */
+    0.5px 0.5px rgba(0, 0, 0, 0.15),
+    -0.5px -0.5px rgba(0, 0, 0, 0.08);
+  padding: 100px 0 0 0;
+  /* <--- Start 100px below top! */
 }
 
 
 
-  
+
 
 /* Keyboard */
 /* .typewriter-keyboard {
@@ -109,24 +121,24 @@
 
 /* Individual key */
 .typewriter-key {
-    width: 60px;
-    height: 60px;
-    background: radial-gradient(circle at 30% 30%, #4a4a4a, #1c1c1c);
-    border-radius: 50%;
-    border: 2px solid #0a0a0a;
-    box-shadow:
-      inset -3px -3px 6px #000,
-      inset 2px 2px 4px rgba(255,255,255,0.1),
-      0 4px 6px rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    text-shadow:
-      1px 1px 0 #000,
-      -1px -1px 0 rgba(255,255,255,0.05);
-    user-select: none;
-  }
+  width: 60px;
+  height: 60px;
+  background: radial-gradient(circle at 30% 30%, #4a4a4a, #1c1c1c);
+  border-radius: 50%;
+  border: 2px solid #0a0a0a;
+  box-shadow:
+    inset -3px -3px 6px #000,
+    inset 2px 2px 4px rgba(255, 255, 255, 0.1),
+    0 4px 6px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  text-shadow:
+    1px 1px 0 #000,
+    -1px -1px 0 rgba(255, 255, 255, 0.05);
+  user-select: none;
+}
 
 .typewriter-key:active {
   transform: translateY(2px);
@@ -146,14 +158,14 @@
   content: "";
   position: absolute;
   inset: 0;
-  
+
   opacity: 0.04;
   pointer-events: none;
   z-index: 5;
   mix-blend-mode: soft-light;
-  background: 
+  background:
     url('/textures/grainy.png'),
-    radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.4), transparent 70%);
+    radial-gradient(ellipse at 50% 100%, rgba(0, 0, 0, 0.4), transparent 70%);
 }
 
 /* Flicker subtle light glow over page */
@@ -165,196 +177,218 @@
   mix-blend-mode: overlay;
   pointer-events: none;
   z-index: 3;
-  background: radial-gradient(ellipse at 50% 0%, rgba(255,240,200,0.15), transparent 70%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 240, 200, 0.15), transparent 70%);
 
 }
 
 .typewriter-striker {
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 120px;
-    height: auto;
-    opacity: 0.8;
-    z-index: 15;
-    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5)) blur(0.2px);
-    pointer-events: none;
-  }
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: auto;
+  opacity: 0.8;
+  z-index: 15;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5)) blur(0.2px);
+  pointer-events: none;
+}
 
-  .typewriter-line {
-    position: relative;
-    min-height: 2.4rem; /* Should match --line-height-typewriter if that variable were used */
-    /* height: 2.4rem; /* Consider fixing height */
-    /* overflow: visible; /* Allow cursor to visually exceed line box */
-    white-space: pre-wrap;
-    display: flex;
-    align-items: baseline; /* Changed from center */
-    margin-bottom: 0.3rem;
-  }
-  
-  .striker-cursor {
-    display: inline-block;
-    width: 72px; /* Width can remain, or adjust if striker image aspect ratio needs it */
-    height: 70px; /* Reduced from 100px */
-    background-image: url('/textures/striker.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    position: relative;
-    top: 30px; /* Adjusted from 55px */
-    right: 40px; /* This is likely fine, related to horizontal placement */
-    /* align-self: center; Removed */
-    filter: drop-shadow(1px 2px 3px rgba(0, 0, 0, 0.5));
-    z-index: 0; /* Keep below text if text can overlap, or adjust if needed */
-    opacity: 0.85;
-    mix-blend-mode: multiply;
-  }
-  
-  
-  
-  
-  @keyframes striker-blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.2; }
-  }
-  
+.typewriter-line {
+  position: relative;
+  min-height: 2.4rem;
+  /* Should match --line-height-typewriter if that variable were used */
+  /* height: 2.4rem; /* Consider fixing height */
+  /* overflow: visible; /* Allow cursor to visually exceed line box */
+  white-space: pre-wrap;
+  display: flex;
+  align-items: baseline;
+  /* Changed from center */
+  margin-bottom: 0.3rem;
+}
 
-  .typewriter-key-wrapper {
-    width: 84px;
-    height: 84px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    user-select: none;
-    transform: translateY(var(--offset-y)) rotate(var(--tilt));
-    transition: transform 0.3s ease;
-  }
-
-  
-
-  
-  .typewriter-key-img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    pointer-events: none;
-    transition: transform 0.2s;
-    filter: contrast(1.05) brightness(0.95);
-  }
-  
-  .typewriter-key-wrapper:active .typewriter-key-img {
-    transform: scale(0.96);
-  }
-
-  .typewriter-key-wrapper.key-pressed .typewriter-key-img {
-    transform: scale(0.92);
-    filter: brightness(0.85) contrast(1.2);
-  }
-  
-  .typewriter-key-wrapper:nth-child(3n) {
-    transform: translateY(1px) rotate(-0.5deg);
-  }
-  .typewriter-key-wrapper:nth-child(5n) {
-    transform: translateY(-1px) rotate(0.4deg);
-  }
-
-  .typewriter-key-wrapper.key-pressed .typewriter-key-img {
-    transform: scale(0.94);
-    filter: brightness(0.85);
-  }
-
-  .typewriter-keyboard {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    padding: 2.5rem 4rem 4rem;
-    background: linear-gradient(to top, #1a1a1a, #0f0f0f);
-    border-top: 2px solid #333;
-    border-radius: 0 0 100px 100px; /* ← arc illusion */
-    box-shadow: inset 0 30px 60px rgba(0,0,0,0.5);
-    transform: perspective(1000px) rotateX(5deg); /* ← tilt keys slightly */
-    gap: 0.6rem 1rem;
-  }
-
-  .typewriter-keyboard::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 15%;
-    right: 15%;
-    background: radial-gradient(ellipse at center, rgba(0,0,0,0.25), transparent 70%);
-    pointer-events: none;
-    z-index: 1;
-  }
-  
-  .typewriter-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    mix-blend-mode: soft-light; /* or 'overlay' for more dramatic light */
-    opacity: 0.92;
-    z-index: 1000;
-    pointer-events: none; /* ensures it's non-blocking */
-  }
-  
-  .keyboard-plate {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 2rem 4rem; /* Horizontal padding remains */
-    background: #0a0a0a;
-    border-top-left-radius: 100px;
-    border-top-right-radius: 100px;
-    box-shadow: inset 0 20px 50px rgba(0,0,0,0.5);
-    transform: perspective(1000px) rotateX(4deg); /* slightly less dramatic */
-    padding-top: 0.75rem; /* Reduced from 1rem */
-    padding-bottom: 1.5rem; /* Reduced from 2rem */
-  }
-  
-  .key-row {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-  }
-  
- 
-  
+.striker-cursor {
+  display: inline-block;
+  width: 72px;
+  /* Width can remain, or adjust if striker image aspect ratio needs it */
+  height: 70px;
+  /* Reduced from 100px */
+  background-image: url('/textures/striker.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  position: relative;
+  top: 30px;
+  left: -40px;
+  /* align-self: center; Removed */
+  filter: drop-shadow(1px 2px 3px rgba(0, 0, 0, 0.5));
+  z-index: 0;
+  /* Keep below text if text can overlap, or adjust if needed */
+  opacity: 0.85;
+  mix-blend-mode: multiply;
+}
 
 
-  .storyteller-sigil {
-    display: flex;
-    justify-content: center;
-    margin: 0.5rem auto; /* Reduced from 1rem auto */
-    width: 80px;
-    height: auto;
-    opacity: 0.7;
-    filter: contrast(1.2) brightness(0.9);
-    z-index: 20;
-  }
 
 
-  .spacebar-wrapper {
-    width: 100%;
-    min-width: 600px;
-    max-width: 860px;
-    height: 84px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
-    position: relative;
-    flex-shrink: 0;
-    flex-grow: 0;
+@keyframes striker-blink {
+
+  0%,
+  100% {
+    opacity: 1;
   }
-  
-  .spacebar-wrapper {
+
+  50% {
+    opacity: 0.2;
+  }
+}
+
+
+.typewriter-key-wrapper {
+  width: 84px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  user-select: none;
+  transform: translateY(var(--offset-y)) rotate(var(--tilt));
+  transition: transform 0.3s ease;
+}
+
+
+
+
+.typewriter-key-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  transition: transform 0.2s;
+  filter: contrast(1.05) brightness(0.95);
+}
+
+.typewriter-key-wrapper:active .typewriter-key-img {
+  transform: scale(0.96);
+}
+
+.typewriter-key-wrapper.key-pressed .typewriter-key-img {
+  transform: scale(0.92);
+  filter: brightness(0.85) contrast(1.2);
+}
+
+.typewriter-key-wrapper:nth-child(3n) {
+  transform: translateY(1px) rotate(-0.5deg);
+}
+
+.typewriter-key-wrapper:nth-child(5n) {
+  transform: translateY(-1px) rotate(0.4deg);
+}
+
+.typewriter-key-wrapper.key-pressed .typewriter-key-img {
+  transform: scale(0.94);
+  filter: brightness(0.85);
+}
+
+.typewriter-keyboard {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 2.5rem 4rem 4rem;
+  background: linear-gradient(to top, #1a1a1a, #0f0f0f);
+  border-top: 2px solid #333;
+  border-radius: 0 0 100px 100px;
+  /* ← arc illusion */
+  box-shadow: inset 0 30px 60px rgba(0, 0, 0, 0.5);
+  transform: perspective(1000px) rotateX(5deg);
+  /* ← tilt keys slightly */
+  gap: 0.6rem 1rem;
+}
+
+.typewriter-keyboard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 15%;
+  right: 15%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.25), transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.typewriter-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  mix-blend-mode: soft-light;
+  /* or 'overlay' for more dramatic light */
+  opacity: 0.92;
+  z-index: 1000;
+  pointer-events: none;
+  /* ensures it's non-blocking */
+}
+
+.keyboard-plate {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 4rem;
+  /* Horizontal padding remains */
+  background: #0a0a0a;
+  border-top-left-radius: 100px;
+  border-top-right-radius: 100px;
+  box-shadow: inset 0 20px 50px rgba(0, 0, 0, 0.5);
+  transform: perspective(1000px) rotateX(4deg);
+  /* slightly less dramatic */
+  padding-top: 0.75rem;
+  /* Reduced from 1rem */
+  padding-bottom: 1.5rem;
+  /* Reduced from 2rem */
+}
+
+.key-row {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+
+
+
+
+.storyteller-sigil {
+  display: flex;
+  justify-content: center;
+  margin: 0.5rem auto;
+  /* Reduced from 1rem auto */
+  width: 80px;
+  height: auto;
+  opacity: 0.7;
+  filter: contrast(1.2) brightness(0.9);
+  z-index: 20;
+}
+
+
+.spacebar-wrapper {
+  width: 100%;
+  min-width: 600px;
+  max-width: 860px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  position: relative;
+  flex-shrink: 0;
+  flex-grow: 0;
+}
+
+.spacebar-wrapper {
   width: 100%;
   max-width: 860px;
   height: 84px;
@@ -367,8 +401,8 @@
   flex-grow: 0;
 }
 
-  
-  
+
+
 .spacebar-img {
   width: 45%;
   height: 330%;
@@ -376,10 +410,11 @@
   object-fit: contain;
   object-position: center top;
   image-rendering: auto;
-  transform: scaleX(1.5); /* << try 1.5 to 2 */
+  transform: scaleX(1.5);
+  /* << try 1.5 to 2 */
 }
 
-  
+
 .striker-return {
   animation: strikerReturn 0.6s ease-out;
 }
@@ -388,108 +423,102 @@
   0% {
     transform: translate(30px, 0px) rotate(0deg);
   }
+
   30% {
     transform: translate(-20px, 28px) rotate(-1deg);
   }
+
   100% {
     transform: translate(0px, 0px) rotate(0deg);
   }
 }
 
-  
-  .typewriter-key-wrapper.spacebar::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 24px;
-    box-shadow: inset 0 2px 12px rgba(0,0,0,0.5);
-    opacity: 0.3;
-  }
-  
-  
-  .spacebar-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    padding: 0 3rem;
-    margin-top: 1rem;
-  }
-  
-  
-  .typewriter-scroll {
-    max-height: 540px; /* adjust to match your paper size */
-    overflow-y: auto;
-    scroll-behavior: smooth;
-  }
-  
 
- 
+.typewriter-key-wrapper.spacebar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.5);
+  opacity: 0.3;
+}
+
+
+.spacebar-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 0 3rem;
+  margin-top: 1rem;
+}
+
+
+.typewriter-scroll {
+  max-height: 540px;
+  /* adjust to match your paper size */
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+
+
 
 
 
 .typewriter-paper.film-mode {
   background-image: url('/textures/decor/film_frame_desert.png');
   background-size: cover;
-  background-position: top center; /* shows sky first */
+  background-position: top center;
+  /* shows sky first */
   background-repeat: no-repeat;
   mask-image: linear-gradient(to bottom, black 0%, black 80%, transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 80%, transparent 100%);
 }
 
-  .side-frame {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 120px; /* Increased from 80px */
-    z-index: 9;
-    pointer-events: none;
-    mix-blend-mode: multiply;
-    opacity: 0.96;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-  }
-  
-  .side-left {
-    left: -60px; /* Adjusted to align properly */
-    background-image: url('/textures/decor/typewriter_side_left.png');
-  }
-  
-  .side-right {
-    right: -60px; /* Adjusted to align properly */
-    background-image: url('/textures/decor/typewriter_side_right.png');
-  }
+.side-frame {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 120px;
+  /* Increased from 80px */
+  z-index: 9;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  opacity: 0.96;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.side-left {
+  left: -60px;
+  /* Adjusted to align properly */
+  background-image: url('/textures/decor/typewriter_side_left.png');
+}
+
+.side-right {
+  right: -60px;
+  /* Adjusted to align properly */
+  background-image: url('/textures/decor/typewriter_side_right.png');
+}
 
 
-  .xerofag-highlight {
-    font-family: 'Uncial Antiqua', serif;
-    font-size: 1.9rem;
-    color: #7a1818;
-    letter-spacing: 0.02em;
-    text-shadow: 0 0 3px rgba(150, 0, 0, 0.4);
-    mix-blend-mode: multiply;
-  }
-  
+.xerofag-highlight {
+  font-family: 'Uncial Antiqua', serif;
+  font-size: 1.9rem;
+  color: #7a1818;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 3px rgba(150, 0, 0, 0.4);
+  mix-blend-mode: multiply;
+}
 
-  
 
-  
-  @keyframes emergeFadeIn {
-    from {
-      opacity: 0;
-      filter: blur(2px);
-      transform: scale(1.1);
-    }
-    to {
-      opacity: 1;
-      filter: blur(0);
-      transform: scale(1);
-    }
-  }
-  
 
-  .emergent-letter {
+
+
+
+.emergent-letter {
   opacity: 0;
   display: inline-block;
   animation: emergeFadeIn 0.9s ease-out forwards;
@@ -501,9 +530,11 @@
     transform: scale(1.1) translateY(8px);
     filter: blur(3px);
   }
+
   60% {
     opacity: 0.4;
   }
+
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -511,36 +542,13 @@
   }
 }
 
-  
-  .emergent-letter {
-  opacity: 0;
-  display: inline-block;
-  animation: emergeFadeIn 0.9s ease-out forwards;
+
+.ghost-blur {
+  filter: blur(2px);
+  animation: emergeFadeSharp 1.2s ease-out forwards;
 }
 
-@keyframes emergeFadeIn {
-  0% {
-    opacity: 0;
-    transform: scale(1.1) translateY(8px);
-    filter: blur(3px);
-  }
-  60% {
-    opacity: 0.4;
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: blur(0px);
-  }
-}
-
-  
-  .ghost-blur {
-    filter: blur(2px);
-    animation: emergeFadeSharp 1.2s ease-out forwards;
-  }
-  
-  /* @keyframes emergeFadeIn {
+/* @keyframes emergeFadeIn {
     from {
       opacity: 0;
       filter: blur(1.5px);
@@ -552,26 +560,28 @@
       transform: scale(1);
     }
   } */
-  
-  @keyframes emergeFadeSharp {
-    0% {
-      opacity: 0;
-      filter: blur(2.5px);
-      transform: scale(1.08);
-    }
-    60% {
-      opacity: 0.4;
-      filter: blur(2px);
-    }
-    100% {
-      opacity: 1;
-      filter: blur(0);
-      transform: scale(1);
-    }
+
+@keyframes emergeFadeSharp {
+  0% {
+    opacity: 0;
+    filter: blur(2.5px);
+    transform: scale(1.08);
   }
-  
-  
-  
+
+  60% {
+    opacity: 0.4;
+    filter: blur(2px);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+
+
+
 
 
 
@@ -588,13 +598,6 @@
   transition: height 0.5s ease;
 }
 
-
-
-
-.film-scroll-layer {
-  position: relative;
-  min-height: 1000px;
-}
 
 
 
@@ -617,9 +620,11 @@
 
 
 .typewriter-paper-frame {
-  height: 520px;   /* the window height! (matches ~how much of film is visible) */
+  height: 520px;
+  /* the window height! (matches ~how much of film is visible) */
   max-height: 90vh;
-  overflow-y: auto; /* enables scroll up when text overflows! */
+  overflow-y: auto;
+  /* enables scroll up when text overflows! */
   width: 80%;
   margin: 0 auto;
   position: relative;
@@ -631,30 +636,23 @@
 
 
 
-.typewriter-text.film-overlay-text {
-  position: relative;
-  z-index: 2;
-  padding-top: 100px; /* TOP_OFFSET */
-  padding-left: 5rem;
-  padding-right: 5rem;
-  display: flex;
-  flex-direction: column;
-}
-
-
-
 
 .paper-scroll-area {
   position: relative;
   width: 100%;
-  height: 1400px;   /* FULL film height, always! */
-  overflow: hidden; /* never scroll INSIDE this div */
+  height: 1400px;
+  /* FULL film height, always! */
+  overflow: hidden;
+  /* never scroll INSIDE this div */
 }
 
 
 .film-background {
   position: absolute;
-  top: 0; left: 0; width: 100%; height: 1400px;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 1400px;
   background-size: cover;
   background-repeat: no-repeat;
   background-position: top center;
@@ -666,7 +664,8 @@
 .typewriter-text.film-overlay-text {
   position: relative;
   z-index: 2;
-  padding-top: 180px; /* TOP_OFFSET */
+  padding-top: 180px;
+  /* TOP_OFFSET */
   padding-left: 5rem;
   padding-bottom: 220px;
   padding-right: 5rem;
@@ -677,8 +676,10 @@
 /* --- Page Turn Slide Animation --- */
 .film-slide-wrapper {
   position: absolute;
-  top: 0; left: 0;
-  width: 200%; /* two images wide */
+  top: 0;
+  left: 0;
+  width: 200%;
+  /* two images wide */
   height: 1400px;
   display: flex;
   flex-direction: row;
@@ -689,13 +690,15 @@
 }
 
 .film-bg-slide {
-  width: 50%;   /* half the wrapper */
+  width: 50%;
+  /* half the wrapper */
   height: 100%;
   background-size: cover;
   background-position: top center;
   background-repeat: no-repeat;
   opacity: 0.92;
-  transition: none; /* let wrapper handle sliding! */
+  transition: none;
+  /* let wrapper handle sliding! */
   will-change: background-image;
 }
 
@@ -719,8 +722,13 @@
 }
 
 @keyframes slideInAnim {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0%); }
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0%);
+  }
 }
 
 
@@ -731,14 +739,34 @@
   transition: opacity 0.4s cubic-bezier(0.7, 0, 0.3, 1);
 }
 
+.striker-cursor.ghost-cursor-active {
+  background-image: none !important;
+  width: 14px;
+  height: 38px;
+  background-color: rgba(220, 220, 220, 0.4);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  top: 15px;
+  left: 5px;
+  mix-blend-mode: screen;
+  animation: striker-blink 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 /* Slide text up and fade */
 .typewriter-slide-up {
   animation: typewriterSlideUp 0.7s cubic-bezier(0.7, 0, 0.3, 1) forwards;
 }
 
 @keyframes typewriterSlideUp {
-  from { transform: translateY(0px); opacity: 1; }
-  to   { transform: translateY(-120px); opacity: 0; }
+  from {
+    transform: translateY(0px);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateY(-120px);
+    opacity: 0;
+  }
 }
 
 
@@ -746,7 +774,8 @@
   width: 100%;
   height: 1400px;
   position: absolute;
-  top: 0; left: 0;
+  top: 0;
+  left: 0;
   z-index: 3;
   pointer-events: none;
 }
@@ -756,17 +785,47 @@
 }
 
 @keyframes filmSlideUp {
-  from { transform: translateY(0px); opacity: 1; }
-  to   { transform: translateY(-200px); opacity: 0; }
+  from {
+    transform: translateY(0px);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateY(-200px);
+    opacity: 0;
+  }
 }
 
 @keyframes filmFlicker {
-  0% { opacity: 0.13; filter: blur(0.2px) brightness(1.05); }
-  12% { opacity: 0.18; filter: blur(0.4px) brightness(1.03); }
-  25% { opacity: 0.17; filter: blur(0.3px) brightness(1.08);}
-  50% { opacity: 0.14; filter: blur(0.6px) brightness(1.00);}
-  75% { opacity: 0.15; filter: blur(0.2px) brightness(0.97);}
-  100% { opacity: 0.12; filter: blur(0.1px) brightness(1.04);}
+  0% {
+    opacity: 0.13;
+    filter: blur(0.2px) brightness(1.05);
+  }
+
+  12% {
+    opacity: 0.18;
+    filter: blur(0.4px) brightness(1.03);
+  }
+
+  25% {
+    opacity: 0.17;
+    filter: blur(0.3px) brightness(1.08);
+  }
+
+  50% {
+    opacity: 0.14;
+    filter: blur(0.6px) brightness(1.00);
+  }
+
+  75% {
+    opacity: 0.15;
+    filter: blur(0.2px) brightness(0.97);
+  }
+
+  100% {
+    opacity: 0.12;
+    filter: blur(0.1px) brightness(1.04);
+  }
 }
 
 
@@ -784,7 +843,7 @@
 .lever-image {
   border-radius: 50%;
   box-shadow: 0 0 14px #0008, 0 0 2px #664418;
-  transition: transform 0.32s cubic-bezier(0.61,0.02,0.52,1.02), filter 0.3s, opacity 0.3s;
+  transition: transform 0.32s cubic-bezier(0.61, 0.02, 0.52, 1.02), filter 0.3s, opacity 0.3s;
   will-change: transform;
 }
 
@@ -792,15 +851,31 @@
   transform: rotate(-68deg) scale(1.09);
   filter: brightness(1.09) drop-shadow(0 0 24px #ffc87288);
 }
+
 .lever-image.lever-reset {
   animation: leverSnapBack 0.5s cubic-bezier(0.71, 0, 0.24, 1.01);
 }
+
 @keyframes leverSnapBack {
-  0% { transform: rotate(-68deg) scale(1.12);}
-  38% { transform: rotate(-5deg) scale(1.03);}
-  55% { transform: rotate(6deg) scale(0.96);}
-  82% { transform: rotate(-3deg) scale(1);}
-  100% { transform: rotate(0deg) scale(1);}
+  0% {
+    transform: rotate(-68deg) scale(1.12);
+  }
+
+  38% {
+    transform: rotate(-5deg) scale(1.03);
+  }
+
+  55% {
+    transform: rotate(6deg) scale(0.96);
+  }
+
+  82% {
+    transform: rotate(-3deg) scale(1);
+  }
+
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
 }
 
 .lever-glow {
@@ -819,10 +894,12 @@
   transition: opacity 0.18s, box-shadow 0.2s;
   box-shadow: 0 0 6px #33271150;
 }
+
 .lever-pull-btn.active:hover {
   box-shadow: 0 0 22px #ffd87d, 0 0 6px #ffecbe;
   background: linear-gradient(to top, #f3d7ad, #e3bf7c 85%, #a88545);
 }
+
 .lever-pull-btn.disabled {
   background: #443621;
   color: #99866b;
@@ -858,6 +935,7 @@
     transform: scale(0.9) translateY(5px);
     filter: blur(2px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -871,28 +949,37 @@
     transform: scale(0.9) translateY(5px);
     filter: blur(2px);
   }
-  30% { /* Start shimmer */
+
+  30% {
+    /* Start shimmer */
     opacity: 0.7;
     filter: blur(1px) brightness(1.2);
     transform: scale(1) translateY(0);
   }
+
   40% {
     opacity: 0.5;
     filter: blur(1px) brightness(0.9);
   }
+
   50% {
     opacity: 0.9;
     filter: blur(0.5px) brightness(1.3);
   }
+
   60% {
     opacity: 0.7;
     filter: blur(0.5px) brightness(0.9);
   }
-  70% { /* End shimmer, settle */
+
+  70% {
+    /* End shimmer, settle */
     opacity: 1;
     filter: blur(0) brightness(1.1);
-    transform: scale(1.05); /* Slight pop */
+    transform: scale(1.05);
+    /* Slight pop */
   }
+
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -903,14 +990,18 @@
 @keyframes pulseSizeChar {
   0% {
     opacity: 0;
-    transform: scale(0.7) translateY(5px); /* Start smaller */
+    transform: scale(0.7) translateY(5px);
+    /* Start smaller */
     filter: blur(3px);
   }
+
   60% {
     opacity: 0.8;
-    transform: scale(1.5) translateY(-2px); /* Pulse bigger and slightly up */
+    transform: scale(1.5) translateY(-2px);
+    /* Pulse bigger and slightly up */
     filter: blur(0.5px);
   }
+
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -926,7 +1017,7 @@
 
 /* Only newly added letters get the animation! */
 .ghost-char-materialize {
-  animation: materializeChar 2.92s cubic-bezier(.36,1.43,.6,.98) forwards;
+  animation: materializeChar 2.92s cubic-bezier(.36, 1.43, .6, .98) forwards;
   /* adjust timing for taste */
 }
 
@@ -936,6 +1027,7 @@
     filter: blur(4px);
     transform: scale(1.18) translateY(9px);
   }
+
   to {
     opacity: 1;
     filter: blur(0);
@@ -944,22 +1036,42 @@
 }
 
 .transform-fade-in {
-  animation: transformFadeInAnimation 1.2s cubic-bezier(.36,1.43,.6,.98) forwards;
+  animation: transformFadeInAnimation 1.2s cubic-bezier(.36, 1.43, .6, .98) forwards;
   opacity: 0;
 }
+
 @keyframes transformFadeInAnimation {
-  from { opacity: 0; filter: blur(4px); transform: scale(1.18) translateY(9px);}
-  to   { opacity: 1; filter: blur(0); transform: scale(1) translateY(0);}
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: scale(1.18) translateY(9px);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1) translateY(0);
+  }
 }
 
 .transform-fade-out {
-  animation: transformFadeOutAnimation 1.2s cubic-bezier(.36,1.43,.6,.98) forwards;
+  animation: transformFadeOutAnimation 1.2s cubic-bezier(.36, 1.43, .6, .98) forwards;
   opacity: 1;
   position: relative;
 }
+
 @keyframes transformFadeOutAnimation {
-  from { opacity: 1; filter: blur(0); transform: scale(1);}
-  to   { opacity: 0; filter: blur(2px); transform: scale(0.95);}
+  from {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    filter: blur(2px);
+    transform: scale(0.95);
+  }
 }
 
 /* Cross-Fade Animation for Ghost Text Phases */
@@ -970,7 +1082,8 @@
 .typewriter-line .ghost-text-block {
   /* display: inline-block; /* Set via inline style in PaperDisplay.jsx */
   /* vertical-align: baseline; /* Suggested for inline-block alignment */
-  opacity: 0; /* Default to transparent; fade-in will make it visible, fade-out starts from visible */
+  opacity: 0;
+  /* Default to transparent; fade-in will make it visible, fade-out starts from visible */
 }
 
 .typewriter-line .ghost-text-block.cross-fade-outgoing {
@@ -978,7 +1091,8 @@
   animation-duration: 1.2s !important;
   animation-timing-function: ease-in-out !important;
   animation-fill-mode: forwards !important;
-  opacity: 1 !important; /* Start visible */
+  opacity: 1 !important;
+  /* Start visible */
   /* position, top, left, width are set inline in PaperDisplay.jsx */
 }
 
@@ -987,8 +1101,10 @@
   animation-duration: 1.2s !important;
   animation-timing-function: ease-in-out !important;
   animation-fill-mode: forwards !important;
-  animation-delay: 0.3s !important; /* Delay to allow outgoing to start */
-  opacity: 0 !important; /* Start transparent */
+  animation-delay: 0.3s !important;
+  /* Delay to allow outgoing to start */
+  opacity: 0 !important;
+  /* Start transparent */
 }
 
 /*
@@ -1018,23 +1134,27 @@
     filter: blur(0) brightness(1) drop-shadow(0 0 1px #fff5);
     transform: scale(1) translateY(0);
   }
+
   28% {
     opacity: 0.85;
     filter: blur(1.2px) brightness(1.15) contrast(0.94);
     transform: scale(1.03) translateY(1.5px) skewX(-2deg);
   }
+
   55% {
     opacity: 0.6;
     filter: blur(2.6px) brightness(1.07) grayscale(0.18);
     transform: scale(1.04) translateY(6px) skewX(-5deg);
     text-shadow: 0 3px 8px #3a291744;
   }
+
   85% {
     opacity: 0.22;
     filter: blur(6px) brightness(0.85) grayscale(0.24);
     transform: scale(1.07) translateY(17px) skewX(-10deg);
     text-shadow: 0 6px 18px #2a181722;
   }
+
   100% {
     opacity: 0;
     filter: blur(15px) brightness(0.5) grayscale(0.42);
@@ -1042,8 +1162,9 @@
     text-shadow: none;
   }
 }
+
 .smudge-fade-out {
-  animation: smudgeFadeOut 1.42s cubic-bezier(.72,.12,.19,.97) forwards;
+  animation: smudgeFadeOut 1.42s cubic-bezier(.72, .12, .19, .97) forwards;
   will-change: opacity, filter, transform;
   display: inline-block;
   pointer-events: none;
@@ -1051,10 +1172,22 @@
 }
 
 @keyframes afterimageFade {
-  0% { opacity: 0.22; filter: blur(2.5px); }
-  90% { opacity: 0.03; filter: blur(12px); }
-  100% { opacity: 0; filter: blur(17px); }
+  0% {
+    opacity: 0.22;
+    filter: blur(2.5px);
+  }
+
+  90% {
+    opacity: 0.03;
+    filter: blur(12px);
+  }
+
+  100% {
+    opacity: 0;
+    filter: blur(17px);
+  }
 }
+
 .afterimage-fade {
   opacity: 0.15;
   filter: blur(6px) brightness(1.45);
@@ -1062,8 +1195,10 @@
   mix-blend-mode: lighten;
   transition: opacity 1.15s linear, filter 1.3s;
   position: absolute;
-  left: 0; top: 0; z-index: 2;
-  animation: afterimageFade 1.25s cubic-bezier(.73,0,.22,1) forwards;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  animation: afterimageFade 1.25s cubic-bezier(.73, 0, .22, 1) forwards;
 }
 
 @keyframes dissolve-out {
@@ -1072,11 +1207,13 @@
     filter: blur(0) grayscale(0);
     transform: scale(1);
   }
+
   50% {
     opacity: 0.5;
     filter: blur(2px) grayscale(0.2);
     transform: scale(0.98);
   }
+
   100% {
     opacity: 0;
     filter: blur(5px) grayscale(0.5);
@@ -1090,11 +1227,13 @@
     filter: blur(3px) grayscale(0.3);
     transform: scale(1.03);
   }
+
   50% {
     opacity: 0.6;
     filter: blur(1px) grayscale(0.1);
     transform: scale(1.01);
   }
+
   100% {
     opacity: 1;
     filter: blur(0) grayscale(0);
@@ -1135,11 +1274,138 @@
 }
 
 @keyframes fadeGhostIn {
-  from { opacity: 0; filter: blur(3px); }
-  to { opacity: 1; filter: blur(0); }
+  from {
+    opacity: 0;
+    filter: blur(3px);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
 }
 
 @keyframes fadeGhostOut {
-  from { opacity: 1; filter: blur(0); }
-  to { opacity: 0; filter: blur(4px); }
+  from {
+    opacity: 1;
+    filter: blur(0);
+  }
+
+  to {
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+
+/* --- Ghost Ambient Animations --- */
+@keyframes shimmerChar {
+  0% {
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(5px);
+  }
+
+  50% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(-2px);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+.ghost-char-shimmer {
+  animation: shimmerChar 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes pulseChar {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ghost-char-pulse {
+  animation: pulseChar 3.2s ease-out forwards;
+}
+
+/* --- Ghost Cursor & Atmosphere --- */
+@keyframes cursorTremor {
+
+  0%,
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 0.8;
+    filter: blur(0);
+  }
+
+  25% {
+    transform: translateX(-1px) scale(0.95);
+    opacity: 0.5;
+    filter: blur(1px);
+  }
+
+  50% {
+    transform: translateX(1px) scale(1.05);
+    opacity: 0.9;
+    filter: blur(0);
+  }
+
+  75% {
+    transform: translateX(-0.5px) scale(0.98);
+    opacity: 0.6;
+    filter: blur(0.5px);
+  }
+}
+
+.ghost-cursor-active {
+  animation: cursorTremor 0.3s infinite linear !important;
+  background-color: rgba(60, 30, 20, 0.7) !important;
+  box-shadow: 0 0 5px rgba(60, 30, 20, 0.5) !important;
+}
+
+@keyframes atmosphereDarken {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.pre-ghost-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.35) 100%);
+  pointer-events: none;
+  animation: atmosphereDarken 1.5s ease-out forwards;
+}
+
+/* --- Ghost Keyboard Glow --- */
+.ghost-key-glow {
+  transform: scale(0.96) translateY(2px) !important;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.4), 0 0 10px rgba(100, 150, 255, 0.3) !important;
+  filter: brightness(0.85) sepia(0.2) hue-rotate(180deg) !important;
+  transition: all 0.1s ease !important;
+}
+
+.ghost-key-glow .key-text {
+  text-shadow: 0 0 8px rgba(200, 220, 255, 0.8) !important;
 }

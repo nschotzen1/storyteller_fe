@@ -19,10 +19,13 @@ const PaperDisplay = ({
   // Text and content props
   pageText,
   ghostText,
+  sequenceUserText,
   currentFontStyles, // New prop
   fadeState, // New prop
   pageBg,
   showCursor,
+  isProcessingSequence, // New prop
+  preGhostAtmosphere, // New prop
 
   // Refs
   scrollRef,
@@ -45,14 +48,14 @@ const PaperDisplay = ({
   FRAME_HEIGHT,
   // LINE_HEIGHT, // Not directly used in JSX, but in calculation of NEEDED_HEIGHT
   FILM_HEIGHT, // Used in film-background style
-  
+
   // Calculated layout values
   scrollAreaHeight, // Renamed from SCROLL_AREA_HEIGHT for camelCase consistency
   neededHeight,     // Renamed from NEEDED_HEIGHT
 
   // Animation constants
   SLIDE_DURATION_MS,
-  
+
   // Constants for text processing
   SPECIAL_KEY_TEXT, // For Xerofag highlighting, formerly XEROFAG_HIGHLIGHT_KEY
 
@@ -88,6 +91,8 @@ const PaperDisplay = ({
     key: 0,
   });
 
+  const ghostAnimationClassesRef = React.useRef([]);
+
   // Apply font styles
   const textStyles = {
     zIndex: TYPEWRITER_TEXT_Z_INDEX,
@@ -99,11 +104,10 @@ const PaperDisplay = ({
     color: '#3b1d15', // Example default
   };
 
-  if (currentFontStyles) {
-    if (currentFontStyles.font) textStyles.fontFamily = currentFontStyles.font;
-    if (currentFontStyles.font_size) textStyles.fontSize = currentFontStyles.font_size;
-    if (currentFontStyles.font_color) textStyles.color = currentFontStyles.font_color;
-  }
+  const ghostTextStyles = {};
+  if (currentFontStyles?.font) ghostTextStyles.fontFamily = currentFontStyles.font;
+  if (currentFontStyles?.font_size) ghostTextStyles.fontSize = currentFontStyles.font_size;
+  if (currentFontStyles?.font_color) ghostTextStyles.color = currentFontStyles.font_color;
 
   React.useEffect(() => {
     if (fadeState?.isActive) return;
@@ -167,6 +171,7 @@ const PaperDisplay = ({
 
   const renderFadeLines = () => {
     const baseText = String(pageText ?? '');
+    const userTailText = String(sequenceUserText || '');
     const lines = baseText.split('\n');
     const renderedBaseLines = (lines.length ? lines : ['']).slice(0, MAX_LINES);
     const lastLineIndex = renderedBaseLines.length - 1;
@@ -186,14 +191,22 @@ const PaperDisplay = ({
           <span className="last-line-content">
             {line}
             {isLastLine && (showOutgoing || showIncoming) && (
-              <span className="fade-ghost-container">
+              <span className="fade-ghost-container" style={ghostTextStyles}>
                 {showOutgoing && (
-                  <span
-                    key={`fade-out-${fadeGhost.key}`}
-                    className="fade-ghost-layer fade-ghost-out"
-                  >
-                    {renderTextWithLineBreaks(fadeOutgoingText)}
-                  </span>
+                  <>
+                    <span
+                      key={`fade-out-${fadeGhost.key}`}
+                      className="fade-ghost-layer smudge-fade-out"
+                    >
+                      {renderTextWithLineBreaks(fadeOutgoingText)}
+                    </span>
+                    <span
+                      key={`fade-out-afterimage-${fadeGhost.key}`}
+                      className="fade-ghost-layer afterimage-fade"
+                    >
+                      {renderTextWithLineBreaks(fadeOutgoingText)}
+                    </span>
+                  </>
                 )}
                 {showIncoming && (
                   <span
@@ -205,12 +218,17 @@ const PaperDisplay = ({
                 )}
               </span>
             )}
+            {isLastLine && userTailText.length > 0 && (
+              <span className="fade-user-tail">
+                {renderTextWithLineBreaks(userTailText)}
+              </span>
+            )}
             {isLastLine && showCursor && (
               <span
-                className="striker-cursor"
+                className={`striker-cursor ${isProcessingSequence ? 'ghost-cursor-active' : ''}`}
                 data-testid="striker-cursor-element"
                 ref={strikerRef}
-                style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
+                style={{ display: 'inline-block', position: 'relative' }}
               />
             )}
           </span>
@@ -222,7 +240,7 @@ const PaperDisplay = ({
   // --- PAGE SLIDE JSX (forwards/backwards) ---
   // This function was moved from TypewriterFramework.jsx
   const getSlideX = () => slideDir === SLIDE_DIRECTION_LEFT ? slideX : -slideX;
-  
+
   const renderSlideWrapper = () => (
     <div
       className="film-slide-wrapper animating"
@@ -356,40 +374,48 @@ const PaperDisplay = ({
                 opacity: FILM_BACKGROUND_OPACITY,
               }}
             />
+            {preGhostAtmosphere && <div className="pre-ghost-overlay" />}
             <div
               className="typewriter-text film-overlay-text"
               style={textStyles} // Apply the combined styles here
             >
-                {fadeState && fadeState.isActive ? (
-                  renderFadeLines()
-                ) : (
+              {fadeState && fadeState.isActive ? (
+                renderFadeLines()
+              ) : (
                 (() => {
                   const pageTextString = String(pageText ?? '');
                   const pageTextLength = pageTextString.length;
                   const ghostTextString = Array.isArray(ghostText)
-                      ? ghostText.map(g => g.char).join('')
-                      : String(ghostText || '');
-                  const ghostChars = Array.isArray(ghostText)
-                    ? ghostText
-                    : ghostTextString.split('').map((char) => ({ char, justAppeared: false }));
-                    const fullCombinedText = pageTextString + ghostTextString;
+                    ? ghostText.map(g => g.char).join('')
+                    : String(ghostText || '');
+
+                  if (ghostTextString.length > ghostAnimationClassesRef.current.length) {
+                    for (let i = ghostAnimationClassesRef.current.length; i < ghostTextString.length; i++) {
+                      ghostAnimationClassesRef.current.push(getRandomAnimationClass());
+                    }
+                  } else if (ghostTextString.length < ghostAnimationClassesRef.current.length) {
+                    ghostAnimationClassesRef.current = ghostAnimationClassesRef.current.slice(0, ghostTextString.length);
+                  }
+
+                  const sequenceUserTextString = String(sequenceUserText || '');
+                  const fullCombinedText = pageTextString + ghostTextString + sequenceUserTextString;
                   const originalLines = fullCombinedText.split('\n');
 
                   const allLinesToRender = originalLines.slice(0, MAX_LINES);
-                  
+
                   return allLinesToRender.map((line, lineIdx) => {
                     const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
-                    
+
                     let currentLineGlobalStartOffset = 0;
-                    for(let i=0; i < lineIdx; i++) {
-                      currentLineGlobalStartOffset += originalLines[i].length + 1; 
+                    for (let i = 0; i < lineIdx; i++) {
+                      currentLineGlobalStartOffset += originalLines[i].length + 1;
                     }
 
-                    let currentOffsetWithinLine = 0; 
-                    
+                    let currentOffsetWithinLine = 0;
+
                     const segments = line.includes(SPECIAL_KEY_TEXT)
                       ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
-                      : [line]; 
+                      : [line];
 
                     const processedSegments = segments.map((segment, segmentIdx) => {
                       if (segment === SPECIAL_KEY_TEXT) {
@@ -400,23 +426,20 @@ const PaperDisplay = ({
                         const segmentChars = segment.split('').map((char, charIdxInSegment) => {
                           const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
                           const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
-                          
-                          if (charGlobalIndex >= pageTextLength && ghostChars.length > 0) {
-                            // Only animate the most recently added ghost letter
-                            const ghostIdx = charGlobalIndex - pageTextLength;
-                            const isLastGhost = ghostIdx === ghostChars.length - 1;
-                            const g = ghostChars[ghostIdx];
+
+                          const ghostStart = pageTextLength;
+                          const ghostEnd = pageTextLength + ghostTextString.length;
+                          if (charGlobalIndex >= ghostStart && charGlobalIndex < ghostEnd) {
+                            const ghostIdx = charGlobalIndex - ghostStart;
+                            const animClass = ghostAnimationClassesRef.current[ghostIdx] || 'ghost-char-materialize';
                             return (
                               <span
                                 key={charKey}
-                                className={
-                                  "ghost-char" + (g.justAppeared ? " ghost-char-materialize" : "")
-                                }
-                                style={{ display: 'inline-block' }}
+                                className={`ghost-char ${animClass}`}
+                                style={{ display: 'inline-block', ...ghostTextStyles }}
                               >
-                                {g.char}
+                                {ghostTextString[ghostIdx]}
                               </span>
-
                             );
                           } else {
                             return char;
@@ -437,15 +460,15 @@ const PaperDisplay = ({
                         <span className="last-line-content">
                           {processedSegments}
 
-                            
-                              {isLastLineOfRenderedSet && showCursor && (
-                                <span
-                                  className={"striker-cursor"}
-                                  data-testid="striker-cursor-element"
-                                  ref={strikerRef}
-                                  style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
-                                />
-                              )}
+
+                          {isLastLineOfRenderedSet && showCursor && (
+                            <span
+                              className={`striker-cursor ${isProcessingSequence ? 'ghost-cursor-active' : ''}`}
+                              data-testid="striker-cursor-element"
+                              ref={strikerRef}
+                              style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
+                            />
+                          )}
 
                         </span>
                       </div>
