@@ -108,6 +108,7 @@ const PaperDisplay = ({
   if (currentFontStyles?.font) ghostTextStyles.fontFamily = currentFontStyles.font;
   if (currentFontStyles?.font_size) ghostTextStyles.fontSize = currentFontStyles.font_size;
   if (currentFontStyles?.font_color) ghostTextStyles.color = currentFontStyles.font_color;
+  const shouldRenderCursor = Boolean(showCursor || isProcessingSequence || fadeState?.isActive);
 
   React.useEffect(() => {
     if (fadeState?.isActive) return;
@@ -223,7 +224,7 @@ const PaperDisplay = ({
                 {renderTextWithLineBreaks(userTailText)}
               </span>
             )}
-            {isLastLine && showCursor && (
+            {isLastLine && shouldRenderCursor && (
               <span
                 className={`striker-cursor ${isProcessingSequence ? 'ghost-cursor-active' : ''}`}
                 data-testid="striker-cursor-element"
@@ -285,7 +286,7 @@ const PaperDisplay = ({
               return (
                 <div className="typewriter-line" key={idx}>
                   {line}
-                  {isLastLine && showCursor && ( // Assuming showCursor is still relevant for sliding text
+                  {isLastLine && shouldRenderCursor && (
                     <span className="striker-cursor" />
                   )}
                 </div>
@@ -321,7 +322,7 @@ const PaperDisplay = ({
               return (
                 <div className="typewriter-line" key={idx}>
                   {line}
-                  {isLastLine && showCursor && (
+                  {isLastLine && shouldRenderCursor && (
                     <span className="striker-cursor" />
                   )}
                 </div>
@@ -461,7 +462,7 @@ const PaperDisplay = ({
                           {processedSegments}
 
 
-                          {isLastLineOfRenderedSet && showCursor && (
+                          {isLastLineOfRenderedSet && shouldRenderCursor && (
                             <span
                               className={`striker-cursor ${isProcessingSequence ? 'ghost-cursor-active' : ''}`}
                               data-testid="striker-cursor-element"

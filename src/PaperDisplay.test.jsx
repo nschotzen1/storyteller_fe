@@ -133,6 +133,19 @@ describe('PaperDisplay Component', () => {
       render(<PaperDisplay {...defaultProps} pageText="Line1\nLast Line" ghostText="" showCursor={false} />);
       expect(screen.queryByTestId('striker-cursor-element')).not.toBeInTheDocument();
     });
+
+    test('keeps striker cursor visible during ghostwriter processing even when showCursor is false', () => {
+      render(
+        <PaperDisplay
+          {...defaultProps}
+          pageText="Line1\nLast Line"
+          ghostText=" ghost"
+          showCursor={false}
+          isProcessingSequence={true}
+        />
+      );
+      expect(screen.getByTestId('striker-cursor-element')).toBeInTheDocument();
+    });
     
     test('shows striker cursor on an empty line when showCursor is true', () => {
         render(<PaperDisplay {...defaultProps} pageText="" ghostText="" showCursor={true} />);
@@ -217,6 +230,20 @@ describe('PaperDisplay Component', () => {
           pageText="Base"
           ghostText=""
           showCursor={true}
+          fadeState={{ isActive: true, to_text: ' from ghost', phase: 2 }}
+        />
+      );
+
+      expect(screen.getByTestId('striker-cursor-element')).toBeInTheDocument();
+    });
+
+    test('keeps striker cursor visible while fade is active when showCursor is false', () => {
+      render(
+        <PaperDisplay
+          {...defaultProps}
+          pageText="Base"
+          ghostText=""
+          showCursor={false}
           fadeState={{ isActive: true, to_text: ' from ghost', phase: 2 }}
         />
       );
