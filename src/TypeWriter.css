@@ -740,16 +740,10 @@
 }
 
 .striker-cursor.ghost-cursor-active {
-  background-image: none !important;
-  width: 14px;
-  height: 38px;
-  background-color: rgba(220, 220, 220, 0.4);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
-  top: 15px;
-  left: 5px;
-  mix-blend-mode: screen;
-  animation: striker-blink 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background-image: url('/textures/striker.png') !important;
+  animation: cursorTremor 0.3s infinite linear, striker-blink 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  opacity: 0.95;
+  filter: drop-shadow(1px 2px 4px rgba(20, 10, 8, 0.55)) brightness(1.03);
 }
 
 /* Slide text up and fade */
@@ -1373,7 +1367,7 @@
   }
 }
 
-.ghost-cursor-active {
+.ghost-cursor-active:not(.striker-cursor) {
   animation: cursorTremor 0.3s infinite linear !important;
   background-color: rgba(60, 30, 20, 0.7) !important;
   box-shadow: 0 0 5px rgba(60, 30, 20, 0.5) !important;
