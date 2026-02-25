@@ -5,6 +5,7 @@ import {
   playEnterSound,
   playXerofagHowl,
   playEndOfPageSound,
+  playPreGhostSound,
 } from './utils';
 
 // Mocking HTMLMediaElement and Audio
@@ -130,6 +131,19 @@ describe('Sound Functions', () => {
       playEndOfPageSound();
       expect(Audio).toHaveBeenCalledWith('/sounds/page_turn.mp3');
       expect(mockAudioInstance.volume).toBe(0.4);
+      expect(mockAudioInstance.play).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('playPreGhostSound', () => {
+    it('should play a ghost takeover sound variant', () => {
+      mathRandomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+
+      playPreGhostSound();
+
+      expect(Audio).toHaveBeenCalledWith('/sounds/ghostwriter/ghost_takeover_1.mp3');
+      expect(mockAudioInstance.volume).toBe(0.3);
+      expect(mockAudioInstance.playbackRate).toBe(0.8);
       expect(mockAudioInstance.play).toHaveBeenCalledTimes(1);
     });
   });

@@ -7,6 +7,7 @@ const Keyboard = ({
   keys, // Full array of key strings: ['Q', ..., 'THE XEROFAG']
   keyTextures, // Array of texture URLs corresponding to `keys`
   lastPressedKey,
+  ghostPressedKey, // New prop for ghost typing
   typingAllowed,
   onKeyPress, // (keyText: string) => void
   onXerofagPress, // () => void
@@ -43,13 +44,13 @@ const Keyboard = ({
 
         const offset = Math.floor(Math.random() * (offsetYMax - offsetYMin + 1)) + offsetYMin;
         const tilt = (Math.random() * (tiltMax - tiltMin) + tiltMin).toFixed(2);
-        
+
         const isSpecialKey = key === SPECIAL_KEY_TEXT;
 
         return (
           <div
             key={key} // Use key string itself as key, assuming they are unique
-            className={`typewriter-key-wrapper ${lastPressedKey === key ? 'key-pressed' : ''} ${!typingAllowed ? 'key-disabled' : ''}`}
+            className={`typewriter-key-wrapper ${lastPressedKey === key ? 'key-pressed' : ''} ${ghostPressedKey === key ? 'ghost-key-glow' : ''} ${!typingAllowed ? 'key-disabled' : ''}`}
             style={{ '--offset-y': `${offset}px`, '--tilt': `${tilt}deg` }}
             onClick={() => {
               if (!typingAllowed) {
@@ -75,7 +76,7 @@ const Keyboard = ({
       })}
     </div>
   );
-  
+
   // Determine row slices based on the keys array structure from TypewriterFramework
   // Assuming 10 keys in the first row, 9 in the second, and the rest in the third.
   // This needs to be robust if `keys` structure changes.
@@ -90,7 +91,7 @@ const Keyboard = ({
       {generateRow(row3Keys)}
       <div className="key-row spacebar-row">
         <div
-          className={`spacebar-wrapper ${!typingAllowed ? 'key-disabled' : ''}`}
+          className={`spacebar-wrapper ${lastPressedKey === ' ' ? 'key-pressed' : ''} ${ghostPressedKey === ' ' ? 'ghost-key-glow' : ''} ${!typingAllowed ? 'key-disabled' : ''}`}
           onClick={() => {
             if (!typingAllowed) {
               playEndOfPageSound();
