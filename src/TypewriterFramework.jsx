@@ -11,9 +11,9 @@ import { fetchNextFilmImage, fetchTypewriterReply, fetchShouldGenerateContinuati
 // --- Constants ---
 const FILM_HEIGHT = 1400;
 const LINE_HEIGHT = 2.4 * 16; // Roughly 38.4
-const TOP_OFFSET = 180;
+const TOP_OFFSET = 260;
 const BOTTOM_PADDING = 220;
-const FRAME_HEIGHT = 600; // Increased from 520
+const FRAME_HEIGHT = 700;
 export const MAX_LINES = Math.floor((FILM_HEIGHT - TOP_OFFSET - BOTTOM_PADDING) / LINE_HEIGHT);
 
 // Default values
@@ -685,7 +685,7 @@ const TypewriterFramework = (props) => {
 
           // Fetch next film image then prepare for slide
           fetchNextFilmImage(pageText + visibleGhostText, sessionId).then(data => {
-            const newUrl = data?.data.image_url || null;
+            const newUrl = data?.data?.image_url || data?.data?.image_path || null;
             const newFilm = newUrl || DEFAULT_FILM_BG_URL;
 
             dispatchPageTransition({

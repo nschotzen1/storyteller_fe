@@ -1,5 +1,14 @@
 const SERVER = 'http://localhost:5001';
 
+function normalizeServerImageUrl(imageUrl) {
+  if (typeof imageUrl !== 'string') return imageUrl;
+  const trimmed = imageUrl.trim();
+  if (!trimmed) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('/')) return `${SERVER}${trimmed}`;
+  return trimmed;
+}
+
 export const fetchNextFilmImage = async (pageText, sessionId) => {
   try {
     const response = await fetch(`${SERVER}/api/next_film_image`, {
@@ -12,7 +21,13 @@ export const fetchNextFilmImage = async (pageText, sessionId) => {
       return { data: null, error: { message: `API error: ${response.status} ${response.statusText}`, status: response.status } };
     }
     const data = await response.json();
-    return { data, error: null }; // data here is { image_url: '...' }
+    return {
+      data: {
+        ...data,
+        image_url: normalizeServerImageUrl(data?.image_url),
+      },
+      error: null
+    };
   } catch (error) {
     console.error("Network error fetching next film image:", error);
     return { data: null, error: { message: error.message } };

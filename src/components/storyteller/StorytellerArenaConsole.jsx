@@ -331,6 +331,11 @@ const StorytellerArenaConsole = ({
   const deckPanelRef = useRef(null);
   const spreadPanelRef = useRef(null);
   const worldProfileRef = useRef(null);
+  const sceneLensRef = useRef(null);
+  const anchorsRef = useRef(null);
+  const intentRef = useRef(null);
+  const presenceRef = useRef(null);
+  const diveBriefRef = useRef(null);
 
   const baseUrl = useMemo(() => {
     if (!apiBaseUrl) return '';
@@ -516,6 +521,65 @@ const StorytellerArenaConsole = ({
     const next = nextStep?.title || active.next;
     return { ...active, next };
   }, [currentFlowStepId, flowSteps]);
+
+  const flowPulseItems = useMemo(() => {
+    const lensReady = Boolean(sceneGoal.trim() || sceneRisk.trim());
+    const intentReady = Boolean((sessionState.intent || '').trim());
+    const anchorsReady = anchors.length > 0;
+    const readyReady = playersCount > 0 ? readyCount === playersCount : false;
+    return [
+      {
+        id: 'charter',
+        label: 'World Charter',
+        detail: hasWorldCharter ? 'Canon defined' : 'Name the world + pillars',
+        ready: hasWorldCharter,
+        actionLabel: 'Open Charter',
+        actionId: 'charter'
+      },
+      {
+        id: 'lens',
+        label: 'Scene Lens',
+        detail: lensReady ? 'Goal & stakes set' : 'Define goal + stakes',
+        ready: lensReady,
+        actionLabel: 'Set Lens',
+        actionId: 'lens'
+      },
+      {
+        id: 'intent',
+        label: 'Shared Intent',
+        detail: intentReady ? 'Intent aligned' : 'Align the table',
+        ready: intentReady,
+        actionLabel: 'Set Intent',
+        actionId: 'intent'
+      },
+      {
+        id: 'anchors',
+        label: 'World Anchors',
+        detail: anchorsReady ? `${anchors.length} anchored` : 'Pin 1-3 anchors',
+        ready: anchorsReady,
+        actionLabel: 'Pin Anchors',
+        actionId: 'anchors'
+      },
+      {
+        id: 'presence',
+        label: 'Table Ready',
+        detail: readyReady ? 'All seats ready' : `Ready ${readyCount}/${playersCount}`,
+        ready: readyReady,
+        actionLabel: 'Go to Presence',
+        actionId: 'presence'
+      }
+    ];
+  }, [
+    anchors.length,
+    hasWorldCharter,
+    playersCount,
+    readyCount,
+    sceneGoal,
+    sceneRisk,
+    sessionState.intent
+  ]);
+
+  const flowPulseBlockers = flowPulseItems.filter((item) => !item.ready).length;
 
   const roleLabels = useMemo(
     () => ['Lorekeeper', 'Cartographer', 'Warden', 'Oracle'],
@@ -2197,6 +2261,33 @@ const StorytellerArenaConsole = ({
     }
   };
 
+  const scrollToFlowTarget = (targetId) => {
+    const options = { behavior: 'smooth', block: 'start' };
+    if (targetId === 'charter') {
+      scrollToFlowStep('charter');
+      return;
+    }
+    if (targetId === 'lens') {
+      sceneLensRef.current?.scrollIntoView(options);
+      return;
+    }
+    if (targetId === 'intent') {
+      intentRef.current?.scrollIntoView(options);
+      return;
+    }
+    if (targetId === 'anchors') {
+      anchorsRef.current?.scrollIntoView(options);
+      return;
+    }
+    if (targetId === 'presence') {
+      presenceRef.current?.scrollIntoView(options);
+      return;
+    }
+    if (targetId === 'brief') {
+      diveBriefRef.current?.scrollIntoView(options);
+    }
+  };
+
   const connectionSourceCard = pendingConnection?.sourceId
     ? cardDefinitions[cardInstances[pendingConnection.sourceId]?.entityId]
     : null;
@@ -2322,6 +2413,29 @@ const StorytellerArenaConsole = ({
                 <strong>{flowGuidance.next}</strong>
               </div>
             </div>
+            <div className="flowPulse">
+              <div className="flowPulseHeader">
+                <strong>Flow Pulse</strong>
+                <span>{flowPulseBlockers ? `${flowPulseBlockers} blockers` : 'Clear'}</span>
+              </div>
+              <div className="flowPulseList">
+                {flowPulseItems.map((item) => (
+                  <div key={item.id} className={`flowPulseItem ${item.ready ? 'ready' : ''}`}>
+                    <div>
+                      <strong>{item.label}</strong>
+                      <span>{item.detail}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="ghost subtle"
+                      onClick={() => scrollToFlowTarget(item.actionId)}
+                    >
+                      {item.actionLabel}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="flowMap">
               <div className="flowMapHeader">
                 <span>Flow Map</span>
@@ -2344,7 +2458,7 @@ const StorytellerArenaConsole = ({
                 <strong>{currentFlowStep?.title || 'Begin'}</strong>
               </div>
             </div>
-            <div className="sceneLens">
+            <div className="sceneLens" ref={sceneLensRef}>
               <div className="sceneLensHeader">
                 <strong>Scene Lens</strong>
                 <span>{sceneGoal || sceneRisk ? 'Aligned' : 'Unset'}</span>
@@ -2760,7 +2874,7 @@ const StorytellerArenaConsole = ({
                 Advance Beat
               </button>
             </div>
-            <div className="anchorPanel">
+            <div className="anchorPanel" ref={anchorsRef}>
               <div className="anchorHeader">
                 <strong>World Anchors</strong>
                 <span>{anchors.length}/3</span>
@@ -2827,7 +2941,7 @@ const StorytellerArenaConsole = ({
             <p className="consoleHint">Rituals persist per session to support deep immersion.</p>
           </div>
 
-          <div className="consolePanel diveBriefPanel">
+          <div className="consolePanel diveBriefPanel" ref={diveBriefRef}>
             <h3>Dive Brief</h3>
             <div className="diveBriefBody">
               {diveBrief ? (
@@ -2846,7 +2960,7 @@ const StorytellerArenaConsole = ({
             </div>
           </div>
 
-          <div className="consolePanel sessionPanel">
+          <div className="consolePanel sessionPanel" ref={intentRef}>
             <h3>Session Rhythm</h3>
             <div className="phasePicker">
               {phaseOptions.map((phase) => (
@@ -3088,7 +3202,7 @@ const StorytellerArenaConsole = ({
             </label>
           </div>
 
-          <div className="consolePanel presencePanel">
+          <div className="consolePanel presencePanel" ref={presenceRef}>
             <h3>Multiplayer Presence</h3>
             <div className="presenceList">
               {players.slice(0, playersCount).map((player, index) => {

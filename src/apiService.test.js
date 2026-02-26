@@ -44,6 +44,21 @@ describe('apiService', () => {
       expect(result).toEqual({ data: mockApiResponse, error: null });
     });
 
+    it('should normalize server-relative film image paths', async () => {
+      const mockApiResponse = { image_url: '/assets/typewriter_page_images/page_01.png' };
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockApiResponse,
+      });
+
+      const result = await fetchNextFilmImage(pageText, sessionId);
+
+      expect(result).toEqual({
+        data: { image_url: `${SERVER_URL}/assets/typewriter_page_images/page_01.png` },
+        error: null,
+      });
+    });
+
     it('should handle API error for fetchNextFilmImage', async () => {
       global.fetch.mockResolvedValueOnce({
         ok: false,
