@@ -59,6 +59,14 @@ const ENTITY_FALLBACK_DECK = [
   { id: 'fallback-e7', name: 'Iron Debt', type: 'theme', frontImageUrl: '', backImageUrl: '' },
   { id: 'fallback-e8', name: 'Fracture Choir', type: 'faction', frontImageUrl: '', backImageUrl: '' }
 ];
+const DEFAULT_STORYTELLER_COUNT = 4;
+const DEFAULT_MISSION_MESSAGE = 'Investigate the hidden stakes bound to this entity.';
+const STORYTELLER_FALLBACK_ROSTER = [
+  { id: 'fallback-s1', name: 'Kestrel Vane', status: 'active', level: 5, iconUrl: '', lastMission: null },
+  { id: 'fallback-s2', name: 'Mirel Quill', status: 'active', level: 3, iconUrl: '', lastMission: null },
+  { id: 'fallback-s3', name: 'Sable Orison', status: 'active', level: 4, iconUrl: '', lastMission: null },
+  { id: 'fallback-s4', name: 'Thorn Alabaster', status: 'active', level: 6, iconUrl: '', lastMission: null }
+];
 
 const VIEWPORT_LIMITS = { min: 0.35, max: 2.8 };
 const MEMORY_WORLD_POSITION = { x: 0, y: 0 };
@@ -325,6 +333,95 @@ const ensureDeckSize = (cards, targetSize = 8) => {
   return [...mapped, ...fillers].slice(0, targetSize);
 };
 
+const storytellerStatusClass = (status) =>
+  firstNonEmptyString(status, 'active').toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+
+const storytellerInitials = (name) => {
+  const parts = `${name || ''}`
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+};
+
+const toStorytellerId = (storyteller, index = 0) =>
+  firstNonEmptyString(
+    storyteller?.id,
+    storyteller?._id,
+    storyteller?.storytellerId,
+    storyteller?.name,
+    `storyteller-${index + 1}`
+  );
+
+const coerceStorytellerList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.storytellers)) return payload.storytellers;
+  if (Array.isArray(payload?.items)) return payload.items;
+  return [];
+};
+
+const mapStorytellerRoster = ({ listPayload, generatedPayload, detailsById = {}, baseUrl }) => {
+  const listed = coerceStorytellerList(listPayload);
+  const generated = coerceStorytellerList(generatedPayload);
+
+  const generatedById = new Map();
+  const generatedByName = new Map();
+  generated.forEach((item, index) => {
+    const id = toStorytellerId(item, index);
+    generatedById.set(id, item);
+    const nameKey = firstNonEmptyString(item?.name).toLowerCase();
+    if (nameKey) generatedByName.set(nameKey, item);
+  });
+
+  const source = listed.length > 0 ? listed : generated;
+  const mapped = source.map((item, index) => {
+    const id = toStorytellerId(item, index);
+    const name = firstNonEmptyString(item?.name, `Storyteller ${index + 1}`);
+    const generatedMatch = generatedById.get(id) || generatedByName.get(name.toLowerCase()) || null;
+    const detail = detailsById[id] || generatedMatch || null;
+    const status = firstNonEmptyString(item?.status, detail?.status, 'active');
+    const levelValue = Number(item?.level ?? detail?.level);
+    const detailMissions = Array.isArray(detail?.missions) ? detail.missions : [];
+
+    return {
+      id,
+      name,
+      status,
+      level: Number.isFinite(levelValue) ? levelValue : null,
+      iconUrl: resolveAssetUrl(
+        baseUrl,
+        firstNonEmptyString(
+          detail?.illustration,
+          detail?.iconUrl,
+          detail?.icon_url,
+          detail?.imageUrl,
+          detail?.keyImageUrl,
+          item?.illustration,
+          item?.iconUrl,
+          item?.icon_url,
+          item?.imageUrl,
+          item?.keyImageUrl
+        )
+      ),
+      lastMission:
+        item?.lastMission ||
+        detailMissions[detailMissions.length - 1] ||
+        null,
+      raw: item,
+      detail
+    };
+  });
+
+  const deduped = new Map();
+  mapped.forEach((storyteller) => {
+    if (!storyteller?.id) return;
+    deduped.set(storyteller.id, storyteller);
+  });
+  return Array.from(deduped.values());
+};
+
 const requestJson = async (baseUrl, path, options = {}) => {
   const normalizedBase = (baseUrl || '').replace(/\/$/, '');
   const url = path.startsWith('http')
@@ -354,6 +451,7 @@ const MemorySpreadPage = () => {
   const [isLoadingDeck, setIsLoadingDeck] = useState(false);
   const [arenaEntities, setArenaEntities] = useState([]);
   const [connections, setConnections] = useState([]);
+  const [newConnectionIds, setNewConnectionIds] = useState(new Set());
   const [pendingEntity, setPendingEntity] = useState(null);
   const [connectToId, setConnectToId] = useState('');
   const [relationshipText, setRelationshipText] = useState('');
@@ -367,6 +465,20 @@ const MemorySpreadPage = () => {
   const [viewport, setViewport] = useState({ x: 480, y: 280, k: 0.95 });
   const [isPanning, setIsPanning] = useState(false);
   const [isViewportAnimating, setIsViewportAnimating] = useState(false);
+  const [storytellers, setStorytellers] = useState(STORYTELLER_FALLBACK_ROSTER);
+  const [storytellerSource, setStorytellerSource] = useState('fallback');
+  const [storytellerError, setStorytellerError] = useState('');
+  const [isLoadingStorytellers, setIsLoadingStorytellers] = useState(false);
+  const [storytellerDetailsById, setStorytellerDetailsById] = useState({});
+  const [activeStorytellerId, setActiveStorytellerId] = useState('');
+  const [storytellerMenuId, setStorytellerMenuId] = useState('');
+  const [missionTargetEntityId, setMissionTargetEntityId] = useState('');
+  const [missionMessage, setMissionMessage] = useState(DEFAULT_MISSION_MESSAGE);
+  const [missionPoints, setMissionPoints] = useState(12);
+  const [missionDurationDays, setMissionDurationDays] = useState(3);
+  const [isSendingMission, setIsSendingMission] = useState(false);
+  const [lastMissionResult, setLastMissionResult] = useState(null);
+  const [storytellerAssignmentsByEntityId, setStorytellerAssignmentsByEntityId] = useState({});
   const [notice, setNotice] = useState('Choose a memory to begin the reading.');
 
   const timeoutRef = useRef([]);
@@ -402,6 +514,23 @@ const MemorySpreadPage = () => {
     });
     return map;
   }, [arenaEntities]);
+
+  const targetableArenaEntities = useMemo(
+    () => arenaEntities.filter((entity) => entity.kind === 'entity'),
+    [arenaEntities]
+  );
+
+  const storytellerMenuStoryteller = useMemo(
+    () => storytellers.find((item) => item.id === storytellerMenuId) || null,
+    [storytellerMenuId, storytellers]
+  );
+
+  const missionTargetEntity = useMemo(
+    () =>
+      targetableArenaEntities.find((entity) => entity.id === missionTargetEntityId) ||
+      null,
+    [targetableArenaEntities, missionTargetEntityId]
+  );
 
   const clearScheduled = () => {
     timeoutRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
@@ -711,9 +840,398 @@ const MemorySpreadPage = () => {
     }
   }, []);
 
+  const loadStorytellerDetail = useCallback(
+    async (storytellerId, { force = false, suppressNotice = false } = {}) => {
+      if (!storytellerId) return null;
+      if (!force && storytellerDetailsById[storytellerId]) {
+        return storytellerDetailsById[storytellerId];
+      }
+
+      const requestPath = `/api/storytellers/${encodeURIComponent(storytellerId)}${buildQuery({
+        sessionId: DEFAULT_SESSION_ID,
+        playerId: DEFAULT_PLAYER_ID
+      })}`;
+
+      try {
+        const payload = await requestJson(DEFAULT_API_BASE_URL, requestPath, {
+          method: 'GET'
+        });
+        const detail = payload?.storyteller || payload || null;
+        if (!detail || typeof detail !== 'object') return null;
+
+        const nextId = toStorytellerId(detail);
+        setStorytellerDetailsById((prev) => ({ ...prev, [nextId]: detail }));
+        setStorytellers((prev) =>
+          prev.map((item) => {
+            if (item.id !== nextId && item.id !== storytellerId) return item;
+            const level = Number(detail?.level);
+            return {
+              ...item,
+              id: nextId,
+              name: firstNonEmptyString(detail?.name, item.name),
+              status: firstNonEmptyString(detail?.status, item.status, 'active'),
+              level: Number.isFinite(level) ? level : item.level,
+              iconUrl: resolveAssetUrl(
+                DEFAULT_API_BASE_URL,
+                firstNonEmptyString(
+                  detail?.illustration,
+                  detail?.iconUrl,
+                  detail?.icon_url,
+                  item.iconUrl
+                )
+              ),
+              detail
+            };
+          })
+        );
+        return detail;
+      } catch (error) {
+        if (!suppressNotice) {
+          setStorytellerError(firstNonEmptyString(error?.message, 'Failed loading storyteller details.'));
+        }
+        return null;
+      }
+    },
+    [storytellerDetailsById]
+  );
+
+  const loadStorytellersForMemory = useCallback(
+    async (memoryCard) => {
+      setIsLoadingStorytellers(true);
+      setStorytellerError('');
+      setStorytellerSource('loading');
+      setStorytellerMenuId('');
+      setLastMissionResult(null);
+
+      const memoryText = firstNonEmptyString(
+        memoryCard?.raw?.miseenscene,
+        memoryCard?.raw?.dramatic_definition,
+        memoryCard?.summary,
+        DEFAULT_FRAGMENT_TEXT
+      );
+
+      const generatePayload = {
+        sessionId: DEFAULT_SESSION_ID,
+        playerId: DEFAULT_PLAYER_ID,
+        text: memoryText,
+        count: DEFAULT_STORYTELLER_COUNT,
+        mockImage: true,
+        generateKeyImages: false
+      };
+
+      const listPath = `/api/storytellers${buildQuery({
+        sessionId: DEFAULT_SESSION_ID,
+        playerId: DEFAULT_PLAYER_ID
+      })}`;
+
+      const applyRoster = (listPayload, generatedPayload, sourceLabel, errorMessage = '') => {
+        const mapped = mapStorytellerRoster({
+          listPayload,
+          generatedPayload,
+          detailsById: storytellerDetailsById,
+          baseUrl: DEFAULT_API_BASE_URL
+        });
+
+        if (mapped.length === 0) {
+          setStorytellers(STORYTELLER_FALLBACK_ROSTER);
+          setActiveStorytellerId(STORYTELLER_FALLBACK_ROSTER[0]?.id || '');
+          setStorytellerSource('fallback');
+          setStorytellerError(
+            firstNonEmptyString(errorMessage, 'Storyteller APIs returned no results.')
+          );
+          setNotice('Using fallback storytellers because API responses were empty.');
+          return;
+        }
+
+        setStorytellers(mapped);
+        setActiveStorytellerId(mapped[0]?.id || '');
+        setStorytellerSource(sourceLabel);
+        setStorytellerError(errorMessage);
+        setNotice('Storytellers are ready. Click a round icon to open actions.');
+      };
+
+      if (SHOULD_USE_MOCK_APIS) {
+        try {
+          const generatedPayload = await requestJson(DEFAULT_API_BASE_URL, '/api/textToStoryteller', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...generatePayload, mocked_api_calls: true })
+          });
+          const listPayload = await requestJson(DEFAULT_API_BASE_URL, listPath, { method: 'GET' });
+          applyRoster(listPayload, generatedPayload, 'mock', '');
+        } catch (mockError) {
+          applyRoster(
+            null,
+            null,
+            'fallback',
+            firstNonEmptyString(mockError?.message, 'Failed generating mock storytellers.')
+          );
+        } finally {
+          setIsLoadingStorytellers(false);
+        }
+        return;
+      }
+
+      try {
+        const generatedPayload = await requestJson(DEFAULT_API_BASE_URL, '/api/textToStoryteller', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...generatePayload, mocked_api_calls: false })
+        });
+        const listPayload = await requestJson(DEFAULT_API_BASE_URL, listPath, { method: 'GET' });
+        applyRoster(listPayload, generatedPayload, 'api', '');
+      } catch (liveError) {
+        try {
+          const generatedPayload = await requestJson(DEFAULT_API_BASE_URL, '/api/textToStoryteller', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...generatePayload, mocked_api_calls: true })
+          });
+          const listPayload = await requestJson(DEFAULT_API_BASE_URL, listPath, { method: 'GET' });
+          applyRoster(listPayload, generatedPayload, 'mock', '');
+        } catch (mockError) {
+          applyRoster(
+            null,
+            null,
+            'fallback',
+            firstNonEmptyString(mockError?.message, liveError?.message)
+          );
+        }
+      } finally {
+        setIsLoadingStorytellers(false);
+      }
+    },
+    [storytellerDetailsById]
+  );
+
+  const refreshStorytellersFromList = useCallback(
+    async ({ suppressNotice = false } = {}) => {
+      setIsLoadingStorytellers(true);
+      setStorytellerError('');
+
+      try {
+        const listPayload = await requestJson(
+          DEFAULT_API_BASE_URL,
+          `/api/storytellers${buildQuery({
+            sessionId: DEFAULT_SESSION_ID,
+            playerId: DEFAULT_PLAYER_ID
+          })}`,
+          { method: 'GET' }
+        );
+        const mapped = mapStorytellerRoster({
+          listPayload,
+          generatedPayload: storytellers,
+          detailsById: storytellerDetailsById,
+          baseUrl: DEFAULT_API_BASE_URL
+        });
+        if (mapped.length > 0) {
+          setStorytellers(mapped);
+          setStorytellerSource(SHOULD_USE_MOCK_APIS ? 'mock' : 'api');
+          if (!suppressNotice) {
+            setNotice('Storyteller roster refreshed from API.');
+          }
+        }
+      } catch (error) {
+        setStorytellerError(firstNonEmptyString(error?.message, 'Could not refresh storyteller list.'));
+      } finally {
+        setIsLoadingStorytellers(false);
+      }
+    },
+    [storytellers, storytellerDetailsById]
+  );
+
+  const handleStorytellerIconClick = useCallback(
+    (storytellerId) => {
+      if (!storytellerId || isSendingMission) return;
+      const willOpen = storytellerMenuId !== storytellerId;
+      setActiveStorytellerId(storytellerId);
+      setStorytellerMenuId(willOpen ? storytellerId : '');
+      if (!willOpen) return;
+
+      const selectedEntity = entityById.get(selectedArenaEntityId);
+      const defaultTargetId =
+        selectedEntity?.kind === 'entity'
+          ? selectedEntity.id
+          : targetableArenaEntities[0]?.id || '';
+      setMissionTargetEntityId(defaultTargetId);
+      void loadStorytellerDetail(storytellerId, { suppressNotice: true });
+    },
+    [
+      entityById,
+      isSendingMission,
+      loadStorytellerDetail,
+      selectedArenaEntityId,
+      storytellerMenuId,
+      targetableArenaEntities
+    ]
+  );
+
+  const handleSendStorytellerToEntity = useCallback(async () => {
+    if (isSendingMission) return;
+    if (!storytellerMenuStoryteller) {
+      setNotice('Choose a storyteller icon first.');
+      return;
+    }
+    if (!missionTargetEntity) {
+      setNotice('Select an entity in the arena for the mission target.');
+      return;
+    }
+    const missionText = missionMessage.trim();
+    if (!missionText) {
+      setNotice('Mission message cannot be empty.');
+      return;
+    }
+    if (storytellerMenuStoryteller.status === 'in_mission') {
+      setNotice(`${storytellerMenuStoryteller.name} is currently in another mission.`);
+      return;
+    }
+
+    const entityApiId = firstNonEmptyString(missionTargetEntity.sourceId, missionTargetEntity.id);
+    if (!entityApiId || entityApiId.startsWith('fallback-')) {
+      setNotice('Target entity is not API-backed. Generate entity cards before sending missions.');
+      return;
+    }
+
+    const requestBody = {
+      sessionId: DEFAULT_SESSION_ID,
+      playerId: DEFAULT_PLAYER_ID,
+      entityId: entityApiId,
+      storytellerId: storytellerMenuStoryteller.id,
+      storytellingPoints: Math.max(1, Math.round(Number(missionPoints) || 1)),
+      message: missionText,
+      duration: Math.max(1, Math.round(Number(missionDurationDays) || 1))
+    };
+
+    setIsSendingMission(true);
+    setStorytellerError('');
+    setLastMissionResult(null);
+    setNotice(
+      `Sending ${storytellerMenuStoryteller.name} to ${missionTargetEntity.label}...`
+    );
+
+    const applyMission = (payload, sourceLabel) => {
+      const outcome = firstNonEmptyString(payload?.outcome, 'pending');
+      const assignment = {
+        storytellerId: storytellerMenuStoryteller.id,
+        name: storytellerMenuStoryteller.name,
+        status: firstNonEmptyString(storytellerMenuStoryteller.status, 'active'),
+        outcome,
+        message: missionText,
+        userText: firstNonEmptyString(payload?.userText),
+        gmNote: firstNonEmptyString(payload?.gmNote),
+        assignedAt: new Date().toISOString()
+      };
+
+      setStorytellerAssignmentsByEntityId((prev) => {
+        const current = Array.isArray(prev[missionTargetEntity.id]) ? prev[missionTargetEntity.id] : [];
+        return {
+          ...prev,
+          [missionTargetEntity.id]: [
+            ...current.filter((item) => item.storytellerId !== storytellerMenuStoryteller.id),
+            assignment
+          ]
+        };
+      });
+      setStorytellers((prev) =>
+        prev.map((item) =>
+          item.id === storytellerMenuStoryteller.id
+            ? {
+              ...item,
+              status: 'active',
+              lastMission: {
+                outcome,
+                message: missionText
+              }
+            }
+            : item
+        )
+      );
+      setLastMissionResult({
+        ...payload,
+        storytellerId: storytellerMenuStoryteller.id,
+        targetArenaEntityId: missionTargetEntity.id,
+        source: sourceLabel
+      });
+      setNotice(
+        `${storytellerMenuStoryteller.name} now marks ${missionTargetEntity.label} (${outcome}).`
+      );
+    };
+
+    try {
+      if (SHOULD_USE_MOCK_APIS) {
+        const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/sendStorytellerToEntity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...requestBody, mocked_api_calls: true })
+        });
+        applyMission(payload, 'mock');
+      } else {
+        try {
+          const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/sendStorytellerToEntity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...requestBody, mocked_api_calls: false })
+          });
+          applyMission(payload, 'api');
+        } catch (liveError) {
+          const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/sendStorytellerToEntity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...requestBody, mocked_api_calls: true })
+          });
+          applyMission(payload, 'mock');
+          setStorytellerError(
+            firstNonEmptyString(liveError?.message, 'Live mission failed. Mock mission was used.')
+          );
+        }
+      }
+      void loadStorytellerDetail(storytellerMenuStoryteller.id, { force: true, suppressNotice: true });
+      void refreshStorytellersFromList({ suppressNotice: true });
+      setSelectedArenaEntityId(missionTargetEntity.id);
+    } catch (error) {
+      setStorytellerError(firstNonEmptyString(error?.message, 'Mission dispatch failed.'));
+      setNotice(`Mission dispatch failed: ${firstNonEmptyString(error?.message, 'Unknown error.')}`);
+    } finally {
+      setIsSendingMission(false);
+    }
+  }, [
+    isSendingMission,
+    missionDurationDays,
+    missionMessage,
+    missionPoints,
+    missionTargetEntity,
+    refreshStorytellersFromList,
+    storytellerMenuStoryteller,
+    loadStorytellerDetail
+  ]);
+
   useEffect(() => {
     loadMemoryCards();
   }, [loadMemoryCards]);
+
+  useEffect(() => {
+    if (selectedArenaEntity?.kind === 'entity') {
+      setMissionTargetEntityId(selectedArenaEntity.id);
+    }
+  }, [selectedArenaEntity]);
+
+  useEffect(() => {
+    if (targetableArenaEntities.length === 0) {
+      setMissionTargetEntityId('');
+      return;
+    }
+    if (
+      missionTargetEntityId &&
+      targetableArenaEntities.some((entity) => entity.id === missionTargetEntityId)
+    ) {
+      return;
+    }
+    setMissionTargetEntityId(
+      selectedArenaEntity?.kind === 'entity'
+        ? selectedArenaEntity.id
+        : targetableArenaEntities[0].id
+    );
+  }, [missionTargetEntityId, selectedArenaEntity, targetableArenaEntities]);
 
   useEffect(() => {
     const renderState = () =>
@@ -728,6 +1246,20 @@ const MemorySpreadPage = () => {
         isLoadingMemories,
         isLoadingDeck,
         deckCount: deckCards.length,
+        storytellers: {
+          source: storytellerSource,
+          loading: isLoadingStorytellers,
+          activeStorytellerId: activeStorytellerId || null,
+          menuStorytellerId: storytellerMenuId || null,
+          missionTargetEntityId: missionTargetEntityId || null,
+          assignments: storytellerAssignmentsByEntityId,
+          roster: storytellers.map((storyteller) => ({
+            id: storyteller.id,
+            name: storyteller.name,
+            status: storyteller.status,
+            level: storyteller.level
+          }))
+        },
         pendingEntity: pendingEntity?.id || null,
         notice,
         arena: {
@@ -763,7 +1295,14 @@ const MemorySpreadPage = () => {
     isSpreadIntro,
     isLoadingMemories,
     isLoadingDeck,
+    isLoadingStorytellers,
     deckCards.length,
+    storytellers,
+    storytellerSource,
+    storytellerMenuId,
+    activeStorytellerId,
+    missionTargetEntityId,
+    storytellerAssignmentsByEntityId,
     pendingEntity,
     notice,
     arenaEntities,
@@ -790,6 +1329,20 @@ const MemorySpreadPage = () => {
     setDraggingEntityId('');
     setIsArenaDragOver(false);
     setSelectedArenaEntityId('');
+    setStorytellers(STORYTELLER_FALLBACK_ROSTER);
+    setStorytellerSource('fallback');
+    setStorytellerError('');
+    setIsLoadingStorytellers(false);
+    setStorytellerDetailsById({});
+    setActiveStorytellerId('');
+    setStorytellerMenuId('');
+    setMissionTargetEntityId('');
+    setMissionMessage(DEFAULT_MISSION_MESSAGE);
+    setMissionPoints(12);
+    setMissionDurationDays(3);
+    setIsSendingMission(false);
+    setLastMissionResult(null);
+    setStorytellerAssignmentsByEntityId({});
     panStateRef.current = null;
     setIsPanning(false);
     hasSpreadCenteredRef.current = false;
@@ -827,6 +1380,12 @@ const MemorySpreadPage = () => {
       setDraggingEntityId('');
       setIsArenaDragOver(false);
       setSelectedArenaEntityId(memoryAnchor.id);
+      setStorytellerMenuId('');
+      setMissionTargetEntityId('');
+      setStorytellerAssignmentsByEntityId({});
+      setStorytellerDetailsById({});
+      setMissionMessage(DEFAULT_MISSION_MESSAGE);
+      setLastMissionResult(null);
       setPhase(SCREEN.SPREAD);
       setIsCollapsing(false);
       setIsSpreadIntro(true);
@@ -835,8 +1394,9 @@ const MemorySpreadPage = () => {
         y: arenaSize.height / 2,
         k: 0.94
       });
-      setNotice('Revealing celestial cards from textToEntity...');
+      setNotice('Revealing entities and storytellers from the APIs...');
       void loadEntityDeckForMemory(memory);
+      void loadStorytellersForMemory(memory);
 
       schedule(() => {
         setIsSpreadIntro(false);
@@ -856,11 +1416,14 @@ const MemorySpreadPage = () => {
   const handleArenaEntitySelect = (entityId) => {
     if (isSubmittingConnection) return;
     setSelectedArenaEntityId(entityId);
+    const selectedEntity = entityById.get(entityId);
+    if (selectedEntity?.kind === 'entity') {
+      setMissionTargetEntityId(entityId);
+    }
     if (!pendingEntity) return;
     setConnectToId(entityId);
-    const targetEntity = entityById.get(entityId);
-    if (targetEntity) {
-      setNotice(`Thread target set to ${targetEntity.label}. Add meaning to anchor ${pendingEntity.name}.`);
+    if (selectedEntity) {
+      setNotice(`Thread target set to ${selectedEntity.label}. Add meaning to anchor ${pendingEntity.name}.`);
     }
   };
 
@@ -1073,11 +1636,12 @@ const MemorySpreadPage = () => {
       backImageUrl: pendingEntity.backImageUrl || ''
     };
 
+    const connectionId = `${placedEntity.id}-${connectToId}-${Date.now()}`;
     setArenaEntities((prev) => [...prev, placedEntity]);
     setConnections((prev) => [
       ...prev,
       {
-        id: `${placedEntity.id}-${connectToId}-${Date.now()}`,
+        id: connectionId,
         fromId: placedEntity.id,
         toId: connectToId,
         text: relation,
@@ -1088,6 +1652,14 @@ const MemorySpreadPage = () => {
         pointsAwarded
       }
     ]);
+    setNewConnectionIds((prev) => new Set(prev).add(connectionId));
+    schedule(() => {
+      setNewConnectionIds((prev) => {
+        const next = new Set(prev);
+        next.delete(connectionId);
+        return next;
+      });
+    }, 1400);
     setDeckCards((prev) => prev.filter((card) => card.id !== pendingEntity.id));
     setNotice(
       `${pendingEntity.name} is now anchored via "${relation}" (resonance ${judgedStrength}, distance ${placementPoint.distance}${pointsAwarded ? `, +${pointsAwarded} essence` : ''}).`
@@ -1099,6 +1671,7 @@ const MemorySpreadPage = () => {
     setIsSubmittingConnection(false);
     setConnectionRejection(null);
     setSelectedArenaEntityId(placedEntity.id);
+    setMissionTargetEntityId(placedEntity.id);
     schedule(() => fitViewportToArena(true), 80);
   };
 
@@ -1191,18 +1764,23 @@ const MemorySpreadPage = () => {
 
   const starfieldPoints = useMemo(
     () =>
-      Array.from({ length: 140 }, (_, index) => {
+      Array.from({ length: 180 }, (_, index) => {
         const randomX = Math.sin((index + 1) * 128.1) * 43758.5453;
         const randomY = Math.cos((index + 1) * 191.7) * 12731.3324;
         const normalizedX = randomX - Math.floor(randomX);
         const normalizedY = randomY - Math.floor(randomY);
-        const twinkle = ((Math.sin((index + 3) * 11.9) + 1) / 2) * 0.55 + 0.2;
+        const baseOpacity = ((Math.sin((index + 3) * 11.9) + 1) / 2) * 0.45 + 0.15;
+        const baseR = ((index % 4) + 1) * 0.45;
+        const twinkleDur = 3 + ((index * 7) % 5);
+        const twinkleDelay = ((index * 13) % 8) * 0.5;
         return {
           id: `star-${index}`,
           x: (normalizedX - 0.5) * 5200,
           y: (normalizedY - 0.5) * 3400,
-          r: ((index % 3) + 1) * 0.55,
-          opacity: twinkle
+          r: baseR,
+          opacity: baseOpacity,
+          twinkleDur,
+          twinkleDelay
         };
       }),
     []
@@ -1231,15 +1809,18 @@ const MemorySpreadPage = () => {
         <div className="memorySpreadMeta">
           <span>Archives: {isLoadingMemories ? 'unsealing' : memorySource}</span>
           <span>Deck: {isLoadingDeck ? 'drawing' : deckSource}</span>
+          <span>Storytellers: {isLoadingStorytellers ? 'summoning' : storytellerSource}</span>
           <button type="button" onClick={loadMemoryCards} disabled={isLoadingMemories || phase !== SCREEN.MEMORIES}>
             Redraw Archives
           </button>
         </div>
-        {(memoryError || deckError) && (
+        {(memoryError || deckError || storytellerError) && (
           <p className="memorySpreadError">
             {memoryError && `Memory API: ${memoryError}`}
             {memoryError && deckError ? ' | ' : ''}
             {deckError && `Entity API: ${deckError}`}
+            {(memoryError || deckError) && storytellerError ? ' | ' : ''}
+            {storytellerError && `Storyteller API: ${storytellerError}`}
           </p>
         )}
       </header>
@@ -1320,6 +1901,178 @@ const MemorySpreadPage = () => {
                 Return to three-memory draw
               </button>
             </div>
+          </div>
+
+          <div className="storytellerCommandBar" aria-label="Storyteller roster">
+            <div className="storytellerCommandHeader">
+              <div>
+                <h3>Storytellers</h3>
+                <p>
+                  Click a round icon to open actions. Default action sends the storyteller to an
+                  entity.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => refreshStorytellersFromList()}
+                disabled={isLoadingStorytellers || phase !== SCREEN.SPREAD}
+              >
+                Refresh roster
+              </button>
+            </div>
+
+            <div className="storytellerIconRow">
+              {storytellers.map((storyteller) => {
+                const statusClass = storytellerStatusClass(storyteller.status);
+                return (
+                  <button
+                    key={storyteller.id}
+                    type="button"
+                    className={`storytellerIconButton ${storytellerMenuId === storyteller.id ? 'is-active' : ''
+                      }`}
+                    onClick={() => handleStorytellerIconClick(storyteller.id)}
+                    disabled={isLoadingStorytellers}
+                    aria-haspopup="menu"
+                    aria-expanded={storytellerMenuId === storyteller.id}
+                  >
+                    <span className={`storytellerIconAvatar status-${statusClass}`}>
+                      {storyteller.iconUrl ? (
+                        <img src={storyteller.iconUrl} alt="" />
+                      ) : (
+                        <strong>{storytellerInitials(storyteller.name)}</strong>
+                      )}
+                    </span>
+                    <span className="storytellerIconLabel">{storyteller.name}</span>
+                    <small className={`storytellerIconStatus status-${statusClass}`}>
+                      {storyteller.status || 'active'}
+                    </small>
+                  </button>
+                );
+              })}
+              {storytellers.length === 0 && !isLoadingStorytellers && (
+                <p className="storytellerRosterEmpty">No storytellers available.</p>
+              )}
+            </div>
+
+            {storytellerMenuStoryteller && (
+              <div className="storytellerActionMenu" role="menu">
+                <header>
+                  <div className="storytellerActionIdentity">
+                    <span
+                      className={`storytellerIconAvatar status-${storytellerStatusClass(
+                        storytellerMenuStoryteller.status
+                      )}`}
+                    >
+                      {storytellerMenuStoryteller.iconUrl ? (
+                        <img src={storytellerMenuStoryteller.iconUrl} alt="" />
+                      ) : (
+                        <strong>{storytellerInitials(storytellerMenuStoryteller.name)}</strong>
+                      )}
+                    </span>
+                    <div>
+                      <strong>{storytellerMenuStoryteller.name}</strong>
+                      <small>
+                        Status {storytellerMenuStoryteller.status || 'active'}
+                        {Number.isFinite(storytellerMenuStoryteller.level)
+                          ? ` • Level ${storytellerMenuStoryteller.level}`
+                          : ''}
+                      </small>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => setStorytellerMenuId('')}>
+                    Close
+                  </button>
+                </header>
+
+                <div className="storytellerActionFields">
+                  <label>
+                    Target entity
+                    <select
+                      value={missionTargetEntityId}
+                      onChange={(event) => setMissionTargetEntityId(event.target.value)}
+                      disabled={isSendingMission}
+                    >
+                      {targetableArenaEntities.length === 0 && (
+                        <option value="">No entities placed yet</option>
+                      )}
+                      {targetableArenaEntities.map((entity) => (
+                        <option key={entity.id} value={entity.id}>
+                          {entity.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Mission message
+                    <input
+                      type="text"
+                      value={missionMessage}
+                      onChange={(event) => setMissionMessage(event.target.value)}
+                      disabled={isSendingMission}
+                      placeholder="Investigate hidden tensions..."
+                    />
+                  </label>
+                  <div className="storytellerMissionFields">
+                    <label>
+                      Points
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={missionPoints}
+                        onChange={(event) => setMissionPoints(event.target.value)}
+                        disabled={isSendingMission}
+                      />
+                    </label>
+                    <label>
+                      Days
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={missionDurationDays}
+                        onChange={(event) => setMissionDurationDays(event.target.value)}
+                        disabled={isSendingMission}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="storytellerActionButtons">
+                  <button
+                    type="button"
+                    onClick={handleSendStorytellerToEntity}
+                    disabled={isSendingMission || !missionTargetEntity || !missionMessage.trim()}
+                  >
+                    {isSendingMission ? 'Sending...' : 'Send to entity'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() =>
+                      loadStorytellerDetail(storytellerMenuStoryteller.id, {
+                        force: true,
+                        suppressNotice: true
+                      })
+                    }
+                    disabled={isSendingMission}
+                  >
+                    Refresh detail
+                  </button>
+                </div>
+
+                {lastMissionResult?.storytellerId === storytellerMenuStoryteller.id && (
+                  <div className="storytellerMissionResult">
+                    <strong>Mission result</strong>
+                    <span>
+                      {firstNonEmptyString(lastMissionResult?.outcome, 'pending')}
+                      {missionTargetEntity ? ` • ${missionTargetEntity.label}` : ''}
+                    </span>
+                    {lastMissionResult?.userText && <p>{lastMissionResult.userText}</p>}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="constellationWorkspace">
@@ -1403,11 +2156,17 @@ const MemorySpreadPage = () => {
                       {starfieldPoints.map((star) => (
                         <circle
                           key={star.id}
+                          className="starfieldDot"
                           cx={star.x}
                           cy={star.y}
                           r={star.r}
                           fill="rgba(201, 214, 232, 0.7)"
-                          opacity={star.opacity}
+                          style={{
+                            '--star-base-opacity': star.opacity,
+                            '--star-base-r': `${star.r}`,
+                            '--twinkle-dur': `${star.twinkleDur}s`,
+                            '--twinkle-delay': `${star.twinkleDelay}s`
+                          }}
                         />
                       ))}
                     </g>
@@ -1415,6 +2174,7 @@ const MemorySpreadPage = () => {
                     <g className="memoryAuraLayer" pointerEvents="none">
                       <circle cx="0" cy="0" r="235" fill="url(#constellationMemoryGlow)" />
                       <circle cx="0" cy="0" r="278" className="memoryAuraRing" />
+                      <circle cx="0" cy="0" r="340" className="memoryAuraRingOuter" />
                     </g>
 
                     <g className="nodesLayer">
@@ -1427,6 +2187,9 @@ const MemorySpreadPage = () => {
                         const clipId = `clip-${toSafeSvgId(entity.id)}`;
                         const isSelected = selectedArenaEntityId === entity.id;
                         const isRelated = !selectedArenaEntityId || relatedToSelection.has(entity.id);
+                        const assignedStorytellers = Array.isArray(storytellerAssignmentsByEntityId[entity.id])
+                          ? storytellerAssignmentsByEntityId[entity.id]
+                          : [];
 
                         return (
                           <g
@@ -1435,6 +2198,21 @@ const MemorySpreadPage = () => {
                             className={`constellationNode ${isMemory ? 'memory-node' : 'entity-node'} ${isSelected ? 'is-selected' : ''
                               } ${isRelated ? '' : 'is-dimmed'}`}
                           >
+                            {/* Node halo glow */}
+                            <rect
+                              className="constellationNodeHalo"
+                              x={x - 6}
+                              y={y - 6}
+                              width={size.width + 12}
+                              height={size.height + 12}
+                              rx="22"
+                              ry="22"
+                            />
+                            {/* Star accent diamond at top-center */}
+                            <polygon
+                              className="constellationNodeStar"
+                              points={`0,${y - 10} 4,${y - 4} 0,${y + 2} -4,${y - 4}`}
+                            />
                             <g className="constellationNodeButton" onClick={() => handleArenaEntitySelect(entity.id)}>
                               <rect
                                 className="constellationNodeOuter"
@@ -1491,6 +2269,31 @@ const MemorySpreadPage = () => {
                                   Tap top memory card to re-draw
                                 </text>
                               )}
+                              {!isMemory &&
+                                assignedStorytellers.slice(0, 3).map((assignment, index) => {
+                                  const offsetX = x + size.width - 20;
+                                  const offsetY = y + 22 + index * 26;
+                                  const statusClass = storytellerStatusClass(assignment.status);
+                                  return (
+                                    <g
+                                      key={`${entity.id}-${assignment.storytellerId || index}`}
+                                      transform={`translate(${offsetX} ${offsetY})`}
+                                      className={`entityStorytellerBadge status-${statusClass}`}
+                                    >
+                                      <title>
+                                        {assignment.name}
+                                        {assignment.outcome
+                                          ? ` (${assignment.outcome})`
+                                          : ''}
+                                      </title>
+                                      <circle className="entityStorytellerBadgeFill" r="11.5" />
+                                      <text className="entityStorytellerBadgeText" x="0" y="3.8">
+                                        {storytellerInitials(assignment.name)}
+                                      </text>
+                                      <circle className="entityStorytellerBadgeRing" r="11.5" />
+                                    </g>
+                                  );
+                                })}
                             </g>
                           </g>
                         );
@@ -1503,19 +2306,27 @@ const MemorySpreadPage = () => {
                           !selectedArenaEntityId ||
                           connection.fromId === selectedArenaEntityId ||
                           connection.toId === selectedArenaEntityId;
+                        const isNew = newConnectionIds.has(connection.id);
                         const opacity = isHighlighted ? connection.highlightOpacity : connection.mutedOpacity;
+                        const pathParts = connection.path.match(/M\s([\d.-]+)\s([\d.-]+)\sQ\s[\d.-]+\s[\d.-]+\s([\d.-]+)\s([\d.-]+)/);
+                        const startX = pathParts ? Number(pathParts[1]) : 0;
+                        const startY = pathParts ? Number(pathParts[2]) : 0;
+                        const endX = pathParts ? Number(pathParts[3]) : 0;
+                        const endY = pathParts ? Number(pathParts[4]) : 0;
+                        const estimatedLength = Math.round(Math.hypot(endX - startX, endY - startY) * 1.3);
                         return (
                           <g
                             key={connection.id}
-                            className={`constellationLinkGroup ${isHighlighted ? 'is-highlighted' : 'is-muted'}`}
+                            className={`constellationLinkGroup ${isHighlighted ? 'is-highlighted' : 'is-muted'} ${isNew ? 'is-new' : ''}`}
+                            style={isNew ? { '--link-length': estimatedLength } : undefined}
                           >
                             <path
                               d={connection.path}
                               className="constellationLinkGlowPath"
-                              stroke={isHighlighted ? 'rgba(212, 185, 94, 0.85)' : 'rgba(184, 154, 74, 0.5)'}
+                              stroke={isHighlighted ? 'rgba(220, 195, 104, 0.85)' : 'rgba(196, 162, 77, 0.5)'}
                               strokeWidth={connection.glowWidth}
                               opacity={opacity * 0.6}
-                              strokeDasharray={connection.dashArray}
+                              strokeDasharray={isNew ? undefined : connection.dashArray}
                             />
                             <path
                               d={connection.path}
@@ -1523,7 +2334,16 @@ const MemorySpreadPage = () => {
                               stroke={isHighlighted ? 'rgba(233, 226, 207, 0.95)' : 'rgba(201, 214, 232, 0.8)'}
                               strokeWidth={connection.coreWidth}
                               opacity={opacity}
-                              strokeDasharray={connection.dashArray}
+                              strokeDasharray={isNew ? undefined : connection.dashArray}
+                            />
+                            {/* Star endpoint markers */}
+                            <polygon
+                              className="constellationStarMarker"
+                              points={`${startX},${startY - 5} ${startX + 3},${startY} ${startX},${startY + 5} ${startX - 3},${startY}`}
+                            />
+                            <polygon
+                              className="constellationStarMarker"
+                              points={`${endX},${endY - 5} ${endX + 3},${endY} ${endX},${endY + 5} ${endX - 3},${endY}`}
                             />
                           </g>
                         );
@@ -1585,6 +2405,12 @@ const MemorySpreadPage = () => {
                       ).length
                     }
                   </p>
+                  {selectedArenaEntity.kind === 'entity' && (
+                    <p>
+                      Storytellers assigned:{' '}
+                      {(storytellerAssignmentsByEntityId[selectedArenaEntity.id] || []).length}
+                    </p>
+                  )}
                   <div className="inspectorActions">
                     <button type="button" onClick={handleRecenterMemory}>
                       Seek Anchor
@@ -1619,9 +2445,9 @@ const MemorySpreadPage = () => {
                   onClick={() => beginEntityPlacement(card.id)}
                   disabled={isLoadingDeck}
                 >
-                  {(card.frontImageUrl || card.backImageUrl) && (
+                  {(card.backImageUrl || card.frontImageUrl) && (
                     <div className="entityDeckArt" aria-hidden="true">
-                      <img src={card.frontImageUrl || card.backImageUrl} alt="" />
+                      <img src={card.backImageUrl || card.frontImageUrl} alt="" />
                     </div>
                   )}
                   <small>{card.type}</small>

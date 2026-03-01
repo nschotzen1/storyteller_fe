@@ -550,6 +550,10 @@ const TypewriterFramework = (props) => {
   const visibleLineCount = Math.min(countLines(pageText, visibleGhostText), MAX_LINES);
   const neededHeight = TOP_OFFSET + visibleLineCount * LINE_HEIGHT + NEEDED_HEIGHT_OFFSET;
   const scrollAreaHeight = Math.max(FRAME_HEIGHT, neededHeight);
+  const canPullTurnPageLever =
+    leverLevel === LEVER_LEVEL_WORD_THRESHOLDS.length - 1
+    && !pageChangeInProgress
+    && typingAllowed;
 
   const applyTypewriterReply = useCallback((reply, fullText) => {
     if (isProcessingSequenceRef.current) {
@@ -785,8 +789,8 @@ const TypewriterFramework = (props) => {
     const fullCombinedText = pageText + ghostTextString;
     const currentLines = fullCombinedText.split('\n');
 
-    if (currentLines.length >= MAX_LINES && e.key !== 'Backspace') {
-      handlePageTurnScroll();
+    if (currentLines.length >= MAX_LINES && e.key === 'Enter') {
+      e.preventDefault();
       return;
     }
     dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: e.key.toUpperCase() });
@@ -1399,7 +1403,7 @@ const TypewriterFramework = (props) => {
       >
         <TurnPageLever
           level={leverLevel}
-          canPull={leverLevel === LEVER_LEVEL_WORD_THRESHOLDS.length - 1 && !pageChangeInProgress && typingAllowed}
+          canPull={canPullTurnPageLever}
           disabled={pageChangeInProgress}
           onPull={() => {
             setLeverLevel(0);

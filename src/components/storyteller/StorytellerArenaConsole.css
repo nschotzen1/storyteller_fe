@@ -731,6 +731,20 @@
   min-height: 80px;
 }
 
+.worldFrameGrid,
+.worldSensoryGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.worldFrameGrid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.worldSensoryGrid {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
 .worldPillars {
   display: grid;
   gap: 8px;
@@ -1474,6 +1488,37 @@
 }
 
 .spotlightMoves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.collabMoves {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 214, 191, 0.12);
+  background: rgba(12, 14, 20, 0.65);
+}
+
+.collabMovesHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(226, 214, 191, 0.7);
+}
+
+.collabMovesHeader em {
+  font-style: normal;
+  color: rgba(226, 214, 191, 0.85);
+}
+
+.collabButtons {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;

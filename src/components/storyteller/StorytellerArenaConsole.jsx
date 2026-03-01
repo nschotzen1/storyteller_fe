@@ -67,6 +67,32 @@ const SPOTLIGHT_MOVES = [
     text: 'offers a cost that propels the scene.'
   }
 ];
+const COLLAB_MOVES = [
+  {
+    id: 'echo',
+    label: 'Echo',
+    detail: 'Reinforce a detail another player just introduced.',
+    ledgerType: 'canon',
+    effects: { momentum: 0, clarity: 1, sceneClock: -1 },
+    text: 'echoes the last detail to lock it in.'
+  },
+  {
+    id: 'twist',
+    label: 'Twist',
+    detail: 'Add a surprising angle without breaking canon.',
+    ledgerType: 'mystery',
+    effects: { momentum: 1, clarity: 0, sceneClock: 1 },
+    text: 'twists the scene with a new angle.'
+  },
+  {
+    id: 'bind',
+    label: 'Bind',
+    detail: 'Connect two existing truths into canon.',
+    ledgerType: 'canon',
+    effects: { momentum: 0, clarity: 1, sceneClock: 0 },
+    text: 'binds two truths together.'
+  }
+];
 const FLOW_LOOP_ACTIONS = [
   {
     id: 'frame',
@@ -98,7 +124,13 @@ const WORLD_PROFILE_DEFAULT = {
   mood: '',
   truth: '',
   taboo: '',
-  pillars: []
+  pillars: [],
+  era: '',
+  conflict: '',
+  wonder: '',
+  sound: '',
+  scent: '',
+  texture: ''
 };
 const SESSION_STATE_DEFAULT = {
   readyMap: {},
@@ -124,6 +156,7 @@ const SESSION_STATE_DEFAULT = {
   threads: [],
   lastFlowAction: null,
   presenceTokens: {},
+  lastCollabMove: null,
   vows: {
     hush: false,
     anchor: false,
@@ -469,7 +502,7 @@ const StorytellerArenaConsole = ({
         mode: 'worldbuild',
         modeLabel: 'Worldbuild',
         focus: 'Meta Creation',
-        cue: 'Define canon, tone, and 3+ pillars before play begins.',
+        cue: 'Define canon, tone, frame, and 3+ pillars before play begins.',
         next: 'Seed the world with a fragment.'
       },
       seed: {
@@ -720,10 +753,24 @@ const StorytellerArenaConsole = ({
     const mood = worldProfile.mood.trim();
     const truth = worldProfile.truth.trim();
     const taboo = worldProfile.taboo.trim();
+    const era = worldProfile.era.trim();
+    const conflict = worldProfile.conflict.trim();
+    const wonder = worldProfile.wonder.trim();
+    const sound = worldProfile.sound.trim();
+    const scent = worldProfile.scent.trim();
+    const texture = worldProfile.texture.trim();
     if (name) lines.push(`World: ${name}`);
     if (mood) lines.push(`Mood: ${mood}`);
     if (truth) lines.push(`Founding Truth: ${truth}`);
     if (taboo) lines.push(`Taboo: ${taboo}`);
+    if (era) lines.push(`Era: ${era}`);
+    if (conflict) lines.push(`Conflict: ${conflict}`);
+    if (wonder) lines.push(`Wonder: ${wonder}`);
+    if (sound || scent || texture) {
+      lines.push(
+        `Sensory: ${sound || 'Sound'}${scent ? ` • ${scent}` : ''}${texture ? ` • ${texture}` : ''}`
+      );
+    }
     if (sceneGoal.trim() || sceneRisk.trim()) {
       lines.push(
         `Scene Lens: ${sceneGoal.trim() || 'Untitled'}${sceneRisk.trim() ? ` | Stakes: ${sceneRisk.trim()}` : ''}`
@@ -737,6 +784,12 @@ const StorytellerArenaConsole = ({
     worldProfile.mood,
     worldProfile.truth,
     worldProfile.taboo,
+    worldProfile.era,
+    worldProfile.conflict,
+    worldProfile.wonder,
+    worldProfile.sound,
+    worldProfile.scent,
+    worldProfile.texture,
     sceneGoal,
     sceneRisk,
     anchors,
@@ -759,7 +812,17 @@ const StorytellerArenaConsole = ({
           mood: worldProfile.mood,
           truth: worldProfile.truth,
           taboo: worldProfile.taboo,
-          pillars: worldProfile.pillars || []
+          pillars: worldProfile.pillars || [],
+          frame: {
+            era: worldProfile.era,
+            conflict: worldProfile.conflict,
+            wonder: worldProfile.wonder
+          },
+          sensory: {
+            sound: worldProfile.sound,
+            scent: worldProfile.scent,
+            texture: worldProfile.texture
+          }
         },
         anchors,
         flow: {
@@ -799,6 +862,11 @@ const StorytellerArenaConsole = ({
           sceneClock,
           sceneClockLabel,
           turnActionsLeft: currentTurnActions,
+          collab: {
+            lastAction: sessionState.lastCollabMove?.label || '',
+            lastBy: sessionState.lastCollabMove?.by || '',
+            lastAt: sessionState.lastCollabMove?.at || ''
+          },
           spotlight: {
             player: spotlightLabel,
             tokens: spotlightTokens
@@ -825,6 +893,7 @@ const StorytellerArenaConsole = ({
     sessionState.phase,
     sessionState.intent,
     sessionState.readyMap,
+    sessionState.lastCollabMove,
     focusPlayerLabel,
     currentTurnLabel,
     currentTurnKey,
@@ -1309,6 +1378,38 @@ const StorytellerArenaConsole = ({
     setNotice(`${action.label} logged to the ledger.`);
   };
 
+  const handleCollabMove = (moveId) => {
+    const move = COLLAB_MOVES.find((item) => item.id === moveId);
+    if (!move) return;
+    const actorLabel = focusPlayerLabel || currentTurnLabel || 'Table';
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const previousClockRaw = Number(prev.sceneClock);
+      const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
+      const entry = createLedgerEntry({
+        type: move.ledgerType,
+        text: `${actorLabel} ${move.text}`,
+        by: actorLabel
+      });
+      return {
+        ...prev,
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + move.effects.momentum),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + move.effects.clarity)
+        },
+        sceneClock: clampSceneClockValue(previousClock + move.effects.sceneClock),
+        lastCollabMove: {
+          id: move.id,
+          label: move.label,
+          by: actorLabel,
+          at: new Date().toISOString()
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setNotice(`${move.label} recorded as a co-creation beat.`);
+  };
+
   const handleApplyImmersionPrimer = () => {
     const primer = immersionPrimer.trim();
     if (!primer) {
@@ -1680,10 +1781,26 @@ const StorytellerArenaConsole = ({
     const trimmedMood = worldProfile.mood.trim();
     const trimmedTruth = worldProfile.truth.trim();
     const trimmedTaboo = worldProfile.taboo.trim();
+    const trimmedEra = worldProfile.era.trim();
+    const trimmedConflict = worldProfile.conflict.trim();
+    const trimmedWonder = worldProfile.wonder.trim();
+    const trimmedSound = worldProfile.sound.trim();
+    const trimmedScent = worldProfile.scent.trim();
+    const trimmedTexture = worldProfile.texture.trim();
     if (trimmedName) lines.push(`World: ${trimmedName}`);
     if (trimmedMood) lines.push(`Mood: ${trimmedMood}`);
     if (trimmedTruth) lines.push(`Founding truth: ${trimmedTruth}`);
     if (trimmedTaboo) lines.push(`Taboo: ${trimmedTaboo}`);
+    if (trimmedEra) lines.push(`Era: ${trimmedEra}`);
+    if (trimmedConflict) lines.push(`Conflict: ${trimmedConflict}`);
+    if (trimmedWonder) lines.push(`Wonder: ${trimmedWonder}`);
+    if (trimmedSound || trimmedScent || trimmedTexture) {
+      lines.push(
+        `Sensory: ${trimmedSound || 'Sound'}${trimmedScent ? ` • ${trimmedScent}` : ''}${
+          trimmedTexture ? ` • ${trimmedTexture}` : ''
+        }`
+      );
+    }
     if (worldProfile.pillars?.length) lines.push(`Pillars: ${worldProfile.pillars.join(', ')}`);
     if (sessionState.intent?.trim()) lines.push(`Shared intent: ${sessionState.intent.trim()}`);
     if (sceneGoal.trim()) lines.push(`Scene goal: ${sceneGoal.trim()}`);
@@ -1698,6 +1815,12 @@ const StorytellerArenaConsole = ({
     worldProfile.mood,
     worldProfile.truth,
     worldProfile.taboo,
+    worldProfile.era,
+    worldProfile.conflict,
+    worldProfile.wonder,
+    worldProfile.sound,
+    worldProfile.scent,
+    worldProfile.texture,
     worldProfile.pillars,
     sessionState.intent,
     sceneGoal,
@@ -2684,6 +2807,52 @@ const StorytellerArenaConsole = ({
                 onChange={(event) => setWorldProfile((prev) => ({ ...prev, taboo: event.target.value }))}
               />
             </label>
+            <div className="worldFrameGrid">
+              <label>
+                Era
+                <input
+                  value={worldProfile.era}
+                  onChange={(event) => setWorldProfile((prev) => ({ ...prev, era: event.target.value }))}
+                />
+              </label>
+              <label>
+                Conflict
+                <input
+                  value={worldProfile.conflict}
+                  onChange={(event) => setWorldProfile((prev) => ({ ...prev, conflict: event.target.value }))}
+                />
+              </label>
+              <label>
+                Wonder
+                <input
+                  value={worldProfile.wonder}
+                  onChange={(event) => setWorldProfile((prev) => ({ ...prev, wonder: event.target.value }))}
+                />
+              </label>
+            </div>
+            <div className="worldSensoryGrid">
+              <label>
+                Sound
+                <input
+                  value={worldProfile.sound}
+                  onChange={(event) => setWorldProfile((prev) => ({ ...prev, sound: event.target.value }))}
+                />
+              </label>
+              <label>
+                Scent
+                <input
+                  value={worldProfile.scent}
+                  onChange={(event) => setWorldProfile((prev) => ({ ...prev, scent: event.target.value }))}
+                />
+              </label>
+              <label>
+                Texture
+                <input
+                  value={worldProfile.texture}
+                  onChange={(event) => setWorldProfile((prev) => ({ ...prev, texture: event.target.value }))}
+                />
+              </label>
+            </div>
             <div className="worldPillars">
               <div className="worldPillarsHeader">
                 <strong>World Pillars</strong>
@@ -3370,6 +3539,29 @@ const StorytellerArenaConsole = ({
                   Refresh Tokens
                 </button>
               </div>
+              <div className="collabMoves">
+                <div className="collabMovesHeader">
+                  <span>Co-Create Beats</span>
+                  {sessionState.lastCollabMove?.label && (
+                    <em>
+                      {sessionState.lastCollabMove.label} · {sessionState.lastCollabMove.by || 'Table'}
+                    </em>
+                  )}
+                </div>
+                <div className="collabButtons">
+                  {COLLAB_MOVES.map((move) => (
+                    <button
+                      key={move.id}
+                      type="button"
+                      className="ghost subtle"
+                      title={move.detail}
+                      onClick={() => handleCollabMove(move.id)}
+                    >
+                      {move.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="consoleButtonRow">
                 <button type="button" className="ghost" onClick={handleStartRitual} disabled={ritualActive}>
                   Start Ritual
@@ -3425,6 +3617,12 @@ const StorytellerArenaConsole = ({
               <span>{`Mode ${phaseLabel}`}</span>
               <span>{`World ${worldProfile.worldName || 'Unnamed'}`}</span>
               <span>{`Mood ${worldProfile.mood || 'Unwritten'}`}</span>
+              {worldProfile.era && <span>{`Era ${worldProfile.era}`}</span>}
+              {worldProfile.conflict && <span>{`Conflict ${worldProfile.conflict}`}</span>}
+              {worldProfile.wonder && <span>{`Wonder ${worldProfile.wonder}`}</span>}
+              {worldProfile.sound && <span>{`Sound ${worldProfile.sound}`}</span>}
+              {worldProfile.scent && <span>{`Scent ${worldProfile.scent}`}</span>}
+              {worldProfile.texture && <span>{`Texture ${worldProfile.texture}`}</span>}
             </div>
             <div className="arenaConsoleStageRailActions">
               <button
