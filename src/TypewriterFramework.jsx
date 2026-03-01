@@ -6,7 +6,7 @@ import PaperDisplay from './components/typewriter/PaperDisplay.jsx';
 import PageNavigation from './components/typewriter/PageNavigation.jsx'; // Import the new PageNavigation component
 import OrreryComponent from './OrreryComponent.jsx';
 import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines, playGhostWriterSound, ambientSoundManager, playPreGhostSound, fetchAndPlayElevenLabsTTS } from './utils.js';
-import { fetchNextFilmImage, fetchTypewriterReply, fetchShouldGenerateContinuation } from './apiService.js';
+import { fetchNextFilmImage, fetchShouldGenerateContinuation, fetchTypewriterReply, startTypewriterSession } from './apiService.js';
 
 // --- Constants ---
 const FILM_HEIGHT = 1400;
@@ -536,13 +536,53 @@ const TypewriterFramework = (props) => {
   const isProcessingSequenceRef = useRef(false);
   const ambientStartedRef = useRef(false);
 
-  const [sessionId] = useState(() => {
-    const stored = localStorage.getItem(SESSION_ID_STORAGE_KEY);
-    if (stored) return stored;
-    const newId = Math.random().toString(36).substring(2, 15);
-    localStorage.setItem(SESSION_ID_STORAGE_KEY, newId);
-    return newId;
-  });
+  const [sessionId, setSessionId] = useState(() => localStorage.getItem(SESSION_ID_STORAGE_KEY) || '');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const initializeSession = async () => {
+      const requestedSessionId = localStorage.getItem(SESSION_ID_STORAGE_KEY) || '';
+      const fallbackSessionId = requestedSessionId || Math.random().toString(36).substring(2, 15);
+      const { data, error } = await startTypewriterSession(requestedSessionId);
+      if (cancelled) return;
+
+      const nextSessionId = data?.sessionId || fallbackSessionId;
+      if (nextSessionId) {
+        localStorage.setItem(SESSION_ID_STORAGE_KEY, nextSessionId);
+        setSessionId(nextSessionId);
+      }
+
+      if (error || typeof data?.fragment !== 'string') {
+        return;
+      }
+
+      setPages((prev) => {
+        if (!Array.isArray(prev) || prev.length !== 1 || prev[0]?.text) {
+          return prev;
+        }
+        return [
+          {
+            ...prev[0],
+            text: data.fragment
+          }
+        ];
+      });
+      dispatchGhostwriter({
+        type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH,
+        payload: data.fragment.length
+      });
+    };
+
+    initializeSession().catch((error) => {
+      if (cancelled) return;
+      console.error('Error initializing typewriter session:', error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatchGhostwriter]);
 
   // --- Derived ---
   const { text: pageText, filmBgUrl: pageBg } = pages[currentPage] || {};
@@ -1068,6 +1108,8 @@ const TypewriterFramework = (props) => {
     if (!typingState.typingAllowed) return;
 
     const interval = setInterval(async () => {
+      if (!sessionId) return;
+
       const fullText = pages[currentPage]?.text || '';
       const addition = fullText.slice(ghostwriterState.lastGeneratedLength);
       const pauseSeconds = (Date.now() - ghostwriterState.lastUserInputTime) / 1000;

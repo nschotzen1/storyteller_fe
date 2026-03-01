@@ -34,6 +34,25 @@ export const fetchNextFilmImage = async (pageText, sessionId) => {
   }
 };
 
+export const startTypewriterSession = async (sessionId) => {
+  try {
+    const response = await fetch(`${SERVER}/api/typewriter/session/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sessionId ? { sessionId } : {})
+    });
+    if (!response.ok) {
+      console.error(`API error in startTypewriterSession: ${response.status} ${response.statusText}`);
+      return { data: null, error: { message: `API error: ${response.status} ${response.statusText}`, status: response.status } };
+    }
+    const data = await response.json();
+    return { data, error: null };
+  } catch (error) {
+    console.error('Network error starting typewriter session:', error);
+    return { data: null, error: { message: error.message } };
+  }
+};
+
 export const fetchTypewriterReply = async (text, sessionId) => {
   if (!text) {
     return { data: null, error: null };
