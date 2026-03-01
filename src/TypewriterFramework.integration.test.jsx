@@ -27,6 +27,7 @@ import {
   fetchTypewriterReply,
   fetchShouldGenerateContinuation,
 } from './apiService';
+import { playEndOfPageSound } from './utils';
 
 const localStorageMock = (() => {
   let store = {};
@@ -119,8 +120,9 @@ describe('TypewriterFramework integration', () => {
     });
   });
 
-  test('page turn fetches next film image when line limit is exceeded', async () => {
+  test('line-limit Enter does not auto-turn page before lever is enabled', async () => {
     fetchNextFilmImage.mockResolvedValue({ data: { image_url: 'new_page_specific.png' }, error: null });
+    fetchShouldGenerateContinuation.mockResolvedValue({ shouldGenerate: false });
 
     const { container } = render(<TypewriterFramework />);
     const root = container.firstChild;
@@ -142,6 +144,34 @@ describe('TypewriterFramework integration', () => {
 
     act(() => {
       vi.advanceTimersByTime(2400);
+    });
+
+    expect(fetchNextFilmImage).not.toHaveBeenCalled();
+    expect(playEndOfPageSound).not.toHaveBeenCalled();
+  });
+
+  test('turn page lever fetches next film image once lever is enabled', async () => {
+    fetchNextFilmImage.mockResolvedValue({ data: { image_url: 'new_page_specific.png' }, error: null });
+    fetchShouldGenerateContinuation.mockResolvedValue({ shouldGenerate: false });
+
+    render(<TypewriterFramework />);
+
+    for (let i = 0; i < 31; i += 1) {
+      clickKey('A');
+      act(() => {
+        vi.advanceTimersByTime(120);
+      });
+      clickKey(' ');
+      act(() => {
+        vi.advanceTimersByTime(120);
+      });
+    }
+
+    const lever = await screen.findByAltText('Lever level 4');
+    fireEvent.click(lever);
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
     });
 
     await waitFor(() => {
