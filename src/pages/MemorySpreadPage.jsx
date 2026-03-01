@@ -8,6 +8,7 @@ const SCREEN = {
 };
 
 const DEFAULT_API_BASE_URL = 'http://localhost:5001';
+const TYPEWRITER_SESSION_STORAGE_KEY = 'sessionId';
 const DEFAULT_SESSION_ID = 'memory-spread-demo';
 const DEFAULT_PLAYER_ID = 'memory-spread-player';
 const DEFAULT_FRAGMENT_TEXT =
@@ -77,6 +78,11 @@ const RELATIONSHIP_STRENGTH = { min: 1, max: 5, default: 3 };
 const RELATIONSHIP_DISTANCE = { close: 320, far: 760 };
 const CONSTELLATION_NODE_RADIUS = { memory: 190, entity: 150 };
 const CONSTELLATION_NODE_GAP = 30;
+
+const getStoredTypewriterSessionId = () => {
+  if (typeof window === 'undefined') return '';
+  return window.localStorage.getItem(TYPEWRITER_SESSION_STORAGE_KEY) || '';
+};
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -437,6 +443,7 @@ const requestJson = async (baseUrl, path, options = {}) => {
 };
 
 const MemorySpreadPage = () => {
+  const [sessionId] = useState(() => getStoredTypewriterSessionId() || DEFAULT_SESSION_ID);
   const [phase, setPhase] = useState(SCREEN.MEMORIES);
   const [selectedMemoryId, setSelectedMemoryId] = useState('');
   const [isCollapsing, setIsCollapsing] = useState(false);
@@ -689,14 +696,16 @@ const MemorySpreadPage = () => {
     setNotice('Drawing three memories from the archives...');
 
     const requestBody = {
-      sessionId: DEFAULT_SESSION_ID,
+      sessionId,
       playerId: DEFAULT_PLAYER_ID,
-      fragment: DEFAULT_FRAGMENT_TEXT,
       count: 3,
       includeCards: true,
       includeFront: true,
       includeBack: true
     };
+    if (sessionId === DEFAULT_SESSION_ID) {
+      requestBody.fragment = DEFAULT_FRAGMENT_TEXT;
+    }
 
     if (SHOULD_USE_MOCK_APIS) {
       try {
@@ -753,7 +762,7 @@ const MemorySpreadPage = () => {
     } finally {
       setIsLoadingMemories(false);
     }
-  }, []);
+  }, [sessionId]);
 
   const loadEntityDeckForMemory = useCallback(async (memoryCard) => {
     const requestId = Date.now();
@@ -771,13 +780,15 @@ const MemorySpreadPage = () => {
     );
 
     const requestBody = {
-      sessionId: DEFAULT_SESSION_ID,
+      sessionId,
       playerId: DEFAULT_PLAYER_ID,
-      text: memoryText,
       includeCards: true,
       includeFront: true,
       includeBack: true
     };
+    if (sessionId === DEFAULT_SESSION_ID) {
+      requestBody.text = memoryText;
+    }
 
     const safelyApplyDeck = (nextCards, source, errorMessage) => {
       if (activeDeckRequestRef.current !== requestId) return;
@@ -848,7 +859,7 @@ const MemorySpreadPage = () => {
       }
 
       const requestPath = `/api/storytellers/${encodeURIComponent(storytellerId)}${buildQuery({
-        sessionId: DEFAULT_SESSION_ID,
+        sessionId,
         playerId: DEFAULT_PLAYER_ID
       })}`;
 
@@ -892,7 +903,7 @@ const MemorySpreadPage = () => {
         return null;
       }
     },
-    [storytellerDetailsById]
+    [sessionId, storytellerDetailsById]
   );
 
   const loadStorytellersForMemory = useCallback(
@@ -911,7 +922,7 @@ const MemorySpreadPage = () => {
       );
 
       const generatePayload = {
-        sessionId: DEFAULT_SESSION_ID,
+        sessionId,
         playerId: DEFAULT_PLAYER_ID,
         text: memoryText,
         count: DEFAULT_STORYTELLER_COUNT,
@@ -920,7 +931,7 @@ const MemorySpreadPage = () => {
       };
 
       const listPath = `/api/storytellers${buildQuery({
-        sessionId: DEFAULT_SESSION_ID,
+        sessionId,
         playerId: DEFAULT_PLAYER_ID
       })}`;
 
@@ -1001,7 +1012,7 @@ const MemorySpreadPage = () => {
         setIsLoadingStorytellers(false);
       }
     },
-    [storytellerDetailsById]
+    [sessionId, storytellerDetailsById]
   );
 
   const refreshStorytellersFromList = useCallback(
@@ -1013,7 +1024,7 @@ const MemorySpreadPage = () => {
         const listPayload = await requestJson(
           DEFAULT_API_BASE_URL,
           `/api/storytellers${buildQuery({
-            sessionId: DEFAULT_SESSION_ID,
+            sessionId,
             playerId: DEFAULT_PLAYER_ID
           })}`,
           { method: 'GET' }
@@ -1037,7 +1048,7 @@ const MemorySpreadPage = () => {
         setIsLoadingStorytellers(false);
       }
     },
-    [storytellers, storytellerDetailsById]
+    [sessionId, storytellers, storytellerDetailsById]
   );
 
   const handleStorytellerIconClick = useCallback(
@@ -1093,7 +1104,7 @@ const MemorySpreadPage = () => {
     }
 
     const requestBody = {
-      sessionId: DEFAULT_SESSION_ID,
+      sessionId,
       playerId: DEFAULT_PLAYER_ID,
       entityId: entityApiId,
       storytellerId: storytellerMenuStoryteller.id,
@@ -1201,6 +1212,7 @@ const MemorySpreadPage = () => {
     missionPoints,
     missionTargetEntity,
     refreshStorytellersFromList,
+    sessionId,
     storytellerMenuStoryteller,
     loadStorytellerDetail
   ]);
@@ -1575,7 +1587,7 @@ const MemorySpreadPage = () => {
     try {
       const proposalPayload = await proposeRelationship(
         {
-          sessionId: DEFAULT_SESSION_ID,
+          sessionId,
           playerId: DEFAULT_PLAYER_ID,
           arenaId: selectedMemoryId || 'memory-spread',
           source: { cardId: sourceCardId, entityId: sourceCardId },
