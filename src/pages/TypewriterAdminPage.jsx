@@ -27,19 +27,37 @@ const SETTING_PIPELINES = [
     key: 'memory_creation',
     label: 'Memory creation',
     description: '/api/fragmentToMemories',
-    modelKind: 'text'
+    modelKind: 'text',
+    supportsCount: true,
+    countProperty: 'memoryCount',
+    countLabel: 'Default memory count',
+    minCount: 1,
+    maxCount: 10,
+    defaultCount: 3
   },
   {
     key: 'entity_creation',
     label: 'Entity creation',
     description: '/api/textToEntity',
-    modelKind: 'text'
+    modelKind: 'text',
+    supportsCount: true,
+    countProperty: 'entityCount',
+    countLabel: 'Default entity count',
+    minCount: 1,
+    maxCount: 12,
+    defaultCount: 8
   },
   {
     key: 'storyteller_creation',
     label: 'Storyteller creation',
     description: '/api/textToStoryteller (persona stage)',
-    modelKind: 'text'
+    modelKind: 'text',
+    supportsCount: true,
+    countProperty: 'storytellerCount',
+    countLabel: 'Default storyteller count',
+    minCount: 1,
+    maxCount: 10,
+    defaultCount: 4
   },
   {
     key: 'texture_creation',
@@ -133,12 +151,15 @@ const getInitialAdminKey = () => {
 const buildEmptySettings = () => {
   const pipelines = {};
   for (const pipeline of SETTING_PIPELINES) {
-    pipelines[pipeline.key] = {
-      key: pipeline.key,
-      useMock: false,
-      model: '',
-      modelKind: pipeline.modelKind
-    };
+      pipelines[pipeline.key] = {
+        key: pipeline.key,
+        useMock: false,
+        model: '',
+        modelKind: pipeline.modelKind
+      };
+      if (pipeline.supportsCount && pipeline.countProperty) {
+        pipelines[pipeline.key][pipeline.countProperty] = pipeline.defaultCount;
+      }
   }
   return {
     pipelines,
@@ -152,6 +173,12 @@ const formatDate = (timestamp) => {
   const parsed = Date.parse(timestamp);
   if (Number.isNaN(parsed)) return 'Never';
   return new Date(parsed).toLocaleString();
+};
+
+const normalizeCountDraft = (value, fallback = 1, min = 1, max = 10) => {
+  const next = Number(value);
+  if (!Number.isFinite(next)) return fallback;
+  return Math.min(Math.max(min, Math.floor(next)), max);
 };
 
 const TypewriterAdminPage = () => {
@@ -223,7 +250,12 @@ const TypewriterAdminPage = () => {
         ...pipeline,
         useMock: Boolean(current.useMock),
         model: typeof current.model === 'string' ? current.model : '',
-        modelKind: current.modelKind || pipeline.modelKind
+        modelKind: current.modelKind || pipeline.modelKind,
+        countValue: pipeline.supportsCount && pipeline.countProperty
+          ? Number.isFinite(Number(current[pipeline.countProperty]))
+            ? Number(current[pipeline.countProperty])
+            : pipeline.defaultCount
+          : undefined
       };
     });
   }, [settings]);
@@ -275,6 +307,9 @@ const TypewriterAdminPage = () => {
           useMock: Boolean(row.useMock),
           model: row.model
         };
+        if (row.supportsCount && row.countProperty) {
+          payload.pipelines[row.key][row.countProperty] = row.countValue;
+        }
       }
       const response = await saveTypewriterAiSettings(apiBaseUrl, payload, {
         adminKey,
@@ -481,6 +516,7 @@ const TypewriterAdminPage = () => {
               <th>Pipeline</th>
               <th>Use Mock</th>
               <th>Model</th>
+              <th>Options</th>
             </tr>
           </thead>
           <tbody>
@@ -515,6 +551,31 @@ const TypewriterAdminPage = () => {
                         </option>
                       ))}
                     </select>
+                  </td>
+                  <td>
+                    {row.supportsCount ? (
+                      <label className="typewriterNumericSetting">
+                        <span>{row.countLabel}</span>
+                        <input
+                          type="number"
+                          min={row.minCount}
+                          max={row.maxCount}
+                          value={row.countValue}
+                          onChange={(event) =>
+                            updatePipeline(row.key, {
+                              [row.countProperty]: normalizeCountDraft(
+                                event.target.value,
+                                row.countValue,
+                                row.minCount,
+                                row.maxCount
+                              )
+                            })
+                          }
+                        />
+                      </label>
+                    ) : (
+                      <span className="typewriterSettingPlaceholder">-</span>
+                    )}
                   </td>
                 </tr>
               );

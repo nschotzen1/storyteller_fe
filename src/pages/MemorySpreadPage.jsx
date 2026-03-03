@@ -13,11 +13,19 @@ const DEFAULT_SESSION_ID = 'memory-spread-demo';
 const DEFAULT_PLAYER_ID = 'memory-spread-player';
 const DEFAULT_FRAGMENT_TEXT =
   'A wind-scoured pass with a rusted watchtower and a lone courier arriving at dusk.';
+const DEFAULT_MOCK_SESSION_FRAGMENT =
+  'At dusk the courier reached the wind-scoured pass below a rusted watchtower, carrying a rain-dark satchel sealed with ash. No one answered the signal bell, but boot prints ringed the threshold and vanished into the shale. When the courier touched the gate, a hidden mechanism groaned awake beneath the stone.';
 const SHOULD_USE_MOCK_APIS = (() => {
   if (typeof window === 'undefined') return true;
   const params = new URLSearchParams(window.location.search);
   const liveApi = `${params.get('liveApi') || ''}`.trim().toLowerCase();
   return !(liveApi === '1' || liveApi === 'true' || liveApi === 'yes');
+})();
+const IS_ADMIN_MODE = (() => {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  const adminMode = `${params.get('admin') || ''}`.trim().toLowerCase();
+  return adminMode === '1' || adminMode === 'true' || adminMode === 'yes';
 })();
 
 const MEMORY_FALLBACK_CARDS = [
@@ -399,11 +407,12 @@ const mapStorytellerRoster = ({ listPayload, generatedPayload, detailsById = {},
       iconUrl: resolveAssetUrl(
         baseUrl,
         firstNonEmptyString(
+          detail?.keyImageUrl,
           detail?.illustration,
           detail?.iconUrl,
           detail?.icon_url,
           detail?.imageUrl,
-          detail?.keyImageUrl,
+          item?.keyImageUrl,
           item?.illustration,
           item?.iconUrl,
           item?.icon_url,
@@ -442,17 +451,32 @@ const requestJson = async (baseUrl, path, options = {}) => {
   return payload;
 };
 
+const buildQuery = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    if (typeof value === 'string' && !value.trim()) return;
+    query.set(key, String(value));
+  });
+  const serialized = query.toString();
+  return serialized ? `?${serialized}` : '';
+};
+
 const MemorySpreadPage = () => {
-  const [sessionId] = useState(() => getStoredTypewriterSessionId() || DEFAULT_SESSION_ID);
+  const [sessionId, setSessionId] = useState(() => getStoredTypewriterSessionId() || DEFAULT_SESSION_ID);
+  const hasTypewriterSession = sessionId && sessionId !== DEFAULT_SESSION_ID;
+  const [mockSessionFragment, setMockSessionFragment] = useState(DEFAULT_MOCK_SESSION_FRAGMENT);
+  const [isCreatingMockSession, setIsCreatingMockSession] = useState(false);
+  const [isSavingMockFragment, setIsSavingMockFragment] = useState(false);
   const [phase, setPhase] = useState(SCREEN.MEMORIES);
   const [selectedMemoryId, setSelectedMemoryId] = useState('');
   const [isCollapsing, setIsCollapsing] = useState(false);
   const [isSpreadIntro, setIsSpreadIntro] = useState(false);
-  const [memoryCards, setMemoryCards] = useState(MEMORY_FALLBACK_CARDS);
+  const [memoryCards, setMemoryCards] = useState(() => (IS_ADMIN_MODE ? [] : MEMORY_FALLBACK_CARDS));
   const [memorySource, setMemorySource] = useState('fallback');
   const [memoryError, setMemoryError] = useState('');
   const [isLoadingMemories, setIsLoadingMemories] = useState(false);
-  const [deckCards, setDeckCards] = useState(ensureDeckSize(ENTITY_FALLBACK_DECK));
+  const [deckCards, setDeckCards] = useState(() => (IS_ADMIN_MODE ? [] : ensureDeckSize(ENTITY_FALLBACK_DECK)));
   const [deckSource, setDeckSource] = useState('fallback');
   const [deckError, setDeckError] = useState('');
   const [isLoadingDeck, setIsLoadingDeck] = useState(false);
@@ -472,7 +496,7 @@ const MemorySpreadPage = () => {
   const [viewport, setViewport] = useState({ x: 480, y: 280, k: 0.95 });
   const [isPanning, setIsPanning] = useState(false);
   const [isViewportAnimating, setIsViewportAnimating] = useState(false);
-  const [storytellers, setStorytellers] = useState(STORYTELLER_FALLBACK_ROSTER);
+  const [storytellers, setStorytellers] = useState(() => (IS_ADMIN_MODE ? [] : STORYTELLER_FALLBACK_ROSTER));
   const [storytellerSource, setStorytellerSource] = useState('fallback');
   const [storytellerError, setStorytellerError] = useState('');
   const [isLoadingStorytellers, setIsLoadingStorytellers] = useState(false);
@@ -486,7 +510,11 @@ const MemorySpreadPage = () => {
   const [isSendingMission, setIsSendingMission] = useState(false);
   const [lastMissionResult, setLastMissionResult] = useState(null);
   const [storytellerAssignmentsByEntityId, setStorytellerAssignmentsByEntityId] = useState({});
-  const [notice, setNotice] = useState('Choose a memory to begin the reading.');
+  const [notice, setNotice] = useState(
+    IS_ADMIN_MODE
+      ? 'Admin mode: generate memories from the saved typewriter fragment.'
+      : 'Choose a memory to begin the reading.'
+  );
 
   const timeoutRef = useRef([]);
   const activeDeckRequestRef = useRef(0);
@@ -690,20 +718,63 @@ const MemorySpreadPage = () => {
     hasSpreadCenteredRef.current = true;
   }, [phase, selectedMemoryId, arenaSize.width, arenaSize.height, centerViewportOnWorld]);
 
+  const persistMockFragmentToSession = useCallback(async () => {
+    const fragment = `${mockSessionFragment || ''}`.trim();
+    if (!hasTypewriterSession) {
+      setMemoryError('No current session is available.');
+      setNotice('Generate a session first, then save the fragment into it.');
+      return false;
+    }
+    if (!fragment) {
+      setMemoryError('Mock fragment cannot be empty.');
+      setNotice('Enter a mock fragment before saving it to the current session.');
+      return false;
+    }
+
+    await requestJson(DEFAULT_API_BASE_URL, '/api/typewriter/session/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, fragment })
+    });
+
+    return true;
+  }, [hasTypewriterSession, mockSessionFragment, sessionId]);
+
   const loadMemoryCards = useCallback(async () => {
+    if (IS_ADMIN_MODE && !hasTypewriterSession) {
+      setMemoryError('Start a typewriter session first so memory generation has a saved fragment.');
+      setNotice('Admin mode needs a live typewriter session before memories can be generated.');
+      return;
+    }
+
+    if (IS_ADMIN_MODE) {
+      try {
+        const didPersist = await persistMockFragmentToSession();
+        if (!didPersist) {
+          return;
+        }
+      } catch (error) {
+        setMemoryError(firstNonEmptyString(error?.message, 'Failed saving fragment to current session.'));
+        setNotice('Could not save the current fragment before generating memories.');
+        return;
+      }
+    }
+
     setIsLoadingMemories(true);
     setMemoryError('');
     setNotice('Drawing three memories from the archives...');
 
     const requestBody = {
       sessionId,
-      playerId: DEFAULT_PLAYER_ID,
-      count: 3,
       includeCards: true,
-      includeFront: true,
+      includeFront: false,
       includeBack: true
     };
-    if (sessionId === DEFAULT_SESSION_ID) {
+    if (!IS_ADMIN_MODE) {
+      requestBody.playerId = DEFAULT_PLAYER_ID;
+      requestBody.count = 3;
+    }
+    if (!IS_ADMIN_MODE && sessionId === DEFAULT_SESSION_ID) {
       requestBody.fragment = DEFAULT_FRAGMENT_TEXT;
     }
 
@@ -719,7 +790,7 @@ const MemorySpreadPage = () => {
         setMemorySource('mock');
         setNotice('Using mocked memories. Choose one to continue.');
       } catch (mockError) {
-        setMemoryCards(ensureTriptych([]));
+        setMemoryCards(IS_ADMIN_MODE ? [] : ensureTriptych([]));
         setMemorySource('fallback');
         setMemoryError(firstNonEmptyString(mockError?.message));
         setNotice('Using fallback memories because memory API was unavailable.');
@@ -754,7 +825,7 @@ const MemorySpreadPage = () => {
         setMemoryError('');
         setNotice('Using mocked archives from API. Choose one to continue.');
       } catch (mockError) {
-        setMemoryCards(ensureTriptych([]));
+        setMemoryCards(IS_ADMIN_MODE ? [] : ensureTriptych([]));
         setMemorySource('fallback');
         setMemoryError(firstNonEmptyString(mockError?.message, liveError?.message));
         setNotice('Using fallback memories because memory API was unavailable.');
@@ -762,9 +833,28 @@ const MemorySpreadPage = () => {
     } finally {
       setIsLoadingMemories(false);
     }
-  }, [sessionId]);
+  }, [hasTypewriterSession, persistMockFragmentToSession, sessionId]);
 
   const loadEntityDeckForMemory = useCallback(async (memoryCard) => {
+    if (IS_ADMIN_MODE && !hasTypewriterSession) {
+      setDeckError('Start a typewriter session first so entities can use the saved fragment.');
+      setNotice('Admin mode needs a live typewriter session before entities can be generated.');
+      return;
+    }
+
+    if (IS_ADMIN_MODE) {
+      try {
+        const didPersist = await persistMockFragmentToSession();
+        if (!didPersist) {
+          return;
+        }
+      } catch (error) {
+        setDeckError(firstNonEmptyString(error?.message, 'Failed saving fragment to current session.'));
+        setNotice('Could not save the current fragment before generating entities.');
+        return;
+      }
+    }
+
     const requestId = Date.now();
     activeDeckRequestRef.current = requestId;
 
@@ -781,18 +871,20 @@ const MemorySpreadPage = () => {
 
     const requestBody = {
       sessionId,
-      playerId: DEFAULT_PLAYER_ID,
       includeCards: true,
       includeFront: true,
       includeBack: true
     };
-    if (sessionId === DEFAULT_SESSION_ID) {
+    if (!IS_ADMIN_MODE) {
+      requestBody.playerId = DEFAULT_PLAYER_ID;
+    }
+    if (!IS_ADMIN_MODE && sessionId === DEFAULT_SESSION_ID) {
       requestBody.text = memoryText;
     }
 
     const safelyApplyDeck = (nextCards, source, errorMessage) => {
       if (activeDeckRequestRef.current !== requestId) return;
-      setDeckCards(ensureDeckSize(nextCards));
+      setDeckCards(IS_ADMIN_MODE ? nextCards : ensureDeckSize(nextCards));
       setDeckSource(source);
       if (errorMessage) setDeckError(errorMessage);
       setIsLoadingDeck(false);
@@ -849,7 +941,7 @@ const MemorySpreadPage = () => {
         safelyApplyDeck([], 'fallback', firstNonEmptyString(mockError?.message, liveError?.message));
       }
     }
-  }, []);
+  }, [hasTypewriterSession, persistMockFragmentToSession, sessionId]);
 
   const loadStorytellerDetail = useCallback(
     async (storytellerId, { force = false, suppressNotice = false } = {}) => {
@@ -860,7 +952,7 @@ const MemorySpreadPage = () => {
 
       const requestPath = `/api/storytellers/${encodeURIComponent(storytellerId)}${buildQuery({
         sessionId,
-        playerId: DEFAULT_PLAYER_ID
+        playerId: IS_ADMIN_MODE ? undefined : DEFAULT_PLAYER_ID
       })}`;
 
       try {
@@ -885,6 +977,7 @@ const MemorySpreadPage = () => {
               iconUrl: resolveAssetUrl(
                 DEFAULT_API_BASE_URL,
                 firstNonEmptyString(
+                  detail?.keyImageUrl,
                   detail?.illustration,
                   detail?.iconUrl,
                   detail?.icon_url,
@@ -908,6 +1001,25 @@ const MemorySpreadPage = () => {
 
   const loadStorytellersForMemory = useCallback(
     async (memoryCard) => {
+      if (IS_ADMIN_MODE && !hasTypewriterSession) {
+        setStorytellerError('Start a typewriter session first so storytellers can use the generated material.');
+        setNotice('Admin mode needs a live typewriter session before storytellers can be generated.');
+        return;
+      }
+
+      if (IS_ADMIN_MODE) {
+        try {
+          const didPersist = await persistMockFragmentToSession();
+          if (!didPersist) {
+            return;
+          }
+        } catch (error) {
+          setStorytellerError(firstNonEmptyString(error?.message, 'Failed saving fragment to current session.'));
+          setNotice('Could not save the current fragment before generating storytellers.');
+          return;
+        }
+      }
+
       setIsLoadingStorytellers(true);
       setStorytellerError('');
       setStorytellerSource('loading');
@@ -923,16 +1035,21 @@ const MemorySpreadPage = () => {
 
       const generatePayload = {
         sessionId,
-        playerId: DEFAULT_PLAYER_ID,
         text: memoryText,
-        count: DEFAULT_STORYTELLER_COUNT,
         mockImage: true,
-        generateKeyImages: false
+        generateKeyImages: true
       };
+      if (!IS_ADMIN_MODE) {
+        generatePayload.playerId = DEFAULT_PLAYER_ID;
+        generatePayload.count = DEFAULT_STORYTELLER_COUNT;
+      }
+      if (IS_ADMIN_MODE) {
+        delete generatePayload.text;
+      }
 
       const listPath = `/api/storytellers${buildQuery({
         sessionId,
-        playerId: DEFAULT_PLAYER_ID
+        playerId: IS_ADMIN_MODE ? undefined : DEFAULT_PLAYER_ID
       })}`;
 
       const applyRoster = (listPayload, generatedPayload, sourceLabel, errorMessage = '') => {
@@ -944,13 +1061,18 @@ const MemorySpreadPage = () => {
         });
 
         if (mapped.length === 0) {
-          setStorytellers(STORYTELLER_FALLBACK_ROSTER);
-          setActiveStorytellerId(STORYTELLER_FALLBACK_ROSTER[0]?.id || '');
+          const fallbackRoster = IS_ADMIN_MODE ? [] : STORYTELLER_FALLBACK_ROSTER;
+          setStorytellers(fallbackRoster);
+          setActiveStorytellerId(fallbackRoster[0]?.id || '');
           setStorytellerSource('fallback');
           setStorytellerError(
             firstNonEmptyString(errorMessage, 'Storyteller APIs returned no results.')
           );
-          setNotice('Using fallback storytellers because API responses were empty.');
+          setNotice(
+            IS_ADMIN_MODE
+              ? 'No storytellers were generated. Check the API response and try again.'
+              : 'Using fallback storytellers because API responses were empty.'
+          );
           return;
         }
 
@@ -1012,7 +1134,7 @@ const MemorySpreadPage = () => {
         setIsLoadingStorytellers(false);
       }
     },
-    [sessionId, storytellerDetailsById]
+    [hasTypewriterSession, persistMockFragmentToSession, sessionId, storytellerDetailsById]
   );
 
   const refreshStorytellersFromList = useCallback(
@@ -1025,7 +1147,7 @@ const MemorySpreadPage = () => {
           DEFAULT_API_BASE_URL,
           `/api/storytellers${buildQuery({
             sessionId,
-            playerId: DEFAULT_PLAYER_ID
+            playerId: IS_ADMIN_MODE ? undefined : DEFAULT_PLAYER_ID
           })}`,
           { method: 'GET' }
         );
@@ -1105,13 +1227,15 @@ const MemorySpreadPage = () => {
 
     const requestBody = {
       sessionId,
-      playerId: DEFAULT_PLAYER_ID,
       entityId: entityApiId,
       storytellerId: storytellerMenuStoryteller.id,
       storytellingPoints: Math.max(1, Math.round(Number(missionPoints) || 1)),
       message: missionText,
       duration: Math.max(1, Math.round(Number(missionDurationDays) || 1))
     };
+    if (!IS_ADMIN_MODE) {
+      requestBody.playerId = DEFAULT_PLAYER_ID;
+    }
 
     setIsSendingMission(true);
     setStorytellerError('');
@@ -1218,8 +1342,14 @@ const MemorySpreadPage = () => {
   ]);
 
   useEffect(() => {
+    if (IS_ADMIN_MODE) {
+      if (!hasTypewriterSession) {
+        setNotice('Admin mode: start in the typewriter, then come here to generate memories.');
+      }
+      return;
+    }
     loadMemoryCards();
-  }, [loadMemoryCards]);
+  }, [hasTypewriterSession, loadMemoryCards]);
 
   useEffect(() => {
     if (selectedArenaEntity?.kind === 'entity') {
@@ -1329,7 +1459,7 @@ const MemorySpreadPage = () => {
     setSelectedMemoryId('');
     setIsCollapsing(false);
     setIsSpreadIntro(false);
-    setDeckCards(ensureDeckSize(deckCards));
+    setDeckCards(IS_ADMIN_MODE ? [] : ensureDeckSize(deckCards));
     setArenaEntities([]);
     setConnections([]);
     setPendingEntity(null);
@@ -1341,7 +1471,7 @@ const MemorySpreadPage = () => {
     setDraggingEntityId('');
     setIsArenaDragOver(false);
     setSelectedArenaEntityId('');
-    setStorytellers(STORYTELLER_FALLBACK_ROSTER);
+    setStorytellers(IS_ADMIN_MODE ? [] : STORYTELLER_FALLBACK_ROSTER);
     setStorytellerSource('fallback');
     setStorytellerError('');
     setIsLoadingStorytellers(false);
@@ -1366,6 +1496,64 @@ const MemorySpreadPage = () => {
     setIsViewportAnimating(false);
     setNotice(nextNotice);
   };
+
+
+  const handleGenerateMockSession = useCallback(async () => {
+    const fragment = `${mockSessionFragment || ''}`.trim();
+    if (!fragment) {
+      setMemoryError('Mock fragment cannot be empty.');
+      setNotice('Enter a mock fragment before generating a session.');
+      return;
+    }
+
+    setIsCreatingMockSession(true);
+    setMemoryError('');
+    setDeckError('');
+    setStorytellerError('');
+
+    try {
+      const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/typewriter/session/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fragment })
+      });
+      const nextSessionId = firstNonEmptyString(payload?.sessionId, DEFAULT_SESSION_ID);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(TYPEWRITER_SESSION_STORAGE_KEY, nextSessionId);
+      }
+      setSessionId(nextSessionId);
+      resetToMemorySelection('Mock session ready. Generate memories to test the flow.');
+      setMemoryCards([]);
+      setMemorySource('seeded');
+    } catch (error) {
+      setMemoryError(firstNonEmptyString(error?.message, 'Failed creating mock session.'));
+      setNotice('Mock session creation failed.');
+    } finally {
+      setIsCreatingMockSession(false);
+    }
+  }, [mockSessionFragment, resetToMemorySelection]);
+
+  const handleSaveMockFragmentToCurrentSession = useCallback(async () => {
+    setIsSavingMockFragment(true);
+    setMemoryError('');
+    setDeckError('');
+    setStorytellerError('');
+
+    try {
+      const didPersist = await persistMockFragmentToSession();
+      if (!didPersist) {
+        return;
+      }
+      resetToMemorySelection('Fragment saved to current session. Generate memories to test the flow.');
+      setMemoryCards([]);
+      setMemorySource('seeded');
+    } catch (error) {
+      setMemoryError(firstNonEmptyString(error?.message, 'Failed saving fragment to current session.'));
+      setNotice('Saving fragment to current session failed.');
+    } finally {
+      setIsSavingMockFragment(false);
+    }
+  }, [persistMockFragmentToSession, resetToMemorySelection]);
 
   const openMemory = (memoryId) => {
     if (phase !== SCREEN.MEMORIES || isCollapsing || isLoadingMemories) return;
@@ -1406,16 +1594,61 @@ const MemorySpreadPage = () => {
         y: arenaSize.height / 2,
         k: 0.94
       });
-      setNotice('Revealing entities and storytellers from the APIs...');
-      void loadEntityDeckForMemory(memory);
-      void loadStorytellersForMemory(memory);
+      if (IS_ADMIN_MODE) {
+        setNotice('Memory anchored. Use the admin controls to generate entities and storytellers.');
+      } else {
+        setNotice('Revealing entities and storytellers from the APIs...');
+        void loadEntityDeckForMemory(memory);
+        void loadStorytellersForMemory(memory);
+      }
 
       schedule(() => {
         setIsSpreadIntro(false);
-        setNotice('Place a card upon the velvet, then define its thread to anchor it.');
+        setNotice(
+          IS_ADMIN_MODE
+            ? 'Generate entities and storytellers when ready, then place cards upon the velvet to anchor them.'
+            : 'Place a card upon the velvet, then define its thread to anchor it.'
+        );
       }, 880);
     }, 620);
   };
+
+  const handleGenerateMemories = useCallback(() => {
+    void loadMemoryCards();
+  }, [loadMemoryCards]);
+
+  const handleGenerateEntities = useCallback(() => {
+    if (!selectedMemory) {
+      setDeckError('Choose a memory first.');
+      setNotice('Select one of the generated memories before creating entities.');
+      return;
+    }
+    setDeckError('');
+    setNotice('Generating entities from the chosen memory...');
+    void loadEntityDeckForMemory(selectedMemory);
+  }, [loadEntityDeckForMemory, selectedMemory]);
+
+  const handleGenerateStorytellers = useCallback(() => {
+    if (!selectedMemory) {
+      setStorytellerError('Choose a memory first.');
+      setNotice('Select one of the generated memories before creating storytellers.');
+      return;
+    }
+    setStorytellerError('');
+    setNotice('Generating storytellers from the chosen memory...');
+    void loadStorytellersForMemory(selectedMemory);
+  }, [loadStorytellersForMemory, selectedMemory]);
+
+  const handleToggleAdminMode = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (IS_ADMIN_MODE) {
+      url.searchParams.delete('admin');
+    } else {
+      url.searchParams.set('admin', '1');
+    }
+    window.location.assign(url.toString());
+  }, []);
 
   const returnToMemorySelection = () => {
     if (pendingEntity) {
@@ -1815,17 +2048,68 @@ const MemorySpreadPage = () => {
       <div className="tarotSigils" />
 
       <header className="memorySpreadHeader">
-        <p className="memorySpreadEyebrow">Ritual Narrative Surface</p>
-        <h1>Memory Constellation</h1>
+        <p className="memorySpreadEyebrow">Field Ledger</p>
+        <h1>Memory Spread</h1>
         <p>{notice}</p>
         <div className="memorySpreadMeta">
+          {IS_ADMIN_MODE && <span className="memorySpreadModeTag">Admin mode</span>}
+          <span className="memorySpreadSessionTag">
+            Session: {hasTypewriterSession ? sessionId : 'typewriter session required'}
+          </span>
           <span>Archives: {isLoadingMemories ? 'unsealing' : memorySource}</span>
           <span>Deck: {isLoadingDeck ? 'drawing' : deckSource}</span>
           <span>Storytellers: {isLoadingStorytellers ? 'summoning' : storytellerSource}</span>
-          <button type="button" onClick={loadMemoryCards} disabled={isLoadingMemories || phase !== SCREEN.MEMORIES}>
-            Redraw Archives
+          <button type="button" onClick={handleToggleAdminMode}>
+            {IS_ADMIN_MODE ? 'Hide admin tools' : 'Show admin tools'}
           </button>
+          {!IS_ADMIN_MODE && (
+            <button type="button" onClick={loadMemoryCards} disabled={isLoadingMemories || phase !== SCREEN.MEMORIES}>
+              Redraw Archives
+            </button>
+          )}
+          {IS_ADMIN_MODE && (
+            <button
+              type="button"
+              onClick={handleGenerateMemories}
+              disabled={isLoadingMemories || phase !== SCREEN.MEMORIES || !hasTypewriterSession}
+            >
+              Generate memories
+            </button>
+          )}
         </div>
+        {IS_ADMIN_MODE && (
+          <div className="memorySpreadAdminSeed">
+            <div className="memorySpreadAdminSeedCopy">
+              <strong>Mock session seed</strong>
+              <p>Create a real Mongo-backed session with a mocked fragment so you can test memories and entities without visiting the typewriter first.</p>
+            </div>
+            <label className="memorySpreadAdminSeedField">
+              Mock fragment
+              <textarea
+                value={mockSessionFragment}
+                onChange={(event) => setMockSessionFragment(event.target.value)}
+                rows={4}
+                disabled={isCreatingMockSession}
+              />
+            </label>
+            <button
+              type="button"
+              className="memorySpreadAdminSeedButton"
+              onClick={handleGenerateMockSession}
+              disabled={isCreatingMockSession || isSavingMockFragment}
+            >
+              {isCreatingMockSession ? 'Generating session...' : 'Generate session + mocked fragment'}
+            </button>
+            <button
+              type="button"
+              className="memorySpreadAdminSeedButton ghost"
+              onClick={handleSaveMockFragmentToCurrentSession}
+              disabled={!hasTypewriterSession || isCreatingMockSession || isSavingMockFragment}
+            >
+              {isSavingMockFragment ? 'Saving fragment...' : 'Save fragment to current session'}
+            </button>
+          </div>
+        )}
         {(memoryError || deckError || storytellerError) && (
           <p className="memorySpreadError">
             {memoryError && `Memory API: ${memoryError}`}
@@ -1838,56 +2122,96 @@ const MemorySpreadPage = () => {
       </header>
 
       {phase === SCREEN.MEMORIES && (
-        <section className={`memoryTriptych ${isCollapsing ? 'is-collapsing' : ''}`} aria-label="Memory cards">
-          {memoryCards.map((card) => {
-            const isSelected = card.id === selectedMemoryId;
-            const isDissolving = Boolean(selectedMemoryId) && !isSelected;
-            const cardArtUrl = card.frontImageUrl || card.backImageUrl;
-            return (
-              <button
-                key={card.id}
-                type="button"
-                className={`memoryPillarCard tone-${card.tone} ${isSelected ? 'is-selected' : ''} ${isDissolving ? 'is-dissolving' : ''
-                  }`}
-                onClick={() => openMemory(card.id)}
-                disabled={isCollapsing || isLoadingMemories}
-              >
-                {cardArtUrl && (
-                  <div className="memoryPillarArt" aria-hidden="true">
-                    <img src={cardArtUrl} alt="" />
-                  </div>
-                )}
-                <div className="memoryPillarShade" aria-hidden="true" />
-                <span className="memoryArcanaTag">Memory Arcana</span>
-                <h2>{card.title}</h2>
-                <p>{card.summary}</p>
-                <span className="flipLockPill">
-                  {card.backImageUrl ? 'Sealed (reverse imagery ready)' : 'Sealed for this chapter'}
-                </span>
-                <span className="flipLockGlyph" aria-hidden="true">
-                  &lt;&gt;
-                </span>
+        <>
+          <section className="storytellerCommandBar storytellerCommandBar-preview" aria-label="Storyteller API preview">
+            <div className="storytellerCommandHeader">
+              <div>
+                <h3>Storyteller UI</h3>
+                <p>
+                  This page summons storytellers after you choose a memory. Then their rounded icons
+                  appear here, clicking one opens its menu, and the default action sends it to an
+                  entity.
+                </p>
+              </div>
+              <button type="button" disabled>
+                Choose memory first
               </button>
-            );
-          })}
-
-          {isCollapsing && selectedMemory && (
-            <div className="memoryCollapseFocus" aria-hidden="true">
-              <article className={`memoryPortalCard tone-${selectedMemory.tone}`}>
-                {(selectedMemory.frontImageUrl || selectedMemory.backImageUrl) && (
-                  <div className="memoryPortalArt">
-                    <img src={selectedMemory.frontImageUrl || selectedMemory.backImageUrl} alt="" />
-                  </div>
-                )}
-                <div className="memoryPillarShade" aria-hidden="true" />
-                <span className="memoryArcanaTag">Chosen Anchor</span>
-                <h2>{selectedMemory.title}</h2>
-                <p>{selectedMemory.summary}</p>
-                <span className="flipLockPill">Sealed</span>
-              </article>
             </div>
-          )}
-        </section>
+
+            <div className="storytellerIconRow storytellerIconRow-preview">
+              {STORYTELLER_FALLBACK_ROSTER.map((storyteller) => (
+                <button key={storyteller.id} type="button" className="storytellerIconButton" disabled>
+                  <span className="storytellerIconAvatar">
+                    <strong>{storytellerInitials(storyteller.name)}</strong>
+                  </span>
+                  <span className="storytellerIconLabel">{storyteller.name}</span>
+                  <small className="storytellerIconStatus">preview</small>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className={`memoryTriptych ${isCollapsing ? 'is-collapsing' : ''}`} aria-label="Memory cards">
+            {memoryCards.length === 0 && (
+              <div className="memoryTriptychEmpty">
+                <strong>No memories drawn yet.</strong>
+                <p>
+                  {IS_ADMIN_MODE
+                    ? 'Use Generate 3 memories after creating a typewriter session.'
+                    : 'Memory generation has not returned any cards yet.'}
+                </p>
+              </div>
+            )}
+            {memoryCards.map((card) => {
+              const isSelected = card.id === selectedMemoryId;
+              const isDissolving = Boolean(selectedMemoryId) && !isSelected;
+              const cardArtUrl = card.frontImageUrl || card.backImageUrl;
+              return (
+                <button
+                  key={card.id}
+                  type="button"
+                  className={`memoryPillarCard tone-${card.tone} ${isSelected ? 'is-selected' : ''} ${isDissolving ? 'is-dissolving' : ''
+                    }`}
+                  onClick={() => openMemory(card.id)}
+                  disabled={isCollapsing || isLoadingMemories}
+                >
+                  {cardArtUrl && (
+                    <div className="memoryPillarArt" aria-hidden="true">
+                      <img src={cardArtUrl} alt="" />
+                    </div>
+                  )}
+                  <div className="memoryPillarShade" aria-hidden="true" />
+                  <span className="memoryArcanaTag">Memory Entry</span>
+                  <h2>{card.title}</h2>
+                  <p>{card.summary}</p>
+                  <span className="flipLockPill">
+                    {card.backImageUrl ? 'Sealed (reverse imagery ready)' : 'Sealed for this chapter'}
+                  </span>
+                  <span className="flipLockGlyph" aria-hidden="true">
+                    &lt;&gt;
+                  </span>
+                </button>
+              );
+            })}
+
+            {isCollapsing && selectedMemory && (
+              <div className="memoryCollapseFocus" aria-hidden="true">
+                <article className={`memoryPortalCard tone-${selectedMemory.tone}`}>
+                  {(selectedMemory.frontImageUrl || selectedMemory.backImageUrl) && (
+                    <div className="memoryPortalArt">
+                      <img src={selectedMemory.frontImageUrl || selectedMemory.backImageUrl} alt="" />
+                    </div>
+                  )}
+                  <div className="memoryPillarShade" aria-hidden="true" />
+                  <span className="memoryArcanaTag">Chosen Entry</span>
+                  <h2>{selectedMemory.title}</h2>
+                  <p>{selectedMemory.summary}</p>
+                  <span className="flipLockPill">Sealed</span>
+                </article>
+              </div>
+            )}
+          </section>
+        </>
       )}
 
       {phase === SCREEN.SPREAD && selectedMemory && (
@@ -1895,207 +2219,201 @@ const MemorySpreadPage = () => {
           className={`spreadRitualStage constellationStage ${isSpreadIntro ? 'is-intro' : ''}`}
           aria-label="Spread building stage"
         >
-          <div className="memoryAnchorBand">
-            <article className={`chosenMemoryAnchor tone-${selectedMemory.tone}`}>
-              {(selectedMemory.frontImageUrl || selectedMemory.backImageUrl) && (
-                <div className="chosenAnchorArt" aria-hidden="true">
-                  <img src={selectedMemory.frontImageUrl || selectedMemory.backImageUrl} alt="" />
-                </div>
-              )}
-              <div className="memoryPillarShade" aria-hidden="true" />
-              <span>Core Anchor</span>
-              <h2>{selectedMemory.title}</h2>
-              <p>{selectedMemory.summary}</p>
-              <em>This memory grounds the celestial map.</em>
-            </article>
-            <div className="memoryAnchorActions">
-              <button type="button" onClick={returnToMemorySelection}>
-                Return to three-memory draw
-              </button>
-            </div>
-          </div>
-
-          <div className="storytellerCommandBar" aria-label="Storyteller roster">
-            <div className="storytellerCommandHeader">
-              <div>
-                <h3>Storytellers</h3>
-                <p>
-                  Click a round icon to open actions. Default action sends the storyteller to an
-                  entity.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => refreshStorytellersFromList()}
-                disabled={isLoadingStorytellers || phase !== SCREEN.SPREAD}
-              >
-                Refresh roster
-              </button>
-            </div>
-
-            <div className="storytellerIconRow">
-              {storytellers.map((storyteller) => {
-                const statusClass = storytellerStatusClass(storyteller.status);
-                return (
-                  <button
-                    key={storyteller.id}
-                    type="button"
-                    className={`storytellerIconButton ${storytellerMenuId === storyteller.id ? 'is-active' : ''
-                      }`}
-                    onClick={() => handleStorytellerIconClick(storyteller.id)}
-                    disabled={isLoadingStorytellers}
-                    aria-haspopup="menu"
-                    aria-expanded={storytellerMenuId === storyteller.id}
-                  >
-                    <span className={`storytellerIconAvatar status-${statusClass}`}>
-                      {storyteller.iconUrl ? (
-                        <img src={storyteller.iconUrl} alt="" />
-                      ) : (
-                        <strong>{storytellerInitials(storyteller.name)}</strong>
-                      )}
-                    </span>
-                    <span className="storytellerIconLabel">{storyteller.name}</span>
-                    <small className={`storytellerIconStatus status-${statusClass}`}>
-                      {storyteller.status || 'active'}
-                    </small>
-                  </button>
-                );
-              })}
-              {storytellers.length === 0 && !isLoadingStorytellers && (
-                <p className="storytellerRosterEmpty">No storytellers available.</p>
-              )}
-            </div>
-
-            {storytellerMenuStoryteller && (
-              <div className="storytellerActionMenu" role="menu">
-                <header>
-                  <div className="storytellerActionIdentity">
-                    <span
-                      className={`storytellerIconAvatar status-${storytellerStatusClass(
-                        storytellerMenuStoryteller.status
-                      )}`}
-                    >
-                      {storytellerMenuStoryteller.iconUrl ? (
-                        <img src={storytellerMenuStoryteller.iconUrl} alt="" />
-                      ) : (
-                        <strong>{storytellerInitials(storytellerMenuStoryteller.name)}</strong>
-                      )}
-                    </span>
-                    <div>
-                      <strong>{storytellerMenuStoryteller.name}</strong>
-                      <small>
-                        Status {storytellerMenuStoryteller.status || 'active'}
-                        {Number.isFinite(storytellerMenuStoryteller.level)
-                          ? ` • Level ${storytellerMenuStoryteller.level}`
-                          : ''}
-                      </small>
-                    </div>
-                  </div>
-                  <button type="button" onClick={() => setStorytellerMenuId('')}>
-                    Close
-                  </button>
-                </header>
-
-                <div className="storytellerActionFields">
-                  <label>
-                    Target entity
-                    <select
-                      value={missionTargetEntityId}
-                      onChange={(event) => setMissionTargetEntityId(event.target.value)}
-                      disabled={isSendingMission}
-                    >
-                      {targetableArenaEntities.length === 0 && (
-                        <option value="">No entities placed yet</option>
-                      )}
-                      {targetableArenaEntities.map((entity) => (
-                        <option key={entity.id} value={entity.id}>
-                          {entity.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Mission message
-                    <input
-                      type="text"
-                      value={missionMessage}
-                      onChange={(event) => setMissionMessage(event.target.value)}
-                      disabled={isSendingMission}
-                      placeholder="Investigate hidden tensions..."
-                    />
-                  </label>
-                  <div className="storytellerMissionFields">
-                    <label>
-                      Points
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={missionPoints}
-                        onChange={(event) => setMissionPoints(event.target.value)}
-                        disabled={isSendingMission}
-                      />
-                    </label>
-                    <label>
-                      Days
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={missionDurationDays}
-                        onChange={(event) => setMissionDurationDays(event.target.value)}
-                        disabled={isSendingMission}
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <div className="storytellerActionButtons">
-                  <button
-                    type="button"
-                    onClick={handleSendStorytellerToEntity}
-                    disabled={isSendingMission || !missionTargetEntity || !missionMessage.trim()}
-                  >
-                    {isSendingMission ? 'Sending...' : 'Send to entity'}
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={() =>
-                      loadStorytellerDetail(storytellerMenuStoryteller.id, {
-                        force: true,
-                        suppressNotice: true
-                      })
-                    }
-                    disabled={isSendingMission}
-                  >
-                    Refresh detail
-                  </button>
-                </div>
-
-                {lastMissionResult?.storytellerId === storytellerMenuStoryteller.id && (
-                  <div className="storytellerMissionResult">
-                    <strong>Mission result</strong>
-                    <span>
-                      {firstNonEmptyString(lastMissionResult?.outcome, 'pending')}
-                      {missionTargetEntity ? ` • ${missionTargetEntity.label}` : ''}
-                    </span>
-                    {lastMissionResult?.userText && <p>{lastMissionResult.userText}</p>}
+          <div className="spreadTopToolbar">
+            <div className="memoryAnchorBand">
+              <article className={`chosenMemoryAnchor tone-${selectedMemory.tone}`}>
+                {(selectedMemory.frontImageUrl || selectedMemory.backImageUrl) && (
+                  <div className="chosenAnchorArt" aria-hidden="true">
+                    <img src={selectedMemory.frontImageUrl || selectedMemory.backImageUrl} alt="" />
                   </div>
                 )}
+                <h2>{selectedMemory.title}</h2>
+              </article>
+              <div className="memoryAnchorActions">
+                {IS_ADMIN_MODE && (
+                  <button
+                    type="button"
+                    className="adminActionButton"
+                    onClick={handleGenerateEntities}
+                    disabled={isLoadingDeck || !selectedMemory}
+                  >
+                    {isLoadingDeck ? 'Generating...' : 'Entities'}
+                  </button>
+                )}
+                {IS_ADMIN_MODE && (
+                  <button
+                    type="button"
+                    className="adminActionButton"
+                    onClick={handleGenerateStorytellers}
+                    disabled={isLoadingStorytellers || !selectedMemory}
+                  >
+                    {isLoadingStorytellers ? 'Generating...' : 'Storytellers'}
+                  </button>
+                )}
+                <button type="button" onClick={returnToMemorySelection}>
+                  Redraw
+                </button>
               </div>
-            )}
+            </div>
+
+            <div className="storytellerCommandBar" aria-label="Storyteller roster">
+              <div className="storytellerIconRow">
+                {storytellers.map((storyteller) => {
+                  const statusClass = storytellerStatusClass(storyteller.status);
+                  return (
+                    <button
+                      key={storyteller.id}
+                      type="button"
+                      className={`storytellerIconButton ${storytellerMenuId === storyteller.id ? 'is-active' : ''
+                        }`}
+                      onClick={() => handleStorytellerIconClick(storyteller.id)}
+                      disabled={isLoadingStorytellers}
+                      aria-haspopup="menu"
+                      aria-expanded={storytellerMenuId === storyteller.id}
+                    >
+                      <span className={`storytellerIconAvatar status-${statusClass}`}>
+                        {storyteller.iconUrl ? (
+                          <img src={storyteller.iconUrl} alt="" />
+                        ) : (
+                          <strong>{storytellerInitials(storyteller.name)}</strong>
+                        )}
+                      </span>
+                      <span className="storytellerIconLabel">{storyteller.name}</span>
+                      <small className={`storytellerIconStatus status-${statusClass}`}>
+                        {storyteller.status || 'active'}
+                      </small>
+                    </button>
+                  );
+                })}
+                {storytellers.length === 0 && !isLoadingStorytellers && (
+                  <p className="storytellerRosterEmpty">No storytellers available.</p>
+                )}
+              </div>
+
+              {storytellerMenuStoryteller && (
+                <div className="storytellerActionMenu" role="menu">
+                  <header>
+                    <div className="storytellerActionIdentity">
+                      <span
+                        className={`storytellerIconAvatar status-${storytellerStatusClass(
+                          storytellerMenuStoryteller.status
+                        )}`}
+                      >
+                        {storytellerMenuStoryteller.iconUrl ? (
+                          <img src={storytellerMenuStoryteller.iconUrl} alt="" />
+                        ) : (
+                          <strong>{storytellerInitials(storytellerMenuStoryteller.name)}</strong>
+                        )}
+                      </span>
+                      <div>
+                        <strong>{storytellerMenuStoryteller.name}</strong>
+                        <small>
+                          Status {storytellerMenuStoryteller.status || 'active'}
+                          {Number.isFinite(storytellerMenuStoryteller.level)
+                            ? ` • Level ${storytellerMenuStoryteller.level}`
+                            : ''}
+                        </small>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => setStorytellerMenuId('')}>
+                      Close
+                    </button>
+                  </header>
+
+                  <div className="storytellerActionFields">
+                    <label>
+                      Target entity
+                      <select
+                        value={missionTargetEntityId}
+                        onChange={(event) => setMissionTargetEntityId(event.target.value)}
+                        disabled={isSendingMission}
+                      >
+                        {targetableArenaEntities.length === 0 && (
+                          <option value="">No entities placed yet</option>
+                        )}
+                        {targetableArenaEntities.map((entity) => (
+                          <option key={entity.id} value={entity.id}>
+                            {entity.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Mission message
+                      <input
+                        type="text"
+                        value={missionMessage}
+                        onChange={(event) => setMissionMessage(event.target.value)}
+                        disabled={isSendingMission}
+                        placeholder="Investigate hidden tensions..."
+                      />
+                    </label>
+                    <div className="storytellerMissionFields">
+                      <label>
+                        Points
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={missionPoints}
+                          onChange={(event) => setMissionPoints(event.target.value)}
+                          disabled={isSendingMission}
+                        />
+                      </label>
+                      <label>
+                        Days
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={missionDurationDays}
+                          onChange={(event) => setMissionDurationDays(event.target.value)}
+                          disabled={isSendingMission}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="storytellerActionButtons">
+                    <button
+                      type="button"
+                      onClick={handleSendStorytellerToEntity}
+                      disabled={isSendingMission || !missionTargetEntity || !missionMessage.trim()}
+                    >
+                      {isSendingMission ? 'Sending...' : 'Send to entity'}
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() =>
+                        loadStorytellerDetail(storytellerMenuStoryteller.id, {
+                          force: true,
+                          suppressNotice: true
+                        })
+                      }
+                      disabled={isSendingMission}
+                    >
+                      Refresh detail
+                    </button>
+                  </div>
+
+                  {lastMissionResult?.storytellerId === storytellerMenuStoryteller.id && (
+                    <div className="storytellerMissionResult">
+                      <strong>Mission result</strong>
+                      <span>
+                        {firstNonEmptyString(lastMissionResult?.outcome, 'pending')}
+                        {missionTargetEntity ? ` • ${missionTargetEntity.label}` : ''}
+                      </span>
+                      {lastMissionResult?.userText && <p>{lastMissionResult.userText}</p>}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="constellationWorkspace">
             <div className="spreadArenaPanel constellationPanel">
-              <div className="spreadArenaHeading">
-                <h2>Celestial Tapestry</h2>
-                <p>
-                  Place cards upon the velvet. A card remains only when its thread to an existing star is defined.
-                </p>
-              </div>
-
               <div
                 ref={arenaCanvasRef}
                 className={`constellationArena ${isArenaDragOver ? 'is-drag-over' : ''} ${isPanning ? 'is-panning' : ''}`}
@@ -2371,31 +2689,6 @@ const MemorySpreadPage = () => {
                   </div>
                 )}
               </div>
-
-              <div className="threadLedger">
-                <h3>Woven Threads</h3>
-                {connections.length === 0 ? (
-                  <p>No threads drawn yet. The first usually anchors to the core memory.</p>
-                ) : (
-                  <ul>
-                    {connections.map((connection) => {
-                      const source = entityById.get(connection.fromId);
-                      const target = entityById.get(connection.toId);
-                      return (
-                        <li key={connection.id}>
-                          <strong>{source?.label || 'Unknown'}</strong>
-                          <span>{connection.text}</span>
-                          <small className="connectionStrengthTag">
-                            Resonance {normalizeStrength(connection.strength)}
-                            {connection.targetDistance ? ` • ${connection.targetDistance}px` : ''}
-                          </small>
-                          <em>{target?.label || 'Unknown'}</em>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
             </div>
 
             <aside className={`inspectorPanel ${selectedArenaEntity ? 'is-open' : ''}`}>
@@ -2433,16 +2726,40 @@ const MemorySpreadPage = () => {
                   </div>
                 </>
               )}
+
+              <div className="threadLedger">
+                <h3>Drawn Threads</h3>
+                {connections.length === 0 ? (
+                  <p>No threads drawn yet.</p>
+                ) : (
+                  <ul>
+                    {connections.map((connection) => {
+                      const source = entityById.get(connection.fromId);
+                      const target = entityById.get(connection.toId);
+                      return (
+                        <li key={connection.id}>
+                          <strong>{source?.label || 'Unknown'}</strong>
+                          <span>{connection.text}</span>
+                          <small className="connectionStrengthTag">
+                            Resonance {normalizeStrength(connection.strength)}
+                          </small>
+                          <em>{target?.label || 'Unknown'}</em>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </aside>
           </div>
 
           <div className="entityDeckDock deckTray" aria-label="Entity deck">
             <div className="deckDockHeading">
-              <h3>Arcana Deck</h3>
+              <h3>Field Deck</h3>
               <p>
                 {isLoadingDeck
-                  ? 'Reading from the ether...'
-                  : 'Place cards upon the velvet and define their meaning.'}
+                  ? 'Drawing from the ledger...'
+                  : 'Place cards upon the spread and draw their meaning.'}
               </p>
             </div>
             <div className="entityDeckRow">
@@ -2464,7 +2781,7 @@ const MemorySpreadPage = () => {
                   )}
                   <small>{card.type}</small>
                   <strong>{card.name}</strong>
-                  <span>{card.backImageUrl ? 'Dual sides ready' : 'Drag to tapestry'}</span>
+                  <span>{card.backImageUrl ? 'Dual sides ready' : 'Drag to spread'}</span>
                 </button>
               ))}
               {deckCards.length === 0 && <div className="deckEmpty">Deck exhausted for this reading.</div>}
@@ -2476,8 +2793,8 @@ const MemorySpreadPage = () => {
       {pendingEntity && (
         <div className="connectionModalBackdrop" role="presentation">
           <div className="connectionModal" role="dialog" aria-modal="true" aria-label="Define connection">
-            <h3>Scribe thread for {pendingEntity.name}</h3>
-            <p>This card fades unless anchored to a star already in the constellation.</p>
+            <h3>Draw thread for {pendingEntity.name}</h3>
+            <p>This card fades unless anchored to an entry already on the spread.</p>
 
             {(pendingEntity.frontImageUrl || pendingEntity.backImageUrl) && (
               <div className="connectionModalPreview" aria-hidden="true">
@@ -2532,7 +2849,7 @@ const MemorySpreadPage = () => {
 
             <div className="relationshipAssessmentHint">
               <strong>Spatial resonance is judged by the unseen.</strong>
-              <span>Vivid, specific meanings pull cards closer in the celestial orbit.</span>
+              <span>Vivid, specific meanings pull cards closer on the spread.</span>
             </div>
             {connectionRejection && (
               <div className="relationshipRejection">
@@ -2550,7 +2867,7 @@ const MemorySpreadPage = () => {
                 Return to deck
               </button>
               <button type="button" onClick={confirmConnection} disabled={isSubmittingConnection}>
-                {isSubmittingConnection ? 'Seeking omen...' : 'Seal into tapestry'}
+                {isSubmittingConnection ? 'Consulting the ink...' : 'Press into the spread'}
               </button>
             </div>
           </div>
