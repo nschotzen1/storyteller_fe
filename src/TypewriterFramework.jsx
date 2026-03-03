@@ -83,6 +83,11 @@ const LEVER_LEVEL_WORD_THRESHOLDS = [0, 10, 20, 30]; // words for level 0, 1, 2,
 const SPECIAL_KEY_TEXT = 'THE XEROFAG';
 const SPECIAL_KEY_INSERT_TEXT = 'The Xerofag ';
 
+const readStoredSessionId = () => {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem(SESSION_ID_STORAGE_KEY) || '';
+};
+
 // --- Page Transition Reducer ---
 const pageTransitionActionTypes = {
   START_PAGE_TURN_SCROLL: 'START_PAGE_TURN_SCROLL',
@@ -536,24 +541,28 @@ const TypewriterFramework = (props) => {
   const isProcessingSequenceRef = useRef(false);
   const ambientStartedRef = useRef(false);
 
-  const [sessionId, setSessionId] = useState(() => localStorage.getItem(SESSION_ID_STORAGE_KEY) || '');
+  const [sessionId, setSessionId] = useState(() => readStoredSessionId());
+  const [isFreshSession, setIsFreshSession] = useState(false);
+  const [isSessionReady, setIsSessionReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     const initializeSession = async () => {
-      const requestedSessionId = localStorage.getItem(SESSION_ID_STORAGE_KEY) || '';
+      const requestedSessionId = readStoredSessionId();
       const fallbackSessionId = requestedSessionId || Math.random().toString(36).substring(2, 15);
       const { data, error } = await startTypewriterSession(requestedSessionId);
       if (cancelled) return;
 
       const nextSessionId = data?.sessionId || fallbackSessionId;
+      setIsFreshSession(!requestedSessionId && Boolean(nextSessionId));
       if (nextSessionId) {
         localStorage.setItem(SESSION_ID_STORAGE_KEY, nextSessionId);
         setSessionId(nextSessionId);
       }
 
       if (error || typeof data?.fragment !== 'string') {
+        setIsSessionReady(true);
         return;
       }
 
@@ -572,11 +581,13 @@ const TypewriterFramework = (props) => {
         type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH,
         payload: data.fragment.length
       });
+      setIsSessionReady(true);
     };
 
     initializeSession().catch((error) => {
       if (cancelled) return;
       console.error('Error initializing typewriter session:', error);
+      setIsSessionReady(true);
     });
 
     return () => {
@@ -594,6 +605,18 @@ const TypewriterFramework = (props) => {
     leverLevel === LEVER_LEVEL_WORD_THRESHOLDS.length - 1
     && !pageChangeInProgress
     && typingAllowed;
+
+  useEffect(() => {
+    if (!isSessionReady || !sessionId) return;
+
+    const timeoutId = window.setTimeout(() => {
+      startTypewriterSession(sessionId, pageText).catch((error) => {
+        console.error('Error persisting typewriter fragment:', error);
+      });
+    }, 450);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isSessionReady, pageText, sessionId]);
 
   const applyTypewriterReply = useCallback((reply, fullText) => {
     if (isProcessingSequenceRef.current) {
@@ -1354,6 +1377,13 @@ const TypewriterFramework = (props) => {
         alt="grit shell overlay"
         className="typewriter-overlay"
       />
+
+      <div className="typewriter-session-badge" aria-live="polite">
+        <span className="typewriter-session-label">
+          {isFreshSession ? 'New session' : 'Session'}
+        </span>
+        <strong>{sessionId || 'assigning...'}</strong>
+      </div>
 
       <PaperDisplay
         pageText={pageText}

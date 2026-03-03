@@ -64,6 +64,48 @@
   padding-top: 2.5vh;
 }
 
+.typewriter-session-badge {
+  position: absolute;
+  top: 1.15rem;
+  right: 1.35rem;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.18rem;
+  min-width: 13rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(212, 186, 132, 0.35);
+  border-radius: 0.9rem;
+  background: linear-gradient(180deg, rgba(16, 12, 10, 0.86), rgba(9, 8, 7, 0.92));
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.28);
+  color: #eadfc8;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.03em;
+}
+
+.typewriter-session-label {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  color: rgba(230, 210, 167, 0.72);
+}
+
+.typewriter-session-badge strong {
+  max-width: 100%;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .typewriter-session-badge {
+    top: 0.75rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    min-width: 0;
+    align-items: flex-start;
+  }
+}
+
 
 
 

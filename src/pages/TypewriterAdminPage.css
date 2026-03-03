@@ -163,6 +163,29 @@
   padding: 0 0.55rem;
 }
 
+.typewriterNumericSetting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 130px;
+  color: #d9ccb9;
+  font-size: 0.82rem;
+}
+
+.typewriterNumericSetting input {
+  width: 100%;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #7d6653;
+  background: rgba(16, 12, 9, 0.96);
+  color: #efe5d7;
+  padding: 0 0.55rem;
+}
+
+.typewriterSettingPlaceholder {
+  color: #9d8d78;
+}
+
 @media (max-width: 820px) {
   .typewriterAdminConnection {
     grid-template-columns: 1fr;

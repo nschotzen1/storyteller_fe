@@ -1,42 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Spectral:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap');
 
 /* ═══════════════════════════════════════════════════
-   MEMORY CONSTELLATION — Ritual Narrative Surface
-   Palette: ink velvet, aged parchment, gold leaf,
-   pale starlight, muted copper
+   MEMORY SPREAD — Rugged RPG Press / Field Ledger
+   Palette: lamp black, foxed linen, tarnished brass,
+   smudge blue, dried blood
    ═══════════════════════════════════════════════════ */
 
 .memorySpreadPage {
-  --ink-deep: #0D0F14;
-  --ink-mid: #151821;
-  --ink-warm: #1A1610;
-  --parchment: #E9E2CF;
-  --parchment-dim: #D7CDB5;
-  --parchment-shadow: #B8AC94;
-  --gold: #C4A24D;
-  --gold-bright: #DCC368;
-  --gold-pale: #C9B478;
-  --gold-shimmer: #E8D48B;
-  --starlight: #C9D6E8;
-  --copper: #8B5A3C;
-  --copper-glow: #A66B47;
-  --nebula-1: rgba(38, 22, 62, 0.35);
-  --nebula-2: rgba(18, 28, 52, 0.30);
-  --nebula-3: rgba(52, 18, 38, 0.20);
-  --text-primary: #E8DFD0;
-  --text-secondary: #C4B99F;
-  --text-dim: #9A8E76;
-  --border-gold: rgba(196, 162, 77, 0.38);
-  --border-gold-strong: rgba(196, 162, 77, 0.62);
-  --border-starlight: rgba(201, 214, 232, 0.22);
+  --ink-deep: #0A0A0C;
+  --ink-mid: #111114;
+  --ink-warm: #14120E;
+  --parchment: #C9BFA6;
+  --parchment-dim: #B5AA90;
+  --parchment-shadow: #9A8E76;
+  --gold: #A69A7B;
+  --gold-bright: #BDB196;
+  --gold-pale: #9E9478;
+  --gold-shimmer: #C4B99F;
+  --starlight: #8B9CAF;
+  --copper: #8B3A3A;
+  --copper-glow: #A04444;
+  --nebula-1: rgba(30, 18, 10, 0.40);
+  --nebula-2: rgba(14, 14, 22, 0.35);
+  --nebula-3: rgba(28, 12, 18, 0.25);
+  --text-primary: #D8CFBA;
+  --text-secondary: #B0A68E;
+  --text-dim: #7A7060;
+  --border-gold: rgba(166, 154, 123, 0.32);
+  --border-gold-strong: rgba(166, 154, 123, 0.56);
+  --border-starlight: rgba(139, 156, 175, 0.18);
+  --ink-stain: rgba(60, 28, 12, 0.18);
+  --char-mark: rgba(180, 168, 142, 0.08);
 
-  min-height: 100vh;
+  height: 100vh;
   color: var(--text-primary);
   position: relative;
   overflow: hidden;
-  padding: 4.7rem 1.25rem 1.4rem;
-  font-family: 'Spectral', 'Georgia', serif;
+  padding: 0;
+  font-family: 'EB Garamond', 'Georgia', serif;
   font-weight: 400;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Atmosphere layers ── */
@@ -52,99 +56,112 @@
 .tarotBackdrop {
   z-index: 0;
   background:
-    radial-gradient(ellipse at 20% 22%, rgba(184, 154, 74, 0.08), transparent 50%),
-    radial-gradient(ellipse at 78% 18%, rgba(201, 214, 232, 0.06), transparent 45%),
-    radial-gradient(ellipse at 50% 80%, rgba(139, 90, 60, 0.07), transparent 50%),
-    linear-gradient(168deg, var(--ink-deep) 0%, #100E0A 50%, var(--ink-deep) 100%);
+    radial-gradient(ellipse at 18% 25%, rgba(60, 28, 12, 0.12), transparent 52%),
+    radial-gradient(ellipse at 80% 15%, rgba(40, 36, 30, 0.10), transparent 48%),
+    radial-gradient(ellipse at 50% 78%, rgba(20, 12, 8, 0.14), transparent 55%),
+    linear-gradient(172deg, var(--ink-deep) 0%, #080706 48%, var(--ink-deep) 100%);
 }
 
 .tarotVeil {
   z-index: 0;
   background: url('/textures/film_grain.png') center/cover no-repeat;
-  mix-blend-mode: overlay;
-  opacity: 0.12;
+  mix-blend-mode: multiply;
+  opacity: 0.18;
 }
 
 .tarotSigils {
   z-index: 0;
-  opacity: 0.14;
+  opacity: 0.10;
   background:
-    repeating-linear-gradient(135deg,
-      rgba(184, 154, 74, 0.04) 0,
-      rgba(184, 154, 74, 0.04) 1px,
+    repeating-linear-gradient(128deg,
+      rgba(180, 168, 142, 0.035) 0,
+      rgba(180, 168, 142, 0.035) 1px,
       transparent 1px,
-      transparent 28px),
-    repeating-linear-gradient(45deg,
-      rgba(201, 214, 232, 0.025) 0,
-      rgba(201, 214, 232, 0.025) 1px,
+      transparent 22px),
+    repeating-linear-gradient(52deg,
+      rgba(139, 156, 175, 0.02) 0,
+      rgba(139, 156, 175, 0.02) 1px,
       transparent 1px,
-      transparent 36px);
+      transparent 30px);
 }
 
-/* ── Header ── */
+/* ── Header (compact toolbar bar) ── */
 
 .memorySpreadHeader {
   position: relative;
   z-index: 1;
-  text-align: center;
-  max-width: 920px;
-  margin: 0 auto 1.2rem;
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--border-gold);
+  background: rgba(10, 10, 12, 0.85);
+  backdrop-filter: blur(6px);
 }
 
 .memorySpreadEyebrow {
-  margin: 0;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.28em;
-  color: var(--text-dim);
-  font-family: 'Cinzel', 'Georgia', serif;
-  font-weight: 400;
+  display: none;
 }
 
 .memorySpreadHeader h1 {
-  margin: 0.3rem 0 0;
+  margin: 0;
   font-family: 'Cinzel', 'Georgia', serif;
-  font-size: clamp(1.65rem, 4.4vw, 2.7rem);
-  font-weight: 500;
-  letter-spacing: 0.1em;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--parchment);
-  text-shadow: 0 0 40px rgba(184, 154, 74, 0.15);
+  white-space: nowrap;
 }
 
 .memorySpreadHeader p {
-  margin: 0.5rem auto 0;
-  max-width: 760px;
-  color: var(--text-secondary);
-  font-size: 0.96rem;
-  line-height: 1.5;
-  font-weight: 300;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  font-weight: 400;
+  font-style: italic;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .memorySpreadMeta {
-  margin: 0.7rem auto 0;
-  max-width: 760px;
+  margin: 0;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   align-items: center;
-  gap: 0.6rem;
-  font-size: 0.72rem;
+  gap: 0.36rem;
+  font-size: 0.62rem;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   font-family: 'Cinzel', 'Georgia', serif;
+  margin-left: auto;
 }
 
 .memorySpreadMeta span {
   border: 1px solid var(--border-gold);
-  border-radius: 999px;
+  border-radius: 3px;
   padding: 0.22rem 0.62rem;
-  background: rgba(13, 15, 20, 0.6);
+  background: rgba(10, 10, 12, 0.65);
   color: var(--text-dim);
 }
 
+.memorySpreadModeTag {
+  color: var(--gold-pale) !important;
+}
+
+.memorySpreadSessionTag {
+  max-width: min(92vw, 36rem);
+  overflow-wrap: anywhere;
+}
+
 .memorySpreadMeta button {
-  border-radius: 999px;
+  border-radius: 3px;
   border: 1px solid var(--border-gold);
   padding: 0.26rem 0.7rem;
   background: transparent;
@@ -173,18 +190,125 @@
   font-size: 0.82rem !important;
 }
 
+.memorySpreadAdminSeed {
+  flex-shrink: 0;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid rgba(196, 162, 77, 0.22);
+  background: linear-gradient(164deg, rgba(21, 24, 33, 0.78), rgba(13, 15, 20, 0.92));
+  text-align: left;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.memorySpreadAdminSeedCopy strong,
+.memorySpreadAdminSeedField {
+  font-family: 'Cinzel', 'Georgia', serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--parchment);
+  font-size: 0.76rem;
+}
+
+.memorySpreadAdminSeedCopy p {
+  margin: 0.38rem 0 0;
+  color: var(--text-secondary);
+  font-family: 'Spectral', 'Georgia', serif;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.memorySpreadAdminSeedField {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.memorySpreadAdminSeedField textarea {
+  width: 100%;
+  min-height: 7rem;
+  resize: vertical;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(196, 162, 77, 0.26);
+  background: rgba(9, 11, 16, 0.78);
+  color: var(--text-primary);
+  padding: 0.8rem 0.9rem;
+  font-family: 'Spectral', 'Georgia', serif;
+  font-size: 0.97rem;
+  line-height: 1.45;
+}
+
+.memorySpreadAdminSeedField textarea:focus {
+  outline: 1px solid rgba(220, 195, 104, 0.55);
+  border-color: rgba(220, 195, 104, 0.55);
+}
+
+.memorySpreadAdminSeedButton {
+  justify-self: start;
+  border-radius: 4px;
+  border: 1px solid var(--border-gold-strong);
+  padding: 0.5rem 0.95rem;
+  background: rgba(166, 154, 123, 0.12);
+  color: var(--parchment);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.72rem;
+  cursor: pointer;
+  font-family: 'Cinzel', 'Georgia', serif;
+}
+
+.memorySpreadAdminSeedButton.ghost {
+  background: rgba(13, 15, 20, 0.44);
+  color: var(--gold-pale);
+}
+
+.memorySpreadAdminSeedButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 /* ── Memory Triptych (phase 1) ── */
 
 .memoryTriptych {
   position: relative;
   z-index: 1;
-  max-width: 1240px;
-  min-height: calc(100vh - 10.2rem);
+  flex: 1;
+  min-height: 0;
+  max-width: 1400px;
+  width: 100%;
   margin: 0 auto;
+  padding: 1rem;
   display: grid;
-  gap: 1.1rem;
-  grid-template-columns: repeat(3, minmax(230px, 1fr));
-  align-content: center;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(200px, 1fr));
+  align-content: stretch;
+}
+
+.memoryTriptychEmpty {
+  grid-column: 1 / -1;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 1.2rem 1.3rem;
+  border: 1px solid rgba(196, 162, 77, 0.24);
+  border-radius: 1rem;
+  background: linear-gradient(164deg, rgba(21, 24, 33, 0.72), rgba(13, 15, 20, 0.9));
+  text-align: center;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+}
+
+.memoryTriptychEmpty strong {
+  display: block;
+  font-family: 'Cinzel', 'Georgia', serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--parchment);
+}
+
+.memoryTriptychEmpty p {
+  margin: 0.55rem 0 0;
+  color: var(--text-secondary);
 }
 
 .memoryPillarCard,
@@ -201,10 +325,10 @@
 .memoryPillarCard {
   position: relative;
   overflow: hidden;
-  min-height: 63vh;
-  border-radius: 1.2rem;
+  border-radius: 6px;
   border: 1px solid var(--border-gold);
-  background: linear-gradient(160deg, rgba(26, 22, 16, 0.92), rgba(13, 15, 20, 0.96));
+  background: linear-gradient(164deg, rgba(20, 18, 14, 0.94), rgba(10, 10, 12, 0.97));
+  min-height: 0;
   color: var(--text-primary);
   padding: 1.25rem;
   display: flex;
@@ -214,8 +338,9 @@
   text-align: left;
   cursor: pointer;
   box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(184, 154, 74, 0.08);
+    0 20px 44px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(180, 168, 142, 0.05),
+    inset 0 -2px 12px rgba(60, 28, 12, 0.10);
   transition:
     transform 380ms cubic-bezier(0.22, 1, 0.36, 1),
     opacity 400ms ease,
@@ -232,8 +357,8 @@
   content: '';
   position: absolute;
   inset: 0.72rem;
-  border: 1px solid rgba(184, 154, 74, 0.15);
-  border-radius: 0.88rem;
+  border: 1px dashed rgba(166, 154, 123, 0.14);
+  border-radius: 4px;
   pointer-events: none;
   z-index: 2;
 }
@@ -266,10 +391,11 @@
 }
 
 .memoryPillarCard:hover:not(:disabled) {
-  transform: translateY(-8px) scale(1.005);
+  transform: translateY(-6px) rotate(-0.5deg) scale(1.008);
   box-shadow:
-    0 28px 50px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(184, 154, 74, 0.18);
+    0 30px 56px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(166, 154, 123, 0.2),
+    inset 0 0 28px rgba(60, 28, 12, 0.08);
 }
 
 .memoryPillarCard:disabled {
@@ -297,14 +423,14 @@
 .memoryPillarCard.is-selected {
   border-color: var(--border-gold-strong);
   box-shadow:
-    0 28px 54px rgba(0, 0, 0, 0.58),
-    0 0 0 1px rgba(184, 154, 74, 0.25),
-    0 0 50px rgba(184, 154, 74, 0.08);
+    0 28px 54px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(166, 154, 123, 0.22),
+    inset 0 0 40px rgba(60, 28, 12, 0.08);
 }
 
 .memoryPillarCard.is-dissolving {
   opacity: 0;
-  filter: blur(6px);
+  filter: blur(4px) grayscale(0.4);
   transform: translateY(12vh) scale(0.65);
   pointer-events: none;
 }
@@ -314,38 +440,38 @@
   transform: scale(0.92);
 }
 
-/* Tone variants — warm parchment-ink blends */
+/* Tone variants — rugged ink blends */
 
 .memoryPillarCard.tone-embers,
 .memoryPortalCard.tone-embers,
 .chosenMemoryAnchor.tone-embers {
-  background: linear-gradient(160deg, rgba(42, 28, 16, 0.94), rgba(13, 15, 20, 0.96));
+  background: linear-gradient(164deg, rgba(32, 20, 12, 0.95), rgba(10, 10, 12, 0.97));
 }
 
 .memoryPillarCard.tone-tide,
 .memoryPortalCard.tone-tide,
 .chosenMemoryAnchor.tone-tide {
-  background: linear-gradient(160deg, rgba(18, 26, 34, 0.94), rgba(13, 15, 20, 0.96));
+  background: linear-gradient(164deg, rgba(14, 20, 28, 0.95), rgba(10, 10, 12, 0.97));
 }
 
 .memoryPillarCard.tone-ivory,
 .memoryPortalCard.tone-ivory,
 .chosenMemoryAnchor.tone-ivory {
-  background: linear-gradient(160deg, rgba(38, 32, 22, 0.94), rgba(13, 15, 20, 0.96));
+  background: linear-gradient(164deg, rgba(28, 24, 16, 0.95), rgba(10, 10, 12, 0.97));
 }
 
 .memoryArcanaTag {
   align-self: flex-start;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  font-size: 0.64rem;
+  font-size: 0.62rem;
   font-family: 'Cinzel', 'Georgia', serif;
-  font-weight: 400;
-  border: 1px solid var(--border-gold);
-  border-radius: 999px;
-  padding: 0.2rem 0.6rem;
+  font-weight: 500;
+  border: 1px dashed var(--border-gold);
+  border-radius: 3px;
+  padding: 0.2rem 0.55rem;
   color: var(--gold-pale);
-  background: rgba(13, 15, 20, 0.5);
+  background: rgba(10, 10, 12, 0.55);
 }
 
 .flipLockPill {
@@ -387,13 +513,13 @@
   overflow: hidden;
   width: min(470px, 90vw);
   min-height: 66vh;
-  border-radius: 1.2rem;
+  border-radius: 6px;
   border: 1px solid var(--border-gold-strong);
   padding: 1.3rem;
   box-shadow:
-    0 30px 56px rgba(0, 0, 0, 0.58),
-    0 0 0 1px rgba(184, 154, 74, 0.18),
-    0 0 70px rgba(184, 154, 74, 0.08);
+    0 30px 60px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(166, 154, 123, 0.15),
+    inset 0 0 50px rgba(60, 28, 12, 0.08);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -445,10 +571,12 @@
 .spreadRitualStage {
   position: relative;
   z-index: 1;
-  max-width: 1240px;
-  margin: 0 auto;
-  display: grid;
-  gap: 1rem;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
 }
 
 .spreadRitualStage.is-intro .chosenMemoryAnchor {
@@ -496,30 +624,40 @@
 
 /* ── Chosen memory anchor ── */
 
+/* ── Spread Top Toolbar ── */
+
+.spreadTopToolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--border-gold);
+  background: rgba(10, 10, 12, 0.82);
+  backdrop-filter: blur(6px);
+  z-index: 2;
+}
+
 .memoryAnchorBand {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.46rem;
-  justify-content: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .chosenMemoryAnchor {
   position: relative;
   overflow: hidden;
-  width: min(760px, 95%);
-  border-radius: 1rem;
+  border-radius: 4px;
   border: 1px solid var(--border-gold-strong);
   color: var(--text-primary);
   text-align: left;
-  padding: 1rem 1.16rem;
+  padding: 0.3rem 0.6rem;
   display: flex;
-  flex-direction: column;
-  gap: 0.33rem;
-  box-shadow:
-    0 14px 30px rgba(0, 0, 0, 0.44),
-    0 0 40px rgba(184, 154, 74, 0.06);
-  transition: box-shadow 320ms ease;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(20, 18, 14, 0.65);
+  max-width: 340px;
 }
 
 .chosenMemoryAnchor>* {
@@ -530,46 +668,79 @@
 .chosenMemoryAnchor span,
 .chosenMemoryAnchor em {
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  font-size: 0.58rem;
   color: var(--gold-pale);
   font-style: normal;
   font-family: 'Cinzel', 'Georgia', serif;
   font-weight: 400;
+  display: none;
 }
 
 .chosenMemoryAnchor h2 {
   margin: 0;
   font-family: 'Cormorant Garamond', 'Georgia', serif;
-  font-size: clamp(1.35rem, 2.8vw, 1.9rem);
+  font-size: 0.88rem;
   font-weight: 600;
   color: var(--parchment);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chosenMemoryAnchor p {
   margin: 0;
   color: var(--text-secondary);
-  font-weight: 300;
+  font-size: 0.72rem;
+  display: none;
+}
+
+.chosenMemoryAnchor .chosenAnchorArt {
+  width: 28px;
+  height: 28px;
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.chosenMemoryAnchor .chosenAnchorArt img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.chosenMemoryAnchor .memoryPillarShade {
+  display: none;
+}
+
+.chosenMemoryAnchor em {
+  display: none;
 }
 
 .memoryAnchorActions {
-  width: min(760px, 95%);
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
 }
 
 .memoryAnchorActions button {
-  border-radius: 999px;
+  border-radius: 3px;
   border: 1px solid var(--border-gold);
-  padding: 0.36rem 0.82rem;
-  background: rgba(13, 15, 20, 0.7);
+  padding: 0.22rem 0.58rem;
+  background: rgba(10, 10, 12, 0.72);
   color: var(--gold-pale);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  font-size: 0.58rem;
   cursor: pointer;
   font-family: 'Cinzel', 'Georgia', serif;
   transition: border-color 300ms ease, color 300ms ease;
+}
+
+.memoryAnchorActions .adminActionButton {
+  background: rgba(196, 162, 77, 0.12);
+  color: var(--parchment);
 }
 
 .memoryAnchorActions button:hover {
@@ -580,12 +751,24 @@
 /* ── Storyteller command bar ── */
 
 .storytellerCommandBar {
-  border-radius: 1rem;
-  border: 1px solid var(--border-gold);
-  background: linear-gradient(164deg, rgba(21, 24, 33, 0.76), rgba(13, 15, 20, 0.9));
-  padding: 0.82rem;
-  display: grid;
-  gap: 0.72rem;
+  border-radius: 0;
+  border: none;
+  border-left: 1px solid var(--border-gold);
+  background: transparent;
+  padding: 0;
+  padding-left: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.storytellerCommandBar-preview {
+  position: relative;
+  z-index: 1;
+  max-width: 1240px;
+  margin: 0 auto 1rem;
 }
 
 .storytellerCommandHeader {
@@ -613,10 +796,10 @@
 }
 
 .storytellerCommandHeader button {
-  border-radius: 999px;
+  border-radius: 3px;
   border: 1px solid var(--border-gold);
   padding: 0.3rem 0.72rem;
-  background: rgba(13, 15, 20, 0.78);
+  background: rgba(10, 10, 12, 0.80);
   color: var(--gold-pale);
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -642,10 +825,14 @@
   gap: 0.52rem;
 }
 
+.storytellerIconRow-preview {
+  opacity: 0.78;
+}
+
 .storytellerIconButton {
-  border-radius: 999px;
-  border: 1px solid rgba(184, 154, 74, 0.25);
-  background: rgba(13, 15, 20, 0.62);
+  border-radius: 4px;
+  border: 1px solid rgba(166, 154, 123, 0.22);
+  background: rgba(10, 10, 12, 0.65);
   color: var(--text-primary);
   padding: 0.34rem 0.56rem 0.34rem 0.34rem;
   display: inline-flex;
@@ -674,9 +861,9 @@
 .storytellerIconAvatar {
   width: 2.05rem;
   height: 2.05rem;
-  border-radius: 999px;
-  border: 1px solid rgba(184, 154, 74, 0.4);
-  background: radial-gradient(circle at 30% 25%, rgba(233, 226, 207, 0.35), rgba(26, 22, 16, 0.92));
+  border-radius: 4px;
+  border: 1px solid rgba(166, 154, 123, 0.35);
+  background: radial-gradient(circle at 30% 25%, rgba(201, 191, 166, 0.25), rgba(20, 18, 14, 0.92));
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -728,9 +915,10 @@
 }
 
 .storytellerActionMenu {
-  border-radius: 0.76rem;
-  border: 1px solid rgba(184, 154, 74, 0.34);
-  background: linear-gradient(160deg, rgba(26, 22, 16, 0.88), rgba(13, 15, 20, 0.95));
+  border-radius: 5px;
+  border: 1px solid rgba(166, 154, 123, 0.30);
+  border-top: 3px solid var(--gold-pale);
+  background: linear-gradient(164deg, rgba(20, 18, 14, 0.90), rgba(10, 10, 12, 0.96));
   padding: 0.7rem;
   display: grid;
   gap: 0.62rem;
@@ -766,8 +954,8 @@
 }
 
 .storytellerActionMenu header button {
-  border-radius: 999px;
-  border: 1px solid rgba(184, 154, 74, 0.34);
+  border-radius: 3px;
+  border: 1px solid rgba(166, 154, 123, 0.30);
   background: transparent;
   color: var(--gold-pale);
   padding: 0.24rem 0.58rem;
@@ -817,11 +1005,11 @@
 }
 
 .storytellerActionButtons button {
-  border-radius: 999px;
+  border-radius: 4px;
   border: 1px solid var(--border-gold-strong);
   padding: 0.38rem 0.84rem;
-  background: linear-gradient(125deg, rgba(184, 154, 74, 0.9), rgba(139, 90, 60, 0.82));
-  color: #1A1610;
+  background: linear-gradient(125deg, rgba(166, 154, 123, 0.82), rgba(139, 90, 60, 0.65));
+  color: #0A0A0C;
   font-family: 'Cinzel', 'Georgia', serif;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -872,12 +1060,15 @@
 /* ── Constellation Arena Panel ── */
 
 .spreadArenaPanel {
-  border-radius: 1.1rem;
-  border: 1px solid var(--border-gold);
-  background: linear-gradient(165deg, rgba(21, 24, 33, 0.7), rgba(13, 15, 20, 0.85));
-  padding: 1rem;
-  display: grid;
-  gap: 0.95rem;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  position: relative;
 }
 
 .constellationStage {
@@ -885,10 +1076,10 @@
 }
 
 .constellationWorkspace {
-  display: grid;
-  gap: 0.9rem;
-  grid-template-columns: minmax(0, 1fr) 290px;
-  align-items: start;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  position: relative;
 }
 
 .constellationPanel {
@@ -899,45 +1090,46 @@
 
 .constellationArena {
   position: relative;
-  min-height: 66vh;
-  border-radius: 0.9rem;
-  border: 1px solid rgba(196, 162, 77, 0.22);
+  flex: 1;
+  min-height: 0;
+  border-radius: 0;
+  border: none;
   background:
-    radial-gradient(ellipse at 30% 25%, var(--nebula-1), transparent 55%),
-    radial-gradient(ellipse at 72% 68%, var(--nebula-2), transparent 50%),
-    radial-gradient(ellipse at 55% 45%, var(--nebula-3), transparent 45%),
-    radial-gradient(ellipse at 48% 42%, rgba(196, 162, 77, 0.05), rgba(13, 15, 20, 0.97) 60%),
-    linear-gradient(155deg, var(--ink-deep), #080610);
+    radial-gradient(ellipse at 28% 22%, var(--nebula-1), transparent 52%),
+    radial-gradient(ellipse at 74% 72%, var(--nebula-2), transparent 48%),
+    radial-gradient(ellipse at 52% 48%, var(--nebula-3), transparent 42%),
+    radial-gradient(ellipse at 48% 42%, rgba(60, 28, 12, 0.04), rgba(10, 10, 12, 0.98) 58%),
+    linear-gradient(160deg, var(--ink-deep), #060504);
   overflow: hidden;
   cursor: grab;
 }
 
-/* Astrolabe concentric rings */
+/* Astrolabe concentric rings — rougher, dashed feel */
 .constellationArena::before {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 50% 50%, transparent 18%, rgba(196, 162, 77, 0.025) 18.5%, transparent 19%),
-    radial-gradient(circle at 50% 50%, transparent 30%, rgba(196, 162, 77, 0.02) 30.5%, transparent 31%),
-    radial-gradient(circle at 50% 50%, transparent 44%, rgba(196, 162, 77, 0.015) 44.5%, transparent 45%),
-    radial-gradient(circle at 50% 50%, transparent 60%, rgba(196, 162, 77, 0.012) 60.5%, transparent 61%),
-    radial-gradient(circle at 50% 50%, transparent 78%, rgba(196, 162, 77, 0.01) 78.5%, transparent 79%);
+    radial-gradient(circle at 50% 50%, transparent 18%, rgba(166, 154, 123, 0.022) 18.5%, transparent 19.2%),
+    radial-gradient(circle at 50% 50%, transparent 30%, rgba(166, 154, 123, 0.018) 30.5%, transparent 31.2%),
+    radial-gradient(circle at 50% 50%, transparent 44%, rgba(166, 154, 123, 0.014) 44.5%, transparent 45.2%),
+    radial-gradient(circle at 50% 50%, transparent 60%, rgba(166, 154, 123, 0.010) 60.5%, transparent 61.2%),
+    radial-gradient(circle at 50% 50%, transparent 78%, rgba(166, 154, 123, 0.008) 78.5%, transparent 79.2%);
   mix-blend-mode: screen;
 }
 
-/* Drifting cosmic haze */
+/* Drifting ink haze */
 .constellationArena::after {
   content: '';
   position: absolute;
   inset: -40%;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 35% 30%, rgba(60, 30, 80, 0.08), transparent 50%),
-    radial-gradient(ellipse at 65% 70%, rgba(30, 50, 80, 0.06), transparent 50%);
+    radial-gradient(ellipse at 35% 30%, rgba(40, 18, 8, 0.10), transparent 50%),
+    radial-gradient(ellipse at 65% 70%, rgba(14, 20, 32, 0.08), transparent 50%);
   animation: nebulaDrift 50s ease-in-out infinite alternate;
-  mix-blend-mode: screen;
+  mix-blend-mode: multiply;
 }
 
 @keyframes nebulaDrift {
@@ -976,16 +1168,16 @@
   align-items: center;
   gap: 0.38rem;
   padding: 0.3rem 0.42rem;
-  border-radius: 999px;
+  border-radius: 4px;
   border: 1px solid var(--border-gold);
-  background: rgba(13, 15, 20, 0.8);
+  background: rgba(10, 10, 12, 0.82);
   backdrop-filter: blur(4px);
 }
 
 .constellationControls button {
-  border-radius: 999px;
-  border: 1px solid rgba(184, 154, 74, 0.3);
-  background: rgba(21, 24, 33, 0.85);
+  border-radius: 3px;
+  border: 1px solid rgba(166, 154, 123, 0.26);
+  background: rgba(17, 17, 20, 0.88);
   color: var(--gold-pale);
   cursor: pointer;
   font-size: 0.68rem;
@@ -1356,16 +1548,31 @@
   color: var(--text-dim);
 }
 
-/* ── Inspector panel ── */
+/* ── Inspector panel (slide-in drawer) ── */
 
 .inspectorPanel {
-  border-radius: 0.9rem;
-  border: 1px solid var(--border-gold);
-  background: linear-gradient(160deg, rgba(21, 24, 33, 0.75), rgba(13, 15, 20, 0.88));
-  box-shadow: inset 0 0 0 1px rgba(184, 154, 74, 0.06);
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 280px;
+  z-index: 3;
+  border-radius: 0;
+  border: none;
+  border-left: 3px solid var(--gold-pale);
+  background: linear-gradient(164deg, rgba(14, 14, 16, 0.95), rgba(10, 10, 12, 0.98));
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.5);
   padding: 0.9rem;
   display: grid;
   gap: 0.42rem;
+  align-content: start;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.inspectorPanel.is-open {
+  transform: translateX(0);
 }
 
 .inspectorPanel h3 {
@@ -1395,8 +1602,8 @@
 
 .inspectorPanel .inspectorType {
   justify-self: start;
-  border: 1px solid rgba(184, 154, 74, 0.3);
-  border-radius: 999px;
+  border: 1px dashed rgba(166, 154, 123, 0.28);
+  border-radius: 3px;
   padding: 0.18rem 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -1412,10 +1619,10 @@
 }
 
 .inspectorActions button {
-  border-radius: 999px;
+  border-radius: 3px;
   border: 1px solid var(--border-gold);
   padding: 0.32rem 0.64rem;
-  background: rgba(13, 15, 20, 0.7);
+  background: rgba(10, 10, 12, 0.72);
   color: var(--gold-pale);
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -1650,12 +1857,22 @@
 /* ── Entity deck dock ── */
 
 .entityDeckDock {
-  border-radius: 1rem;
-  border: 1px solid var(--border-gold);
-  background: linear-gradient(170deg, rgba(21, 24, 33, 0.8), rgba(13, 15, 20, 0.9));
-  padding: 0.85rem;
+  flex-shrink: 0;
+  border-radius: 0;
+  border: none;
+  border-top: 1px solid var(--border-gold);
+  background: rgba(10, 10, 12, 0.88);
+  backdrop-filter: blur(6px);
+  padding: 0.5rem 0.75rem;
   display: grid;
-  gap: 0.66rem;
+  gap: 0.3rem;
+  max-height: 140px;
+  overflow: hidden;
+  transition: max-height 320ms ease;
+}
+
+.entityDeckDock:hover {
+  max-height: 220px;
 }
 
 .deckDockHeading h3 {
@@ -1676,19 +1893,36 @@
 }
 
 .entityDeckRow {
-  display: grid;
-  gap: 0.58rem;
-  grid-template-columns: repeat(8, minmax(100px, 1fr));
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.3rem;
+}
+
+.entityDeckRow::-webkit-scrollbar {
+  height: 4px;
+}
+
+.entityDeckRow::-webkit-scrollbar-track {
+  background: rgba(10, 10, 12, 0.4);
+}
+
+.entityDeckRow::-webkit-scrollbar-thumb {
+  background: var(--border-gold);
+  border-radius: 2px;
 }
 
 .entityDeckCard {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(196, 162, 77, 0.34);
-  border-radius: 0.72rem;
-  background: linear-gradient(150deg, rgba(32, 27, 20, 0.82), rgba(13, 15, 20, 0.94));
+  border: 1px solid rgba(166, 154, 123, 0.28);
+  border-radius: 4px;
+  background: linear-gradient(156deg, rgba(24, 20, 16, 0.88), rgba(10, 10, 12, 0.96));
   color: var(--text-primary);
-  min-height: 98px;
+  min-height: 88px;
+  min-width: 130px;
+  max-width: 180px;
+  flex-shrink: 0;
   padding: 0.58rem;
   display: flex;
   flex-direction: column;
@@ -1707,18 +1941,18 @@
   z-index: 2;
 }
 
-/* Arcane inner-border ornament */
+/* Rough inner-border */
 .entityDeckCard::before {
   content: '';
   position: absolute;
   inset: 4px;
-  border: 1px solid rgba(196, 162, 77, 0.12);
-  border-radius: 0.52rem;
+  border: 1px dashed rgba(166, 154, 123, 0.10);
+  border-radius: 3px;
   pointer-events: none;
   z-index: 3;
 }
 
-/* Outer rune corner dots */
+/* Registration cross marks */
 .entityDeckCard::after {
   content: '';
   position: absolute;
@@ -1726,10 +1960,10 @@
   z-index: 1;
   pointer-events: none;
   background:
-    radial-gradient(circle at 6px 6px, rgba(196, 162, 77, 0.25) 1.5px, transparent 2px),
-    radial-gradient(circle at calc(100% - 6px) 6px, rgba(196, 162, 77, 0.25) 1.5px, transparent 2px),
-    radial-gradient(circle at 6px calc(100% - 6px), rgba(196, 162, 77, 0.25) 1.5px, transparent 2px),
-    radial-gradient(circle at calc(100% - 6px) calc(100% - 6px), rgba(196, 162, 77, 0.25) 1.5px, transparent 2px);
+    radial-gradient(circle at 6px 6px, rgba(166, 154, 123, 0.20) 1px, transparent 1.5px),
+    radial-gradient(circle at calc(100% - 6px) 6px, rgba(166, 154, 123, 0.20) 1px, transparent 1.5px),
+    radial-gradient(circle at 6px calc(100% - 6px), rgba(166, 154, 123, 0.20) 1px, transparent 1.5px),
+    radial-gradient(circle at calc(100% - 6px) calc(100% - 6px), rgba(166, 154, 123, 0.20) 1px, transparent 1.5px);
 }
 
 .entityDeckArt {
@@ -1747,11 +1981,11 @@
 }
 
 .entityDeckCard:hover {
-  transform: translateY(-3px);
+  transform: translateY(-3px) rotate(0.3deg);
   border-color: var(--border-gold-strong);
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.35),
-    0 0 18px rgba(196, 162, 77, 0.12);
+    0 10px 24px rgba(0, 0, 0, 0.45),
+    inset 0 0 14px rgba(60, 28, 12, 0.08);
 }
 
 .entityDeckCard:active,
@@ -1808,12 +2042,13 @@
 
 .connectionModal {
   width: min(530px, 100%);
-  border-radius: 0.9rem;
+  border-radius: 5px;
   border: 1px solid var(--border-gold-strong);
-  background: linear-gradient(160deg, rgba(26, 22, 16, 0.96), rgba(13, 15, 20, 0.97));
+  border-top: 3px solid var(--gold-pale);
+  background: linear-gradient(164deg, rgba(20, 18, 14, 0.97), rgba(10, 10, 12, 0.98));
   box-shadow:
-    0 24px 44px rgba(0, 0, 0, 0.5),
-    0 0 60px rgba(184, 154, 74, 0.06);
+    0 28px 50px rgba(0, 0, 0, 0.6),
+    inset 0 0 40px rgba(60, 28, 12, 0.05);
   padding: 1rem;
   display: grid;
   gap: 0.72rem;
@@ -1936,12 +2171,12 @@
 }
 
 .connectionModalActions button {
-  border-radius: 999px;
+  border-radius: 4px;
   border: 1px solid var(--border-gold-strong);
   padding: 0.44rem 0.86rem;
   cursor: pointer;
-  background: linear-gradient(125deg, rgba(184, 154, 74, 0.9), rgba(139, 90, 60, 0.85));
-  color: #1A1610;
+  background: linear-gradient(125deg, rgba(166, 154, 123, 0.8), rgba(139, 90, 60, 0.65));
+  color: #0A0A0C;
   font-weight: 700;
   font-family: 'Cinzel', 'Georgia', serif;
   font-size: 0.72rem;
@@ -1973,9 +2208,9 @@
 }
 
 .connectionTargetChip {
-  border-radius: 0.62rem;
-  border: 1px solid rgba(184, 154, 74, 0.24);
-  background: rgba(13, 15, 20, 0.65);
+  border-radius: 4px;
+  border: 1px solid rgba(166, 154, 123, 0.20);
+  background: rgba(10, 10, 12, 0.68);
   color: var(--text-secondary);
   text-align: left;
   padding: 0.45rem 0.54rem;
@@ -2024,48 +2259,35 @@
     min-height: auto;
   }
 
-  .memoryPillarCard {
-    min-height: 53vh;
-  }
-
-  .constellationWorkspace {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .inspectorPanel {
-    order: -1;
-  }
-
-  .entityDeckRow {
-    grid-template-columns: repeat(4, minmax(120px, 1fr));
-  }
-
-  .deckEmpty {
-    grid-column: span 4;
+    width: 240px;
   }
 }
 
 @media (max-width: 980px) {
-  .memorySpreadPage {
-    padding-top: 4.9rem;
-  }
-
   .memoryTriptych {
     grid-template-columns: 1fr;
-    gap: 0.88rem;
+    gap: 0.6rem;
     min-height: auto;
+    padding: 0.5rem;
   }
 
   .memoryPillarCard {
-    min-height: 24vh;
+    min-height: 18vh;
   }
 
-  .memoryPortalCard {
-    min-height: 40vh;
+  .spreadTopToolbar {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.3rem 0.5rem;
   }
 
-  .constellationArena {
-    min-height: 56vh;
+  .storytellerCommandBar {
+    border-left: none;
+    border-top: 1px solid var(--border-gold);
+    padding-left: 0;
+    padding-top: 0.4rem;
+    width: 100%;
   }
 
   .constellationControls {
@@ -2080,42 +2302,43 @@
     padding: 0.2rem 0.42rem;
     font-size: 0.64rem;
   }
-
-  .threadLedger li {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .storytellerCommandHeader {
-    flex-direction: column;
-    align-items: stretch;
-  }
 }
 
 @media (max-width: 700px) {
+  .memorySpreadHeader {
+    gap: 0.3rem 0.5rem;
+  }
+
   .memorySpreadHeader h1 {
-    font-size: clamp(1.4rem, 7.2vw, 2rem);
+    font-size: 0.82rem;
   }
 
   .memorySpreadMeta {
-    gap: 0.42rem;
+    gap: 0.3rem;
   }
 
   .memorySpreadMeta button {
-    font-size: 0.64rem;
+    font-size: 0.58rem;
   }
 
-  .spreadArenaPanel,
-  .entityDeckDock {
-    padding: 0.8rem;
+  .inspectorPanel {
+    width: 100%;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 50vh;
+    border-left: none;
+    border-top: 3px solid var(--gold-pale);
+    transform: translateY(100%);
+  }
+
+  .inspectorPanel.is-open {
+    transform: translateY(0);
   }
 
   .memoryAnchorActions {
-    justify-content: center;
-  }
-
-  .constellationArena {
-    min-height: 50vh;
+    gap: 0.3rem;
   }
 
   .constellationNodeTitle {
@@ -2124,14 +2347,6 @@
 
   .memory-node .constellationNodeTitle {
     font-size: 21px;
-  }
-
-  .entityDeckRow {
-    grid-template-columns: repeat(2, minmax(120px, 1fr));
-  }
-
-  .deckEmpty {
-    grid-column: span 2;
   }
 
   .connectionModalActions {
@@ -2165,10 +2380,10 @@
   animation: filamentShimmer 4s ease-in-out infinite;
 }
 
-/* ── Arena border runes ── */
+/* ── Arena border stains ── */
 
 .constellationArena {
   box-shadow:
-    inset 0 0 30px rgba(13, 15, 20, 0.5),
-    inset 0 0 80px rgba(38, 22, 62, 0.08);
+    inset 0 0 34px rgba(10, 10, 12, 0.55),
+    inset 0 0 60px rgba(30, 18, 10, 0.06);
 }

@@ -34,12 +34,15 @@ export const fetchNextFilmImage = async (pageText, sessionId) => {
   }
 };
 
-export const startTypewriterSession = async (sessionId) => {
+export const startTypewriterSession = async (sessionId, fragment) => {
   try {
+    const payload = {};
+    if (sessionId) payload.sessionId = sessionId;
+    if (typeof fragment === 'string') payload.fragment = fragment;
     const response = await fetch(`${SERVER}/api/typewriter/session/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(sessionId ? { sessionId } : {})
+      body: JSON.stringify(payload)
     });
     if (!response.ok) {
       console.error(`API error in startTypewriterSession: ${response.status} ${response.statusText}`);
