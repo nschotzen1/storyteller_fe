@@ -168,6 +168,7 @@ const getWorldProfileKey = (sessionId) =>
   `storyteller:worldProfile:${sessionId || 'default'}`;
 const getSessionStateKey = (sessionId) =>
   `storyteller:sessionState:${sessionId || 'default'}`;
+const STORY_ADMIN_API_BASE_STORAGE_KEY = 'typewriterAdminApiBaseUrl';
 const clampPulseValue = (value) => Math.min(5, Math.max(0, value));
 const clampSceneClockValue = (value) => Math.min(SCENE_CLOCK_MAX, Math.max(SCENE_CLOCK_MIN, value));
 const createActionBank = (keys, value = TURN_ACTIONS_PER_TURN) =>
@@ -207,6 +208,12 @@ const readSessionState = (sessionId) => {
   } catch (error) {
     return { ...SESSION_STATE_DEFAULT };
   }
+};
+
+const readStoryAdminApiBaseUrl = () => {
+  if (typeof window === 'undefined') return 'http://localhost:5001';
+  const stored = window.localStorage.getItem(STORY_ADMIN_API_BASE_STORAGE_KEY);
+  return typeof stored === 'string' && stored.trim() ? stored.trim() : 'http://localhost:5001';
 };
 
 const writeSessionState = (sessionId, state) => {
@@ -323,8 +330,8 @@ const StorytellerArenaConsole = ({
   initialPlayerId = '',
   lockPrimaryPlayerId = false
 }) => {
-  const [apiBaseUrl, setApiBaseUrl] = useState('http://localhost:5001');
-  const [sessionId, setSessionId] = useState(initialSessionId);
+  const [apiBaseUrl] = useState(() => readStoryAdminApiBaseUrl());
+  const [sessionId] = useState(initialSessionId);
   const [playersCount, setPlayersCount] = useState(1);
   const [sessionState, setSessionState] = useState(() => readSessionState(initialSessionId));
   const [selectedPromptId, setSelectedPromptId] = useState('sense');
@@ -2476,14 +2483,14 @@ const StorytellerArenaConsole = ({
           <h1>Shared Hex Arena</h1>
         </div>
         <div className="arenaConsoleTopControls">
-          <label>
-            API Base
-            <input value={apiBaseUrl} onChange={(event) => setApiBaseUrl(event.target.value)} />
-          </label>
-          <label>
-            Session
-            <input value={sessionId} onChange={(event) => setSessionId(event.target.value)} />
-          </label>
+          <div className="arenaConsoleTopStat">
+            <span>API Base</span>
+            <strong>{baseUrl || 'Not set'}</strong>
+          </div>
+          <div className="arenaConsoleTopStat">
+            <span>Session</span>
+            <strong>{sessionId || 'Missing'}</strong>
+          </div>
           <label>
             Players
             <select value={playersCount} onChange={(event) => setPlayersCount(Number(event.target.value))}>

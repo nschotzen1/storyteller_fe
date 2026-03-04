@@ -54,6 +54,7 @@
   align-items: center;
 }
 
+.arenaConsoleTopStat,
 .arenaConsoleTopControls label {
   display: grid;
   gap: 6px;
@@ -62,6 +63,20 @@
   letter-spacing: 0.12em;
   font-family: 'Space Mono', monospace;
   color: rgba(226, 214, 191, 0.6);
+}
+
+.arenaConsoleTopStat strong {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 214, 191, 0.2);
+  background: rgba(12, 14, 20, 0.85);
+  color: var(--dust);
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .arenaConsoleTopControls input,
