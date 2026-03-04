@@ -125,6 +125,9 @@ const WORLD_PROFILE_DEFAULT = {
   truth: '',
   taboo: '',
   pillars: [],
+  regions: [],
+  factions: [],
+  laws: [],
   era: '',
   conflict: '',
   wonder: '',
@@ -360,6 +363,9 @@ const StorytellerArenaConsole = ({
   const [recentPoints, setRecentPoints] = useState(null);
   const [worldProfile, setWorldProfile] = useState(() => readWorldProfile(initialSessionId));
   const [pillarInput, setPillarInput] = useState('');
+  const [regionInput, setRegionInput] = useState('');
+  const [factionInput, setFactionInput] = useState('');
+  const [lawInput, setLawInput] = useState('');
   const [ledgerType, setLedgerType] = useState('canon');
   const [ledgerText, setLedgerText] = useState('');
   const [anchorInput, setAnchorInput] = useState('');
@@ -438,6 +444,15 @@ const StorytellerArenaConsole = ({
       worldProfile.truth.trim() ||
       (worldProfile.pillars || []).length >= 3
   );
+  const hasWorldAtlas = Boolean(
+    (worldProfile.regions || []).length ||
+      (worldProfile.factions || []).length ||
+      (worldProfile.laws || []).length
+  );
+  const worldAtlasCount =
+    (worldProfile.regions || []).length +
+    (worldProfile.factions || []).length +
+    (worldProfile.laws || []).length;
 
   const flowSteps = useMemo(() => {
     const seeded = Boolean(activePlayer?.fragmentText?.trim());
@@ -448,7 +463,7 @@ const StorytellerArenaConsole = ({
       {
         id: 'charter',
         title: 'Charter the World',
-        description: 'Name the world, its mood, and 3+ pillars.',
+        description: 'Name the world, its mood, pillars, and atlas.',
         done: hasWorldCharter
       },
       {
@@ -509,7 +524,7 @@ const StorytellerArenaConsole = ({
         mode: 'worldbuild',
         modeLabel: 'Worldbuild',
         focus: 'Meta Creation',
-        cue: 'Define canon, tone, frame, and 3+ pillars before play begins.',
+        cue: 'Define canon, tone, frame, pillars, and atlas before play begins.',
         next: 'Seed the world with a fragment.'
       },
       seed: {
@@ -577,6 +592,14 @@ const StorytellerArenaConsole = ({
         actionId: 'charter'
       },
       {
+        id: 'atlas',
+        label: 'World Atlas',
+        detail: hasWorldAtlas ? 'Meta anchors set' : 'Add regions, factions, laws',
+        ready: hasWorldAtlas,
+        actionLabel: 'Build Atlas',
+        actionId: 'charter'
+      },
+      {
         id: 'lens',
         label: 'Scene Lens',
         detail: lensReady ? 'Goal & stakes set' : 'Define goal + stakes',
@@ -612,6 +635,7 @@ const StorytellerArenaConsole = ({
   }, [
     anchors.length,
     hasWorldCharter,
+    hasWorldAtlas,
     playersCount,
     readyCount,
     sceneGoal,
@@ -770,6 +794,10 @@ const StorytellerArenaConsole = ({
     if (mood) lines.push(`Mood: ${mood}`);
     if (truth) lines.push(`Founding Truth: ${truth}`);
     if (taboo) lines.push(`Taboo: ${taboo}`);
+    if (worldProfile.pillars?.length) lines.push(`Pillars: ${worldProfile.pillars.join(', ')}`);
+    if (worldProfile.regions?.length) lines.push(`Regions: ${worldProfile.regions.join(', ')}`);
+    if (worldProfile.factions?.length) lines.push(`Factions: ${worldProfile.factions.join(', ')}`);
+    if (worldProfile.laws?.length) lines.push(`Laws: ${worldProfile.laws.join(', ')}`);
     if (era) lines.push(`Era: ${era}`);
     if (conflict) lines.push(`Conflict: ${conflict}`);
     if (wonder) lines.push(`Wonder: ${wonder}`);
@@ -797,6 +825,10 @@ const StorytellerArenaConsole = ({
     worldProfile.sound,
     worldProfile.scent,
     worldProfile.texture,
+    worldProfile.pillars,
+    worldProfile.regions,
+    worldProfile.factions,
+    worldProfile.laws,
     sceneGoal,
     sceneRisk,
     anchors,
@@ -820,6 +852,11 @@ const StorytellerArenaConsole = ({
           truth: worldProfile.truth,
           taboo: worldProfile.taboo,
           pillars: worldProfile.pillars || [],
+          atlas: {
+            regions: worldProfile.regions || [],
+            factions: worldProfile.factions || [],
+            laws: worldProfile.laws || []
+          },
           frame: {
             era: worldProfile.era,
             conflict: worldProfile.conflict,
@@ -1186,6 +1223,9 @@ const StorytellerArenaConsole = ({
     if (worldProfile.truth.trim()) lines.push(`Founding truth: ${worldProfile.truth.trim()}`);
     if (worldProfile.taboo.trim()) lines.push(`Taboo: ${worldProfile.taboo.trim()}`);
     if (worldProfile.pillars?.length) lines.push(`Pillars: ${worldProfile.pillars.join(', ')}`);
+    if (worldProfile.regions?.length) lines.push(`Regions: ${worldProfile.regions.join(', ')}`);
+    if (worldProfile.factions?.length) lines.push(`Factions: ${worldProfile.factions.join(', ')}`);
+    if (worldProfile.laws?.length) lines.push(`Laws: ${worldProfile.laws.join(', ')}`);
     if (!lines.length) {
       setNotice('Add world details before blending.');
       return;
@@ -1262,6 +1302,57 @@ const StorytellerArenaConsole = ({
     setWorldProfile((prev) => ({
       ...prev,
       pillars: (prev.pillars || []).filter((_, idx) => idx !== index)
+    }));
+  };
+
+  const handleAddRegion = () => {
+    const next = regionInput.trim();
+    if (!next) return;
+    setWorldProfile((prev) => ({
+      ...prev,
+      regions: [...(prev.regions || []), next].slice(0, 3)
+    }));
+    setRegionInput('');
+  };
+
+  const handleRemoveRegion = (index) => {
+    setWorldProfile((prev) => ({
+      ...prev,
+      regions: (prev.regions || []).filter((_, idx) => idx !== index)
+    }));
+  };
+
+  const handleAddFaction = () => {
+    const next = factionInput.trim();
+    if (!next) return;
+    setWorldProfile((prev) => ({
+      ...prev,
+      factions: [...(prev.factions || []), next].slice(0, 3)
+    }));
+    setFactionInput('');
+  };
+
+  const handleRemoveFaction = (index) => {
+    setWorldProfile((prev) => ({
+      ...prev,
+      factions: (prev.factions || []).filter((_, idx) => idx !== index)
+    }));
+  };
+
+  const handleAddLaw = () => {
+    const next = lawInput.trim();
+    if (!next) return;
+    setWorldProfile((prev) => ({
+      ...prev,
+      laws: [...(prev.laws || []), next].slice(0, 3)
+    }));
+    setLawInput('');
+  };
+
+  const handleRemoveLaw = (index) => {
+    setWorldProfile((prev) => ({
+      ...prev,
+      laws: (prev.laws || []).filter((_, idx) => idx !== index)
     }));
   };
 
@@ -1798,6 +1889,10 @@ const StorytellerArenaConsole = ({
     if (trimmedMood) lines.push(`Mood: ${trimmedMood}`);
     if (trimmedTruth) lines.push(`Founding truth: ${trimmedTruth}`);
     if (trimmedTaboo) lines.push(`Taboo: ${trimmedTaboo}`);
+    if (worldProfile.pillars?.length) lines.push(`Pillars: ${worldProfile.pillars.join(', ')}`);
+    if (worldProfile.regions?.length) lines.push(`Regions: ${worldProfile.regions.join(', ')}`);
+    if (worldProfile.factions?.length) lines.push(`Factions: ${worldProfile.factions.join(', ')}`);
+    if (worldProfile.laws?.length) lines.push(`Laws: ${worldProfile.laws.join(', ')}`);
     if (trimmedEra) lines.push(`Era: ${trimmedEra}`);
     if (trimmedConflict) lines.push(`Conflict: ${trimmedConflict}`);
     if (trimmedWonder) lines.push(`Wonder: ${trimmedWonder}`);
@@ -1808,7 +1903,6 @@ const StorytellerArenaConsole = ({
         }`
       );
     }
-    if (worldProfile.pillars?.length) lines.push(`Pillars: ${worldProfile.pillars.join(', ')}`);
     if (sessionState.intent?.trim()) lines.push(`Shared intent: ${sessionState.intent.trim()}`);
     if (sceneGoal.trim()) lines.push(`Scene goal: ${sceneGoal.trim()}`);
     if (sceneRisk.trim()) lines.push(`Stakes: ${sceneRisk.trim()}`);
@@ -1829,6 +1923,9 @@ const StorytellerArenaConsole = ({
     worldProfile.scent,
     worldProfile.texture,
     worldProfile.pillars,
+    worldProfile.regions,
+    worldProfile.factions,
+    worldProfile.laws,
     sessionState.intent,
     sceneGoal,
     sceneRisk,
@@ -2664,6 +2761,7 @@ const StorytellerArenaConsole = ({
               <span>Spread {(activePlayer?.spreadSlots || []).filter((slot) => slot.cardInstanceId).length || 0}</span>
               <span>Arena {hasArenaCards ? 'Active' : 'Empty'}</span>
               <span>Links {arenaEdges?.length || 0}</span>
+              <span>Atlas {worldAtlasCount}/9</span>
               <span>Threads {threads.length}/3</span>
             </div>
             <div className="flowMeta">
@@ -2896,6 +2994,128 @@ const StorytellerArenaConsole = ({
                 <button type="button" className="ghost" onClick={handleAddPillar}>
                   Add
                 </button>
+              </div>
+            </div>
+            <div className="worldAtlas">
+              <div className="worldAtlasHeader">
+                <strong>World Atlas</strong>
+                <span>Meta anchors for immersion</span>
+              </div>
+              <div className="worldAtlasGrid">
+                <div className="worldAtlasBlock">
+                  <div className="worldAtlasBlockHeader">
+                    <strong>Regions</strong>
+                    <span>{(worldProfile.regions || []).length}/3</span>
+                  </div>
+                  <div className="worldAtlasChips">
+                    {(worldProfile.regions || []).map((region, index) => (
+                      <button
+                        key={`${region}-${index}`}
+                        type="button"
+                        className="worldPillarChip"
+                        onClick={() => handleRemoveRegion(index)}
+                      >
+                        {region}
+                        <span>×</span>
+                      </button>
+                    ))}
+                    {!worldProfile.regions?.length && (
+                      <p className="consoleHint">Add 1-3 regions for traversal.</p>
+                    )}
+                  </div>
+                  <div className="worldAtlasInput">
+                    <input
+                      value={regionInput}
+                      placeholder="Add region..."
+                      onChange={(event) => setRegionInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          handleAddRegion();
+                        }
+                      }}
+                    />
+                    <button type="button" className="ghost" onClick={handleAddRegion}>
+                      Add
+                    </button>
+                  </div>
+                </div>
+                <div className="worldAtlasBlock">
+                  <div className="worldAtlasBlockHeader">
+                    <strong>Factions</strong>
+                    <span>{(worldProfile.factions || []).length}/3</span>
+                  </div>
+                  <div className="worldAtlasChips">
+                    {(worldProfile.factions || []).map((faction, index) => (
+                      <button
+                        key={`${faction}-${index}`}
+                        type="button"
+                        className="worldPillarChip"
+                        onClick={() => handleRemoveFaction(index)}
+                      >
+                        {faction}
+                        <span>×</span>
+                      </button>
+                    ))}
+                    {!worldProfile.factions?.length && (
+                      <p className="consoleHint">Add 1-3 factions for tension.</p>
+                    )}
+                  </div>
+                  <div className="worldAtlasInput">
+                    <input
+                      value={factionInput}
+                      placeholder="Add faction..."
+                      onChange={(event) => setFactionInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          handleAddFaction();
+                        }
+                      }}
+                    />
+                    <button type="button" className="ghost" onClick={handleAddFaction}>
+                      Add
+                    </button>
+                  </div>
+                </div>
+                <div className="worldAtlasBlock">
+                  <div className="worldAtlasBlockHeader">
+                    <strong>Laws</strong>
+                    <span>{(worldProfile.laws || []).length}/3</span>
+                  </div>
+                  <div className="worldAtlasChips">
+                    {(worldProfile.laws || []).map((law, index) => (
+                      <button
+                        key={`${law}-${index}`}
+                        type="button"
+                        className="worldPillarChip"
+                        onClick={() => handleRemoveLaw(index)}
+                      >
+                        {law}
+                        <span>×</span>
+                      </button>
+                    ))}
+                    {!worldProfile.laws?.length && (
+                      <p className="consoleHint">Add 1-3 laws to keep logic consistent.</p>
+                    )}
+                  </div>
+                  <div className="worldAtlasInput">
+                    <input
+                      value={lawInput}
+                      placeholder="Add law..."
+                      onChange={(event) => setLawInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          handleAddLaw();
+                        }
+                      }}
+                    />
+                    <button type="button" className="ghost" onClick={handleAddLaw}>
+                      Add
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
             <div className="consoleButtonRow">
@@ -3630,6 +3850,9 @@ const StorytellerArenaConsole = ({
               {worldProfile.sound && <span>{`Sound ${worldProfile.sound}`}</span>}
               {worldProfile.scent && <span>{`Scent ${worldProfile.scent}`}</span>}
               {worldProfile.texture && <span>{`Texture ${worldProfile.texture}`}</span>}
+              {worldProfile.regions?.length > 0 && <span>{`Regions ${worldProfile.regions.length}`}</span>}
+              {worldProfile.factions?.length > 0 && <span>{`Factions ${worldProfile.factions.length}`}</span>}
+              {worldProfile.laws?.length > 0 && <span>{`Laws ${worldProfile.laws.length}`}</span>}
             </div>
             <div className="arenaConsoleStageRailActions">
               <button

@@ -807,6 +807,59 @@
   gap: 8px;
 }
 
+.worldAtlas {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.worldAtlasHeader {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-family: 'Space Mono', monospace;
+  color: rgba(226, 214, 191, 0.6);
+}
+
+.worldAtlasGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.worldAtlasBlock {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(226, 214, 191, 0.12);
+  background: rgba(12, 14, 20, 0.55);
+}
+
+.worldAtlasBlockHeader {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-family: 'Space Mono', monospace;
+  color: rgba(226, 214, 191, 0.55);
+}
+
+.worldAtlasChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.worldAtlasInput {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
 .ledgerPanel {
   gap: 12px;
 }
