@@ -23,6 +23,7 @@ const NORMAL_SCROLL_MODE = 'normal';
 const SLIDE_DIRECTION_LEFT = 'left';
 const SLIDE_DIRECTION_RIGHT = 'right';
 const SESSION_ID_STORAGE_KEY = 'sessionId';
+const TYPEWRITER_DEBUG_STORAGE_KEY = 'typewriterDebugSettings';
 
 // Durations & Timeouts
 const CINEMATIC_SCROLL_INTRO_DELAY = 650; // ms
@@ -36,6 +37,7 @@ const TYPING_ANIMATION_INTERVAL = 100; // ms
 const LAST_PRESSED_KEY_TIMEOUT = 120; // ms
 const KEY_TEXTURE_REFRESH_INTERVAL = 20000; // ms
 const GHOSTWRITER_AI_TRIGGER_INTERVAL = 1000; // ms
+export const FIRST_FADE_HANDOFF_DELAY = 1400; // ms
 
 // Animation & Style Values
 const PAGE_SLIDE_X_OFFSET = -50; // Percentage for left slide
@@ -82,10 +84,40 @@ const STRIKER_CURSOR_OFFSET_LEFT = '-40px';
 const LEVER_LEVEL_WORD_THRESHOLDS = [0, 10, 20, 30]; // words for level 0, 1, 2, 3 respectively
 const SPECIAL_KEY_TEXT = 'THE XEROFAG';
 const SPECIAL_KEY_INSERT_TEXT = 'The Xerofag ';
+const DEFAULT_TYPEWRITER_DEBUG_SETTINGS = {
+  panelOpen: false,
+  showInsightsPanel: true,
+  showTimingDetails: true,
+  fadeTimingScale: 1,
+  fadeVisualScale: 1,
+};
 
 const readStoredSessionId = () => {
   if (typeof window === 'undefined') return '';
   return localStorage.getItem(SESSION_ID_STORAGE_KEY) || '';
+};
+
+const readStoredTypewriterDebugSettings = () => {
+  if (typeof window === 'undefined') return { ...DEFAULT_TYPEWRITER_DEBUG_SETTINGS };
+  const raw = localStorage.getItem(TYPEWRITER_DEBUG_STORAGE_KEY);
+  if (!raw) return { ...DEFAULT_TYPEWRITER_DEBUG_SETTINGS };
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') {
+      return { ...DEFAULT_TYPEWRITER_DEBUG_SETTINGS };
+    }
+    const fadeTimingScale = Number(parsed.fadeTimingScale);
+    const fadeVisualScale = Number(parsed.fadeVisualScale);
+    return {
+      panelOpen: Boolean(parsed.panelOpen),
+      showInsightsPanel: parsed.showInsightsPanel !== false,
+      showTimingDetails: parsed.showTimingDetails !== false,
+      fadeTimingScale: Number.isFinite(fadeTimingScale) ? Math.min(5, Math.max(0.35, fadeTimingScale)) : 1,
+      fadeVisualScale: Number.isFinite(fadeVisualScale) ? Math.min(3, Math.max(0.4, fadeVisualScale)) : 1,
+    };
+  } catch {
+    return { ...DEFAULT_TYPEWRITER_DEBUG_SETTINGS };
+  }
 };
 
 // --- Page Transition Reducer ---
@@ -413,6 +445,7 @@ export const normalizeTypewriterReply = (reply) => {
   const rawSequence = Array.isArray(reply.sequence) ? reply.sequence : [...writing, ...fades];
 
   let fadePhaseCounter = 1;
+  let sawFade = false;
   const sequence = rawSequence.reduce((acc, action) => {
     if (!action || typeof action !== 'object') return acc;
     const type = action.action || action.type;
@@ -441,8 +474,26 @@ export const normalizeTypewriterReply = (reply) => {
             ? action.text
             : '';
       const phase = Number.isFinite(action.phase) ? action.phase : fadePhaseCounter;
+      const explicitLeadDelay = Number.isFinite(action.leadDelay)
+        ? action.leadDelay
+        : Number.isFinite(action.start_delay)
+          ? action.start_delay
+          : null;
+      let trailingPreFadeDelay = 0;
+      for (let index = acc.length - 1; index >= 0; index -= 1) {
+        const previousAction = acc[index];
+        if (!previousAction) break;
+        trailingPreFadeDelay += Number.isFinite(previousAction.delay) ? previousAction.delay : 0;
+        if (previousAction.action !== 'pause') break;
+      }
+      const leadDelay = explicitLeadDelay ?? (
+        sawFade
+          ? 0
+          : Math.max(0, FIRST_FADE_HANDOFF_DELAY - trailingPreFadeDelay)
+      );
       fadePhaseCounter += 1;
-      acc.push({ action: 'fade', to_text, phase, style: action.style, delay });
+      sawFade = true;
+      acc.push({ action: 'fade', to_text, phase, style: action.style, delay, leadDelay });
       return acc;
     }
 
@@ -473,6 +524,124 @@ export const normalizeTypewriterReply = (reply) => {
   }, []);
 
   return { sequence, metadata };
+};
+
+const toFiniteNumber = (value) => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+const asStringArray = (value) => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean);
+};
+
+const normalizeEntityInsights = (value) => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entity) => {
+      if (!entity || typeof entity !== 'object') return null;
+      const entity_name = typeof entity.entity_name === 'string' ? entity.entity_name.trim() : '';
+      const ner_category = typeof entity.ner_category === 'string' ? entity.ner_category.trim() : '';
+      const ascope_pmesii = typeof entity.ascope_pmesii === 'string' ? entity.ascope_pmesii.trim() : '';
+      const storytellingPointsRaw = toFiniteNumber(entity.storytelling_points);
+      const reuse = typeof entity.reuse === 'boolean' ? entity.reuse : null;
+      if (!entity_name && !ner_category && !ascope_pmesii && storytellingPointsRaw === null && reuse === null) {
+        return null;
+      }
+      return {
+        entity_name,
+        ner_category,
+        ascope_pmesii,
+        storytelling_points: storytellingPointsRaw,
+        reuse
+      };
+    })
+    .filter(Boolean);
+};
+
+export const normalizeContinuationInsights = (reply) => {
+  if (!reply || typeof reply !== 'object') return null;
+  const source = reply.continuation_insights && typeof reply.continuation_insights === 'object'
+    ? reply.continuation_insights
+    : reply;
+  const meaning = asStringArray(source.meaning);
+  const contextualStrengthening = typeof source.contextual_strengthening === 'string'
+    ? source.contextual_strengthening.trim()
+    : '';
+  const continuationWordCount = toFiniteNumber(source.continuation_word_count);
+  const storytellingPool = toFiniteNumber(source.current_storytelling_points_pool);
+  const pointsEarned = toFiniteNumber(source.points_earned);
+  const entities = normalizeEntityInsights(source.Entities || source.entities);
+  const style = normalizeFontMetadata(source.style || source.metadata);
+  const hasContent = Boolean(
+    meaning.length
+    || contextualStrengthening
+    || continuationWordCount !== null
+    || storytellingPool !== null
+    || pointsEarned !== null
+    || entities.length
+    || style
+  );
+  if (!hasContent) return null;
+  return {
+    meaning,
+    contextual_strengthening: contextualStrengthening,
+    continuation_word_count: continuationWordCount,
+    current_storytelling_points_pool: storytellingPool,
+    points_earned: pointsEarned,
+    entities,
+    style
+  };
+};
+
+const normalizeContinuationTiming = (reply) => {
+  if (!reply || typeof reply !== 'object') return null;
+  const source = reply.timing && typeof reply.timing === 'object' ? reply.timing : reply;
+  const narrativeWordCount = toFiniteNumber(source.narrative_word_count);
+  const fadeSteps = toFiniteNumber(source.fade_steps);
+  const firstPauseDelay = toFiniteNumber(source.first_pause_delay);
+  const phasePauseDelay = toFiniteNumber(source.phase_pause_delay);
+  const finalPauseDelay = toFiniteNumber(source.final_pause_delay);
+  const fadeIntervalDelay = toFiniteNumber(source.fade_interval_ms);
+  const fadePhaseDelay = fadeIntervalDelay ?? toFiniteNumber(source.fade_phase_delay);
+  const estimatedTotalDurationMs = toFiniteNumber(source.estimated_total_duration_ms);
+  const timingScale = toFiniteNumber(source.timing_scale);
+  const hasContent = Boolean(
+    narrativeWordCount !== null
+    || fadeSteps !== null
+    || firstPauseDelay !== null
+    || phasePauseDelay !== null
+    || finalPauseDelay !== null
+    || fadePhaseDelay !== null
+    || estimatedTotalDurationMs !== null
+    || timingScale !== null
+  );
+  if (!hasContent) return null;
+  return {
+    narrative_word_count: narrativeWordCount,
+    fade_steps: fadeSteps,
+    first_pause_delay: firstPauseDelay,
+    phase_pause_delay: phasePauseDelay,
+    final_pause_delay: finalPauseDelay,
+    fade_interval_ms: fadePhaseDelay,
+    fade_phase_delay: fadePhaseDelay,
+    estimated_total_duration_ms: estimatedTotalDurationMs,
+    timing_scale: timingScale
+  };
+};
+
+const formatTimingMs = (value) => {
+  if (!Number.isFinite(value)) return null;
+  return `${(value / 1000).toFixed(value >= 10000 ? 1 : 2)}s`;
+};
+
+const formatTimingWithMs = (value) => {
+  if (!Number.isFinite(value)) return null;
+  const seconds = formatTimingMs(value);
+  return `${seconds} (${Math.round(value)}ms)`;
 };
 
 const keys = [
@@ -528,6 +697,9 @@ const TypewriterFramework = (props) => {
   // Level: 0 = empty, 3 = full (ready for page turn)
   const [leverLevel, setLeverLevel] = useState(0);
   const [currentFontStyles, setCurrentFontStyles] = useState(null);
+  const [lastContinuationInsights, setLastContinuationInsights] = useState(null);
+  const [lastContinuationTiming, setLastContinuationTiming] = useState(null);
+  const [debugSettings, setDebugSettings] = useState(() => readStoredTypewriterDebugSettings());
 
 
 
@@ -595,6 +767,11 @@ const TypewriterFramework = (props) => {
     };
   }, [dispatchGhostwriter]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(TYPEWRITER_DEBUG_STORAGE_KEY, JSON.stringify(debugSettings));
+  }, [debugSettings]);
+
   // --- Derived ---
   const { text: pageText, filmBgUrl: pageBg } = pages[currentPage] || {};
   const visibleGhostText = `${typingState.currentGhostText || ''}${typingState.sequenceUserText || ''}`;
@@ -633,6 +810,19 @@ const TypewriterFramework = (props) => {
     if (metadata) {
       setCurrentFontStyles(metadata);
     }
+    setLastContinuationInsights(normalizeContinuationInsights(reply));
+    const continuationTiming = normalizeContinuationTiming(reply);
+    const visualFadeDurationMs = Number.isFinite(continuationTiming?.fade_interval_ms)
+      ? Math.max(350, Math.round(continuationTiming.fade_interval_ms * debugSettings.fadeVisualScale))
+      : null;
+    setLastContinuationTiming(
+      continuationTiming
+        ? {
+            ...continuationTiming,
+            visual_fade_duration_ms: visualFadeDurationMs
+          }
+        : null
+    );
 
     const generatedContinuation = sequence
       .filter((step) => step.action === 'type' && typeof step.text === 'string')
@@ -654,7 +844,7 @@ const TypewriterFramework = (props) => {
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
     return true;
-  }, [dispatchTyping, dispatchGhostwriter, setCurrentFontStyles]);
+  }, [dispatchTyping, dispatchGhostwriter, setCurrentFontStyles, debugSettings.fadeVisualScale]);
 
   const ensureAmbientStarted = useCallback(() => {
     if (ambientStartedRef.current) return;
@@ -859,7 +1049,6 @@ const TypewriterFramework = (props) => {
     dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: e.key.toUpperCase() });
     dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
-    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_AWAITING_USER_INPUT_AFTER_SEQUENCE, payload: false });
     ensureAmbientStarted();
 
     if (e.key.length === 1 || e.key === "Enter") {
@@ -1085,22 +1274,40 @@ const TypewriterFramework = (props) => {
 
       case 'fade': {
         let fadeText = typeof currentAction.to_text === 'string' ? currentAction.to_text : '';
+        const leadDelay = Number.isFinite(currentAction.leadDelay) ? currentAction.leadDelay : 0;
+        const explicitDurationMs = Number.isFinite(currentAction.duration_ms)
+          ? currentAction.duration_ms
+          : Number.isFinite(currentAction.delay)
+            ? currentAction.delay * debugSettings.fadeVisualScale
+            : null;
+        const fadeDurationMs = Number.isFinite(explicitDurationMs)
+          ? Math.max(350, Math.round(explicitDurationMs))
+          : null;
         if (shouldPrefixSpace(basePageText, '', fadeText)) {
           fadeText = ` ${fadeText}`;
         }
 
-        dispatchTyping({
-          type: typingActionTypes.SET_FADE_STATE,
-          payload: {
-            isActive: true,
-            to_text: fadeText,
-            from_text: existingGhostText,
-            phase: Number.isFinite(currentAction.phase) ? currentAction.phase : 0
-          }
-        });
-        dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: fadeText });
+        const startFade = () => {
+          dispatchTyping({
+            type: typingActionTypes.SET_FADE_STATE,
+            payload: {
+              isActive: true,
+              to_text: fadeText,
+              from_text: existingGhostText,
+              phase: Number.isFinite(currentAction.phase) ? currentAction.phase : 0,
+              duration_ms: fadeDurationMs
+            }
+          });
+          dispatchTyping({ type: typingActionTypes.UPDATE_GHOST_TEXT, payload: fadeText });
 
-        scheduleNext(currentAction.delay || 0);
+          scheduleNext(currentAction.delay || 0);
+        };
+
+        if (leadDelay > 0) {
+          timeoutId = setTimeout(startFade, leadDelay);
+        } else {
+          startFade();
+        }
         break;
       }
 
@@ -1122,7 +1329,8 @@ const TypewriterFramework = (props) => {
     dispatchGhostwriter,
     pageText,
     currentPage,
-    setPages
+    setPages,
+    debugSettings.fadeVisualScale
   ]);
 
 
@@ -1138,7 +1346,6 @@ const TypewriterFramework = (props) => {
       const pauseSeconds = (Date.now() - ghostwriterState.lastUserInputTime) / 1000;
 
       if (ghostwriterState.responseQueued) return;
-      if (ghostwriterState.awaitingUserInputAfterSequence) return;
 
       // --- Helper to execute ghostwriter takeover with TTS ---
       const triggerGhostwriter = async (additionText, currentFullText) => {
@@ -1150,7 +1357,9 @@ const TypewriterFramework = (props) => {
           await fetchAndPlayElevenLabsTTS(additionText);
 
           // 2. Fetch the ghostwriter reply
-          const response = await fetchTypewriterReply(currentFullText, sessionId);
+          const response = await fetchTypewriterReply(currentFullText, sessionId, {
+            fadeTimingScale: debugSettings.fadeTimingScale
+          });
           const sequenceStarted = applyTypewriterReply(response.data, currentFullText);
 
           if (!sequenceStarted) {
@@ -1164,20 +1373,7 @@ const TypewriterFramework = (props) => {
         }
       };
 
-      // --- INACTIVITY COMPLETION: leave as-is if you want this ---
-      if (
-        pauseSeconds >= 15 &&
-        !typingState.isProcessingSequence &&
-        typingState.inputBuffer.length === 0 &&
-        (fullText.length === ghostwriterState.lastGeneratedLength || ghostwriterState.lastGeneratedLength === 0) &&
-        fullText.trim() &&
-        !ghostwriterState.isAwaitingApiReply // Add condition here
-      ) {
-        triggerGhostwriter(addition, fullText);
-        return;
-      }
-
-      // --- USER-initiated continuation with GOLDEN RATIO THRESHOLD ---
+      // --- Continuation gating via /api/shouldGenerateContinuation ---
       if (
         !typingState.isProcessingSequence &&
         typingState.inputBuffer.length === 0 && // Not while user is typing or ghostwriting
@@ -1196,7 +1392,10 @@ const TypewriterFramework = (props) => {
             // On server, shouldGenerateData.shouldGenerate (no .data)
             const shouldGenerate = shouldGenerateData.shouldGenerate;
             if (shouldGenerate) {
-              // Now that we know we should generate, trigger the helper without resetting states first
+              dispatchGhostwriter({
+                type: ghostwriterActionTypes.SET_AWAITING_USER_INPUT_AFTER_SEQUENCE,
+                payload: false
+              });
               triggerGhostwriter(addition, fullText);
             } else {
               dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
@@ -1226,6 +1425,7 @@ const TypewriterFramework = (props) => {
     ghostwriterState.lastGhostwriterWordCount, // ← ADD to deps!
     ghostwriterState.isAwaitingApiReply, // Add new state to dependency array
     ghostwriterState.awaitingUserInputAfterSequence,
+    debugSettings.fadeTimingScale,
     sessionId,
     dispatchTyping,
     dispatchGhostwriter,
@@ -1311,7 +1511,6 @@ const TypewriterFramework = (props) => {
     dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: keyText.toUpperCase() });
     dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
-    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_AWAITING_USER_INPUT_AFTER_SEQUENCE, payload: false });
     playKeySound();
   };
 
@@ -1327,7 +1526,6 @@ const TypewriterFramework = (props) => {
     dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: SPECIAL_KEY_TEXT.toUpperCase() });
     dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
-    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_AWAITING_USER_INPUT_AFTER_SEQUENCE, payload: false });
     playXerofagHowl();
   };
 
@@ -1343,7 +1541,6 @@ const TypewriterFramework = (props) => {
     dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: ' ' });
     dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
-    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_AWAITING_USER_INPUT_AFTER_SEQUENCE, payload: false });
     playKeySound();
   };
 
@@ -1384,6 +1581,132 @@ const TypewriterFramework = (props) => {
         </span>
         <strong>{sessionId || 'assigning...'}</strong>
       </div>
+
+      <button
+        type="button"
+        className="typewriter-debug-toggle"
+        onClick={() => setDebugSettings((prev) => ({ ...prev, panelOpen: !prev.panelOpen }))}
+        aria-expanded={debugSettings.panelOpen}
+      >
+        Debug
+      </button>
+
+      {debugSettings.panelOpen ? (
+        <div className="typewriter-debug-panel" aria-live="polite">
+          <div className="typewriter-debug-panel-title">Typewriter Debug</div>
+          <label className="typewriter-debug-option">
+            <input
+              type="checkbox"
+              checked={debugSettings.showInsightsPanel}
+              onChange={(event) => setDebugSettings((prev) => ({
+                ...prev,
+                showInsightsPanel: event.target.checked
+              }))}
+            />
+            Show insights panel
+          </label>
+          <label className="typewriter-debug-option">
+            <input
+              type="checkbox"
+              checked={debugSettings.showTimingDetails}
+              onChange={(event) => setDebugSettings((prev) => ({
+                ...prev,
+                showTimingDetails: event.target.checked
+              }))}
+            />
+            Show timing values
+          </label>
+          <label className="typewriter-debug-option typewriter-debug-slider">
+            Fade timing scale
+            <input
+              type="range"
+              min="0.35"
+              max="5"
+              step="0.05"
+              value={debugSettings.fadeTimingScale}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                setDebugSettings((prev) => ({
+                  ...prev,
+                  fadeTimingScale: Number.isFinite(next) ? next : prev.fadeTimingScale
+                }));
+              }}
+            />
+            <span>x{Number(debugSettings.fadeTimingScale).toFixed(2)}</span>
+          </label>
+          <label className="typewriter-debug-option typewriter-debug-slider">
+            Visual fade scale
+            <input
+              type="range"
+              min="0.4"
+              max="3"
+              step="0.05"
+              value={debugSettings.fadeVisualScale}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                setDebugSettings((prev) => ({
+                  ...prev,
+                  fadeVisualScale: Number.isFinite(next) ? next : prev.fadeVisualScale
+                }));
+              }}
+            />
+            <span>x{Number(debugSettings.fadeVisualScale).toFixed(2)}</span>
+          </label>
+          {debugSettings.showTimingDetails && lastContinuationTiming ? (
+            <div className="typewriter-debug-runtime">
+              <span>Last fade interval {formatTimingWithMs(lastContinuationTiming.fade_interval_ms) || 'n/a'}</span>
+              <span>Last visual fade {formatTimingWithMs(lastContinuationTiming.visual_fade_duration_ms) || 'n/a'}</span>
+              <span>Last total fade {formatTimingWithMs(lastContinuationTiming.estimated_total_duration_ms) || 'n/a'}</span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {debugSettings.showInsightsPanel && lastContinuationInsights ? (
+        <div className="typewriter-continuation-insights" aria-live="polite">
+          <div className="typewriter-continuation-insights-head">Last Ghostwrite</div>
+          <div className="typewriter-continuation-insights-stats">
+            {lastContinuationInsights.continuation_word_count !== null ? (
+              <span>Words {lastContinuationInsights.continuation_word_count}</span>
+            ) : null}
+            {lastContinuationInsights.current_storytelling_points_pool !== null ? (
+              <span>Pool {lastContinuationInsights.current_storytelling_points_pool}</span>
+            ) : null}
+            {lastContinuationInsights.points_earned !== null ? (
+              <span>
+                Delta {lastContinuationInsights.points_earned >= 0 ? `+${lastContinuationInsights.points_earned}` : lastContinuationInsights.points_earned}
+              </span>
+            ) : null}
+            {lastContinuationInsights.entities.length ? (
+              <span>Entities {lastContinuationInsights.entities.length}</span>
+            ) : null}
+            {debugSettings.showTimingDetails && Number.isFinite(lastContinuationTiming?.fade_interval_ms) ? (
+              <span>Fade interval {formatTimingWithMs(lastContinuationTiming.fade_interval_ms)}</span>
+            ) : null}
+            {debugSettings.showTimingDetails && Number.isFinite(lastContinuationTiming?.estimated_total_duration_ms) ? (
+              <span>Total fade {formatTimingWithMs(lastContinuationTiming.estimated_total_duration_ms)}</span>
+            ) : null}
+            {debugSettings.showTimingDetails && Number.isFinite(lastContinuationTiming?.visual_fade_duration_ms) ? (
+              <span>Visual fade {formatTimingWithMs(lastContinuationTiming.visual_fade_duration_ms)}</span>
+            ) : null}
+            {debugSettings.showTimingDetails && Number.isFinite(lastContinuationTiming?.timing_scale) ? (
+              <span>Scale x{lastContinuationTiming.timing_scale.toFixed(2)}</span>
+            ) : null}
+          </div>
+          {lastContinuationInsights.contextual_strengthening ? (
+            <p className="typewriter-continuation-insights-context">
+              {lastContinuationInsights.contextual_strengthening}
+            </p>
+          ) : null}
+          {lastContinuationInsights.meaning.length ? (
+            <div className="typewriter-continuation-insights-meaning">
+              {lastContinuationInsights.meaning.slice(0, 3).map((line, index) => (
+                <span key={`${line}-${index}`}>{line}</span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <PaperDisplay
         pageText={pageText}

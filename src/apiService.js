@@ -56,15 +56,19 @@ export const startTypewriterSession = async (sessionId, fragment) => {
   }
 };
 
-export const fetchTypewriterReply = async (text, sessionId) => {
+export const fetchTypewriterReply = async (text, sessionId, options = {}) => {
   if (!text) {
     return { data: null, error: null };
   }
   try {
+    const payload = { sessionId, message: text };
+    if (Number.isFinite(options?.fadeTimingScale)) {
+      payload.fadeTimingScale = options.fadeTimingScale;
+    }
     const response = await fetch(`${SERVER}/api/send_typewriter_text`, {
       method: "POST",
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, message: text })
+      body: JSON.stringify(payload)
     });
     if (!response.ok) {
       console.error(`API error in fetchTypewriterReply: ${response.status} ${response.statusText}`);

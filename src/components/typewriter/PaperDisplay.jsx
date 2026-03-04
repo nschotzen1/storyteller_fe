@@ -12,6 +12,39 @@ const getRandomAnimationClass = () => {
   return GHOST_ANIMATION_CLASSES[Math.floor(Math.random() * GHOST_ANIMATION_CLASSES.length)];
 };
 
+const MIN_GHOST_FONT_SIZE_PX = 28;
+const MIN_GHOST_FONT_SIZE_REM = 1.75;
+
+const normalizeGhostFontSize = (fontSize) => {
+  if (typeof fontSize === 'number' && Number.isFinite(fontSize)) {
+    return `${Math.max(MIN_GHOST_FONT_SIZE_PX, fontSize)}px`;
+  }
+
+  if (typeof fontSize === 'string') {
+    const trimmed = fontSize.trim();
+    if (!trimmed) return null;
+
+    const pxMatch = trimmed.match(/^([0-9]*\.?[0-9]+)\s*px$/i);
+    if (pxMatch) {
+      const value = Math.max(MIN_GHOST_FONT_SIZE_PX, Number(pxMatch[1]));
+      return `${Number(value.toFixed(2))}px`;
+    }
+
+    const remMatch = trimmed.match(/^([0-9]*\.?[0-9]+)\s*rem$/i);
+    if (remMatch) {
+      const value = Math.max(MIN_GHOST_FONT_SIZE_REM, Number(remMatch[1]));
+      return `${Number(value.toFixed(2))}rem`;
+    }
+
+    const numeric = Number(trimmed);
+    if (Number.isFinite(numeric)) {
+      return `${Math.max(MIN_GHOST_FONT_SIZE_PX, numeric)}px`;
+    }
+  }
+
+  return null;
+};
+
 // This component will handle the rendering of the paper, text, film background,
 // and the page slide animations.
 
@@ -106,7 +139,8 @@ const PaperDisplay = ({
 
   const ghostTextStyles = {};
   if (currentFontStyles?.font) ghostTextStyles.fontFamily = currentFontStyles.font;
-  if (currentFontStyles?.font_size) ghostTextStyles.fontSize = currentFontStyles.font_size;
+  const normalizedGhostFontSize = normalizeGhostFontSize(currentFontStyles?.font_size);
+  if (normalizedGhostFontSize) ghostTextStyles.fontSize = normalizedGhostFontSize;
   if (currentFontStyles?.font_color) ghostTextStyles.color = currentFontStyles.font_color;
   const shouldRenderCursor = Boolean(showCursor || isProcessingSequence || fadeState?.isActive);
 

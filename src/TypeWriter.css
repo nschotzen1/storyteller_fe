@@ -96,6 +96,132 @@
   overflow-wrap: anywhere;
 }
 
+.typewriter-debug-toggle {
+  position: absolute;
+  top: 1.15rem;
+  left: 1.35rem;
+  z-index: 1200;
+  border: 1px solid rgba(186, 207, 224, 0.38);
+  border-radius: 0.7rem;
+  background: linear-gradient(180deg, rgba(11, 13, 16, 0.88), rgba(8, 9, 12, 0.94));
+  color: rgba(219, 230, 239, 0.95);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.42rem 0.64rem;
+  cursor: pointer;
+}
+
+.typewriter-debug-panel {
+  position: absolute;
+  top: 4rem;
+  left: 1.35rem;
+  z-index: 1190;
+  width: min(18rem, calc(100vw - 2.7rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.48rem;
+  padding: 0.68rem 0.82rem;
+  border: 1px solid rgba(186, 207, 224, 0.26);
+  border-radius: 0.86rem;
+  background: linear-gradient(180deg, rgba(9, 11, 13, 0.9), rgba(5, 7, 9, 0.94));
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.34);
+  color: rgba(228, 238, 245, 0.96);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.63rem;
+}
+
+.typewriter-debug-panel-title {
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(194, 214, 229, 0.9);
+}
+
+.typewriter-debug-option {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  color: rgba(224, 235, 243, 0.95);
+}
+
+.typewriter-debug-slider {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.24rem;
+}
+
+.typewriter-debug-slider input[type="range"] {
+  width: 100%;
+}
+
+.typewriter-debug-runtime {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  padding-top: 0.2rem;
+  color: rgba(184, 209, 226, 0.92);
+}
+
+.typewriter-continuation-insights {
+  position: absolute;
+  top: 6.4rem;
+  right: 1.35rem;
+  z-index: 1180;
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+  width: min(24rem, calc(100vw - 2.6rem));
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(212, 186, 132, 0.25);
+  border-radius: 0.9rem;
+  background: linear-gradient(180deg, rgba(13, 11, 10, 0.86), rgba(7, 7, 7, 0.92));
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.32);
+  color: rgba(233, 222, 197, 0.95);
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.02em;
+}
+
+.typewriter-continuation-insights-head {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  color: rgba(230, 210, 167, 0.75);
+}
+
+.typewriter-continuation-insights-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.typewriter-continuation-insights-stats span {
+  padding: 0.14rem 0.42rem;
+  border-radius: 0.42rem;
+  border: 1px solid rgba(230, 210, 167, 0.22);
+  background: rgba(35, 28, 23, 0.65);
+  font-size: 0.64rem;
+}
+
+.typewriter-continuation-insights-context {
+  margin: 0;
+  font-size: 0.66rem;
+  line-height: 1.25;
+  color: rgba(232, 219, 192, 0.93);
+}
+
+.typewriter-continuation-insights-meaning {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.typewriter-continuation-insights-meaning span {
+  font-size: 0.62rem;
+  line-height: 1.2;
+  color: rgba(216, 206, 181, 0.92);
+}
+
 @media (max-width: 720px) {
   .typewriter-session-badge {
     top: 0.75rem;
@@ -103,6 +229,25 @@
     left: 0.75rem;
     min-width: 0;
     align-items: flex-start;
+  }
+
+  .typewriter-continuation-insights {
+    top: 5.35rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+  }
+
+  .typewriter-debug-toggle {
+    top: 6.2rem;
+    left: 0.75rem;
+  }
+
+  .typewriter-debug-panel {
+    top: 8.9rem;
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
   }
 }
 
