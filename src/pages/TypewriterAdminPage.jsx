@@ -9,12 +9,17 @@ import {
   seedCurrentTypewriterPrompts,
   saveTypewriterPrompt,
   setLatestTypewriterPromptVersion,
-  saveTypewriterAiSettings
+  saveTypewriterAiSettings,
+  startOrSeedTypewriterSession
 } from '../api/typewriterAdmin';
 import './TypewriterAdminPage.css';
 
 const TYPEWRITER_ADMIN_API_BASE_STORAGE_KEY = 'typewriterAdminApiBaseUrl';
 const TYPEWRITER_ADMIN_KEY_STORAGE_KEY = 'typewriterAdminApiKey';
+const TYPEWRITER_SESSION_STORAGE_KEY = 'sessionId';
+const MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY = 'memorySpreadAdminMode';
+const DEFAULT_SESSION_SEED_FRAGMENT =
+  'At dusk the courier reached the wind-scoured pass below a rusted watchtower, carrying a rain-dark satchel sealed with ash. No one answered the signal bell, but boot prints ringed the threshold and vanished into the shale. When the courier touched the gate, a hidden mechanism groaned awake beneath the stone.';
 
 const SETTING_PIPELINES = [
   {
@@ -58,6 +63,12 @@ const SETTING_PIPELINES = [
     minCount: 1,
     maxCount: 10,
     defaultCount: 4
+  },
+  {
+    key: 'relationship_evaluation',
+    label: 'Relationship evaluation',
+    description: '/api/arena/relationships/propose',
+    modelKind: 'text'
   },
   {
     key: 'texture_creation',
@@ -148,6 +159,19 @@ const getInitialAdminKey = () => {
   return stored && stored.trim() ? stored : '';
 };
 
+const getInitialStoredSessionId = () => {
+  if (typeof window === 'undefined') return '';
+  const stored = window.localStorage.getItem(TYPEWRITER_SESSION_STORAGE_KEY);
+  return stored && stored.trim() ? stored.trim() : '';
+};
+
+const getInitialMemorySpreadAdminMode = () => {
+  if (typeof window === 'undefined') return false;
+  const stored = window.localStorage.getItem(MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY);
+  const normalized = `${stored || ''}`.trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes';
+};
+
 const buildEmptySettings = () => {
   const pipelines = {};
   for (const pipeline of SETTING_PIPELINES) {
@@ -195,6 +219,10 @@ const TypewriterAdminPage = () => {
   const [saving, setSaving] = useState(false);
   const [savingPrompts, setSavingPrompts] = useState(false);
   const [refreshingModels, setRefreshingModels] = useState(false);
+  const [sessionSaving, setSessionSaving] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState(getInitialStoredSessionId);
+  const [sessionFragmentDraft, setSessionFragmentDraft] = useState(DEFAULT_SESSION_SEED_FRAGMENT);
+  const [memorySpreadAdminEnabled, setMemorySpreadAdminEnabled] = useState(getInitialMemorySpreadAdminMode);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -205,6 +233,23 @@ const TypewriterAdminPage = () => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(TYPEWRITER_ADMIN_KEY_STORAGE_KEY, adminKey);
   }, [adminKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (currentSessionId) {
+      window.localStorage.setItem(TYPEWRITER_SESSION_STORAGE_KEY, currentSessionId);
+      return;
+    }
+    window.localStorage.removeItem(TYPEWRITER_SESSION_STORAGE_KEY);
+  }, [currentSessionId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(
+      MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY,
+      memorySpreadAdminEnabled ? 'true' : 'false'
+    );
+  }, [memorySpreadAdminEnabled]);
 
   useEffect(() => {
     let active = true;
@@ -313,7 +358,7 @@ const TypewriterAdminPage = () => {
       }
       const response = await saveTypewriterAiSettings(apiBaseUrl, payload, {
         adminKey,
-        updatedBy: 'typewriter-admin-ui'
+        updatedBy: 'story-admin-ui'
       });
       setSettings(response || buildEmptySettings());
       setStatus('Saved runtime AI settings.');
@@ -331,7 +376,7 @@ const TypewriterAdminPage = () => {
     try {
       const response = await resetTypewriterAiSettings(apiBaseUrl, {
         adminKey,
-        updatedBy: 'typewriter-admin-ui'
+        updatedBy: 'story-admin-ui'
       });
       setSettings(response || buildEmptySettings());
       setStatus('Reset settings to defaults.');
@@ -365,7 +410,7 @@ const TypewriterAdminPage = () => {
       const promptTemplate = promptDrafts[pipelineKey] || '';
       await saveTypewriterPrompt(apiBaseUrl, pipelineKey, promptTemplate, {
         adminKey,
-        updatedBy: 'typewriter-admin-ui',
+        updatedBy: 'story-admin-ui',
         markLatest: true
       });
       const [latestPrompts, versionsPayload] = await Promise.all([
@@ -392,7 +437,7 @@ const TypewriterAdminPage = () => {
     try {
       await seedCurrentTypewriterPrompts(apiBaseUrl, {
         adminKey,
-        updatedBy: 'typewriter-admin-ui',
+        updatedBy: 'story-admin-ui',
         overwrite: false
       });
       const latestPrompts = await loadTypewriterPrompts(apiBaseUrl, { adminKey });
@@ -451,11 +496,89 @@ const TypewriterAdminPage = () => {
     }
   };
 
+  const handleGenerateSession = async () => {
+    setSessionSaving(true);
+    setError('');
+    setStatus('');
+    try {
+      const payload = await startOrSeedTypewriterSession(apiBaseUrl);
+      const nextSessionId = typeof payload?.sessionId === 'string' ? payload.sessionId.trim() : '';
+      if (!nextSessionId) {
+        throw new Error('Session creation did not return a sessionId.');
+      }
+      setCurrentSessionId(nextSessionId);
+      setStatus(`Generated session ${nextSessionId}.`);
+    } catch (err) {
+      setError(err.message || 'Unable to generate session.');
+    } finally {
+      setSessionSaving(false);
+    }
+  };
+
+  const handleGenerateSessionWithFragment = async () => {
+    const fragment = `${sessionFragmentDraft || ''}`.trim();
+    if (!fragment) {
+      setError('Enter a fragment before generating a seeded session.');
+      setStatus('');
+      return;
+    }
+    setSessionSaving(true);
+    setError('');
+    setStatus('');
+    try {
+      const payload = await startOrSeedTypewriterSession(apiBaseUrl, { fragment });
+      const nextSessionId = typeof payload?.sessionId === 'string' ? payload.sessionId.trim() : '';
+      if (!nextSessionId) {
+        throw new Error('Session creation did not return a sessionId.');
+      }
+      setCurrentSessionId(nextSessionId);
+      setStatus(`Generated session ${nextSessionId} and saved the fragment to Mongo.`);
+    } catch (err) {
+      setError(err.message || 'Unable to generate seeded session.');
+    } finally {
+      setSessionSaving(false);
+    }
+  };
+
+  const handleSaveFragmentToCurrentSession = async () => {
+    const fragment = `${sessionFragmentDraft || ''}`.trim();
+    if (!currentSessionId) {
+      setError('No stored session is available.');
+      setStatus('');
+      return;
+    }
+    if (!fragment) {
+      setError('Enter a fragment before saving it to the current session.');
+      setStatus('');
+      return;
+    }
+    setSessionSaving(true);
+    setError('');
+    setStatus('');
+    try {
+      await startOrSeedTypewriterSession(apiBaseUrl, {
+        sessionId: currentSessionId,
+        fragment
+      });
+      setStatus(`Saved fragment into session ${currentSessionId}.`);
+    } catch (err) {
+      setError(err.message || 'Unable to save fragment to the current session.');
+    } finally {
+      setSessionSaving(false);
+    }
+  };
+
+  const handleClearStoredSession = () => {
+    setCurrentSessionId('');
+    setStatus('Cleared the stored session. Typewriter will create a fresh session on next use.');
+    setError('');
+  };
+
   return (
     <div className="typewriterAdminPage">
       <header className="typewriterAdminHeader">
-        <h1>Typewriter AI Admin</h1>
-        <p>Toggle mock mode and select models for the main typewriter pipelines.</p>
+        <h1>Story Admin</h1>
+        <p>Control runtime AI settings, prompt versions, and optional session seeding for the main narrative flows.</p>
       </header>
 
       <section className="typewriterAdminConnection">
@@ -508,6 +631,56 @@ const TypewriterAdminPage = () => {
       {error ? <p className="typewriterAdminError">{error}</p> : null}
       {status ? <p className="typewriterAdminStatus">{status}</p> : null}
       {loading ? <p className="typewriterAdminLoading">Loading settings...</p> : null}
+
+      <section className="typewriterAdminSessionTools">
+        <div className="typewriterAdminSessionHeader">
+          <div>
+            <h2>Session Bootstrap</h2>
+            <p>Generate a session and optionally seed a fragment into Mongo. Clear the stored session to let the typewriter start fresh.</p>
+          </div>
+          <label className="typewriterAdminModeToggle">
+            <input
+              type="checkbox"
+              checked={memorySpreadAdminEnabled}
+              onChange={(event) => setMemorySpreadAdminEnabled(event.target.checked)}
+            />
+            <span>Enable Memory Spread admin tools</span>
+          </label>
+        </div>
+        <div className="typewriterAdminSessionGrid">
+          <label>
+            Current stored session
+            <input type="text" value={currentSessionId} readOnly placeholder="No session stored" />
+          </label>
+          <label className="typewriterAdminSessionFragment">
+            Session fragment seed
+            <textarea
+              value={sessionFragmentDraft}
+              onChange={(event) => setSessionFragmentDraft(event.target.value)}
+              rows={5}
+              placeholder="Optional fragment text to save into the selected or newly generated session."
+            />
+          </label>
+          <div className="typewriterAdminButtons">
+            <button type="button" onClick={handleGenerateSession} disabled={sessionSaving}>
+              {sessionSaving ? 'Working...' : 'Generate session'}
+            </button>
+            <button type="button" onClick={handleGenerateSessionWithFragment} disabled={sessionSaving}>
+              {sessionSaving ? 'Working...' : 'Generate session + fragment'}
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveFragmentToCurrentSession}
+              disabled={sessionSaving || !currentSessionId}
+            >
+              {sessionSaving ? 'Working...' : 'Save fragment to current session'}
+            </button>
+            <button type="button" onClick={handleClearStoredSession} disabled={sessionSaving}>
+              Clear stored session
+            </button>
+          </div>
+        </div>
+      </section>
 
       <section className="typewriterAdminTableWrap">
         <table className="typewriterAdminTable">

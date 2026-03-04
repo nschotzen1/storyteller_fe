@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './MemorySpreadPage.css';
-import { proposeRelationship } from '../api/arenaRelationships.api';
 
 const SCREEN = {
   MEMORIES: 'memories',
@@ -9,24 +8,22 @@ const SCREEN = {
 
 const DEFAULT_API_BASE_URL = 'http://localhost:5001';
 const TYPEWRITER_SESSION_STORAGE_KEY = 'sessionId';
+const MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY = 'memorySpreadAdminMode';
 const DEFAULT_SESSION_ID = 'memory-spread-demo';
 const DEFAULT_PLAYER_ID = 'memory-spread-player';
 const DEFAULT_FRAGMENT_TEXT =
   'A wind-scoured pass with a rusted watchtower and a lone courier arriving at dusk.';
-const DEFAULT_MOCK_SESSION_FRAGMENT =
-  'At dusk the courier reached the wind-scoured pass below a rusted watchtower, carrying a rain-dark satchel sealed with ash. No one answered the signal bell, but boot prints ringed the threshold and vanished into the shale. When the courier touched the gate, a hidden mechanism groaned awake beneath the stone.';
-const SHOULD_USE_MOCK_APIS = (() => {
-  if (typeof window === 'undefined') return true;
-  const params = new URLSearchParams(window.location.search);
-  const liveApi = `${params.get('liveApi') || ''}`.trim().toLowerCase();
-  return !(liveApi === '1' || liveApi === 'true' || liveApi === 'yes');
-})();
-const IS_ADMIN_MODE = (() => {
+const readMemorySpreadAdminMode = () => {
   if (typeof window === 'undefined') return false;
   const params = new URLSearchParams(window.location.search);
   const adminMode = `${params.get('admin') || ''}`.trim().toLowerCase();
-  return adminMode === '1' || adminMode === 'true' || adminMode === 'yes';
-})();
+  if (adminMode === '1' || adminMode === 'true' || adminMode === 'yes') {
+    return true;
+  }
+  const stored = window.localStorage.getItem(MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY);
+  const normalized = `${stored || ''}`.trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes';
+};
 
 const MEMORY_FALLBACK_CARDS = [
   {
@@ -250,7 +247,7 @@ const mapMemoryCards = (memories, baseUrl) => {
 
     return {
       id: firstNonEmptyString(memory?._id, memory?.id, `memory-${index + 1}`),
-      title: firstNonEmptyString(memory?.dramatic_definition, memory?.action_name, `Memory ${index + 1}`),
+      title: firstNonEmptyString(memory?.short_title, memory?.dramatic_definition, memory?.action_name, `Memory ${index + 1}`),
       summary: firstNonEmptyString(
         memory?.miseenscene,
         memory?.actual_result,
@@ -463,20 +460,18 @@ const buildQuery = (params = {}) => {
 };
 
 const MemorySpreadPage = () => {
-  const [sessionId, setSessionId] = useState(() => getStoredTypewriterSessionId() || DEFAULT_SESSION_ID);
+  const [isAdminMode] = useState(() => readMemorySpreadAdminMode());
+  const [sessionId] = useState(() => getStoredTypewriterSessionId() || DEFAULT_SESSION_ID);
   const hasTypewriterSession = sessionId && sessionId !== DEFAULT_SESSION_ID;
-  const [mockSessionFragment, setMockSessionFragment] = useState(DEFAULT_MOCK_SESSION_FRAGMENT);
-  const [isCreatingMockSession, setIsCreatingMockSession] = useState(false);
-  const [isSavingMockFragment, setIsSavingMockFragment] = useState(false);
   const [phase, setPhase] = useState(SCREEN.MEMORIES);
   const [selectedMemoryId, setSelectedMemoryId] = useState('');
   const [isCollapsing, setIsCollapsing] = useState(false);
   const [isSpreadIntro, setIsSpreadIntro] = useState(false);
-  const [memoryCards, setMemoryCards] = useState(() => (IS_ADMIN_MODE ? [] : MEMORY_FALLBACK_CARDS));
+  const [memoryCards, setMemoryCards] = useState(() => (isAdminMode ? [] : MEMORY_FALLBACK_CARDS));
   const [memorySource, setMemorySource] = useState('fallback');
   const [memoryError, setMemoryError] = useState('');
   const [isLoadingMemories, setIsLoadingMemories] = useState(false);
-  const [deckCards, setDeckCards] = useState(() => (IS_ADMIN_MODE ? [] : ensureDeckSize(ENTITY_FALLBACK_DECK)));
+  const [deckCards, setDeckCards] = useState(() => (isAdminMode ? [] : ensureDeckSize(ENTITY_FALLBACK_DECK)));
   const [deckSource, setDeckSource] = useState('fallback');
   const [deckError, setDeckError] = useState('');
   const [isLoadingDeck, setIsLoadingDeck] = useState(false);
@@ -496,7 +491,7 @@ const MemorySpreadPage = () => {
   const [viewport, setViewport] = useState({ x: 480, y: 280, k: 0.95 });
   const [isPanning, setIsPanning] = useState(false);
   const [isViewportAnimating, setIsViewportAnimating] = useState(false);
-  const [storytellers, setStorytellers] = useState(() => (IS_ADMIN_MODE ? [] : STORYTELLER_FALLBACK_ROSTER));
+  const [storytellers, setStorytellers] = useState(() => (isAdminMode ? [] : STORYTELLER_FALLBACK_ROSTER));
   const [storytellerSource, setStorytellerSource] = useState('fallback');
   const [storytellerError, setStorytellerError] = useState('');
   const [isLoadingStorytellers, setIsLoadingStorytellers] = useState(false);
@@ -511,7 +506,7 @@ const MemorySpreadPage = () => {
   const [lastMissionResult, setLastMissionResult] = useState(null);
   const [storytellerAssignmentsByEntityId, setStorytellerAssignmentsByEntityId] = useState({});
   const [notice, setNotice] = useState(
-    IS_ADMIN_MODE
+    isAdminMode
       ? 'Admin mode: generate memories from the saved typewriter fragment.'
       : 'Choose a memory to begin the reading.'
   );
@@ -718,51 +713,16 @@ const MemorySpreadPage = () => {
     hasSpreadCenteredRef.current = true;
   }, [phase, selectedMemoryId, arenaSize.width, arenaSize.height, centerViewportOnWorld]);
 
-  const persistMockFragmentToSession = useCallback(async () => {
-    const fragment = `${mockSessionFragment || ''}`.trim();
-    if (!hasTypewriterSession) {
-      setMemoryError('No current session is available.');
-      setNotice('Generate a session first, then save the fragment into it.');
-      return false;
-    }
-    if (!fragment) {
-      setMemoryError('Mock fragment cannot be empty.');
-      setNotice('Enter a mock fragment before saving it to the current session.');
-      return false;
-    }
-
-    await requestJson(DEFAULT_API_BASE_URL, '/api/typewriter/session/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, fragment })
-    });
-
-    return true;
-  }, [hasTypewriterSession, mockSessionFragment, sessionId]);
-
   const loadMemoryCards = useCallback(async () => {
-    if (IS_ADMIN_MODE && !hasTypewriterSession) {
-      setMemoryError('Start a typewriter session first so memory generation has a saved fragment.');
-      setNotice('Admin mode needs a live typewriter session before memories can be generated.');
+    if (isAdminMode && !hasTypewriterSession) {
+      setMemoryError('A stored session is required.');
+      setNotice('Use Story Admin to seed a session, or visit the typewriter first.');
       return;
-    }
-
-    if (IS_ADMIN_MODE) {
-      try {
-        const didPersist = await persistMockFragmentToSession();
-        if (!didPersist) {
-          return;
-        }
-      } catch (error) {
-        setMemoryError(firstNonEmptyString(error?.message, 'Failed saving fragment to current session.'));
-        setNotice('Could not save the current fragment before generating memories.');
-        return;
-      }
     }
 
     setIsLoadingMemories(true);
     setMemoryError('');
-    setNotice('Drawing three memories from the archives...');
+    setNotice('Generating memories from the saved session fragment...');
 
     const requestBody = {
       sessionId,
@@ -770,89 +730,45 @@ const MemorySpreadPage = () => {
       includeFront: false,
       includeBack: true
     };
-    if (!IS_ADMIN_MODE) {
+    if (!isAdminMode) {
       requestBody.playerId = DEFAULT_PLAYER_ID;
       requestBody.count = 3;
     }
-    if (!IS_ADMIN_MODE && sessionId === DEFAULT_SESSION_ID) {
+    if (!isAdminMode && sessionId === DEFAULT_SESSION_ID) {
       requestBody.fragment = DEFAULT_FRAGMENT_TEXT;
-    }
-
-    if (SHOULD_USE_MOCK_APIS) {
-      try {
-        const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/fragmentToMemories', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...requestBody, mocked_api_calls: true })
-        });
-        const mapped = ensureTriptych(mapMemoryCards(payload?.memories, DEFAULT_API_BASE_URL));
-        setMemoryCards(mapped);
-        setMemorySource('mock');
-        setNotice('Using mocked memories. Choose one to continue.');
-      } catch (mockError) {
-        setMemoryCards(IS_ADMIN_MODE ? [] : ensureTriptych([]));
-        setMemorySource('fallback');
-        setMemoryError(firstNonEmptyString(mockError?.message));
-        setNotice('Using fallback memories because memory API was unavailable.');
-      } finally {
-        setIsLoadingMemories(false);
-      }
-      return;
     }
 
     try {
       const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/fragmentToMemories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...requestBody, mocked_api_calls: false })
+        body: JSON.stringify(requestBody)
       });
 
       const mapped = ensureTriptych(mapMemoryCards(payload?.memories, DEFAULT_API_BASE_URL));
+      const usedMock = Boolean(payload?.mocked || payload?.mockedMemories || payload?.mockedTextures);
       setMemoryCards(mapped);
-      setMemorySource('api');
-      setNotice('Choose a memory to begin the reading.');
-    } catch (liveError) {
-      try {
-        const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/fragmentToMemories', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...requestBody, mocked_api_calls: true })
-        });
-
-        const mapped = ensureTriptych(mapMemoryCards(payload?.memories, DEFAULT_API_BASE_URL));
-        setMemoryCards(mapped);
-        setMemorySource('mock');
-        setMemoryError('');
-        setNotice('Using mocked archives from API. Choose one to continue.');
-      } catch (mockError) {
-        setMemoryCards(IS_ADMIN_MODE ? [] : ensureTriptych([]));
-        setMemorySource('fallback');
-        setMemoryError(firstNonEmptyString(mockError?.message, liveError?.message));
-        setNotice('Using fallback memories because memory API was unavailable.');
-      }
+      setMemorySource(usedMock ? 'mock' : 'api');
+      setNotice(
+        usedMock
+          ? 'Memories generated in mock mode from the saved runtime settings.'
+          : 'Choose a memory to begin the reading.'
+      );
+    } catch (error) {
+      setMemoryCards(isAdminMode ? [] : ensureTriptych([]));
+      setMemorySource('fallback');
+      setMemoryError(firstNonEmptyString(error?.message));
+      setNotice('Memory generation failed. Check the saved runtime settings and try again.');
     } finally {
       setIsLoadingMemories(false);
     }
-  }, [hasTypewriterSession, persistMockFragmentToSession, sessionId]);
+  }, [hasTypewriterSession, isAdminMode, sessionId]);
 
   const loadEntityDeckForMemory = useCallback(async (memoryCard) => {
-    if (IS_ADMIN_MODE && !hasTypewriterSession) {
-      setDeckError('Start a typewriter session first so entities can use the saved fragment.');
-      setNotice('Admin mode needs a live typewriter session before entities can be generated.');
+    if (isAdminMode && !hasTypewriterSession) {
+      setDeckError('A stored session is required.');
+      setNotice('Use Story Admin to seed a session, or visit the typewriter first.');
       return;
-    }
-
-    if (IS_ADMIN_MODE) {
-      try {
-        const didPersist = await persistMockFragmentToSession();
-        if (!didPersist) {
-          return;
-        }
-      } catch (error) {
-        setDeckError(firstNonEmptyString(error?.message, 'Failed saving fragment to current session.'));
-        setNotice('Could not save the current fragment before generating entities.');
-        return;
-      }
     }
 
     const requestId = Date.now();
@@ -875,46 +791,26 @@ const MemorySpreadPage = () => {
       includeFront: true,
       includeBack: true
     };
-    if (!IS_ADMIN_MODE) {
+    if (!isAdminMode) {
       requestBody.playerId = DEFAULT_PLAYER_ID;
     }
-    if (!IS_ADMIN_MODE && sessionId === DEFAULT_SESSION_ID) {
+    if (!isAdminMode && sessionId === DEFAULT_SESSION_ID) {
       requestBody.text = memoryText;
     }
 
     const safelyApplyDeck = (nextCards, source, errorMessage) => {
       if (activeDeckRequestRef.current !== requestId) return;
-      setDeckCards(IS_ADMIN_MODE ? nextCards : ensureDeckSize(nextCards));
+      setDeckCards(isAdminMode ? nextCards : ensureDeckSize(nextCards));
       setDeckSource(source);
       if (errorMessage) setDeckError(errorMessage);
       setIsLoadingDeck(false);
     };
 
-    if (SHOULD_USE_MOCK_APIS) {
-      try {
-        const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/textToEntity', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...requestBody, mocked_api_calls: true })
-        });
-
-        const mapped = mapEntityDeck(payload, DEFAULT_API_BASE_URL);
-        if (mapped.length === 0) {
-          throw new Error('Mock entity API returned no cards.');
-        }
-
-        safelyApplyDeck(mapped, 'mock', '');
-      } catch (mockError) {
-        safelyApplyDeck([], 'fallback', firstNonEmptyString(mockError?.message));
-      }
-      return;
-    }
-
     try {
       const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/textToEntity', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...requestBody, mocked_api_calls: false })
+        body: JSON.stringify(requestBody)
       });
 
       const mapped = mapEntityDeck(payload, DEFAULT_API_BASE_URL);
@@ -922,26 +818,15 @@ const MemorySpreadPage = () => {
         throw new Error('Entity API returned no cards.');
       }
 
-      safelyApplyDeck(mapped, 'api', '');
-    } catch (liveError) {
-      try {
-        const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/textToEntity', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...requestBody, mocked_api_calls: true })
-        });
-
-        const mapped = mapEntityDeck(payload, DEFAULT_API_BASE_URL);
-        if (mapped.length === 0) {
-          throw new Error('Mock entity API returned no cards.');
-        }
-
-        safelyApplyDeck(mapped, 'mock', '');
-      } catch (mockError) {
-        safelyApplyDeck([], 'fallback', firstNonEmptyString(mockError?.message, liveError?.message));
-      }
+      safelyApplyDeck(
+        mapped,
+        payload?.mocked || payload?.mockedEntities || payload?.mockedTextures ? 'mock' : 'api',
+        ''
+      );
+    } catch (error) {
+      safelyApplyDeck([], 'fallback', firstNonEmptyString(error?.message));
     }
-  }, [hasTypewriterSession, persistMockFragmentToSession, sessionId]);
+  }, [hasTypewriterSession, isAdminMode, sessionId]);
 
   const loadStorytellerDetail = useCallback(
     async (storytellerId, { force = false, suppressNotice = false } = {}) => {
@@ -952,7 +837,7 @@ const MemorySpreadPage = () => {
 
       const requestPath = `/api/storytellers/${encodeURIComponent(storytellerId)}${buildQuery({
         sessionId,
-        playerId: IS_ADMIN_MODE ? undefined : DEFAULT_PLAYER_ID
+        playerId: isAdminMode ? undefined : DEFAULT_PLAYER_ID
       })}`;
 
       try {
@@ -996,28 +881,15 @@ const MemorySpreadPage = () => {
         return null;
       }
     },
-    [sessionId, storytellerDetailsById]
+    [isAdminMode, sessionId, storytellerDetailsById]
   );
 
   const loadStorytellersForMemory = useCallback(
     async (memoryCard) => {
-      if (IS_ADMIN_MODE && !hasTypewriterSession) {
-        setStorytellerError('Start a typewriter session first so storytellers can use the generated material.');
-        setNotice('Admin mode needs a live typewriter session before storytellers can be generated.');
+      if (isAdminMode && !hasTypewriterSession) {
+        setStorytellerError('A stored session is required.');
+        setNotice('Use Story Admin to seed a session, or visit the typewriter first.');
         return;
-      }
-
-      if (IS_ADMIN_MODE) {
-        try {
-          const didPersist = await persistMockFragmentToSession();
-          if (!didPersist) {
-            return;
-          }
-        } catch (error) {
-          setStorytellerError(firstNonEmptyString(error?.message, 'Failed saving fragment to current session.'));
-          setNotice('Could not save the current fragment before generating storytellers.');
-          return;
-        }
       }
 
       setIsLoadingStorytellers(true);
@@ -1036,20 +908,19 @@ const MemorySpreadPage = () => {
       const generatePayload = {
         sessionId,
         text: memoryText,
-        mockImage: true,
         generateKeyImages: true
       };
-      if (!IS_ADMIN_MODE) {
+      if (!isAdminMode) {
         generatePayload.playerId = DEFAULT_PLAYER_ID;
         generatePayload.count = DEFAULT_STORYTELLER_COUNT;
       }
-      if (IS_ADMIN_MODE) {
+      if (isAdminMode) {
         delete generatePayload.text;
       }
 
       const listPath = `/api/storytellers${buildQuery({
         sessionId,
-        playerId: IS_ADMIN_MODE ? undefined : DEFAULT_PLAYER_ID
+        playerId: isAdminMode ? undefined : DEFAULT_PLAYER_ID
       })}`;
 
       const applyRoster = (listPayload, generatedPayload, sourceLabel, errorMessage = '') => {
@@ -1061,7 +932,7 @@ const MemorySpreadPage = () => {
         });
 
         if (mapped.length === 0) {
-          const fallbackRoster = IS_ADMIN_MODE ? [] : STORYTELLER_FALLBACK_ROSTER;
+          const fallbackRoster = isAdminMode ? [] : STORYTELLER_FALLBACK_ROSTER;
           setStorytellers(fallbackRoster);
           setActiveStorytellerId(fallbackRoster[0]?.id || '');
           setStorytellerSource('fallback');
@@ -1069,7 +940,7 @@ const MemorySpreadPage = () => {
             firstNonEmptyString(errorMessage, 'Storyteller APIs returned no results.')
           );
           setNotice(
-            IS_ADMIN_MODE
+            isAdminMode
               ? 'No storytellers were generated. Check the API response and try again.'
               : 'Using fallback storytellers because API responses were empty.'
           );
@@ -1083,58 +954,33 @@ const MemorySpreadPage = () => {
         setNotice('Storytellers are ready. Click a round icon to open actions.');
       };
 
-      if (SHOULD_USE_MOCK_APIS) {
-        try {
-          const generatedPayload = await requestJson(DEFAULT_API_BASE_URL, '/api/textToStoryteller', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...generatePayload, mocked_api_calls: true })
-          });
-          const listPayload = await requestJson(DEFAULT_API_BASE_URL, listPath, { method: 'GET' });
-          applyRoster(listPayload, generatedPayload, 'mock', '');
-        } catch (mockError) {
-          applyRoster(
-            null,
-            null,
-            'fallback',
-            firstNonEmptyString(mockError?.message, 'Failed generating mock storytellers.')
-          );
-        } finally {
-          setIsLoadingStorytellers(false);
-        }
-        return;
-      }
-
       try {
         const generatedPayload = await requestJson(DEFAULT_API_BASE_URL, '/api/textToStoryteller', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...generatePayload, mocked_api_calls: false })
+          body: JSON.stringify(generatePayload)
         });
         const listPayload = await requestJson(DEFAULT_API_BASE_URL, listPath, { method: 'GET' });
-        applyRoster(listPayload, generatedPayload, 'api', '');
-      } catch (liveError) {
-        try {
-          const generatedPayload = await requestJson(DEFAULT_API_BASE_URL, '/api/textToStoryteller', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...generatePayload, mocked_api_calls: true })
-          });
-          const listPayload = await requestJson(DEFAULT_API_BASE_URL, listPath, { method: 'GET' });
-          applyRoster(listPayload, generatedPayload, 'mock', '');
-        } catch (mockError) {
-          applyRoster(
-            null,
-            null,
-            'fallback',
-            firstNonEmptyString(mockError?.message, liveError?.message)
-          );
-        }
+        applyRoster(
+          listPayload,
+          generatedPayload,
+          generatedPayload?.mocked || generatedPayload?.mockedStorytellers || generatedPayload?.mockedIllustrations
+            ? 'mock'
+            : 'api',
+          ''
+        );
+      } catch (error) {
+        applyRoster(
+          null,
+          null,
+          'fallback',
+          firstNonEmptyString(error?.message, 'Storyteller generation failed.')
+        );
       } finally {
         setIsLoadingStorytellers(false);
       }
     },
-    [hasTypewriterSession, persistMockFragmentToSession, sessionId, storytellerDetailsById]
+    [hasTypewriterSession, isAdminMode, sessionId, storytellerDetailsById]
   );
 
   const refreshStorytellersFromList = useCallback(
@@ -1147,7 +993,7 @@ const MemorySpreadPage = () => {
           DEFAULT_API_BASE_URL,
           `/api/storytellers${buildQuery({
             sessionId,
-            playerId: IS_ADMIN_MODE ? undefined : DEFAULT_PLAYER_ID
+            playerId: isAdminMode ? undefined : DEFAULT_PLAYER_ID
           })}`,
           { method: 'GET' }
         );
@@ -1159,7 +1005,6 @@ const MemorySpreadPage = () => {
         });
         if (mapped.length > 0) {
           setStorytellers(mapped);
-          setStorytellerSource(SHOULD_USE_MOCK_APIS ? 'mock' : 'api');
           if (!suppressNotice) {
             setNotice('Storyteller roster refreshed from API.');
           }
@@ -1170,7 +1015,7 @@ const MemorySpreadPage = () => {
         setIsLoadingStorytellers(false);
       }
     },
-    [sessionId, storytellers, storytellerDetailsById]
+    [isAdminMode, sessionId, storytellers, storytellerDetailsById]
   );
 
   const handleStorytellerIconClick = useCallback(
@@ -1233,7 +1078,7 @@ const MemorySpreadPage = () => {
       message: missionText,
       duration: Math.max(1, Math.round(Number(missionDurationDays) || 1))
     };
-    if (!IS_ADMIN_MODE) {
+    if (!isAdminMode) {
       requestBody.playerId = DEFAULT_PLAYER_ID;
     }
 
@@ -1293,33 +1138,12 @@ const MemorySpreadPage = () => {
     };
 
     try {
-      if (SHOULD_USE_MOCK_APIS) {
-        const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/sendStorytellerToEntity', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...requestBody, mocked_api_calls: true })
-        });
-        applyMission(payload, 'mock');
-      } else {
-        try {
-          const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/sendStorytellerToEntity', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...requestBody, mocked_api_calls: false })
-          });
-          applyMission(payload, 'api');
-        } catch (liveError) {
-          const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/sendStorytellerToEntity', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...requestBody, mocked_api_calls: true })
-          });
-          applyMission(payload, 'mock');
-          setStorytellerError(
-            firstNonEmptyString(liveError?.message, 'Live mission failed. Mock mission was used.')
-          );
-        }
-      }
+      const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/sendStorytellerToEntity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+      applyMission(payload, payload?.runtime?.mission?.mocked ? 'mock' : 'api');
       void loadStorytellerDetail(storytellerMenuStoryteller.id, { force: true, suppressNotice: true });
       void refreshStorytellersFromList({ suppressNotice: true });
       setSelectedArenaEntityId(missionTargetEntity.id);
@@ -1342,9 +1166,9 @@ const MemorySpreadPage = () => {
   ]);
 
   useEffect(() => {
-    if (IS_ADMIN_MODE) {
+    if (isAdminMode) {
       if (!hasTypewriterSession) {
-        setNotice('Admin mode: start in the typewriter, then come here to generate memories.');
+        setNotice('Admin mode: use Story Admin to seed a session, or start from the typewriter and continue here.');
       }
       return;
     }
@@ -1459,7 +1283,7 @@ const MemorySpreadPage = () => {
     setSelectedMemoryId('');
     setIsCollapsing(false);
     setIsSpreadIntro(false);
-    setDeckCards(IS_ADMIN_MODE ? [] : ensureDeckSize(deckCards));
+    setDeckCards(isAdminMode ? [] : ensureDeckSize(deckCards));
     setArenaEntities([]);
     setConnections([]);
     setPendingEntity(null);
@@ -1471,7 +1295,7 @@ const MemorySpreadPage = () => {
     setDraggingEntityId('');
     setIsArenaDragOver(false);
     setSelectedArenaEntityId('');
-    setStorytellers(IS_ADMIN_MODE ? [] : STORYTELLER_FALLBACK_ROSTER);
+    setStorytellers(isAdminMode ? [] : STORYTELLER_FALLBACK_ROSTER);
     setStorytellerSource('fallback');
     setStorytellerError('');
     setIsLoadingStorytellers(false);
@@ -1496,65 +1320,6 @@ const MemorySpreadPage = () => {
     setIsViewportAnimating(false);
     setNotice(nextNotice);
   };
-
-
-  const handleGenerateMockSession = useCallback(async () => {
-    const fragment = `${mockSessionFragment || ''}`.trim();
-    if (!fragment) {
-      setMemoryError('Mock fragment cannot be empty.');
-      setNotice('Enter a mock fragment before generating a session.');
-      return;
-    }
-
-    setIsCreatingMockSession(true);
-    setMemoryError('');
-    setDeckError('');
-    setStorytellerError('');
-
-    try {
-      const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/typewriter/session/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fragment })
-      });
-      const nextSessionId = firstNonEmptyString(payload?.sessionId, DEFAULT_SESSION_ID);
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(TYPEWRITER_SESSION_STORAGE_KEY, nextSessionId);
-      }
-      setSessionId(nextSessionId);
-      resetToMemorySelection('Mock session ready. Generate memories to test the flow.');
-      setMemoryCards([]);
-      setMemorySource('seeded');
-    } catch (error) {
-      setMemoryError(firstNonEmptyString(error?.message, 'Failed creating mock session.'));
-      setNotice('Mock session creation failed.');
-    } finally {
-      setIsCreatingMockSession(false);
-    }
-  }, [mockSessionFragment, resetToMemorySelection]);
-
-  const handleSaveMockFragmentToCurrentSession = useCallback(async () => {
-    setIsSavingMockFragment(true);
-    setMemoryError('');
-    setDeckError('');
-    setStorytellerError('');
-
-    try {
-      const didPersist = await persistMockFragmentToSession();
-      if (!didPersist) {
-        return;
-      }
-      resetToMemorySelection('Fragment saved to current session. Generate memories to test the flow.');
-      setMemoryCards([]);
-      setMemorySource('seeded');
-    } catch (error) {
-      setMemoryError(firstNonEmptyString(error?.message, 'Failed saving fragment to current session.'));
-      setNotice('Saving fragment to current session failed.');
-    } finally {
-      setIsSavingMockFragment(false);
-    }
-  }, [persistMockFragmentToSession, resetToMemorySelection]);
-
   const openMemory = (memoryId) => {
     if (phase !== SCREEN.MEMORIES || isCollapsing || isLoadingMemories) return;
 
@@ -1594,7 +1359,7 @@ const MemorySpreadPage = () => {
         y: arenaSize.height / 2,
         k: 0.94
       });
-      if (IS_ADMIN_MODE) {
+      if (isAdminMode) {
         setNotice('Memory anchored. Use the admin controls to generate entities and storytellers.');
       } else {
         setNotice('Revealing entities and storytellers from the APIs...');
@@ -1605,7 +1370,7 @@ const MemorySpreadPage = () => {
       schedule(() => {
         setIsSpreadIntro(false);
         setNotice(
-          IS_ADMIN_MODE
+          isAdminMode
             ? 'Generate entities and storytellers when ready, then place cards upon the velvet to anchor them.'
             : 'Place a card upon the velvet, then define its thread to anchor it.'
         );
@@ -1638,17 +1403,6 @@ const MemorySpreadPage = () => {
     setNotice('Generating storytellers from the chosen memory...');
     void loadStorytellersForMemory(selectedMemory);
   }, [loadStorytellersForMemory, selectedMemory]);
-
-  const handleToggleAdminMode = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    const url = new URL(window.location.href);
-    if (IS_ADMIN_MODE) {
-      url.searchParams.delete('admin');
-    } else {
-      url.searchParams.set('admin', '1');
-    }
-    window.location.assign(url.toString());
-  }, []);
 
   const returnToMemorySelection = () => {
     if (pendingEntity) {
@@ -1818,8 +1572,10 @@ const MemorySpreadPage = () => {
     let judgedPredicate = '';
 
     try {
-      const proposalPayload = await proposeRelationship(
-        {
+      const proposalPayload = await requestJson(DEFAULT_API_BASE_URL, '/api/arena/relationships/propose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           sessionId,
           playerId: DEFAULT_PLAYER_ID,
           arenaId: selectedMemoryId || 'memory-spread',
@@ -1831,10 +1587,8 @@ const MemorySpreadPage = () => {
           options: {
             dryRun: false
           }
-        },
-        DEFAULT_API_BASE_URL,
-        { mockApiCalls: SHOULD_USE_MOCK_APIS }
-      );
+        })
+      });
 
       if (proposalPayload?.verdict !== 'accepted') {
         const reasons = Array.isArray(proposalPayload?.quality?.reasons)
@@ -2052,22 +1806,19 @@ const MemorySpreadPage = () => {
         <h1>Memory Spread</h1>
         <p>{notice}</p>
         <div className="memorySpreadMeta">
-          {IS_ADMIN_MODE && <span className="memorySpreadModeTag">Admin mode</span>}
+          {isAdminMode && <span className="memorySpreadModeTag">Admin mode</span>}
           <span className="memorySpreadSessionTag">
-            Session: {hasTypewriterSession ? sessionId : 'typewriter session required'}
+            Session: {hasTypewriterSession ? sessionId : 'stored session required'}
           </span>
           <span>Archives: {isLoadingMemories ? 'unsealing' : memorySource}</span>
           <span>Deck: {isLoadingDeck ? 'drawing' : deckSource}</span>
           <span>Storytellers: {isLoadingStorytellers ? 'summoning' : storytellerSource}</span>
-          <button type="button" onClick={handleToggleAdminMode}>
-            {IS_ADMIN_MODE ? 'Hide admin tools' : 'Show admin tools'}
-          </button>
-          {!IS_ADMIN_MODE && (
+          {!isAdminMode && (
             <button type="button" onClick={loadMemoryCards} disabled={isLoadingMemories || phase !== SCREEN.MEMORIES}>
               Redraw Archives
             </button>
           )}
-          {IS_ADMIN_MODE && (
+          {isAdminMode && (
             <button
               type="button"
               onClick={handleGenerateMemories}
@@ -2077,39 +1828,6 @@ const MemorySpreadPage = () => {
             </button>
           )}
         </div>
-        {IS_ADMIN_MODE && (
-          <div className="memorySpreadAdminSeed">
-            <div className="memorySpreadAdminSeedCopy">
-              <strong>Mock session seed</strong>
-              <p>Create a real Mongo-backed session with a mocked fragment so you can test memories and entities without visiting the typewriter first.</p>
-            </div>
-            <label className="memorySpreadAdminSeedField">
-              Mock fragment
-              <textarea
-                value={mockSessionFragment}
-                onChange={(event) => setMockSessionFragment(event.target.value)}
-                rows={4}
-                disabled={isCreatingMockSession}
-              />
-            </label>
-            <button
-              type="button"
-              className="memorySpreadAdminSeedButton"
-              onClick={handleGenerateMockSession}
-              disabled={isCreatingMockSession || isSavingMockFragment}
-            >
-              {isCreatingMockSession ? 'Generating session...' : 'Generate session + mocked fragment'}
-            </button>
-            <button
-              type="button"
-              className="memorySpreadAdminSeedButton ghost"
-              onClick={handleSaveMockFragmentToCurrentSession}
-              disabled={!hasTypewriterSession || isCreatingMockSession || isSavingMockFragment}
-            >
-              {isSavingMockFragment ? 'Saving fragment...' : 'Save fragment to current session'}
-            </button>
-          </div>
-        )}
         {(memoryError || deckError || storytellerError) && (
           <p className="memorySpreadError">
             {memoryError && `Memory API: ${memoryError}`}
@@ -2156,8 +1874,8 @@ const MemorySpreadPage = () => {
               <div className="memoryTriptychEmpty">
                 <strong>No memories drawn yet.</strong>
                 <p>
-                  {IS_ADMIN_MODE
-                    ? 'Use Generate 3 memories after creating a typewriter session.'
+                  {isAdminMode
+                    ? 'Use Story Admin to seed a session, or continue a typewriter session before generating memories.'
                     : 'Memory generation has not returned any cards yet.'}
                 </p>
               </div>
@@ -2230,7 +1948,7 @@ const MemorySpreadPage = () => {
                 <h2>{selectedMemory.title}</h2>
               </article>
               <div className="memoryAnchorActions">
-                {IS_ADMIN_MODE && (
+                {isAdminMode && (
                   <button
                     type="button"
                     className="adminActionButton"
@@ -2240,7 +1958,7 @@ const MemorySpreadPage = () => {
                     {isLoadingDeck ? 'Generating...' : 'Entities'}
                   </button>
                 )}
-                {IS_ADMIN_MODE && (
+                {isAdminMode && (
                   <button
                     type="button"
                     className="adminActionButton"

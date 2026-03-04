@@ -15,7 +15,7 @@ import TypewriterFramework from './TypewriterFramework';
 const VIEW = {
   ARENA: 'arena',
   TYPEWRITER: 'typewriter',
-  TYPEWRITER_ADMIN: 'typewriter-admin',
+  STORY_ADMIN: 'story-admin',
   QUEST: 'quest',
   QUEST_ADMIN: 'quest-admin',
   MEMORY_SPREAD: 'memory-spread'
@@ -24,7 +24,7 @@ const VIEW = {
 const VIEW_OPTIONS = [
   { id: VIEW.ARENA, label: 'Arena' },
   { id: VIEW.TYPEWRITER, label: 'Typewriter' },
-  { id: VIEW.TYPEWRITER_ADMIN, label: 'Typewriter Admin' },
+  { id: VIEW.STORY_ADMIN, label: 'Story Admin' },
   { id: VIEW.QUEST, label: 'Quest' },
   { id: VIEW.QUEST_ADMIN, label: 'Quest Admin' },
   { id: VIEW.MEMORY_SPREAD, label: 'Memory Spread' }
@@ -34,6 +34,9 @@ const readInitialView = () => {
   if (typeof window === 'undefined') return VIEW.ARENA;
   const params = new URLSearchParams(window.location.search);
   const requested = params.get('view');
+  if (requested === 'typewriter-admin') {
+    return VIEW.STORY_ADMIN;
+  }
   if (requested && Object.values(VIEW).includes(requested)) {
     return requested;
   }
@@ -87,7 +90,7 @@ function App() {
       <main className="appMain">
         {view === VIEW.ARENA && arenaContent}
         {view === VIEW.TYPEWRITER && <TypewriterFramework />}
-        {view === VIEW.TYPEWRITER_ADMIN && <TypewriterAdminPage />}
+        {view === VIEW.STORY_ADMIN && <TypewriterAdminPage />}
         {view === VIEW.QUEST && <QuestAdventurePage />}
         {view === VIEW.QUEST_ADMIN && <QuestAdminPage />}
         {view === VIEW.MEMORY_SPREAD && <MemorySpreadPage />}

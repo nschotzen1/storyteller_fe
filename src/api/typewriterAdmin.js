@@ -150,4 +150,25 @@ export const setLatestTypewriterPromptVersion = async (
   });
 };
 
+export const startOrSeedTypewriterSession = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  { sessionId, fragment } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  const payload = {};
+  if (typeof sessionId === 'string' && sessionId.trim()) {
+    payload.sessionId = sessionId.trim();
+  }
+  if (typeof fragment === 'string') {
+    payload.fragment = fragment;
+  }
+  return requestJson(`${safeBaseUrl}/api/typewriter/session/start`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+};
+
 export { DEFAULT_API_BASE_URL };
