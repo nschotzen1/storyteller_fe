@@ -1,13 +1,20 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, cleanup } from '@testing-library/react';
 import { vi } from 'vitest';
-import TypewriterFramework, { MAX_LINES, normalizeTypewriterReply } from './TypewriterFramework';
+import TypewriterFramework, {
+  FIRST_FADE_HANDOFF_DELAY,
+  MAX_LINES,
+  normalizeContinuationInsights,
+  normalizeTypewriterReply,
+} from './TypewriterFramework';
 import '@testing-library/jest-dom';
 
 vi.mock('./apiService', () => ({
   fetchNextFilmImage: vi.fn(),
+  fetchShouldCreateStorytellerKey: vi.fn(),
   fetchTypewriterReply: vi.fn().mockResolvedValue({ data: { content: 'mock AI reply' }, error: null }),
   fetchShouldGenerateContinuation: vi.fn().mockResolvedValue({ shouldGenerate: false }),
+  startTypewriterSession: vi.fn().mockResolvedValue({ data: { sessionId: 'test-session-id-123' }, error: null }),
 }));
 
 vi.mock('./utils', async () => {
@@ -24,10 +31,54 @@ vi.mock('./utils', async () => {
 
 import {
   fetchNextFilmImage,
+  fetchShouldCreateStorytellerKey,
   fetchTypewriterReply,
   fetchShouldGenerateContinuation,
+  startTypewriterSession,
 } from './apiService';
 import { playEndOfPageSound } from './utils';
+
+const buildStorytellerSlotPayload = (overrides = {}) => ([
+  {
+    slotIndex: 0,
+    slotKey: 'STORYTELLER_SLOT_HORIZONTAL',
+    keyShape: 'horizontal',
+    blankTextureUrl: '/textures/keys/blank_horizontal_1.png',
+    filled: false,
+    storytellerId: '',
+    storytellerName: '',
+    keyImageUrl: '',
+    symbol: '',
+    description: '',
+  },
+  {
+    slotIndex: 1,
+    slotKey: 'STORYTELLER_SLOT_VERTICAL',
+    keyShape: 'vertical',
+    blankTextureUrl: '/textures/keys/blank_vertical_1.png',
+    filled: false,
+    storytellerId: '',
+    storytellerName: '',
+    keyImageUrl: '',
+    symbol: '',
+    description: '',
+  },
+  {
+    slotIndex: 2,
+    slotKey: 'STORYTELLER_SLOT_RECT_HORIZONTAL',
+    keyShape: 'rect_horizontal',
+    blankTextureUrl: '/textures/keys/blank_rect_horizontal_1.png',
+    filled: false,
+    storytellerId: '',
+    storytellerName: '',
+    keyImageUrl: '',
+    symbol: '',
+    description: '',
+  },
+]).map((slot) => ({
+  ...slot,
+  ...(overrides[slot.slotIndex] || {}),
+}));
 
 const localStorageMock = (() => {
   let store = {};
@@ -71,14 +122,22 @@ describe('TypewriterFramework integration', () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve());
+    vi.spyOn(window.HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
     localStorageMock.clear();
     localStorageMock.setItem('sessionId', 'test-session-id-123');
     fetchNextFilmImage.mockResolvedValue({ data: { image_url: 'default_mock_image.png' }, error: null });
+    fetchShouldCreateStorytellerKey.mockResolvedValue({
+      data: { slots: buildStorytellerSlotPayload() },
+      error: null
+    });
     fetchTypewriterReply.mockResolvedValue({ data: { sequence: [] }, error: null });
+    startTypewriterSession.mockResolvedValue({ data: { sessionId: 'test-session-id-123' }, error: null });
   });
 
   afterEach(() => {
-    vi.runOnlyPendingTimers();
+    vi.clearAllTimers();
+    cleanup();
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
@@ -181,6 +240,47 @@ describe('TypewriterFramework integration', () => {
     });
   });
 
+  test('renders storyteller slots and swaps in generated storyteller key art', async () => {
+    fetchShouldCreateStorytellerKey.mockResolvedValue({
+      data: {
+        slots: buildStorytellerSlotPayload({
+          0: {
+            filled: true,
+            storytellerId: 'storyteller-1',
+            storytellerName: 'Aster Vell',
+            keyImageUrl: 'http://localhost:5001/assets/demo/aster_vell_key.png',
+            symbol: 'ink moth',
+            description: 'Weathered brass and smoky enamel.',
+          },
+        }),
+      },
+      error: null
+    });
+
+    render(<TypewriterFramework />);
+
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+
+    await waitFor(() => {
+      expect(fetchShouldCreateStorytellerKey).toHaveBeenCalled();
+    });
+
+    expect(screen.getByAltText('Storyteller key Aster Vell')).toHaveAttribute(
+      'src',
+      'http://localhost:5001/assets/demo/aster_vell_key.png'
+    );
+    expect(screen.getByAltText('Blank storyteller slot 2')).toHaveAttribute(
+      'src',
+      '/textures/keys/blank_vertical_1.png'
+    );
+    expect(screen.getByAltText('Blank storyteller slot 3')).toHaveAttribute(
+      'src',
+      '/textures/keys/blank_rect_horizontal_1.png'
+    );
+  });
+
   test('normalizes mock and non-mock reply schemas into a single sequence', () => {
     const mockStyle = normalizeTypewriterReply({
       metadata: { fontName: 'Test Font', fontSize: '1rem', fontColor: '#111' },
@@ -220,6 +320,45 @@ describe('TypewriterFramework integration', () => {
     expect(nonMockStyle.sequence[0].text).toBe('abc');
   });
 
+  test('normalizes continuation insights payload including Entities array', () => {
+    const normalized = normalizeContinuationInsights({
+      continuation_insights: {
+        meaning: ['Signal implies shelter.', 'Approach raises stakes.'],
+        contextual_strengthening: 'The cue connects bell, smoke, and movement.',
+        continuation_word_count: 7,
+        current_storytelling_points_pool: 35,
+        points_earned: 0,
+        Entities: [
+          {
+            entity_name: 'Monastery kitchen chimney',
+            ner_category: 'STRUCTURE',
+            ascope_pmesii: 'Infrastructure',
+            storytelling_points: 4,
+            reuse: false,
+          },
+        ],
+      },
+    });
+
+    expect(normalized).toEqual({
+      meaning: ['Signal implies shelter.', 'Approach raises stakes.'],
+      contextual_strengthening: 'The cue connects bell, smoke, and movement.',
+      continuation_word_count: 7,
+      current_storytelling_points_pool: 35,
+      points_earned: 0,
+      entities: [
+        {
+          entity_name: 'Monastery kitchen chimney',
+          ner_category: 'STRUCTURE',
+          ascope_pmesii: 'Infrastructure',
+          storytelling_points: 4,
+          reuse: false,
+        },
+      ],
+      style: null,
+    });
+  });
+
   test('renders fade phase when a typewriter sequence includes fade actions', async () => {
     fetchShouldGenerateContinuation.mockResolvedValue({ shouldGenerate: true });
     fetchTypewriterReply.mockResolvedValue({
@@ -251,18 +390,34 @@ describe('TypewriterFramework integration', () => {
       expect(fetchNextFilmImage).not.toHaveBeenCalled(); // dummy check
     });
 
-    await advanceUntil(() => container.querySelector('.fade-ghost-container') !== null, 2000);
+    const fadeAppeared = await advanceUntil(() => container.querySelector('.fade-ghost-container') !== null, 4000);
+    expect(fadeAppeared).toBe(true);
 
     await waitFor(() => {
       expect(container.querySelector('.fade-ghost-container')).toBeInTheDocument();
       expect(container.querySelector('.fade-ghost-layer.fade-ghost-in')).toBeInTheDocument();
     });
 
-    await advanceUntil(() => container.querySelector('.fade-ghost-layer.smudge-fade-out') !== null, 2000);
+    const fadeOutAppeared = await advanceUntil(() => container.querySelector('.fade-ghost-layer.smudge-fade-out') !== null, 3000);
+    expect(fadeOutAppeared).toBe(true);
 
     await waitFor(() => {
       expect(container.querySelector('.fade-ghost-layer.smudge-fade-out')).toBeInTheDocument();
     });
+  });
+
+  test('adds a first-fade handoff delay without affecting later fade phases', () => {
+    const normalized = normalizeTypewriterReply({
+      sequence: [
+        { action: 'type', text: 'AB', delay: 200 },
+        { action: 'pause', delay: 300 },
+        { action: 'fade', to_text: 'A', phase: 1, delay: 600 },
+        { action: 'fade', to_text: '', phase: 2, delay: 600 },
+      ],
+    });
+
+    expect(normalized.sequence[2].leadDelay).toBe(FIRST_FADE_HANDOFF_DELAY - 500);
+    expect(normalized.sequence[3].leadDelay).toBe(0);
   });
 
   test('restores cursor after fade and does not auto-retrigger until user types again', async () => {
@@ -296,7 +451,8 @@ describe('TypewriterFramework integration', () => {
       expect(fetchNextFilmImage).not.toHaveBeenCalled();
     });
 
-    await advanceUntil(() => document.querySelector('.fade-ghost-container') !== null, 2000);
+    const fadeAppeared = await advanceUntil(() => document.querySelector('.fade-ghost-container') !== null, 4000);
+    expect(fadeAppeared).toBe(true);
 
     await waitFor(() => {
       expect(document.querySelector('.fade-ghost-container')).toBeInTheDocument();
@@ -355,7 +511,8 @@ describe('TypewriterFramework integration', () => {
       expect(fetchNextFilmImage).not.toHaveBeenCalled();
     });
 
-    await advanceUntil(() => container.querySelector('.fade-ghost-container') !== null, 2000);
+    const fadeAppeared = await advanceUntil(() => container.querySelector('.fade-ghost-container') !== null, 4000);
+    expect(fadeAppeared).toBe(true);
 
     await waitFor(() => {
       expect(container.querySelector('.fade-ghost-container')).toBeInTheDocument();

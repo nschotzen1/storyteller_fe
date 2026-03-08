@@ -1,13 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_API_BASE_URL,
+  loadLlmRouteConfigs,
+  loadLlmRouteConfigVersions,
   loadOpenAiModels,
   loadTypewriterPrompts,
   loadTypewriterAiSettings,
   loadTypewriterPromptVersions,
+  resetLlmRouteConfig,
   resetTypewriterAiSettings,
+  saveLlmRouteConfigVersion,
   seedCurrentTypewriterPrompts,
   saveTypewriterPrompt,
+  setLatestLlmRouteConfigVersion,
   setLatestTypewriterPromptVersion,
   saveTypewriterAiSettings,
   startOrSeedTypewriterSession
@@ -20,19 +25,43 @@ const TYPEWRITER_SESSION_STORAGE_KEY = 'sessionId';
 const MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY = 'memorySpreadAdminMode';
 const DEFAULT_SESSION_SEED_FRAGMENT =
   'At dusk the courier reached the wind-scoured pass below a rusted watchtower, carrying a rain-dark satchel sealed with ash. No one answered the signal bell, but boot prints ringed the threshold and vanished into the shale. When the courier touched the gate, a hidden mechanism groaned awake beneath the stone.';
+const EMPTY_MODELS_PAYLOAD = {
+  textModels: [],
+  imageModels: [],
+  source: 'fallback',
+  fetchedAt: '',
+  providers: {}
+};
+const FALLBACK_ANTHROPIC_TEXT_MODELS = [
+  'claude-3-7-sonnet-latest',
+  'claude-3-opus-latest',
+  'claude-3-5-sonnet-latest'
+];
 
 const SETTING_PIPELINES = [
   {
     key: 'story_continuation',
     label: 'Story continuation',
     description: '/api/send_typewriter_text',
-    modelKind: 'text'
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
+  },
+  {
+    key: 'messenger_chat',
+    label: 'Messenger chat',
+    description: '/api/messenger/chat',
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
   },
   {
     key: 'memory_creation',
     label: 'Memory creation',
     description: '/api/fragmentToMemories',
     modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai',
     supportsCount: true,
     countProperty: 'memoryCount',
     countLabel: 'Default memory count',
@@ -45,6 +74,8 @@ const SETTING_PIPELINES = [
     label: 'Entity creation',
     description: '/api/textToEntity',
     modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai',
     supportsCount: true,
     countProperty: 'entityCount',
     countLabel: 'Default entity count',
@@ -57,6 +88,8 @@ const SETTING_PIPELINES = [
     label: 'Storyteller creation',
     description: '/api/textToStoryteller (persona stage)',
     modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai',
     supportsCount: true,
     countProperty: 'storytellerCount',
     countLabel: 'Default storyteller count',
@@ -65,22 +98,36 @@ const SETTING_PIPELINES = [
     defaultCount: 4
   },
   {
+    key: 'storyteller_mission',
+    label: 'Storyteller mission',
+    description: '/api/sendStorytellerToEntity',
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
+  },
+  {
     key: 'relationship_evaluation',
     label: 'Relationship evaluation',
     description: '/api/arena/relationships/propose',
-    modelKind: 'text'
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
   },
   {
     key: 'texture_creation',
     label: 'Texture creation',
     description: 'Card/front/back image generation',
-    modelKind: 'image'
+    modelKind: 'image',
+    supportedProviders: ['openai'],
+    defaultProvider: 'openai'
   },
   {
     key: 'illustration_creation',
     label: 'Illustration creation',
     description: '/api/textToStoryteller (illustration stage)',
-    modelKind: 'image'
+    modelKind: 'image',
+    supportedProviders: ['openai'],
+    defaultProvider: 'openai'
   }
 ];
 
@@ -90,6 +137,12 @@ const PROMPT_PIPELINES = [
     label: 'Story continuation',
     description: '/api/send_typewriter_text',
     settingsKey: 'story_continuation'
+  },
+  {
+    key: 'messenger_chat',
+    label: 'Messenger chat',
+    description: '/api/messenger/chat assistant prompt',
+    settingsKey: 'messenger_chat'
   },
   {
     key: 'memory_creation',
@@ -134,6 +187,18 @@ const PROMPT_PIPELINES = [
     settingsKey: 'storyteller_creation'
   },
   {
+    key: 'storyteller_mission',
+    label: 'Storyteller mission',
+    description: '/api/sendStorytellerToEntity mission evaluation',
+    settingsKey: 'storyteller_mission'
+  },
+  {
+    key: 'relationship_evaluation',
+    label: 'Relationship evaluation',
+    description: '/api/arena/relationships/* judgment prompt',
+    settingsKey: 'relationship_evaluation'
+  },
+  {
     key: 'storyteller_key_creation',
     label: 'Storyteller key image',
     description: '/api/textToStoryteller typewriter key image generation',
@@ -172,14 +237,15 @@ const getInitialMemorySpreadAdminMode = () => {
   return normalized === '1' || normalized === 'true' || normalized === 'yes';
 };
 
-const buildEmptySettings = () => {
+const buildEmptySettings = (pipelineDefinitions = SETTING_PIPELINES) => {
   const pipelines = {};
-  for (const pipeline of SETTING_PIPELINES) {
+  for (const pipeline of pipelineDefinitions) {
       pipelines[pipeline.key] = {
         key: pipeline.key,
         useMock: false,
         model: '',
-        modelKind: pipeline.modelKind
+        modelKind: pipeline.modelKind,
+        provider: pipeline.defaultProvider || 'openai'
       };
       if (pipeline.supportsCount && pipeline.countProperty) {
         pipelines[pipeline.key][pipeline.countProperty] = pipeline.defaultCount;
@@ -205,19 +271,116 @@ const normalizeCountDraft = (value, fallback = 1, min = 1, max = 10) => {
   return Math.min(Math.max(min, Math.floor(next)), max);
 };
 
+const stringifyJsonDraft = (value) => {
+  if (value === null || value === undefined || value === '') return '';
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return '';
+  }
+};
+
+const normalizeOutputRulesDraft = (value) => {
+  if (Array.isArray(value)) {
+    return value.join('\n');
+  }
+  return `${value || ''}`.trim();
+};
+
+const buildLlmConfigDraft = (config = {}) => ({
+  promptMode: config.promptMode === 'contract' ? 'contract' : 'manual',
+  promptTemplate: config.promptTemplate || '',
+  promptCore: config.promptCore || '',
+  responseSchemaText: stringifyJsonDraft(config.responseSchema || {}),
+  fieldDocsText: stringifyJsonDraft(config.fieldDocs || {}),
+  examplePayloadText: stringifyJsonDraft(config.examplePayload),
+  outputRulesText: normalizeOutputRulesDraft(config.outputRules)
+});
+
+const parseJsonDraft = (label, value, { allowBlank = false, fallback = null } = {}) => {
+  const raw = `${value || ''}`.trim();
+  if (!raw) {
+    if (allowBlank) return fallback;
+    throw new Error(`${label} is required.`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(`${label} must be valid JSON.`);
+  }
+};
+
+const normalizeFieldDocsForPreview = (fieldDocs) => {
+  if (!fieldDocs || typeof fieldDocs !== 'object' || Array.isArray(fieldDocs)) return {};
+  const normalized = {};
+  Object.entries(fieldDocs).forEach(([key, value]) => {
+    const fieldKey = `${key || ''}`.trim();
+    if (!fieldKey) return;
+    if (typeof value === 'string' && value.trim()) {
+      normalized[fieldKey] = value.trim();
+    }
+  });
+  return normalized;
+};
+
+const buildStructuredPromptPreview = ({
+  promptMode,
+  promptTemplate,
+  promptCore,
+  responseSchemaText,
+  fieldDocsText,
+  examplePayloadText,
+  outputRulesText
+}) => {
+  if (promptMode !== 'contract') {
+    return promptTemplate || '';
+  }
+
+  const schema = parseJsonDraft('Response schema', responseSchemaText, { fallback: {} });
+  const fieldDocs = parseJsonDraft('Field docs', fieldDocsText, { allowBlank: true, fallback: {} });
+  const examplePayload = parseJsonDraft('Example payload', examplePayloadText, { allowBlank: true, fallback: null });
+  const outputRules = `${outputRulesText || ''}`
+    .split('\n')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  const sections = [];
+  if (`${promptCore || ''}`.trim()) {
+    sections.push(`${promptCore}`.trim());
+  }
+  sections.push('Return JSON only.');
+  sections.push(`Output must validate against this JSON Schema:\n${JSON.stringify(schema, null, 2)}`);
+  const fieldDocEntries = Object.entries(normalizeFieldDocsForPreview(fieldDocs));
+  if (fieldDocEntries.length) {
+    sections.push(`Field guidance:\n${fieldDocEntries.map(([key, value]) => `- ${key}: ${value}`).join('\n')}`);
+  }
+  if (outputRules.length) {
+    sections.push(`Additional output rules:\n${outputRules.map((rule) => `- ${rule}`).join('\n')}`);
+  }
+  if (examplePayload !== null) {
+    sections.push(`Example valid JSON:\n${JSON.stringify(examplePayload, null, 2)}`);
+  }
+  return sections.join('\n\n').trim();
+};
+
 const TypewriterAdminPage = () => {
   const [apiBaseUrl, setApiBaseUrl] = useState(getInitialApiBaseUrl);
   const [adminKey, setAdminKey] = useState(getInitialAdminKey);
   const [settings, setSettings] = useState(buildEmptySettings);
-  const [models, setModels] = useState({ textModels: [], imageModels: [], source: 'fallback', fetchedAt: '' });
+  const [settingDefinitions, setSettingDefinitions] = useState(SETTING_PIPELINES);
+  const [models, setModels] = useState(EMPTY_MODELS_PAYLOAD);
   const [prompts, setPrompts] = useState({ pipelines: {} });
+  const [promptDefinitions, setPromptDefinitions] = useState(PROMPT_PIPELINES);
   const [promptDrafts, setPromptDrafts] = useState({});
   const [promptVersions, setPromptVersions] = useState({});
+  const [llmRouteConfigs, setLlmRouteConfigs] = useState({});
+  const [llmRouteConfigDrafts, setLlmRouteConfigDrafts] = useState({});
+  const [llmRouteConfigVersions, setLlmRouteConfigVersions] = useState({});
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingPrompts, setSavingPrompts] = useState(false);
+  const [savingLlmConfigs, setSavingLlmConfigs] = useState(false);
   const [refreshingModels, setRefreshingModels] = useState(false);
   const [sessionSaving, setSessionSaving] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(getInitialStoredSessionId);
@@ -258,19 +421,36 @@ const TypewriterAdminPage = () => {
       setError('');
       setStatus('');
       try {
-        const [settingsPayload, modelsPayload, promptsPayload] = await Promise.all([
+        const [settingsPayload, modelsPayload, promptsPayload, llmRouteConfigsPayload] = await Promise.all([
           loadTypewriterAiSettings(apiBaseUrl, { adminKey }),
           loadOpenAiModels(apiBaseUrl, { adminKey }),
-          loadTypewriterPrompts(apiBaseUrl, { adminKey })
+          loadTypewriterPrompts(apiBaseUrl, { adminKey }),
+          loadLlmRouteConfigs(apiBaseUrl, { adminKey })
         ]);
+        const nextSettingDefinitions = Array.isArray(settingsPayload?.pipelinesMeta) && settingsPayload.pipelinesMeta.length
+          ? settingsPayload.pipelinesMeta
+          : SETTING_PIPELINES;
+        const nextPromptDefinitions = Array.isArray(promptsPayload?.pipelinesMeta) && promptsPayload.pipelinesMeta.length
+          ? promptsPayload.pipelinesMeta
+          : PROMPT_PIPELINES;
         if (!active) return;
-        setSettings(settingsPayload || buildEmptySettings());
-        setModels(modelsPayload || { textModels: [], imageModels: [], source: 'fallback', fetchedAt: '' });
+        setSettingDefinitions(nextSettingDefinitions);
+        setPromptDefinitions(nextPromptDefinitions);
+        setSettings(settingsPayload || buildEmptySettings(nextSettingDefinitions));
+        setModels(modelsPayload || EMPTY_MODELS_PAYLOAD);
         setPrompts(promptsPayload || { pipelines: {} });
         setPromptDrafts(() => {
           const nextDrafts = {};
-          PROMPT_PIPELINES.forEach((pipeline) => {
+          nextPromptDefinitions.forEach((pipeline) => {
             nextDrafts[pipeline.key] = promptsPayload?.pipelines?.[pipeline.key]?.promptTemplate || '';
+          });
+          return nextDrafts;
+        });
+        setLlmRouteConfigs(llmRouteConfigsPayload || {});
+        setLlmRouteConfigDrafts(() => {
+          const nextDrafts = {};
+          Object.values(llmRouteConfigsPayload || {}).forEach((config) => {
+            nextDrafts[config.routeKey] = buildLlmConfigDraft(config);
           });
           return nextDrafts;
         });
@@ -289,13 +469,21 @@ const TypewriterAdminPage = () => {
   }, [apiBaseUrl, adminKey]);
 
   const pipelineRows = useMemo(() => {
-    return SETTING_PIPELINES.map((pipeline) => {
+    return settingDefinitions.map((pipeline) => {
       const current = settings?.pipelines?.[pipeline.key] || {};
+      const supportedProviders = Array.isArray(pipeline.supportedProviders) && pipeline.supportedProviders.length
+        ? pipeline.supportedProviders
+        : ['openai'];
+      const provider = typeof current.provider === 'string' && supportedProviders.includes(current.provider)
+        ? current.provider
+        : pipeline.defaultProvider || supportedProviders[0];
       return {
         ...pipeline,
         useMock: Boolean(current.useMock),
         model: typeof current.model === 'string' ? current.model : '',
         modelKind: current.modelKind || pipeline.modelKind,
+        provider,
+        supportedProviders,
         countValue: pipeline.supportsCount && pipeline.countProperty
           ? Number.isFinite(Number(current[pipeline.countProperty]))
             ? Number(current[pipeline.countProperty])
@@ -303,13 +491,37 @@ const TypewriterAdminPage = () => {
           : undefined
       };
     });
-  }, [settings]);
+  }, [settingDefinitions, settings]);
 
-  const getModelOptions = (modelKind, currentModel) => {
-    const sourceModels = modelKind === 'image' ? models.imageModels : models.textModels;
+  const llmRouteRows = useMemo(() => {
+    return Object.values(llmRouteConfigs || {}).sort((left, right) =>
+      `${left?.routeKey || ''}`.localeCompare(`${right?.routeKey || ''}`)
+    );
+  }, [llmRouteConfigs]);
+
+  const getModelOptions = (modelKind, currentModel, provider = 'openai') => {
+    const normalizedProvider = provider === 'anthropic' ? 'anthropic' : 'openai';
+    const providerPayload = models?.providers?.[normalizedProvider];
+    let sourceModels = [];
+    if (modelKind === 'image') {
+      sourceModels = Array.isArray(providerPayload?.imageModels)
+        ? providerPayload.imageModels
+        : normalizedProvider === 'openai'
+          ? models.imageModels
+          : [];
+    } else {
+      sourceModels = Array.isArray(providerPayload?.textModels)
+        ? providerPayload.textModels
+        : normalizedProvider === 'openai'
+          ? models.textModels
+          : [];
+    }
     const modelIds = (Array.isArray(sourceModels) ? sourceModels : [])
       .map((entry) => (typeof entry?.id === 'string' ? entry.id.trim() : ''))
       .filter(Boolean);
+    if (normalizedProvider === 'anthropic' && modelIds.length === 0) {
+      modelIds.push(...FALLBACK_ANTHROPIC_TEXT_MODELS);
+    }
     if (currentModel && !modelIds.includes(currentModel)) {
       modelIds.unshift(currentModel);
     }
@@ -339,6 +551,16 @@ const TypewriterAdminPage = () => {
     }));
   };
 
+  const updateLlmRouteConfigDraft = (routeKey, patch) => {
+    setLlmRouteConfigDrafts((prev) => ({
+      ...prev,
+      [routeKey]: {
+        ...(prev?.[routeKey] || {}),
+        ...patch
+      }
+    }));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError('');
@@ -350,7 +572,8 @@ const TypewriterAdminPage = () => {
       for (const row of pipelineRows) {
         payload.pipelines[row.key] = {
           useMock: Boolean(row.useMock),
-          model: row.model
+          model: row.model,
+          provider: row.provider || 'openai'
         };
         if (row.supportsCount && row.countProperty) {
           payload.pipelines[row.key][row.countProperty] = row.countValue;
@@ -360,7 +583,12 @@ const TypewriterAdminPage = () => {
         adminKey,
         updatedBy: 'story-admin-ui'
       });
-      setSettings(response || buildEmptySettings());
+      setSettingDefinitions(
+        Array.isArray(response?.pipelinesMeta) && response.pipelinesMeta.length
+          ? response.pipelinesMeta
+          : settingDefinitions
+      );
+      setSettings(response || buildEmptySettings(settingDefinitions));
       setStatus('Saved runtime AI settings.');
     } catch (err) {
       setError(err.message || 'Unable to save settings.');
@@ -378,7 +606,12 @@ const TypewriterAdminPage = () => {
         adminKey,
         updatedBy: 'story-admin-ui'
       });
-      setSettings(response || buildEmptySettings());
+      setSettingDefinitions(
+        Array.isArray(response?.pipelinesMeta) && response.pipelinesMeta.length
+          ? response.pipelinesMeta
+          : settingDefinitions
+      );
+      setSettings(response || buildEmptySettings(settingDefinitions));
       setStatus('Reset settings to defaults.');
     } catch (err) {
       setError(err.message || 'Unable to reset settings.');
@@ -393,7 +626,7 @@ const TypewriterAdminPage = () => {
     setStatus('');
     try {
       const payload = await loadOpenAiModels(apiBaseUrl, { adminKey, forceRefresh: true });
-      setModels(payload || { textModels: [], imageModels: [], source: 'fallback', fetchedAt: '' });
+      setModels(payload || EMPTY_MODELS_PAYLOAD);
       setStatus('Refreshed model list.');
     } catch (err) {
       setError(err.message || 'Unable to refresh model list.');
@@ -417,6 +650,11 @@ const TypewriterAdminPage = () => {
         loadTypewriterPrompts(apiBaseUrl, { adminKey }),
         loadTypewriterPromptVersions(apiBaseUrl, pipelineKey, { adminKey, limit: 10 })
       ]);
+      setPromptDefinitions(
+        Array.isArray(latestPrompts?.pipelinesMeta) && latestPrompts.pipelinesMeta.length
+          ? latestPrompts.pipelinesMeta
+          : promptDefinitions
+      );
       setPrompts(latestPrompts || { pipelines: {} });
       setPromptVersions((prev) => ({
         ...prev,
@@ -441,10 +679,15 @@ const TypewriterAdminPage = () => {
         overwrite: false
       });
       const latestPrompts = await loadTypewriterPrompts(apiBaseUrl, { adminKey });
+      setPromptDefinitions(
+        Array.isArray(latestPrompts?.pipelinesMeta) && latestPrompts.pipelinesMeta.length
+          ? latestPrompts.pipelinesMeta
+          : promptDefinitions
+      );
       setPrompts(latestPrompts || { pipelines: {} });
       setPromptDrafts((prev) => {
         const nextDrafts = { ...prev };
-        PROMPT_PIPELINES.forEach((pipeline) => {
+        promptDefinitions.forEach((pipeline) => {
           nextDrafts[pipeline.key] = latestPrompts?.pipelines?.[pipeline.key]?.promptTemplate || prev[pipeline.key] || '';
         });
         return nextDrafts;
@@ -483,6 +726,11 @@ const TypewriterAdminPage = () => {
         id: versionId
       });
       const latestPrompts = await loadTypewriterPrompts(apiBaseUrl, { adminKey });
+      setPromptDefinitions(
+        Array.isArray(latestPrompts?.pipelinesMeta) && latestPrompts.pipelinesMeta.length
+          ? latestPrompts.pipelinesMeta
+          : promptDefinitions
+      );
       setPrompts(latestPrompts || { pipelines: {} });
       setPromptDrafts((prev) => ({
         ...prev,
@@ -493,6 +741,132 @@ const TypewriterAdminPage = () => {
       setError(err.message || 'Unable to set latest prompt version.');
     } finally {
       setSavingPrompts(false);
+    }
+  };
+
+  const handleSaveLlmRouteConfig = async (routeKey) => {
+    const draft = llmRouteConfigDrafts?.[routeKey];
+    if (!draft) {
+      setError(`No draft found for ${routeKey}.`);
+      setStatus('');
+      return;
+    }
+
+    setSavingLlmConfigs(true);
+    setError('');
+    setStatus('');
+
+    try {
+      const responseSchema = parseJsonDraft('Response schema', draft.responseSchemaText, { fallback: {} });
+      const fieldDocs = parseJsonDraft('Field docs', draft.fieldDocsText, { allowBlank: true, fallback: {} });
+      const examplePayload = parseJsonDraft('Example payload', draft.examplePayloadText, { allowBlank: true, fallback: null });
+      const payload = {
+        promptMode: draft.promptMode === 'contract' ? 'contract' : 'manual',
+        promptTemplate: `${draft.promptTemplate || ''}`.trim(),
+        promptCore: `${draft.promptCore || ''}`.trim(),
+        responseSchema,
+        fieldDocs,
+        examplePayload,
+        outputRules: `${draft.outputRulesText || ''}`
+          .split('\n')
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+      };
+
+      await saveLlmRouteConfigVersion(apiBaseUrl, routeKey, payload, {
+        adminKey,
+        updatedBy: 'story-admin-ui',
+        markLatest: true
+      });
+
+      const [latestConfigs, versionsPayload] = await Promise.all([
+        loadLlmRouteConfigs(apiBaseUrl, { adminKey }),
+        loadLlmRouteConfigVersions(apiBaseUrl, routeKey, { adminKey, limit: 10 })
+      ]);
+
+      setLlmRouteConfigs(latestConfigs || {});
+      setLlmRouteConfigDrafts((prev) => ({
+        ...prev,
+        [routeKey]: buildLlmConfigDraft(latestConfigs?.[routeKey] || {})
+      }));
+      setLlmRouteConfigVersions((prev) => ({
+        ...prev,
+        [routeKey]: Array.isArray(versionsPayload?.versions) ? versionsPayload.versions : []
+      }));
+      setStatus(`Saved structured contract for ${routeKey} as latest.`);
+    } catch (err) {
+      setError(err.message || 'Unable to save route config.');
+    } finally {
+      setSavingLlmConfigs(false);
+    }
+  };
+
+  const handleLoadLlmRouteConfigVersions = async (routeKey) => {
+    setSavingLlmConfigs(true);
+    setError('');
+    try {
+      const versionsPayload = await loadLlmRouteConfigVersions(apiBaseUrl, routeKey, { adminKey, limit: 10 });
+      setLlmRouteConfigVersions((prev) => ({
+        ...prev,
+        [routeKey]: Array.isArray(versionsPayload?.versions) ? versionsPayload.versions : []
+      }));
+    } catch (err) {
+      setError(err.message || 'Unable to load route config versions.');
+    } finally {
+      setSavingLlmConfigs(false);
+    }
+  };
+
+  const handleUseLlmRouteConfigVersion = async (routeKey, versionId) => {
+    setSavingLlmConfigs(true);
+    setError('');
+    setStatus('');
+    try {
+      await setLatestLlmRouteConfigVersion(apiBaseUrl, routeKey, {
+        adminKey,
+        id: versionId
+      });
+      const [latestConfigs, versionsPayload] = await Promise.all([
+        loadLlmRouteConfigs(apiBaseUrl, { adminKey }),
+        loadLlmRouteConfigVersions(apiBaseUrl, routeKey, { adminKey, limit: 10 })
+      ]);
+      setLlmRouteConfigs(latestConfigs || {});
+      setLlmRouteConfigDrafts((prev) => ({
+        ...prev,
+        [routeKey]: buildLlmConfigDraft(latestConfigs?.[routeKey] || {})
+      }));
+      setLlmRouteConfigVersions((prev) => ({
+        ...prev,
+        [routeKey]: Array.isArray(versionsPayload?.versions) ? versionsPayload.versions : []
+      }));
+      setStatus(`Set selected structured contract as latest for ${routeKey}.`);
+    } catch (err) {
+      setError(err.message || 'Unable to set latest route config version.');
+    } finally {
+      setSavingLlmConfigs(false);
+    }
+  };
+
+  const handleResetLlmRouteConfig = async (routeKey) => {
+    setSavingLlmConfigs(true);
+    setError('');
+    setStatus('');
+    try {
+      await resetLlmRouteConfig(apiBaseUrl, routeKey, {
+        adminKey,
+        updatedBy: 'story-admin-ui'
+      });
+      const latestConfigs = await loadLlmRouteConfigs(apiBaseUrl, { adminKey });
+      setLlmRouteConfigs(latestConfigs || {});
+      setLlmRouteConfigDrafts((prev) => ({
+        ...prev,
+        [routeKey]: buildLlmConfigDraft(latestConfigs?.[routeKey] || {})
+      }));
+      setStatus(`Reset ${routeKey} to default structured contract settings.`);
+    } catch (err) {
+      setError(err.message || 'Unable to reset route config.');
+    } finally {
+      setSavingLlmConfigs(false);
     }
   };
 
@@ -694,7 +1068,7 @@ const TypewriterAdminPage = () => {
           </thead>
           <tbody>
             {pipelineRows.map((row) => {
-              const options = getModelOptions(row.modelKind, row.model);
+              const options = getModelOptions(row.modelKind, row.model, row.provider);
               return (
                 <tr key={row.key}>
                   <td>
@@ -714,6 +1088,28 @@ const TypewriterAdminPage = () => {
                     </label>
                   </td>
                   <td>
+                    {row.supportedProviders?.length > 1 ? (
+                      <label className="typewriterNumericSetting">
+                        <span>Provider</span>
+                        <select
+                          value={row.provider}
+                          onChange={(event) => {
+                            const nextProvider = event.target.value;
+                            const nextOptions = getModelOptions(row.modelKind, '', nextProvider);
+                            updatePipeline(row.key, {
+                              provider: nextProvider,
+                              model: nextOptions[0] || row.model
+                            });
+                          }}
+                        >
+                          {row.supportedProviders.map((providerId) => (
+                            <option key={providerId} value={providerId}>
+                              {providerId}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
                     <select
                       value={row.model}
                       onChange={(event) => updatePipeline(row.key, { model: event.target.value })}
@@ -772,7 +1168,7 @@ const TypewriterAdminPage = () => {
             {savingPrompts ? 'Working...' : 'Seed current prompts'}
           </button>
         </div>
-        {PROMPT_PIPELINES.map((pipeline) => {
+        {promptDefinitions.map((pipeline) => {
           const latestPrompt = prompts?.pipelines?.[pipeline.key];
           const versions = promptVersions?.[pipeline.key] || [];
           return (
@@ -823,6 +1219,186 @@ const TypewriterAdminPage = () => {
                           className="typewriterUseVersionBtn"
                           onClick={() => handleUsePromptVersion(pipeline.key, version.id)}
                           disabled={savingPrompts}
+                        >
+                          Use as latest
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </article>
+          );
+        })}
+      </section>
+
+      <section className="typewriterPromptEditor typewriterStructuredEditor">
+        <div className="typewriterPromptEditorHeader">
+          <div>
+            <h2>Structured Output Contracts</h2>
+            <p>
+              JSON-returning routes can stay in manual mode, or switch to contract mode where the prompt is rewritten
+              from schema, field notes, example JSON, and extra rules.
+            </p>
+          </div>
+        </div>
+        {llmRouteRows.map((config) => {
+          const draft = llmRouteConfigDrafts?.[config.routeKey] || buildLlmConfigDraft(config);
+          const versions = llmRouteConfigVersions?.[config.routeKey] || [];
+          let previewText = '';
+          let previewError = '';
+          try {
+            previewText = buildStructuredPromptPreview(draft);
+          } catch (err) {
+            previewError = err.message || 'Preview unavailable.';
+          }
+
+          return (
+            <article key={config.routeKey} className="typewriterPromptCard typewriterStructuredCard">
+              <header>
+                <h3>{config.routeKey}</h3>
+                <p>{config.description}</p>
+                <p className="typewriterPromptMeta">
+                  Route: {config.method} {config.routePath}
+                </p>
+                <p className="typewriterPromptMeta">
+                  Latest version: {config.version || 'Default'} | Updated: {formatDate(config.updatedAt)}
+                </p>
+                <p className="typewriterPromptMeta">
+                  Current mode: <strong>{config.promptMode || 'manual'}</strong>
+                </p>
+              </header>
+
+              <div className="typewriterStructuredModeRow">
+                <label>
+                  Prompt mode
+                  <select
+                    value={draft.promptMode}
+                    onChange={(event) => updateLlmRouteConfigDraft(config.routeKey, { promptMode: event.target.value })}
+                  >
+                    <option value="manual">Manual prompt</option>
+                    <option value="contract">Contract-generated prompt</option>
+                  </select>
+                </label>
+              </div>
+
+              {draft.promptMode === 'manual' ? (
+                <label className="typewriterStructuredField">
+                  Manual prompt template
+                  <textarea
+                    value={draft.promptTemplate}
+                    onChange={(event) => updateLlmRouteConfigDraft(config.routeKey, { promptTemplate: event.target.value })}
+                    rows={8}
+                    placeholder="Enter the full prompt template used by this JSON route."
+                  />
+                </label>
+              ) : (
+                <label className="typewriterStructuredField">
+                  Prompt core
+                  <textarea
+                    value={draft.promptCore}
+                    onChange={(event) => updateLlmRouteConfigDraft(config.routeKey, { promptCore: event.target.value })}
+                    rows={8}
+                    placeholder="Enter the creative or narrative instructions. The JSON contract section will be appended automatically."
+                  />
+                </label>
+              )}
+
+              <div className="typewriterStructuredGrid">
+                <label className="typewriterStructuredField">
+                  Response schema (JSON)
+                  <textarea
+                    value={draft.responseSchemaText}
+                    onChange={(event) =>
+                      updateLlmRouteConfigDraft(config.routeKey, { responseSchemaText: event.target.value })
+                    }
+                    rows={14}
+                    spellCheck={false}
+                    placeholder='{"type":"object","properties":{}}'
+                  />
+                </label>
+                <label className="typewriterStructuredField">
+                  Field docs (JSON map)
+                  <textarea
+                    value={draft.fieldDocsText}
+                    onChange={(event) =>
+                      updateLlmRouteConfigDraft(config.routeKey, { fieldDocsText: event.target.value })
+                    }
+                    rows={14}
+                    spellCheck={false}
+                    placeholder='{"short_title":"2-6 words","miseenscene":"first-person sensory"}'
+                  />
+                </label>
+              </div>
+
+              <div className="typewriterStructuredGrid">
+                <label className="typewriterStructuredField">
+                  Example payload (JSON)
+                  <textarea
+                    value={draft.examplePayloadText}
+                    onChange={(event) =>
+                      updateLlmRouteConfigDraft(config.routeKey, { examplePayloadText: event.target.value })
+                    }
+                    rows={12}
+                    spellCheck={false}
+                    placeholder='{"example":"Optional sample response"}'
+                  />
+                </label>
+                <label className="typewriterStructuredField">
+                  Output rules (one per line)
+                  <textarea
+                    value={draft.outputRulesText}
+                    onChange={(event) =>
+                      updateLlmRouteConfigDraft(config.routeKey, { outputRulesText: event.target.value })
+                    }
+                    rows={12}
+                    placeholder="short_title should fit the card UI"
+                  />
+                </label>
+              </div>
+
+              <label className="typewriterStructuredField">
+                Generated prompt preview
+                <textarea value={previewError || previewText} readOnly rows={14} className="typewriterStructuredPreview" />
+              </label>
+
+              <div className="typewriterPromptButtons">
+                <button
+                  type="button"
+                  onClick={() => handleSaveLlmRouteConfig(config.routeKey)}
+                  disabled={loading || savingLlmConfigs}
+                >
+                  {savingLlmConfigs ? 'Saving...' : `Save ${config.routeKey}`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleLoadLlmRouteConfigVersions(config.routeKey)}
+                  disabled={loading || savingLlmConfigs}
+                >
+                  Load versions
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleResetLlmRouteConfig(config.routeKey)}
+                  disabled={loading || savingLlmConfigs}
+                >
+                  Reset to defaults
+                </button>
+              </div>
+
+              {versions.length ? (
+                <ul className="typewriterPromptVersions">
+                  {versions.map((version) => (
+                    <li key={version.version ? `${config.routeKey}-${version.version}-${version.updatedAt}` : `${config.routeKey}-default`}>
+                      v{version.version || 'default'} | {formatDate(version.updatedAt)} | {version.createdBy || 'admin'}
+                      {version.isLatest ? (
+                        <strong> (latest)</strong>
+                      ) : (
+                        <button
+                          type="button"
+                          className="typewriterUseVersionBtn"
+                          onClick={() => handleUseLlmRouteConfigVersion(config.routeKey, version.id || version._id)}
+                          disabled={savingLlmConfigs}
                         >
                           Use as latest
                         </button>

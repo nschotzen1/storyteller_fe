@@ -179,7 +179,7 @@ describe('PaperDisplay Component', () => {
       const line = container.querySelector('.typewriter-line .last-line-content');
       expect(line).not.toBeNull();
       expect(line.textContent).toContain('Base from ghost');
-      expect(container.querySelector('.fade-ghost-container')).toBeInTheDocument();
+      expect(container.querySelector('.fade-ghost-stable')).toBeInTheDocument();
     });
 
     test('crossfades between fade phases without dropping base text', () => {
@@ -208,15 +208,18 @@ describe('PaperDisplay Component', () => {
       const fadeOut = container.querySelector('.fade-ghost-layer.smudge-fade-out');
       const fadeOutAfterimage = container.querySelector('.fade-ghost-layer.afterimage-fade');
       const fadeIn = container.querySelector('.fade-ghost-layer.fade-ghost-in');
+      const stableFadeText = container.querySelector('.fade-ghost-stable');
       expect(fadeOut).toBeInTheDocument();
       expect(fadeOutAfterimage).toBeInTheDocument();
       expect(fadeIn).toBeInTheDocument();
-      expect(fadeOut.textContent).toContain(' from beyond');
-      expect(fadeIn.textContent).toContain(' from');
+      expect(stableFadeText).toBeInTheDocument();
+      expect(stableFadeText?.textContent).toBe(' from');
+      expect(fadeOut?.textContent).toContain(' beyond');
+      expect(fadeIn?.textContent || '').toBe('');
       expect(container.querySelector('.last-line-content')?.textContent).toContain('Base');
 
       act(() => {
-        vi.advanceTimersByTime(700);
+        vi.advanceTimersByTime(800);
       });
 
       expect(container.querySelector('.fade-ghost-layer.smudge-fade-out')).not.toBeInTheDocument();
@@ -249,6 +252,33 @@ describe('PaperDisplay Component', () => {
       );
 
       expect(screen.getByTestId('striker-cursor-element')).toBeInTheDocument();
+    });
+
+    test('keeps the fade cursor after the animated tail when no user tail is present', () => {
+      const { container, rerender } = render(
+        <PaperDisplay
+          {...defaultProps}
+          pageText="Base"
+          ghostText=" from ghost"
+        />
+      );
+
+      rerender(
+        <PaperDisplay
+          {...defaultProps}
+          pageText="Base"
+          ghostText=" from"
+          sequenceUserText=""
+          fadeState={{ isActive: true, to_text: ' from', phase: 2 }}
+        />
+      );
+
+      const cursor = screen.getByTestId('striker-cursor-element');
+      const fadeContainer = container.querySelector('.fade-ghost-container');
+
+      expect(fadeContainer).not.toBeNull();
+      expect(fadeContainer?.textContent).toContain(' ghost');
+      expect(fadeContainer?.nextElementSibling).toBe(cursor);
     });
   });
 

@@ -6,6 +6,7 @@ import React from 'react';
 const Keyboard = ({
   keys, // Full array of key strings: ['Q', ..., 'THE XEROFAG']
   keyTextures, // Array of texture URLs corresponding to `keys`
+  storytellerSlots = [],
   lastPressedKey,
   ghostPressedKey, // New prop for ghost typing
   typingAllowed,
@@ -30,12 +31,25 @@ const Keyboard = ({
   KEY_OFFSET_Y_RANDOM_MIN,
   SPECIAL_KEY_TEXT,
 }) => {
+  const getStorytellerSlotForKey = (key) =>
+    storytellerSlots.find((slot) => slot.slotKey === key) || null;
+
+  const getKeyAltText = (key, storytellerSlot) => {
+    if (!storytellerSlot) {
+      return `Key ${key}`;
+    }
+    if (storytellerSlot.storytellerName) {
+      return `Storyteller key ${storytellerSlot.storytellerName}`;
+    }
+    return `Blank storyteller slot ${storytellerSlot.slotIndex + 1}`;
+  };
 
   const generateRow = (rowKeys) => (
     <div className="key-row">
       {rowKeys.map((key) => { // Removed idx from map as globalIdx can be found by key string
         const globalIdx = keys.findIndex(k => k === key);
         const texture = keyTextures[globalIdx];
+        const storytellerSlot = getStorytellerSlotForKey(key);
         // Ensure random calculations are done if these props are passed, otherwise use defaults or simplify
         const offsetYMax = KEY_OFFSET_Y_RANDOM_MAX !== undefined ? KEY_OFFSET_Y_RANDOM_MAX : 1; // Default to 1 if not provided
         const offsetYMin = KEY_OFFSET_Y_RANDOM_MIN !== undefined ? KEY_OFFSET_Y_RANDOM_MIN : -1; // Default to -1 if not provided
@@ -46,13 +60,18 @@ const Keyboard = ({
         const tilt = (Math.random() * (tiltMax - tiltMin) + tiltMin).toFixed(2);
 
         const isSpecialKey = key === SPECIAL_KEY_TEXT;
+        const altText = getKeyAltText(key, storytellerSlot);
 
         return (
           <div
-            key={key} // Use key string itself as key, assuming they are unique
-            className={`typewriter-key-wrapper ${lastPressedKey === key ? 'key-pressed' : ''} ${ghostPressedKey === key ? 'ghost-key-glow' : ''} ${!typingAllowed ? 'key-disabled' : ''}`}
+            key={storytellerSlot?.slotKey || key}
+            className={`typewriter-key-wrapper ${storytellerSlot ? 'storyteller-slot-key' : ''} ${storytellerSlot?.filled ? 'storyteller-slot-filled' : ''} ${lastPressedKey === key ? 'key-pressed' : ''} ${ghostPressedKey === key ? 'ghost-key-glow' : ''} ${!typingAllowed && !storytellerSlot ? 'key-disabled' : ''}`}
             style={{ '--offset-y': `${offset}px`, '--tilt': `${tilt}deg` }}
+            title={storytellerSlot?.storytellerName || ''}
             onClick={() => {
+              if (storytellerSlot) {
+                return;
+              }
               if (!typingAllowed) {
                 playEndOfPageSound(); // This prop is used here
                 return;
@@ -67,8 +86,8 @@ const Keyboard = ({
             {texture && (
               <img
                 src={texture}
-                alt={`Key ${key}`}
-                className={`typewriter-key-img ${!typingAllowed ? 'key-disabled-img' : ''}`}
+                alt={altText}
+                className={`typewriter-key-img ${!typingAllowed && !storytellerSlot ? 'key-disabled-img' : ''}`}
               />
             )}
           </div>
@@ -78,11 +97,11 @@ const Keyboard = ({
   );
 
   // Determine row slices based on the keys array structure from TypewriterFramework
-  // Assuming 10 keys in the first row, 9 in the second, and the rest in the third.
+  // Layout includes one storyteller slot appended to each row.
   // This needs to be robust if `keys` structure changes.
-  const row1Keys = keys.slice(0, 10);
-  const row2Keys = keys.slice(10, 19);
-  const row3Keys = keys.slice(19); // Contains 'THE XEROFAG'
+  const row1Keys = keys.slice(0, 11);
+  const row2Keys = keys.slice(11, 21);
+  const row3Keys = keys.slice(21); // Contains storyteller slot and THE XEROFAG
 
   return (
     <div className="keyboard-plate">

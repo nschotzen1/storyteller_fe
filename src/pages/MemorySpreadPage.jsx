@@ -735,7 +735,7 @@ const MemorySpreadPage = () => {
       requestBody.count = 3;
     }
     if (!isAdminMode && sessionId === DEFAULT_SESSION_ID) {
-      requestBody.fragment = DEFAULT_FRAGMENT_TEXT;
+      requestBody.text = DEFAULT_FRAGMENT_TEXT;
     }
 
     try {

@@ -12,6 +12,48 @@ const getRandomAnimationClass = () => {
   return GHOST_ANIMATION_CLASSES[Math.floor(Math.random() * GHOST_ANIMATION_CLASSES.length)];
 };
 
+const MIN_GHOST_FONT_SIZE_PX = 28;
+const MIN_GHOST_FONT_SIZE_REM = 1.75;
+const DEFAULT_FADE_TRANSITION_MS = 650;
+const MIN_FADE_TRANSITION_MS = 350;
+const MAX_FADE_TRANSITION_MS = 12000;
+
+const normalizeGhostFontSize = (fontSize) => {
+  if (typeof fontSize === 'number' && Number.isFinite(fontSize)) {
+    return `${Math.max(MIN_GHOST_FONT_SIZE_PX, fontSize)}px`;
+  }
+
+  if (typeof fontSize === 'string') {
+    const trimmed = fontSize.trim();
+    if (!trimmed) return null;
+
+    const pxMatch = trimmed.match(/^([0-9]*\.?[0-9]+)\s*px$/i);
+    if (pxMatch) {
+      const value = Math.max(MIN_GHOST_FONT_SIZE_PX, Number(pxMatch[1]));
+      return `${Number(value.toFixed(2))}px`;
+    }
+
+    const remMatch = trimmed.match(/^([0-9]*\.?[0-9]+)\s*rem$/i);
+    if (remMatch) {
+      const value = Math.max(MIN_GHOST_FONT_SIZE_REM, Number(remMatch[1]));
+      return `${Number(value.toFixed(2))}rem`;
+    }
+
+    const numeric = Number(trimmed);
+    if (Number.isFinite(numeric)) {
+      return `${Math.max(MIN_GHOST_FONT_SIZE_PX, numeric)}px`;
+    }
+  }
+
+  return null;
+};
+
+const resolveFadeTransitionMs = (durationMs) => {
+  const numeric = Number(durationMs);
+  if (!Number.isFinite(numeric)) return DEFAULT_FADE_TRANSITION_MS;
+  return Math.round(Math.max(MIN_FADE_TRANSITION_MS, Math.min(MAX_FADE_TRANSITION_MS, numeric)));
+};
+
 // This component will handle the rendering of the paper, text, film background,
 // and the page slide animations.
 
@@ -81,9 +123,16 @@ const PaperDisplay = ({
   STRIKER_CURSOR_OFFSET_LEFT,
   SLIDE_DIRECTION_LEFT, // To compare with slideDir
 }) => {
-  const FADE_TRANSITION_MS = 650;
   const fadeTimerRef = React.useRef(null);
   const lastGhostSnapshotRef = React.useRef('');
+  const fadeTransitionMs = resolveFadeTransitionMs(fadeState?.duration_ms);
+  const smudgeFadeStyle = { animationDuration: `${fadeTransitionMs}ms` };
+  const afterimageDurationMs = Math.round(fadeTransitionMs * 1.08);
+  const afterimageFadeStyle = {
+    animationDuration: `${afterimageDurationMs}ms`,
+    transitionDuration: `${afterimageDurationMs}ms`
+  };
+  const fadeInStyle = { animationDuration: `${fadeTransitionMs}ms` };
   const [fadeGhost, setFadeGhost] = React.useState({
     outgoingText: '',
     incomingText: '',
@@ -106,7 +155,8 @@ const PaperDisplay = ({
 
   const ghostTextStyles = {};
   if (currentFontStyles?.font) ghostTextStyles.fontFamily = currentFontStyles.font;
-  if (currentFontStyles?.font_size) ghostTextStyles.fontSize = currentFontStyles.font_size;
+  const normalizedGhostFontSize = normalizeGhostFontSize(currentFontStyles?.font_size);
+  if (normalizedGhostFontSize) ghostTextStyles.fontSize = normalizedGhostFontSize;
   if (currentFontStyles?.font_color) ghostTextStyles.color = currentFontStyles.font_color;
   const shouldRenderCursor = Boolean(showCursor || isProcessingSequence || fadeState?.isActive);
 
@@ -151,7 +201,7 @@ const PaperDisplay = ({
         outgoingText: '',
         currentText: prev.incomingText,
       }));
-    }, FADE_TRANSITION_MS);
+    }, afterimageDurationMs);
 
     return () => {
       if (fadeTimerRef.current) {
@@ -159,7 +209,7 @@ const PaperDisplay = ({
         fadeTimerRef.current = null;
       }
     };
-  }, [fadeState?.isActive, fadeState?.to_text, fadeState?.phase]);
+  }, [fadeState?.isActive, fadeState?.to_text, fadeState?.phase, afterimageDurationMs]);
 
   const renderTextWithLineBreaks = (text = '') => (
     String(text ?? '').split('\n').map((line, index, array) => (
@@ -168,6 +218,31 @@ const PaperDisplay = ({
         {index < array.length - 1 && <br />}
       </React.Fragment>
     ))
+  );
+
+  const getSharedPrefixLength = (leftText = '', rightText = '') => {
+    const left = String(leftText ?? '');
+    const right = String(rightText ?? '');
+    const limit = Math.min(left.length, right.length);
+    let index = 0;
+    while (index < limit && left[index] === right[index]) {
+      index += 1;
+    }
+    return index;
+  };
+
+  const renderCursor = (style = {}) => (
+    <span
+      className={`striker-cursor ${isProcessingSequence ? 'ghost-cursor-active' : ''}`}
+      data-testid="striker-cursor-element"
+      ref={strikerRef}
+      style={{
+        display: 'inline-block',
+        position: 'relative',
+        left: STRIKER_CURSOR_OFFSET_LEFT,
+        ...style,
+      }}
+    />
   );
 
   const renderFadeLines = () => {
@@ -180,6 +255,17 @@ const PaperDisplay = ({
     const fadeOutgoingText = String(fadeGhost.outgoingText ?? '');
     const showOutgoing = fadeOutgoingText.length > 0 && fadeOutgoingText !== fadeIncomingText;
     const showIncoming = fadeIncomingText.length > 0;
+    const sharedPrefixLength = showOutgoing ? getSharedPrefixLength(fadeOutgoingText, fadeIncomingText) : 0;
+    const stableFadeText = showOutgoing
+      ? fadeIncomingText.slice(0, sharedPrefixLength)
+      : fadeIncomingText;
+    const outgoingFadeTail = showOutgoing
+      ? fadeOutgoingText.slice(sharedPrefixLength)
+      : '';
+    const incomingFadeTail = showOutgoing
+      ? fadeIncomingText.slice(sharedPrefixLength)
+      : '';
+    const showAnimatedFadeTail = outgoingFadeTail.length > 0 || incomingFadeTail.length > 0 || showOutgoing;
 
     return renderedBaseLines.map((line, idx) => {
       const isLastLine = idx === lastLineIndex;
@@ -191,30 +277,38 @@ const PaperDisplay = ({
         >
           <span className="last-line-content">
             {line}
-            {isLastLine && (showOutgoing || showIncoming) && (
+            {isLastLine && stableFadeText.length > 0 && (
+              <span className="fade-ghost-stable" style={ghostTextStyles}>
+                {renderTextWithLineBreaks(stableFadeText)}
+              </span>
+            )}
+            {isLastLine && showAnimatedFadeTail && (
               <span className="fade-ghost-container" style={ghostTextStyles}>
                 {showOutgoing && (
                   <>
                     <span
                       key={`fade-out-${fadeGhost.key}`}
                       className="fade-ghost-layer smudge-fade-out"
+                      style={smudgeFadeStyle}
                     >
-                      {renderTextWithLineBreaks(fadeOutgoingText)}
+                      {renderTextWithLineBreaks(outgoingFadeTail)}
                     </span>
                     <span
                       key={`fade-out-afterimage-${fadeGhost.key}`}
                       className="fade-ghost-layer afterimage-fade"
+                      style={afterimageFadeStyle}
                     >
-                      {renderTextWithLineBreaks(fadeOutgoingText)}
+                      {renderTextWithLineBreaks(outgoingFadeTail)}
                     </span>
                   </>
                 )}
-                {showIncoming && (
+                {showIncoming && showOutgoing && (
                   <span
                     key={`fade-in-${fadeGhost.key}`}
                     className={`fade-ghost-layer ${showOutgoing ? 'fade-ghost-in' : 'fade-ghost-static'}`}
+                    style={showOutgoing ? fadeInStyle : undefined}
                   >
-                    {renderTextWithLineBreaks(fadeIncomingText)}
+                    {renderTextWithLineBreaks(incomingFadeTail)}
                   </span>
                 )}
               </span>
@@ -224,14 +318,7 @@ const PaperDisplay = ({
                 {renderTextWithLineBreaks(userTailText)}
               </span>
             )}
-            {isLastLine && shouldRenderCursor && (
-              <span
-                className={`striker-cursor ${isProcessingSequence ? 'ghost-cursor-active' : ''}`}
-                data-testid="striker-cursor-element"
-                ref={strikerRef}
-                style={{ display: 'inline-block', position: 'relative' }}
-              />
-            )}
+            {isLastLine && shouldRenderCursor && renderCursor()}
           </span>
         </div>
       );
@@ -462,14 +549,7 @@ const PaperDisplay = ({
                           {processedSegments}
 
 
-                          {isLastLineOfRenderedSet && shouldRenderCursor && (
-                            <span
-                              className={`striker-cursor ${isProcessingSequence ? 'ghost-cursor-active' : ''}`}
-                              data-testid="striker-cursor-element"
-                              ref={strikerRef}
-                              style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
-                            />
-                          )}
+                          {isLastLineOfRenderedSet && shouldRenderCursor && renderCursor()}
 
                         </span>
                       </div>

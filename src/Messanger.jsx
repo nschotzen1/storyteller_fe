@@ -1,272 +1,540 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Send } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import CurtainOutro from "./CurtainOutro";
-import "./CurtainOutro.css";
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertCircle, LoaderCircle, Send } from 'lucide-react';
+import './Messanger.css';
+import {
+  DEFAULT_API_BASE_URL,
+  DEFAULT_SCENE_ID,
+  loadMessengerConversation,
+  sendMessengerMessage
+} from './api/messenger';
 
-const SERVER = 'http://localhost:5001';
+const API_BASE_STORAGE_KEY = 'typewriterAdminApiBaseUrl';
+const SESSION_STORAGE_KEY = 'sessionId';
+const MOCK_STORAGE_KEY = 'messangerForceMock';
+const INTRO_AUDIO_SRC = '/audio/typewriter-narration.mp3';
+const INTRO_AUDIO_DELAY_MS = 160;
+const SYSTEM_TYPING_BASE_DELAY_MS = 16;
+const SYSTEM_TYPING_SPACE_DELAY_MS = 26;
+const SYSTEM_TYPING_PUNCTUATION_DELAY_MS = 92;
 
-const MessageBubble = ({ text, sender }) => {
-  const avatar = sender === 'system' ? '/avatars/assistant.png' : '/avatars/user.png';
+const createSessionId = () => {
+  if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  return Math.random().toString(36).slice(2, 14);
+};
+
+const getInitialApiBaseUrl = () => {
+  if (typeof window === 'undefined') return DEFAULT_API_BASE_URL;
+  const stored = window.localStorage.getItem(API_BASE_STORAGE_KEY);
+  return stored && stored.trim() ? stored.trim() : DEFAULT_API_BASE_URL;
+};
+
+const getInitialSessionId = () => {
+  if (typeof window === 'undefined') return createSessionId();
+  const stored = window.localStorage.getItem(SESSION_STORAGE_KEY);
+  if (stored && stored.trim()) {
+    return stored.trim();
+  }
+  const generated = createSessionId();
+  window.localStorage.setItem(SESSION_STORAGE_KEY, generated);
+  return generated;
+};
+
+const getInitialForceMock = () => {
+  if (typeof window === 'undefined') return false;
+  const stored = `${window.localStorage.getItem(MOCK_STORAGE_KEY) || ''}`.trim().toLowerCase();
+  return stored === '1' || stored === 'true' || stored === 'yes';
+};
+
+const formatMessageTime = (createdAt, pending = false) => {
+  if (pending) return 'sending';
+  if (!createdAt) return '';
+  const parsed = new Date(createdAt);
+  if (Number.isNaN(parsed.getTime())) return '';
+  try {
+    return new Intl.DateTimeFormat([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    }).format(parsed);
+  } catch {
+    return '';
+  }
+};
+
+const getSystemTypingDelay = (currentCharacter) => {
+  if (!currentCharacter) return SYSTEM_TYPING_BASE_DELAY_MS;
+  if (/[,.!?;:]/.test(currentCharacter)) return SYSTEM_TYPING_PUNCTUATION_DELAY_MS;
+  if (/\s/.test(currentCharacter)) return SYSTEM_TYPING_SPACE_DELAY_MS;
+  return SYSTEM_TYPING_BASE_DELAY_MS;
+};
+
+const normalizeMessages = (payload) => {
+  if (!Array.isArray(payload)) return [];
+  return payload.map((message, index) => ({
+    id: message?.id || `message-${index}`,
+    sender: message?.sender === 'user' ? 'user' : 'system',
+    text: typeof message?.text === 'string' ? message.text : '',
+    type: typeof message?.type === 'string' ? message.type : 'response',
+    pending: Boolean(message?.pending),
+    hasChatEnded: Boolean(message?.hasChatEnded),
+    createdAt: typeof message?.createdAt === 'string' ? message.createdAt : ''
+  }));
+};
+
+const MessageCard = ({ message }) => {
+  const messageLabel = message.type === 'initial'
+    ? 'Initial dispatch'
+    : message.sender === 'system'
+      ? 'Society relay'
+      : 'Your note';
+  const timeLabel = formatMessageTime(message.createdAt, message.pending);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className={`flex items-start gap-2 ${
-        sender === 'system' ? 'self-start' : 'self-end flex-row-reverse'
-      } relative`}
-    >
-      <img
-        src={avatar}
-        alt={sender}
-        className="w-8 h-8 rounded-full border border-yellow-700 shadow-md"
-      />
-      <div className="flex flex-col max-w-[260px] md:max-w-[300px] relative">
-        {sender === 'system' && (
-          <div className="mb-1 text-xs text-yellow-400 font-fell leading-snug tracking-wide flicker">
-            <div className="flex items-center gap-1 font-semibold">
-              The Esteemed Storyteller’s Society
-              <span className="ml-1 wax-seal text-red-700">🕯️</span>
-            </div>
-            <div className="text-[10px] italic text-yellow-600">
-              Verified Pro Account
-            </div>
-          </div>
-        )}
-       <div
-      className={`px-4 py-3 rounded-md text-sm relative font-mono shadow-md ${
-        sender === "system"
-          ? "bg-yellow-900/20 text-yellow-100 backdrop-blur-sm border border-yellow-800 animate-ghost-text"
-          : "bg-yellow-100 text-black"
-      }`}
-    >
-      {text}
-
-      {/* Static overlay inside assistant message only */}
-      {sender === 'system' && (
-        <div className="absolute inset-0 pointer-events-none opacity-10 bg-[url('/textures/film_grain.png')] bg-cover mix-blend-overlay"></div>
-      )}
+  <motion.article
+    layout
+    initial={{ opacity: 0, y: 18, filter: 'blur(8px)' }}
+    animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+    exit={{ opacity: 0, y: -14 }}
+    transition={{ duration: 0.32, ease: 'easeOut' }}
+    className={`messangerMessage messangerMessage--${message.sender}${message.pending ? ' is-pending' : ''}`}
+  >
+    <div className="messangerMessage__meta">
+      <span>{message.sender === 'system' ? 'Storyteller Society' : 'You'}</span>
+      <span>{message.pending ? 'Outbound' : message.type === 'initial' ? 'Boot' : 'Secure'}</span>
     </div>
-
+    <div className="messangerMessage__body">
+      {message.text}
+      {message.isTyping ? <span className="messangerMessage__cursor" aria-hidden="true" /> : null}
+    </div>
+    {(messageLabel || timeLabel) && (
+      <div className="messangerMessage__footer">
+        <span>{messageLabel}</span>
+        {timeLabel ? <span>{timeLabel}</span> : null}
       </div>
-    </motion.div>
+    )}
+  </motion.article>
   );
 };
 
-const startNewSession = () => {
-  const newId = Math.random().toString(36).substring(2, 15);
-  localStorage.setItem('sessionId', newId);
-  window.location.reload();
-};
-
-const Input = ({ className, ...props }) => (
-  <input
-    {...props}
-    className={`px-4 py-2 rounded-md bg-black/70 text-yellow-100 border border-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-400 w-full font-mono placeholder-yellow-600 ${className}`}
-  />
-);
-
-const MysteryMessenger = ({ start = true, onCurtainDropComplete }) => {
+const Messanger = ({ start = true, onCurtainDropComplete }) => {
+  const apiBaseUrl = useMemo(getInitialApiBaseUrl, []);
+  const sessionId = useMemo(getInitialSessionId, []);
   const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [forceMock, setForceMock] = useState(getInitialForceMock);
+  const [runtime, setRuntime] = useState(null);
   const [chatEnded, setChatEnded] = useState(false);
-  const [showCurtainOutro, setShowCurtainOutro] = useState(false);
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [isSending, setIsSending] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const [pendingMessage, setPendingMessage] = useState('');
+  const [revealedTextById, setRevealedTextById] = useState({});
+  const [typingMessageId, setTypingMessageId] = useState('');
 
-  const [sessionId] = useState(() => {
-    const stored = localStorage.getItem('sessionId');
-    if (stored) return stored;
-    const newId = Math.random().toString(36).substring(2, 15);
-    localStorage.setItem('sessionId', newId);
-    return newId;
-  });
+  const threadRef = useRef(null);
+  const introAudioRef = useRef(null);
+  const introAudioTimerRef = useRef(null);
+  const lastIntroPlaybackKeyRef = useRef('');
+  const typingTimerRef = useRef(null);
+  const previousMessageIdsRef = useRef([]);
 
-  const scrollRef = useRef(null);
+  const stopIntroAudio = () => {
+    if (introAudioTimerRef.current && typeof window !== 'undefined') {
+      window.clearTimeout(introAudioTimerRef.current);
+      introAudioTimerRef.current = null;
+    }
+
+    if (!introAudioRef.current) {
+      return;
+    }
+
+    try {
+      introAudioRef.current.pause();
+      introAudioRef.current.currentTime = 0;
+    } catch (error) {
+      console.warn('Unable to stop messenger intro audio:', error);
+    } finally {
+      introAudioRef.current = null;
+    }
+  };
+
+  const stopTypingAnimation = () => {
+    if (typingTimerRef.current && typeof window !== 'undefined') {
+      window.clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    setTypingMessageId('');
+  };
 
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const typewriterIntro = `We are pleased to inform you that the typewriter, as discussed, is ready for dispatch. The society spares no expense in ensuring that our esteemed members receive only the finest instruments for their craft. We trust you are still expecting it? Of course you are. Just a quick confirmation before we proceed. Where shall we send it?`;
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(MOCK_STORAGE_KEY, forceMock ? 'true' : 'false');
+  }, [forceMock]);
 
   useEffect(() => {
-    if (!start) return;
+    threadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, pendingMessage, sending, revealedTextById, typingMessageId]);
 
-    let currentText = "";
-    let index = 0;
-    setIsTyping(true);
+  useEffect(() => () => {
+    stopIntroAudio();
+    stopTypingAnimation();
+  }, []);
 
-    const audio = new Audio("/audio/typewriter-narration.mp3");
+  useEffect(() => {
+    if (!chatEnded || typeof onCurtainDropComplete !== 'function') return undefined;
+    const timer = window.setTimeout(() => {
+      onCurtainDropComplete();
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [chatEnded, onCurtainDropComplete]);
 
-    setTimeout(() => {
-      audio.play().catch(err => console.warn("Voice playback failed:", err));
-    }, 2000);
-
-    const interval = setInterval(() => {
-      currentText += typewriterIntro[index];
-      index++;
-
-      if (index >= typewriterIntro.length) {
-        clearInterval(interval);
-        setIsTyping(false);
+  useEffect(() => {
+    if (!start) return undefined;
+    let active = true;
+    const run = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const payload = await loadMessengerConversation(apiBaseUrl, {
+          sessionId,
+          sceneId: DEFAULT_SCENE_ID
+        });
+        if (!active) return;
+        setMessages(normalizeMessages(payload?.messages));
+        setChatEnded(Boolean(payload?.hasChatEnded));
+      } catch (err) {
+        if (!active) return;
+        setError(err.message || 'Unable to load messenger conversation.');
+      } finally {
+        if (active) setLoading(false);
       }
+    };
 
-      setMessages([{ id: 0, sender: "system", text: currentText }]);
-    }, 30);
+    run();
+    return () => {
+      active = false;
+    };
+  }, [apiBaseUrl, sessionId, start]);
+
+  useEffect(() => {
+    if (!start || typeof window === 'undefined' || typeof Audio !== 'function') {
+      return undefined;
+    }
+
+    const firstMessage = messages[0];
+    const shouldPlayIntro = (
+      messages.length === 1
+      && firstMessage?.sender === 'system'
+      && firstMessage?.type === 'initial'
+      && typeof firstMessage?.text === 'string'
+      && firstMessage.text.trim()
+    );
+
+    if (!shouldPlayIntro) {
+      return undefined;
+    }
+
+    const playbackKey = `${sessionId}:${DEFAULT_SCENE_ID}:${firstMessage.id || 'initial'}`;
+    if (lastIntroPlaybackKeyRef.current === playbackKey) {
+      return undefined;
+    }
+
+    lastIntroPlaybackKeyRef.current = playbackKey;
+    introAudioTimerRef.current = window.setTimeout(() => {
+      stopIntroAudio();
+      const audio = new Audio(INTRO_AUDIO_SRC);
+      introAudioRef.current = audio;
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch((error) => {
+          console.warn('Messenger intro playback prevented:', error);
+        });
+      }
+      introAudioTimerRef.current = null;
+    }, INTRO_AUDIO_DELAY_MS);
 
     return () => {
-      clearInterval(interval);
-      audio.pause();
-      audio.currentTime = 0;
+      if (introAudioTimerRef.current) {
+        window.clearTimeout(introAudioTimerRef.current);
+        introAudioTimerRef.current = null;
+      }
     };
-  }, [start]);
+  }, [messages, sessionId, start]);
 
-  const sendMessageToAPI = async (text) => {
-    try {
-      const response = await fetch(`${SERVER}/api/sendMessage`, {
-        method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, message: text })
-      });
+  useEffect(() => {
+    const previousIds = new Set(previousMessageIdsRef.current);
+    const animateInitialDispatch = (
+      previousMessageIdsRef.current.length === 0
+      && messages.length === 1
+      && messages[0]?.sender === 'system'
+      && messages[0]?.type === 'initial'
+    );
 
-      const data = await response.json();
-      return data;
-    } catch (err) {
-      console.error("API error:", err);
-      return { reply: "There was an error responding.", has_chat_ended: false };
+    const animatedMessage = animateInitialDispatch
+      ? messages[0]
+      : [...messages].reverse().find((message) =>
+        message?.sender === 'system'
+        && !previousIds.has(message.id)
+        && typeof message.text === 'string'
+        && message.text.trim()
+      );
+
+    setRevealedTextById((previousMap) => {
+      const nextMap = {};
+      for (const message of messages) {
+        if (message.id === animatedMessage?.id) {
+          nextMap[message.id] = previousIds.has(message.id)
+            ? (previousMap[message.id] || '')
+            : '';
+          continue;
+        }
+        nextMap[message.id] = message.text;
+      }
+      return nextMap;
+    });
+
+    previousMessageIdsRef.current = messages.map((message) => message.id);
+
+    if (!animatedMessage) {
+      stopTypingAnimation();
+      return undefined;
     }
-  };
 
-  const sendMessage = async () => {
-    if (!input.trim() || isSending || chatEnded) return;
+    stopTypingAnimation();
+    setTypingMessageId(animatedMessage.id);
 
-    const userMessage = {
-      id: Date.now(),
-      sender: "player",
-      text: input
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsSending(true);
+    const fullText = animatedMessage.text;
+    let nextLength = 0;
 
-    const { reply, has_chat_ended } = await sendMessageToAPI(userMessage.text);
+    const revealNextSlice = () => {
+      nextLength += 1;
+      const revealedSlice = fullText.slice(0, nextLength);
+      setRevealedTextById((previousMap) => ({
+        ...previousMap,
+        [animatedMessage.id]: revealedSlice
+      }));
 
-    const assistantId = Date.now() + 1;
-    let currentText = "";
-    let index = 0;
-    setIsTyping(true);
-
-    const interval = setInterval(() => {
-      currentText += reply[index];
-      index++;
-
-      if (index >= reply.length) {
-        clearInterval(interval);
-        setIsTyping(false);
+      if (nextLength >= fullText.length) {
+        typingTimerRef.current = null;
+        setTypingMessageId('');
+        return;
       }
 
-      setMessages((prev) => {
-        const others = prev.filter((m) => m.id !== assistantId);
-        return [...others, {
-          id: assistantId,
-          sender: "system",
-          text: currentText
-        }];
+      typingTimerRef.current = window.setTimeout(
+        revealNextSlice,
+        getSystemTypingDelay(fullText[nextLength - 1])
+      );
+    };
+
+    revealNextSlice();
+
+    return () => {
+      if (typingTimerRef.current) {
+        window.clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = null;
+      }
+    };
+  }, [messages]);
+
+  const threadMessages = useMemo(() => {
+    const renderedMessages = messages.map((message) => ({
+      ...message,
+      text: message.sender === 'system'
+        ? (revealedTextById[message.id] ?? '')
+        : message.text,
+      isTyping: typingMessageId === message.id
+    }));
+
+    if (!pendingMessage) return renderedMessages;
+    return [
+      ...renderedMessages,
+      {
+        id: 'pending-user-message',
+        sender: 'user',
+        text: pendingMessage,
+        type: 'user',
+        pending: true,
+        hasChatEnded: false,
+        createdAt: '',
+        isTyping: false
+      }
+    ];
+  }, [messages, pendingMessage, revealedTextById, typingMessageId]);
+
+  const handleSend = async () => {
+    const draft = input.trim();
+    if (!draft || sending) return;
+
+    setSending(true);
+    setPendingMessage(draft);
+    setInput('');
+    setError('');
+
+    try {
+      const payload = await sendMessengerMessage(apiBaseUrl, {
+        sessionId,
+        sceneId: DEFAULT_SCENE_ID,
+        message: draft,
+        mocked_api_calls: forceMock ? true : undefined
       });
-    }, 30);
-
-    if (has_chat_ended) {
-      setTimeout(() => {
-        setChatEnded(true);
-        setTimeout(() => {
-          setShowCurtainOutro(true);
-        }, 3000);
-      }, 3500);
+      setMessages(normalizeMessages(payload?.messages));
+      setRuntime(payload?.runtime || null);
+      setChatEnded(Boolean(payload?.has_chat_ended));
+    } catch (err) {
+      setInput(draft);
+      setError(err.message || 'Unable to send messenger reply.');
+    } finally {
+      setPendingMessage('');
+      setSending(false);
     }
-
-    setIsSending(false);
   };
+  const handsetTime = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat([], {
+        hour: 'numeric',
+        minute: '2-digit'
+      }).format(new Date());
+    } catch {
+      return '11:47';
+    }
+  }, []);
+  const threadStateLabel = chatEnded ? 'Thread sealed' : 'Waiting for your note';
+  const transmissionModeLabel = runtime?.mocked || forceMock ? 'Mock transmission' : 'Live transmission';
 
   return (
-    <motion.div
-      className="relative min-h-screen w-full bg-black flex items-center justify-center overflow-hidden text-white font-mono"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 3.5, delay: 2 }}
-    >
-      {/* Atmosphere */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0c0c0c] via-[#1a1a1a] to-black opacity-95 z-0"></div>
-      <div className="absolute inset-0 bg-[url('/textures/film_grain.png')] bg-cover bg-center opacity-15 z-0 pointer-events-none mix-blend-soft-light"></div>
-      <div className="absolute inset-0 bg-grid-scanlines z-10 pointer-events-none flicker-screen"></div>
+    <div className={`messangerScene${chatEnded ? ' is-ended' : ''}`}>
+      <div className="messangerScene__grain" />
+      <div className="messangerScene__veil" />
 
-      {/* Retro Device */}
-      <div className="relative w-[380px] md:w-[420px] h-[640px] rounded-[28px] border-[4px] border-yellow-800 shadow-[0_0_40px_rgba(255,255,255,0.08)] bg-gradient-to-br from-[#1c1c1c] via-[#292522] to-[#0e0d0b] ring-2 ring-yellow-900/40 overflow-hidden backdrop-blur-[3px]">
-
-        {/* 🔋 Battery */}
-        <div className="absolute top-3 left-3 flex items-center gap-1 text-yellow-700 text-[10px] font-mono opacity-80">
-          <div className="w-4 h-2 border border-yellow-700 rounded-sm relative">
-            <div className="w-[70%] h-full bg-yellow-600" />
-            <div className="absolute -right-[2px] top-0 h-2 w-[2px] bg-yellow-600" />
+      <div className="messangerFrame">
+        <div className="messangerPhoneWrap">
+          <div className="messangerUtilityBar">
+            <label className="messangerModeSwitch">
+              <input
+                type="checkbox"
+                checked={forceMock}
+                onChange={(event) => setForceMock(event.target.checked)}
+              />
+              <span className="messangerModeSwitch__track" aria-hidden="true">
+                <span className="messangerModeSwitch__thumb" />
+              </span>
+              <span className="messangerModeSwitch__label">
+                {forceMock ? 'Mock' : 'Live'}
+              </span>
+            </label>
           </div>
-          68%
-        </div>
 
-        {/* 📶 Signal */}
-        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 text-[9px] font-mono text-yellow-700 opacity-50 tracking-wide flicker">
-          LINK LOST
-        </div>
+          <div className="messangerPhone">
+            <div className="messangerPhone__bezel">
+              <span className="messangerPhone__camera" />
+              <span className="messangerPhone__speaker" />
+            </div>
 
-        {/* Inner Screen */}
-        <div className="absolute inset-1 bg-black/70 rounded-[24px] flex flex-col overflow-hidden">
-          <div className={`flex-1 p-5 overflow-y-auto flex flex-col gap-4 relative ${chatEnded ? 'fade-rain' : ''}`}>
-            {messages.map((msg, i) => (
-              <div key={msg.id} style={{ "--i": i }} className={chatEnded ? "smudge-message" : ""}>
-                <MessageBubble text={msg.text} sender={msg.sender} />
+            <div className="messangerPhone__screen">
+              <div className="messangerStatusBar">
+                <span className="messangerStatusBar__time">{handsetTime}</span>
+                <div className="messangerStatusBar__icons" aria-hidden="true">
+                  <span className="messangerSignal">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  <span className="messangerBattery">
+                    <b />
+                  </span>
+                </div>
               </div>
-            ))}
-            {isTyping && (
-              <div className="flex gap-1 ml-1">
-                <div className="w-2 h-2 bg-yellow-200 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-yellow-200 rounded-full animate-bounce [animation-delay:200ms]" />
-                <div className="w-2 h-2 bg-yellow-200 rounded-full animate-bounce [animation-delay:400ms]" />
-              </div>
-            )}
-            <div ref={scrollRef} />
-          </div>
 
-          <div className="p-4 border-t border-yellow-800 bg-black/50 flex items-center gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={isSending ? "Awaiting response..." : "Type your message…"}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              disabled={isSending}
-            />
-            <Send
-              size={24}
-              className="text-yellow-300 cursor-pointer hover:text-yellow-100 active:scale-90 transition-transform duration-200"
-              onClick={sendMessage}
-            />
-          </div>
+              <section className="messangerConsole">
+                <header className="messangerConsole__header">
+                  <div className="messangerConsole__contact">
+                    <div className="messangerAvatar">
+                      <span>SS</span>
+                    </div>
+                    <div className="messangerConsole__titles">
+                      <span className="messangerConsole__eyebrow">Encrypted thread</span>
+                      <h2>Storyteller Society</h2>
+                      <p>{threadStateLabel}</p>
+                    </div>
+                  </div>
+                  <div className="messangerConsole__status">
+                    <span className={`messangerChip${runtime?.mocked || forceMock ? ' is-mock' : ''}`}>
+                      {transmissionModeLabel}
+                    </span>
+                    <span className="messangerChip">{chatEnded ? 'Sealed' : 'Open'}</span>
+                  </div>
+                </header>
+                <div className="messangerThread">
+                  <div className="messangerThread__datePill">
+                    Dispatch line · {DEFAULT_SCENE_ID}
+                  </div>
 
-          <button
-            onClick={startNewSession}
-            className="absolute top-4 right-4 z-30 text-xs bg-yellow-900 text-yellow-100 px-3 py-1 rounded hover:bg-yellow-700 transition font-mono"
-          >
-            New Session
-          </button>
-          <div className="absolute bottom-2 right-4 text-xs text-yellow-700 opacity-50 font-mono">
-            session: {sessionId}
+                  {loading && (
+                    <div className="messangerBanner">
+                      <LoaderCircle size={16} className="spin" />
+                      <span>Loading conversation from the archive.</span>
+                    </div>
+                  )}
+
+                  {error && (
+                    <div className="messangerBanner is-error">
+                      <AlertCircle size={16} />
+                      <span>{error}</span>
+                    </div>
+                  )}
+
+                  <AnimatePresence initial={false}>
+                    {threadMessages.map((message) => (
+                      <MessageCard key={message.id} message={message} />
+                    ))}
+                  </AnimatePresence>
+
+                  {sending && (
+                    <div className="messangerTyping">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  )}
+
+                  <div ref={threadRef} />
+                </div>
+
+                <div className="messangerComposer">
+                  <div className="messangerComposer__field">
+                    <textarea
+                      value={input}
+                      onChange={(event) => setInput(event.target.value)}
+                      placeholder={
+                        sending
+                          ? 'Awaiting the Society...'
+                          : 'Describe the room, the window, the weather, and where the typewriter could vanish if required.'
+                      }
+                      disabled={sending}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && !event.shiftKey) {
+                          event.preventDefault();
+                          handleSend();
+                        }
+                      }}
+                    />
+                  </div>
+                  <button type="button" onClick={handleSend} disabled={sending || !input.trim()}>
+                    {sending ? <LoaderCircle size={18} className="spin" /> : <Send size={18} />}
+                    <span>Send</span>
+                  </button>
+                </div>
+              </section>
+
+              <div className="messangerPhone__homebar" />
+            </div>
           </div>
         </div>
       </div>
-
-      {showCurtainOutro && <CurtainOutro onDropComplete={onCurtainDropComplete} />}
-    </motion.div>
+    </div>
   );
 };
 
-export default MysteryMessenger;
+export default Messanger;

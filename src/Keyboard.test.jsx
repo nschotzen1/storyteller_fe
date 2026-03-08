@@ -12,14 +12,29 @@ const KEY_OFFSET_Y_RANDOM_MIN = -1;
 
 // Full keys array similar to TypewriterFramework.jsx for accurate row testing
 const allKeys = [
-  'Q','W','E','R','T','Y','U','I','O','P', // Row 1 (10 keys)
-  'A','S','D','F','G','H','J','K','L',    // Row 2 (9 keys)
-  'Z','X','C','V','B','N','M', SPECIAL_KEY_TEXT // Row 3 (8 keys, including SPECIAL_KEY_TEXT)
+  'Q','W','E','R','T','Y','U','I','O','P','STORYTELLER_SLOT_HORIZONTAL',
+  'A','S','D','F','G','H','J','K','L','STORYTELLER_SLOT_VERTICAL',
+  'Z','X','C','V','B','N','M','STORYTELLER_SLOT_RECT_HORIZONTAL', SPECIAL_KEY_TEXT
 ];
-// Total 27 keys
+const regularKeys = allKeys.filter((key) => !key.startsWith('STORYTELLER_SLOT_'));
+const storytellerSlotKeys = [
+  'STORYTELLER_SLOT_HORIZONTAL',
+  'STORYTELLER_SLOT_VERTICAL',
+  'STORYTELLER_SLOT_RECT_HORIZONTAL'
+];
+const storytellerSlotLabels = [
+  'Blank storyteller slot 1',
+  'Blank storyteller slot 2',
+  'Blank storyteller slot 3'
+];
 
 // Generate sample textures based on allKeys
-const allKeyTextures = allKeys.map(key => `/textures/keys/${key.replace(/\s+/g, '_').toUpperCase()}_1.png`);
+const allKeyTextures = allKeys.map((key) => {
+  if (key === 'STORYTELLER_SLOT_HORIZONTAL') return '/textures/keys/blank_horizontal_1.png';
+  if (key === 'STORYTELLER_SLOT_VERTICAL') return '/textures/keys/blank_vertical_1.png';
+  if (key === 'STORYTELLER_SLOT_RECT_HORIZONTAL') return '/textures/keys/blank_rect_horizontal_1.png';
+  return `/textures/keys/${key.replace(/\s+/g, '_').toUpperCase()}_1.png`;
+});
 
 describe('Keyboard Component', () => {
   const mockOnKeyPress = jest.fn();
@@ -30,6 +45,11 @@ describe('Keyboard Component', () => {
   const defaultProps = {
     keys: allKeys,
     keyTextures: allKeyTextures,
+    storytellerSlots: [
+      { slotIndex: 0, slotKey: 'STORYTELLER_SLOT_HORIZONTAL', storytellerName: '', filled: false },
+      { slotIndex: 1, slotKey: 'STORYTELLER_SLOT_VERTICAL', storytellerName: '', filled: false },
+      { slotIndex: 2, slotKey: 'STORYTELLER_SLOT_RECT_HORIZONTAL', storytellerName: '', filled: false },
+    ],
     lastPressedKey: null,
     typingAllowed: true,
     onKeyPress: mockOnKeyPress,
@@ -52,8 +72,11 @@ describe('Keyboard Component', () => {
 
   test('renders all keys and spacebar', () => {
     render(<Keyboard {...defaultProps} />);
-    allKeys.forEach(key => {
+    regularKeys.forEach(key => {
       expect(screen.getByAltText(`Key ${key}`)).toBeInTheDocument();
+    });
+    storytellerSlotLabels.forEach((label) => {
+      expect(screen.getByAltText(label)).toBeInTheDocument();
     });
     expect(screen.getByAltText('Spacebar')).toBeInTheDocument();
   });
@@ -67,8 +90,13 @@ describe('Keyboard Component', () => {
 
   test('key images use correct src from keyTextures', () => {
     render(<Keyboard {...defaultProps} />);
-    allKeys.forEach((key, index) => {
-      expect(screen.getByAltText(`Key ${key}`)).toHaveAttribute('src', allKeyTextures[index]);
+    regularKeys.forEach((key, index) => {
+      const actualIndex = allKeys.findIndex((item) => item === key);
+      expect(screen.getByAltText(`Key ${key}`)).toHaveAttribute('src', allKeyTextures[actualIndex]);
+    });
+    storytellerSlotLabels.forEach((label, index) => {
+      const actualIndex = allKeys.findIndex((item) => item === storytellerSlotKeys[index]);
+      expect(screen.getByAltText(label)).toHaveAttribute('src', allKeyTextures[actualIndex]);
     });
     // Spacebar src is hardcoded in Keyboard.jsx
     expect(screen.getByAltText('Spacebar')).toHaveAttribute('src', '/textures/keys/spacebar.png');
@@ -86,12 +114,10 @@ describe('Keyboard Component', () => {
     expect(keyWrapper).toHaveClass('key-pressed');
   });
 
-  test('does not apply key-pressed class to spacebar based on lastPressedKey prop', () => {
-    // The Keyboard component itself doesn't apply 'key-pressed' to spacebar via lastPressedKey prop,
-    // this is usually handled by specific spacebar interaction styling if any.
+  test('applies key-pressed class to spacebar when lastPressedKey is a space', () => {
     render(<Keyboard {...defaultProps} lastPressedKey=" " />); // Assuming spacebar press sets lastPressedKey to " "
     const spacebarWrapper = screen.getByAltText('Spacebar').closest('.spacebar-wrapper');
-    expect(spacebarWrapper).not.toHaveClass('key-pressed'); // Or any specific class for spacebar pressed state
+    expect(spacebarWrapper).toHaveClass('key-pressed');
   });
 
 
@@ -156,7 +182,7 @@ describe('Keyboard Component', () => {
 
     test('key images and spacebar image have key-disabled-img class', () => {
         render(<Keyboard {...propsWithTypingDisabled} />);
-        allKeys.forEach(key => {
+        regularKeys.forEach(key => {
             expect(screen.getByAltText(`Key ${key}`)).toHaveClass('key-disabled-img');
         });
         expect(screen.getByAltText('Spacebar')).toHaveClass('key-disabled-img');

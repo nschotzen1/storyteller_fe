@@ -56,15 +56,19 @@ export const startTypewriterSession = async (sessionId, fragment) => {
   }
 };
 
-export const fetchTypewriterReply = async (text, sessionId) => {
+export const fetchTypewriterReply = async (text, sessionId, options = {}) => {
   if (!text) {
     return { data: null, error: null };
   }
   try {
+    const payload = { sessionId, message: text };
+    if (Number.isFinite(options?.fadeTimingScale)) {
+      payload.fadeTimingScale = options.fadeTimingScale;
+    }
     const response = await fetch(`${SERVER}/api/send_typewriter_text`, {
       method: "POST",
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, message: text })
+      body: JSON.stringify(payload)
     });
     if (!response.ok) {
       console.error(`API error in fetchTypewriterReply: ${response.status} ${response.statusText}`);
@@ -97,6 +101,38 @@ export async function fetchShouldGenerateContinuation(currentText, latestAdditio
   });
   return await res.json();
 }
+
+export const fetchShouldCreateStorytellerKey = async (sessionId, options = {}) => {
+  if (!sessionId) {
+    return { data: null, error: { message: 'Missing sessionId' } };
+  }
+  try {
+    const payload = { sessionId };
+    if (options?.playerId) {
+      payload.playerId = options.playerId;
+    }
+    if (options?.mocked_api_calls !== undefined) {
+      payload.mocked_api_calls = options.mocked_api_calls;
+    }
+    const response = await fetch(`${SERVER}/api/shouldCreateStorytellerKey`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      console.error(`API error in fetchShouldCreateStorytellerKey: ${response.status} ${response.statusText}`);
+      return {
+        data: null,
+        error: { message: `API error: ${response.status} ${response.statusText}`, status: response.status }
+      };
+    }
+    const data = await response.json();
+    return { data, error: null };
+  } catch (error) {
+    console.error('Network error fetching storyteller key state:', error);
+    return { data: null, error: { message: error.message } };
+  }
+};
 
 export const fetchSeerCards = async () => {
   try {
