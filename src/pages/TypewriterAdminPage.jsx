@@ -1,13 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_API_BASE_URL,
+  loadLlmRouteConfigs,
+  loadLlmRouteConfigVersions,
   loadOpenAiModels,
   loadTypewriterPrompts,
   loadTypewriterAiSettings,
   loadTypewriterPromptVersions,
+  resetLlmRouteConfig,
   resetTypewriterAiSettings,
+  saveLlmRouteConfigVersion,
   seedCurrentTypewriterPrompts,
   saveTypewriterPrompt,
+  setLatestLlmRouteConfigVersion,
   setLatestTypewriterPromptVersion,
   saveTypewriterAiSettings,
   startOrSeedTypewriterSession
@@ -266,6 +271,97 @@ const normalizeCountDraft = (value, fallback = 1, min = 1, max = 10) => {
   return Math.min(Math.max(min, Math.floor(next)), max);
 };
 
+const stringifyJsonDraft = (value) => {
+  if (value === null || value === undefined || value === '') return '';
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return '';
+  }
+};
+
+const normalizeOutputRulesDraft = (value) => {
+  if (Array.isArray(value)) {
+    return value.join('\n');
+  }
+  return `${value || ''}`.trim();
+};
+
+const buildLlmConfigDraft = (config = {}) => ({
+  promptMode: config.promptMode === 'contract' ? 'contract' : 'manual',
+  promptTemplate: config.promptTemplate || '',
+  promptCore: config.promptCore || '',
+  responseSchemaText: stringifyJsonDraft(config.responseSchema || {}),
+  fieldDocsText: stringifyJsonDraft(config.fieldDocs || {}),
+  examplePayloadText: stringifyJsonDraft(config.examplePayload),
+  outputRulesText: normalizeOutputRulesDraft(config.outputRules)
+});
+
+const parseJsonDraft = (label, value, { allowBlank = false, fallback = null } = {}) => {
+  const raw = `${value || ''}`.trim();
+  if (!raw) {
+    if (allowBlank) return fallback;
+    throw new Error(`${label} is required.`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(`${label} must be valid JSON.`);
+  }
+};
+
+const normalizeFieldDocsForPreview = (fieldDocs) => {
+  if (!fieldDocs || typeof fieldDocs !== 'object' || Array.isArray(fieldDocs)) return {};
+  const normalized = {};
+  Object.entries(fieldDocs).forEach(([key, value]) => {
+    const fieldKey = `${key || ''}`.trim();
+    if (!fieldKey) return;
+    if (typeof value === 'string' && value.trim()) {
+      normalized[fieldKey] = value.trim();
+    }
+  });
+  return normalized;
+};
+
+const buildStructuredPromptPreview = ({
+  promptMode,
+  promptTemplate,
+  promptCore,
+  responseSchemaText,
+  fieldDocsText,
+  examplePayloadText,
+  outputRulesText
+}) => {
+  if (promptMode !== 'contract') {
+    return promptTemplate || '';
+  }
+
+  const schema = parseJsonDraft('Response schema', responseSchemaText, { fallback: {} });
+  const fieldDocs = parseJsonDraft('Field docs', fieldDocsText, { allowBlank: true, fallback: {} });
+  const examplePayload = parseJsonDraft('Example payload', examplePayloadText, { allowBlank: true, fallback: null });
+  const outputRules = `${outputRulesText || ''}`
+    .split('\n')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  const sections = [];
+  if (`${promptCore || ''}`.trim()) {
+    sections.push(`${promptCore}`.trim());
+  }
+  sections.push('Return JSON only.');
+  sections.push(`Output must validate against this JSON Schema:\n${JSON.stringify(schema, null, 2)}`);
+  const fieldDocEntries = Object.entries(normalizeFieldDocsForPreview(fieldDocs));
+  if (fieldDocEntries.length) {
+    sections.push(`Field guidance:\n${fieldDocEntries.map(([key, value]) => `- ${key}: ${value}`).join('\n')}`);
+  }
+  if (outputRules.length) {
+    sections.push(`Additional output rules:\n${outputRules.map((rule) => `- ${rule}`).join('\n')}`);
+  }
+  if (examplePayload !== null) {
+    sections.push(`Example valid JSON:\n${JSON.stringify(examplePayload, null, 2)}`);
+  }
+  return sections.join('\n\n').trim();
+};
+
 const TypewriterAdminPage = () => {
   const [apiBaseUrl, setApiBaseUrl] = useState(getInitialApiBaseUrl);
   const [adminKey, setAdminKey] = useState(getInitialAdminKey);
@@ -276,11 +372,15 @@ const TypewriterAdminPage = () => {
   const [promptDefinitions, setPromptDefinitions] = useState(PROMPT_PIPELINES);
   const [promptDrafts, setPromptDrafts] = useState({});
   const [promptVersions, setPromptVersions] = useState({});
+  const [llmRouteConfigs, setLlmRouteConfigs] = useState({});
+  const [llmRouteConfigDrafts, setLlmRouteConfigDrafts] = useState({});
+  const [llmRouteConfigVersions, setLlmRouteConfigVersions] = useState({});
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingPrompts, setSavingPrompts] = useState(false);
+  const [savingLlmConfigs, setSavingLlmConfigs] = useState(false);
   const [refreshingModels, setRefreshingModels] = useState(false);
   const [sessionSaving, setSessionSaving] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(getInitialStoredSessionId);
@@ -321,10 +421,11 @@ const TypewriterAdminPage = () => {
       setError('');
       setStatus('');
       try {
-        const [settingsPayload, modelsPayload, promptsPayload] = await Promise.all([
+        const [settingsPayload, modelsPayload, promptsPayload, llmRouteConfigsPayload] = await Promise.all([
           loadTypewriterAiSettings(apiBaseUrl, { adminKey }),
           loadOpenAiModels(apiBaseUrl, { adminKey }),
-          loadTypewriterPrompts(apiBaseUrl, { adminKey })
+          loadTypewriterPrompts(apiBaseUrl, { adminKey }),
+          loadLlmRouteConfigs(apiBaseUrl, { adminKey })
         ]);
         const nextSettingDefinitions = Array.isArray(settingsPayload?.pipelinesMeta) && settingsPayload.pipelinesMeta.length
           ? settingsPayload.pipelinesMeta
@@ -342,6 +443,14 @@ const TypewriterAdminPage = () => {
           const nextDrafts = {};
           nextPromptDefinitions.forEach((pipeline) => {
             nextDrafts[pipeline.key] = promptsPayload?.pipelines?.[pipeline.key]?.promptTemplate || '';
+          });
+          return nextDrafts;
+        });
+        setLlmRouteConfigs(llmRouteConfigsPayload || {});
+        setLlmRouteConfigDrafts(() => {
+          const nextDrafts = {};
+          Object.values(llmRouteConfigsPayload || {}).forEach((config) => {
+            nextDrafts[config.routeKey] = buildLlmConfigDraft(config);
           });
           return nextDrafts;
         });
@@ -383,6 +492,12 @@ const TypewriterAdminPage = () => {
       };
     });
   }, [settingDefinitions, settings]);
+
+  const llmRouteRows = useMemo(() => {
+    return Object.values(llmRouteConfigs || {}).sort((left, right) =>
+      `${left?.routeKey || ''}`.localeCompare(`${right?.routeKey || ''}`)
+    );
+  }, [llmRouteConfigs]);
 
   const getModelOptions = (modelKind, currentModel, provider = 'openai') => {
     const normalizedProvider = provider === 'anthropic' ? 'anthropic' : 'openai';
@@ -433,6 +548,16 @@ const TypewriterAdminPage = () => {
     setPromptDrafts((prev) => ({
       ...prev,
       [pipelineKey]: value
+    }));
+  };
+
+  const updateLlmRouteConfigDraft = (routeKey, patch) => {
+    setLlmRouteConfigDrafts((prev) => ({
+      ...prev,
+      [routeKey]: {
+        ...(prev?.[routeKey] || {}),
+        ...patch
+      }
     }));
   };
 
@@ -616,6 +741,132 @@ const TypewriterAdminPage = () => {
       setError(err.message || 'Unable to set latest prompt version.');
     } finally {
       setSavingPrompts(false);
+    }
+  };
+
+  const handleSaveLlmRouteConfig = async (routeKey) => {
+    const draft = llmRouteConfigDrafts?.[routeKey];
+    if (!draft) {
+      setError(`No draft found for ${routeKey}.`);
+      setStatus('');
+      return;
+    }
+
+    setSavingLlmConfigs(true);
+    setError('');
+    setStatus('');
+
+    try {
+      const responseSchema = parseJsonDraft('Response schema', draft.responseSchemaText, { fallback: {} });
+      const fieldDocs = parseJsonDraft('Field docs', draft.fieldDocsText, { allowBlank: true, fallback: {} });
+      const examplePayload = parseJsonDraft('Example payload', draft.examplePayloadText, { allowBlank: true, fallback: null });
+      const payload = {
+        promptMode: draft.promptMode === 'contract' ? 'contract' : 'manual',
+        promptTemplate: `${draft.promptTemplate || ''}`.trim(),
+        promptCore: `${draft.promptCore || ''}`.trim(),
+        responseSchema,
+        fieldDocs,
+        examplePayload,
+        outputRules: `${draft.outputRulesText || ''}`
+          .split('\n')
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+      };
+
+      await saveLlmRouteConfigVersion(apiBaseUrl, routeKey, payload, {
+        adminKey,
+        updatedBy: 'story-admin-ui',
+        markLatest: true
+      });
+
+      const [latestConfigs, versionsPayload] = await Promise.all([
+        loadLlmRouteConfigs(apiBaseUrl, { adminKey }),
+        loadLlmRouteConfigVersions(apiBaseUrl, routeKey, { adminKey, limit: 10 })
+      ]);
+
+      setLlmRouteConfigs(latestConfigs || {});
+      setLlmRouteConfigDrafts((prev) => ({
+        ...prev,
+        [routeKey]: buildLlmConfigDraft(latestConfigs?.[routeKey] || {})
+      }));
+      setLlmRouteConfigVersions((prev) => ({
+        ...prev,
+        [routeKey]: Array.isArray(versionsPayload?.versions) ? versionsPayload.versions : []
+      }));
+      setStatus(`Saved structured contract for ${routeKey} as latest.`);
+    } catch (err) {
+      setError(err.message || 'Unable to save route config.');
+    } finally {
+      setSavingLlmConfigs(false);
+    }
+  };
+
+  const handleLoadLlmRouteConfigVersions = async (routeKey) => {
+    setSavingLlmConfigs(true);
+    setError('');
+    try {
+      const versionsPayload = await loadLlmRouteConfigVersions(apiBaseUrl, routeKey, { adminKey, limit: 10 });
+      setLlmRouteConfigVersions((prev) => ({
+        ...prev,
+        [routeKey]: Array.isArray(versionsPayload?.versions) ? versionsPayload.versions : []
+      }));
+    } catch (err) {
+      setError(err.message || 'Unable to load route config versions.');
+    } finally {
+      setSavingLlmConfigs(false);
+    }
+  };
+
+  const handleUseLlmRouteConfigVersion = async (routeKey, versionId) => {
+    setSavingLlmConfigs(true);
+    setError('');
+    setStatus('');
+    try {
+      await setLatestLlmRouteConfigVersion(apiBaseUrl, routeKey, {
+        adminKey,
+        id: versionId
+      });
+      const [latestConfigs, versionsPayload] = await Promise.all([
+        loadLlmRouteConfigs(apiBaseUrl, { adminKey }),
+        loadLlmRouteConfigVersions(apiBaseUrl, routeKey, { adminKey, limit: 10 })
+      ]);
+      setLlmRouteConfigs(latestConfigs || {});
+      setLlmRouteConfigDrafts((prev) => ({
+        ...prev,
+        [routeKey]: buildLlmConfigDraft(latestConfigs?.[routeKey] || {})
+      }));
+      setLlmRouteConfigVersions((prev) => ({
+        ...prev,
+        [routeKey]: Array.isArray(versionsPayload?.versions) ? versionsPayload.versions : []
+      }));
+      setStatus(`Set selected structured contract as latest for ${routeKey}.`);
+    } catch (err) {
+      setError(err.message || 'Unable to set latest route config version.');
+    } finally {
+      setSavingLlmConfigs(false);
+    }
+  };
+
+  const handleResetLlmRouteConfig = async (routeKey) => {
+    setSavingLlmConfigs(true);
+    setError('');
+    setStatus('');
+    try {
+      await resetLlmRouteConfig(apiBaseUrl, routeKey, {
+        adminKey,
+        updatedBy: 'story-admin-ui'
+      });
+      const latestConfigs = await loadLlmRouteConfigs(apiBaseUrl, { adminKey });
+      setLlmRouteConfigs(latestConfigs || {});
+      setLlmRouteConfigDrafts((prev) => ({
+        ...prev,
+        [routeKey]: buildLlmConfigDraft(latestConfigs?.[routeKey] || {})
+      }));
+      setStatus(`Reset ${routeKey} to default structured contract settings.`);
+    } catch (err) {
+      setError(err.message || 'Unable to reset route config.');
+    } finally {
+      setSavingLlmConfigs(false);
     }
   };
 
@@ -968,6 +1219,186 @@ const TypewriterAdminPage = () => {
                           className="typewriterUseVersionBtn"
                           onClick={() => handleUsePromptVersion(pipeline.key, version.id)}
                           disabled={savingPrompts}
+                        >
+                          Use as latest
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </article>
+          );
+        })}
+      </section>
+
+      <section className="typewriterPromptEditor typewriterStructuredEditor">
+        <div className="typewriterPromptEditorHeader">
+          <div>
+            <h2>Structured Output Contracts</h2>
+            <p>
+              JSON-returning routes can stay in manual mode, or switch to contract mode where the prompt is rewritten
+              from schema, field notes, example JSON, and extra rules.
+            </p>
+          </div>
+        </div>
+        {llmRouteRows.map((config) => {
+          const draft = llmRouteConfigDrafts?.[config.routeKey] || buildLlmConfigDraft(config);
+          const versions = llmRouteConfigVersions?.[config.routeKey] || [];
+          let previewText = '';
+          let previewError = '';
+          try {
+            previewText = buildStructuredPromptPreview(draft);
+          } catch (err) {
+            previewError = err.message || 'Preview unavailable.';
+          }
+
+          return (
+            <article key={config.routeKey} className="typewriterPromptCard typewriterStructuredCard">
+              <header>
+                <h3>{config.routeKey}</h3>
+                <p>{config.description}</p>
+                <p className="typewriterPromptMeta">
+                  Route: {config.method} {config.routePath}
+                </p>
+                <p className="typewriterPromptMeta">
+                  Latest version: {config.version || 'Default'} | Updated: {formatDate(config.updatedAt)}
+                </p>
+                <p className="typewriterPromptMeta">
+                  Current mode: <strong>{config.promptMode || 'manual'}</strong>
+                </p>
+              </header>
+
+              <div className="typewriterStructuredModeRow">
+                <label>
+                  Prompt mode
+                  <select
+                    value={draft.promptMode}
+                    onChange={(event) => updateLlmRouteConfigDraft(config.routeKey, { promptMode: event.target.value })}
+                  >
+                    <option value="manual">Manual prompt</option>
+                    <option value="contract">Contract-generated prompt</option>
+                  </select>
+                </label>
+              </div>
+
+              {draft.promptMode === 'manual' ? (
+                <label className="typewriterStructuredField">
+                  Manual prompt template
+                  <textarea
+                    value={draft.promptTemplate}
+                    onChange={(event) => updateLlmRouteConfigDraft(config.routeKey, { promptTemplate: event.target.value })}
+                    rows={8}
+                    placeholder="Enter the full prompt template used by this JSON route."
+                  />
+                </label>
+              ) : (
+                <label className="typewriterStructuredField">
+                  Prompt core
+                  <textarea
+                    value={draft.promptCore}
+                    onChange={(event) => updateLlmRouteConfigDraft(config.routeKey, { promptCore: event.target.value })}
+                    rows={8}
+                    placeholder="Enter the creative or narrative instructions. The JSON contract section will be appended automatically."
+                  />
+                </label>
+              )}
+
+              <div className="typewriterStructuredGrid">
+                <label className="typewriterStructuredField">
+                  Response schema (JSON)
+                  <textarea
+                    value={draft.responseSchemaText}
+                    onChange={(event) =>
+                      updateLlmRouteConfigDraft(config.routeKey, { responseSchemaText: event.target.value })
+                    }
+                    rows={14}
+                    spellCheck={false}
+                    placeholder='{"type":"object","properties":{}}'
+                  />
+                </label>
+                <label className="typewriterStructuredField">
+                  Field docs (JSON map)
+                  <textarea
+                    value={draft.fieldDocsText}
+                    onChange={(event) =>
+                      updateLlmRouteConfigDraft(config.routeKey, { fieldDocsText: event.target.value })
+                    }
+                    rows={14}
+                    spellCheck={false}
+                    placeholder='{"short_title":"2-6 words","miseenscene":"first-person sensory"}'
+                  />
+                </label>
+              </div>
+
+              <div className="typewriterStructuredGrid">
+                <label className="typewriterStructuredField">
+                  Example payload (JSON)
+                  <textarea
+                    value={draft.examplePayloadText}
+                    onChange={(event) =>
+                      updateLlmRouteConfigDraft(config.routeKey, { examplePayloadText: event.target.value })
+                    }
+                    rows={12}
+                    spellCheck={false}
+                    placeholder='{"example":"Optional sample response"}'
+                  />
+                </label>
+                <label className="typewriterStructuredField">
+                  Output rules (one per line)
+                  <textarea
+                    value={draft.outputRulesText}
+                    onChange={(event) =>
+                      updateLlmRouteConfigDraft(config.routeKey, { outputRulesText: event.target.value })
+                    }
+                    rows={12}
+                    placeholder="short_title should fit the card UI"
+                  />
+                </label>
+              </div>
+
+              <label className="typewriterStructuredField">
+                Generated prompt preview
+                <textarea value={previewError || previewText} readOnly rows={14} className="typewriterStructuredPreview" />
+              </label>
+
+              <div className="typewriterPromptButtons">
+                <button
+                  type="button"
+                  onClick={() => handleSaveLlmRouteConfig(config.routeKey)}
+                  disabled={loading || savingLlmConfigs}
+                >
+                  {savingLlmConfigs ? 'Saving...' : `Save ${config.routeKey}`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleLoadLlmRouteConfigVersions(config.routeKey)}
+                  disabled={loading || savingLlmConfigs}
+                >
+                  Load versions
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleResetLlmRouteConfig(config.routeKey)}
+                  disabled={loading || savingLlmConfigs}
+                >
+                  Reset to defaults
+                </button>
+              </div>
+
+              {versions.length ? (
+                <ul className="typewriterPromptVersions">
+                  {versions.map((version) => (
+                    <li key={version.version ? `${config.routeKey}-${version.version}-${version.updatedAt}` : `${config.routeKey}-default`}>
+                      v{version.version || 'default'} | {formatDate(version.updatedAt)} | {version.createdBy || 'admin'}
+                      {version.isLatest ? (
+                        <strong> (latest)</strong>
+                      ) : (
+                        <button
+                          type="button"
+                          className="typewriterUseVersionBtn"
+                          onClick={() => handleUseLlmRouteConfigVersion(config.routeKey, version.id || version._id)}
+                          disabled={savingLlmConfigs}
                         >
                           Use as latest
                         </button>

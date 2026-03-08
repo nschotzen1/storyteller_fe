@@ -13,6 +13,8 @@ import {
 const API_BASE_STORAGE_KEY = 'typewriterAdminApiBaseUrl';
 const SESSION_STORAGE_KEY = 'sessionId';
 const MOCK_STORAGE_KEY = 'messangerForceMock';
+const INTRO_AUDIO_SRC = '/audio/typewriter-narration.mp3';
+const INTRO_AUDIO_DELAY_MS = 160;
 
 const createSessionId = () => {
   if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
@@ -44,6 +46,21 @@ const getInitialForceMock = () => {
   return stored === '1' || stored === 'true' || stored === 'yes';
 };
 
+const formatMessageTime = (createdAt, pending = false) => {
+  if (pending) return 'sending';
+  if (!createdAt) return '';
+  const parsed = new Date(createdAt);
+  if (Number.isNaN(parsed.getTime())) return '';
+  try {
+    return new Intl.DateTimeFormat([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    }).format(parsed);
+  } catch {
+    return '';
+  }
+};
+
 const normalizeMessages = (payload) => {
   if (!Array.isArray(payload)) return [];
   return payload.map((message, index) => ({
@@ -52,11 +69,20 @@ const normalizeMessages = (payload) => {
     text: typeof message?.text === 'string' ? message.text : '',
     type: typeof message?.type === 'string' ? message.type : 'response',
     pending: Boolean(message?.pending),
-    hasChatEnded: Boolean(message?.hasChatEnded)
+    hasChatEnded: Boolean(message?.hasChatEnded),
+    createdAt: typeof message?.createdAt === 'string' ? message.createdAt : ''
   }));
 };
 
-const MessageCard = ({ message }) => (
+const MessageCard = ({ message }) => {
+  const messageLabel = message.type === 'initial'
+    ? 'Initial dispatch'
+    : message.sender === 'system'
+      ? 'Society relay'
+      : 'Your note';
+  const timeLabel = formatMessageTime(message.createdAt, message.pending);
+
+  return (
   <motion.article
     layout
     initial={{ opacity: 0, y: 18, filter: 'blur(8px)' }}
@@ -66,12 +92,19 @@ const MessageCard = ({ message }) => (
     className={`messangerMessage messangerMessage--${message.sender}${message.pending ? ' is-pending' : ''}`}
   >
     <div className="messangerMessage__meta">
-      <span>{message.sender === 'system' ? 'Storyteller Society' : 'Recipient'}</span>
-      <span>{message.type === 'initial' ? 'Dispatch' : message.pending ? 'Sending' : 'Cipher'}</span>
+      <span>{message.sender === 'system' ? 'Storyteller Society' : 'You'}</span>
+      <span>{message.pending ? 'Outbound' : message.type === 'initial' ? 'Boot' : 'Secure'}</span>
     </div>
     <div className="messangerMessage__body">{message.text}</div>
+    {(messageLabel || timeLabel) && (
+      <div className="messangerMessage__footer">
+        <span>{messageLabel}</span>
+        {timeLabel ? <span>{timeLabel}</span> : null}
+      </div>
+    )}
   </motion.article>
-);
+  );
+};
 
 const Messanger = ({ start = true, onCurtainDropComplete }) => {
   const [apiBaseUrl, setApiBaseUrl] = useState(getInitialApiBaseUrl);
@@ -89,6 +122,29 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   const [pendingMessage, setPendingMessage] = useState('');
 
   const threadRef = useRef(null);
+  const introAudioRef = useRef(null);
+  const introAudioTimerRef = useRef(null);
+  const lastIntroPlaybackKeyRef = useRef('');
+
+  const stopIntroAudio = () => {
+    if (introAudioTimerRef.current && typeof window !== 'undefined') {
+      window.clearTimeout(introAudioTimerRef.current);
+      introAudioTimerRef.current = null;
+    }
+
+    if (!introAudioRef.current) {
+      return;
+    }
+
+    try {
+      introAudioRef.current.pause();
+      introAudioRef.current.currentTime = 0;
+    } catch (error) {
+      console.warn('Unable to stop messenger intro audio:', error);
+    } finally {
+      introAudioRef.current = null;
+    }
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -108,6 +164,10 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   useEffect(() => {
     threadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, pendingMessage, sending]);
+
+  useEffect(() => () => {
+    stopIntroAudio();
+  }, []);
 
   useEffect(() => {
     if (!chatEnded || typeof onCurtainDropComplete !== 'function') return undefined;
@@ -145,6 +205,51 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
       active = false;
     };
   }, [apiBaseUrl, sessionId, start]);
+
+  useEffect(() => {
+    if (!start || typeof window === 'undefined' || typeof Audio !== 'function') {
+      return undefined;
+    }
+
+    const firstMessage = messages[0];
+    const shouldPlayIntro = (
+      messages.length === 1
+      && firstMessage?.sender === 'system'
+      && firstMessage?.type === 'initial'
+      && typeof firstMessage?.text === 'string'
+      && firstMessage.text.trim()
+    );
+
+    if (!shouldPlayIntro) {
+      return undefined;
+    }
+
+    const playbackKey = `${sessionId}:${DEFAULT_SCENE_ID}:${firstMessage.id || 'initial'}`;
+    if (lastIntroPlaybackKeyRef.current === playbackKey) {
+      return undefined;
+    }
+
+    lastIntroPlaybackKeyRef.current = playbackKey;
+    introAudioTimerRef.current = window.setTimeout(() => {
+      stopIntroAudio();
+      const audio = new Audio(INTRO_AUDIO_SRC);
+      introAudioRef.current = audio;
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch((error) => {
+          console.warn('Messenger intro playback prevented:', error);
+        });
+      }
+      introAudioTimerRef.current = null;
+    }, INTRO_AUDIO_DELAY_MS);
+
+    return () => {
+      if (introAudioTimerRef.current) {
+        window.clearTimeout(introAudioTimerRef.current);
+        introAudioTimerRef.current = null;
+      }
+    };
+  }, [messages, sessionId, start]);
 
   const threadMessages = useMemo(() => {
     if (!pendingMessage) return messages;
@@ -195,6 +300,8 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
     setResetting(true);
     setError('');
     setStatus('');
+    lastIntroPlaybackKeyRef.current = '';
+    stopIntroAudio();
     try {
       await resetMessengerConversation(apiBaseUrl, {
         sessionId,
@@ -236,6 +343,8 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
 
   const handleNewSession = () => {
     const nextSessionId = createSessionId();
+    lastIntroPlaybackKeyRef.current = '';
+    stopIntroAudio();
     setRuntime(null);
     setMessages([]);
     setChatEnded(false);
@@ -248,6 +357,19 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   const runtimeLabel = runtime
     ? `${runtime.mocked ? 'mock' : 'live'} / ${runtime.provider || 'openai'} / ${runtime.model || 'default'}`
     : 'Awaiting response';
+  const handsetTime = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat([], {
+        hour: 'numeric',
+        minute: '2-digit'
+      }).format(new Date());
+    } catch {
+      return '11:47';
+    }
+  }, []);
+  const circuitLabel = runtime?.mocked || forceMock ? 'Mock-SIM' : '5G ether';
+  const storageLabel = runtime?.storage === 'file' ? 'off-grid' : 'synced';
+  const threadStateLabel = chatEnded ? 'Thread sealed' : 'Waiting for your note';
 
   return (
     <div className={`messangerScene${chatEnded ? ' is-ended' : ''}`}>
@@ -255,13 +377,123 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
       <div className="messangerScene__veil" />
 
       <div className="messangerFrame">
+        <div className="messangerPhoneWrap">
+          <div className="messangerPhone">
+            <div className="messangerPhone__bezel">
+              <span className="messangerPhone__camera" />
+              <span className="messangerPhone__speaker" />
+            </div>
+
+            <div className="messangerPhone__screen">
+              <div className="messangerStatusBar">
+                <span className="messangerStatusBar__time">{handsetTime}</span>
+                <div className="messangerStatusBar__icons">
+                  <span>{circuitLabel}</span>
+                  <span>{storageLabel}</span>
+                </div>
+              </div>
+
+              <section className="messangerConsole">
+                <header className="messangerConsole__header">
+                  <div className="messangerConsole__contact">
+                    <div className="messangerAvatar">
+                      <span>SS</span>
+                    </div>
+                    <div className="messangerConsole__titles">
+                      <span className="messangerConsole__eyebrow">Encrypted thread</span>
+                      <h2>Storyteller Society</h2>
+                      <p>{threadStateLabel}</p>
+                    </div>
+                  </div>
+                  <div className="messangerConsole__status">
+                    <span className={`messangerChip${runtime?.mocked || forceMock ? ' is-mock' : ''}`}>
+                      {runtime?.mocked || forceMock ? 'Mock' : 'Live'}
+                    </span>
+                    <span className="messangerChip">{chatEnded ? 'Sealed' : 'Open'}</span>
+                  </div>
+                </header>
+
+                <div className="messangerThread">
+                  <div className="messangerThread__datePill">
+                    Dispatch line · {DEFAULT_SCENE_ID}
+                  </div>
+
+                  {loading && (
+                    <div className="messangerBanner">
+                      <LoaderCircle size={16} className="spin" />
+                      <span>Loading conversation from the archive.</span>
+                    </div>
+                  )}
+
+                  {status && !error && (
+                    <div className="messangerBanner is-success">
+                      <Radio size={16} />
+                      <span>{status}</span>
+                    </div>
+                  )}
+
+                  {error && (
+                    <div className="messangerBanner is-error">
+                      <AlertCircle size={16} />
+                      <span>{error}</span>
+                    </div>
+                  )}
+
+                  <AnimatePresence initial={false}>
+                    {threadMessages.map((message) => (
+                      <MessageCard key={message.id} message={message} />
+                    ))}
+                  </AnimatePresence>
+
+                  {sending && (
+                    <div className="messangerTyping">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  )}
+
+                  <div ref={threadRef} />
+                </div>
+
+                <div className="messangerComposer">
+                  <div className="messangerComposer__field">
+                    <textarea
+                      value={input}
+                      onChange={(event) => setInput(event.target.value)}
+                      placeholder={
+                        sending
+                          ? 'Awaiting the Society...'
+                          : 'Describe the room, the window, the weather, and where the typewriter could vanish if required.'
+                      }
+                      disabled={sending || resetting}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && !event.shiftKey) {
+                          event.preventDefault();
+                          handleSend();
+                        }
+                      }}
+                    />
+                  </div>
+                  <button type="button" onClick={handleSend} disabled={sending || resetting || !input.trim()}>
+                    {sending ? <LoaderCircle size={18} className="spin" /> : <Send size={18} />}
+                    <span>Send</span>
+                  </button>
+                </div>
+              </section>
+
+              <div className="messangerPhone__homebar" />
+            </div>
+          </div>
+        </div>
+
         <aside className="messangerDossier">
           <div className="messangerDossier__crest">
-            <span className="messangerDossier__eyebrow">Debug View</span>
+            <span className="messangerDossier__eyebrow">Switchboard</span>
             <h1>Messanger</h1>
             <p>
-              A live console for the Society’s delivery inquiry. This view stays intentionally wired to the
-              backend so you can inspect runtime state while reshaping the experience.
+              The handset is the primary experience. This sidecar keeps the wiring visible so you can debug
+              sessions, runtime, and transport without breaking the mobile illusion.
             </p>
           </div>
 
@@ -281,7 +513,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
               checked={forceMock}
               onChange={(event) => setForceMock(event.target.checked)}
             />
-            <span>Force mock replies on this view</span>
+            <span>Force mock replies on this handset</span>
           </label>
 
           <div className="messangerActions">
@@ -322,92 +554,15 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
             </div>
             <div>
               <dt>State</dt>
-              <dd>{chatEnded ? 'Conversation concluded' : 'Awaiting more detail'}</dd>
+              <dd>{threadStateLabel}</dd>
             </div>
           </dl>
 
           <div className="messangerNotice">
             <Radio size={16} />
-            <span>Open directly with `?view=messanger` for backend debugging.</span>
+            <span>Open directly with `?view=messanger` when you want the handset and the debug wiring together.</span>
           </div>
         </aside>
-
-        <section className="messangerConsole">
-          <header className="messangerConsole__header">
-            <div>
-              <span className="messangerConsole__eyebrow">The Storyteller Society</span>
-              <h2>Dispatch Correspondence</h2>
-            </div>
-            <div className="messangerConsole__status">
-              <span className={`messangerChip${runtime?.mocked || forceMock ? ' is-mock' : ''}`}>
-                {runtime?.mocked || forceMock ? 'Mock circuit' : 'Live circuit'}
-              </span>
-              <span className="messangerChip">{chatEnded ? 'Sealed' : 'Open'}</span>
-            </div>
-          </header>
-
-          <div className="messangerThread">
-            {loading && (
-              <div className="messangerBanner">
-                <LoaderCircle size={16} className="spin" />
-                <span>Loading conversation from the archive.</span>
-              </div>
-            )}
-
-            {status && !error && (
-              <div className="messangerBanner is-success">
-                <Radio size={16} />
-                <span>{status}</span>
-              </div>
-            )}
-
-            {error && (
-              <div className="messangerBanner is-error">
-                <AlertCircle size={16} />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <AnimatePresence initial={false}>
-              {threadMessages.map((message) => (
-                <MessageCard key={message.id} message={message} />
-              ))}
-            </AnimatePresence>
-
-            {sending && (
-              <div className="messangerTyping">
-                <span />
-                <span />
-                <span />
-              </div>
-            )}
-
-            <div ref={threadRef} />
-          </div>
-
-          <div className="messangerComposer">
-            <textarea
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder={
-                sending
-                  ? 'Awaiting the Society...'
-                  : 'Describe the room, the window, the weather, and where the typewriter could vanish if required.'
-              }
-              disabled={sending || resetting}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                  event.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
-            <button type="button" onClick={handleSend} disabled={sending || resetting || !input.trim()}>
-              {sending ? <LoaderCircle size={18} className="spin" /> : <Send size={18} />}
-              <span>Dispatch</span>
-            </button>
-          </div>
-        </section>
       </div>
     </div>
   );

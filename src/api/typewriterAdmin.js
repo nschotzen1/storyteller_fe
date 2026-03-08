@@ -150,6 +150,79 @@ export const setLatestTypewriterPromptVersion = async (
   });
 };
 
+export const loadLlmRouteConfigs = async (baseUrl = DEFAULT_API_BASE_URL, { adminKey } = {}) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/admin/llm-config`, {
+    method: 'GET',
+    headers: buildAdminHeaders(adminKey)
+  });
+};
+
+export const saveLlmRouteConfigVersion = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  routeKey,
+  payload = {},
+  { adminKey, updatedBy = 'admin', markLatest = true } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/admin/llm-config/${encodeURIComponent(routeKey)}`, {
+    method: 'POST',
+    headers: buildAdminHeaders(adminKey),
+    body: JSON.stringify({
+      ...payload,
+      updatedBy,
+      markLatest
+    })
+  });
+};
+
+export const loadLlmRouteConfigVersions = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  routeKey,
+  { adminKey, limit = 20 } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  const params = new URLSearchParams();
+  if (limit) params.set('limit', String(limit));
+  const query = params.toString();
+  return requestJson(
+    `${safeBaseUrl}/api/admin/llm-config/${encodeURIComponent(routeKey)}/versions${query ? `?${query}` : ''}`,
+    {
+      method: 'GET',
+      headers: buildAdminHeaders(adminKey)
+    }
+  );
+};
+
+export const setLatestLlmRouteConfigVersion = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  routeKey,
+  { adminKey, id, version } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/admin/llm-config/${encodeURIComponent(routeKey)}/latest`, {
+    method: 'POST',
+    headers: buildAdminHeaders(adminKey),
+    body: JSON.stringify({
+      id,
+      version
+    })
+  });
+};
+
+export const resetLlmRouteConfig = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  routeKey,
+  { adminKey, updatedBy = 'admin' } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/admin/llm-config/${encodeURIComponent(routeKey)}/reset`, {
+    method: 'POST',
+    headers: buildAdminHeaders(adminKey),
+    body: JSON.stringify({ updatedBy })
+  });
+};
+
 export const startOrSeedTypewriterSession = async (
   baseUrl = DEFAULT_API_BASE_URL,
   { sessionId, fragment } = {}

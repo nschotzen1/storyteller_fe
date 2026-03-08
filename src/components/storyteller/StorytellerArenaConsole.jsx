@@ -119,6 +119,23 @@ const FLOW_LOOP_ACTIONS = [
     text: 'seals a shared truth into canon.'
   }
 ];
+const VOW_DEFINITIONS = [
+  {
+    id: 'hush',
+    label: 'Hush',
+    detail: 'Adds +1 clarity to ritual and immersion moves.'
+  },
+  {
+    id: 'anchor',
+    label: 'Anchor',
+    detail: 'Softens pressure spikes by 1 when moves raise scene pressure.'
+  },
+  {
+    id: 'pact',
+    label: 'Pact',
+    detail: 'Adds +1 momentum while ritual mode is active.'
+  }
+];
 const WORLD_PROFILE_DEFAULT = {
   worldName: '',
   mood: '',
@@ -183,6 +200,24 @@ const describeSceneClock = (value) => {
   if (value <= 3) return 'Tense';
   if (value <= 5) return 'Critical';
   return 'Breaking';
+};
+const applyVowModifiers = (effects, vows, options = {}) => {
+  const ritualActive = Boolean(options.ritualActive);
+  const next = {
+    momentum: Number(effects?.momentum) || 0,
+    clarity: Number(effects?.clarity) || 0,
+    sceneClock: Number(effects?.sceneClock) || 0
+  };
+  if (vows?.hush) {
+    next.clarity += 1;
+  }
+  if (vows?.anchor && next.sceneClock > 0) {
+    next.sceneClock = Math.max(0, next.sceneClock - 1);
+  }
+  if (vows?.pact && ritualActive) {
+    next.momentum += 1;
+  }
+  return next;
 };
 
 const readWorldProfile = (sessionId) => {
@@ -772,6 +807,9 @@ const StorytellerArenaConsole = ({
   const beatSyncRequired = syncTargetKeys.length;
   const beatSyncVotes = syncTargetKeys.filter((playerKey) => beatVotes[playerKey] === activeBeatId).length;
   const beatSyncReady = beatSyncRequired > 0 && beatSyncVotes >= beatSyncRequired;
+  const vows =
+    sessionState.vows && typeof sessionState.vows === 'object' ? sessionState.vows : SESSION_STATE_DEFAULT.vows;
+  const activeVows = VOW_DEFINITIONS.filter((vow) => Boolean(vows[vow.id]));
   const immersionGate = useMemo(
     () => ({
       charter: hasWorldCharter,
@@ -921,6 +959,12 @@ const StorytellerArenaConsole = ({
           sceneClock,
           sceneClockLabel,
           turnActionsLeft: currentTurnActions,
+          vows: {
+            active: activeVows.map((vow) => vow.label),
+            hush: Boolean(vows.hush),
+            anchor: Boolean(vows.anchor),
+            pact: Boolean(vows.pact)
+          },
           collab: {
             lastAction: sessionState.lastCollabMove?.label || '',
             lastBy: sessionState.lastCollabMove?.by || '',
@@ -987,6 +1031,8 @@ const StorytellerArenaConsole = ({
     beatSyncVotes,
     beatSyncRequired,
     beatSyncReady,
+    vows,
+    activeVows,
     sceneGoal,
     sceneRisk,
     threads,
@@ -1297,10 +1343,24 @@ const StorytellerArenaConsole = ({
   };
 
   const handleToggleVow = (vowKey) => {
-    setSessionState((prev) => ({
-      ...prev,
-      vows: { ...prev.vows, [vowKey]: !prev.vows?.[vowKey] }
-    }));
+    const vow = VOW_DEFINITIONS.find((item) => item.id === vowKey);
+    if (!vow) return;
+    setSessionState((prev) => {
+      const previousVows =
+        prev.vows && typeof prev.vows === 'object' ? prev.vows : SESSION_STATE_DEFAULT.vows;
+      const nextEnabled = !previousVows[vowKey];
+      const entry = createLedgerEntry({
+        type: 'oath',
+        text: `${vow.label} vow ${nextEnabled ? 'invoked' : 'released'}.`,
+        by: focusPlayerLabel || currentTurnLabel || 'Table'
+      });
+      return {
+        ...prev,
+        vows: { ...previousVows, [vowKey]: nextEnabled },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setNotice(`${vow.label} vow ${vows[vowKey] ? 'released' : 'invoked'}.`);
   };
 
   const handlePulseAdjust = (key, delta) => {
@@ -1486,6 +1546,9 @@ const StorytellerArenaConsole = ({
       const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
       const previousClockRaw = Number(prev.sceneClock);
       const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
+      const effect = applyVowModifiers(action.effects, prev.vows, {
+        ritualActive: Boolean(prev.ritualActive)
+      });
       const entry = createLedgerEntry({
         type: action.ledgerType,
         text: `${actorLabel} ${action.text}`,
@@ -1494,10 +1557,10 @@ const StorytellerArenaConsole = ({
       return {
         ...prev,
         pulse: {
-          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + action.effects.momentum),
-          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + action.effects.clarity)
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity)
         },
-        sceneClock: clampSceneClockValue(previousClock + action.effects.sceneClock),
+        sceneClock: clampSceneClockValue(previousClock + effect.sceneClock),
         lastFlowAction: {
           id: action.id,
           label: action.label,
@@ -1521,6 +1584,9 @@ const StorytellerArenaConsole = ({
       const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
       const previousClockRaw = Number(prev.sceneClock);
       const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
+      const effect = applyVowModifiers(move.effects, prev.vows, {
+        ritualActive: Boolean(prev.ritualActive)
+      });
       const entry = createLedgerEntry({
         type: move.ledgerType,
         text: `${actorLabel} ${move.text}`,
@@ -1529,10 +1595,10 @@ const StorytellerArenaConsole = ({
       return {
         ...prev,
         pulse: {
-          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + move.effects.momentum),
-          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + move.effects.clarity)
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity)
         },
-        sceneClock: clampSceneClockValue(previousClock + move.effects.sceneClock),
+        sceneClock: clampSceneClockValue(previousClock + effect.sceneClock),
         lastCollabMove: {
           id: move.id,
           label: move.label,
@@ -1580,6 +1646,9 @@ const StorytellerArenaConsole = ({
         ? previousTokensRaw
         : PRESENCE_TOKEN_MAX;
       const nextTokens = Math.max(0, previousTokens - 1);
+      const effect = applyVowModifiers(move.effects, prev.vows, {
+        ritualActive: Boolean(prev.ritualActive)
+      });
       const entry = createLedgerEntry({
         type: move.ledgerType,
         text: `${actorLabel} ${move.text}`,
@@ -1592,8 +1661,8 @@ const StorytellerArenaConsole = ({
           [spotlightKey]: nextTokens
         },
         pulse: {
-          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + move.effects.momentum),
-          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + move.effects.clarity)
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity)
         },
         ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
       };
@@ -1909,6 +1978,9 @@ const StorytellerArenaConsole = ({
         ? previousActionsRaw
         : TURN_ACTIONS_PER_TURN;
       const nextActions = Math.max(0, previousActions - 1);
+      const effect = applyVowModifiers(move.effects, prev.vows, {
+        ritualActive: Boolean(prev.ritualActive)
+      });
       const nextEntry = createLedgerEntry({
         type: move.ledgerType,
         text: `${actorLabel} ${move.text}`,
@@ -1917,10 +1989,10 @@ const StorytellerArenaConsole = ({
       return {
         ...prev,
         pulse: {
-          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + move.effects.momentum),
-          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + move.effects.clarity)
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity)
         },
-        sceneClock: clampSceneClockValue(previousClock + move.effects.sceneClock),
+        sceneClock: clampSceneClockValue(previousClock + effect.sceneClock),
         actionBank: {
           ...(prev.actionBank || {}),
           [currentTurnKey]: nextActions
@@ -3408,31 +3480,22 @@ const StorytellerArenaConsole = ({
               </div>
             </div>
             <div className="immersionVows">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={sessionState.vows?.hush || false}
-                  onChange={() => handleToggleVow('hush')}
-                />
-                Hush
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={sessionState.vows?.anchor || false}
-                  onChange={() => handleToggleVow('anchor')}
-                />
-                Anchor
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={sessionState.vows?.pact || false}
-                  onChange={() => handleToggleVow('pact')}
-                />
-                Pact
-              </label>
+              {VOW_DEFINITIONS.map((vow) => (
+                <label key={vow.id} title={vow.detail}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(vows[vow.id])}
+                    onChange={() => handleToggleVow(vow.id)}
+                  />
+                  {vow.label}
+                </label>
+              ))}
             </div>
+            {activeVows.length > 0 && (
+              <p className="consoleHint">
+                Active vows: {activeVows.map((vow) => vow.label).join(', ')}
+              </p>
+            )}
             <p className="consoleHint">Rituals persist per session to support deep immersion.</p>
           </div>
 
@@ -3854,6 +3917,16 @@ const StorytellerArenaConsole = ({
                   Clear Votes
                 </button>
               </div>
+              <div className="vowStatusRow">
+                <span>Ritual Vows</span>
+                <div className="vowStatusChips">
+                  {VOW_DEFINITIONS.map((vow) => (
+                    <span key={vow.id} className={vows[vow.id] ? 'active' : ''}>
+                      {vow.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
               <div className="spotlightRow">
                 <span>Spotlight Tokens</span>
                 <div
@@ -3953,6 +4026,7 @@ const StorytellerArenaConsole = ({
               <span>{ritualActive ? 'Ritual Live' : 'Ritual Staging'}</span>
               <span>{`Pressure ${sceneClock}/${SCENE_CLOCK_MAX}`}</span>
               <span>{`Beat Sync ${beatSyncVotes}/${beatSyncRequired || 0}`}</span>
+              <span>{activeVows.length ? `Vows ${activeVows.map((vow) => vow.label).join('/')}` : 'Vows None'}</span>
               {currentTurnKey && <span>{`Actions ${currentTurnActions}/${TURN_ACTIONS_PER_TURN}`}</span>}
               {currentFlowStep && <span>{`Step ${currentFlowStepIndex}/${flowSteps.length}`}</span>}
               {currentFlowStep && <span>{currentFlowStep.title}</span>}

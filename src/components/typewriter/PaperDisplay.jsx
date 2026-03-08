@@ -220,6 +220,31 @@ const PaperDisplay = ({
     ))
   );
 
+  const getSharedPrefixLength = (leftText = '', rightText = '') => {
+    const left = String(leftText ?? '');
+    const right = String(rightText ?? '');
+    const limit = Math.min(left.length, right.length);
+    let index = 0;
+    while (index < limit && left[index] === right[index]) {
+      index += 1;
+    }
+    return index;
+  };
+
+  const renderCursor = (style = {}) => (
+    <span
+      className={`striker-cursor ${isProcessingSequence ? 'ghost-cursor-active' : ''}`}
+      data-testid="striker-cursor-element"
+      ref={strikerRef}
+      style={{
+        display: 'inline-block',
+        position: 'relative',
+        left: STRIKER_CURSOR_OFFSET_LEFT,
+        ...style,
+      }}
+    />
+  );
+
   const renderFadeLines = () => {
     const baseText = String(pageText ?? '');
     const userTailText = String(sequenceUserText || '');
@@ -230,6 +255,17 @@ const PaperDisplay = ({
     const fadeOutgoingText = String(fadeGhost.outgoingText ?? '');
     const showOutgoing = fadeOutgoingText.length > 0 && fadeOutgoingText !== fadeIncomingText;
     const showIncoming = fadeIncomingText.length > 0;
+    const sharedPrefixLength = showOutgoing ? getSharedPrefixLength(fadeOutgoingText, fadeIncomingText) : 0;
+    const stableFadeText = showOutgoing
+      ? fadeIncomingText.slice(0, sharedPrefixLength)
+      : fadeIncomingText;
+    const outgoingFadeTail = showOutgoing
+      ? fadeOutgoingText.slice(sharedPrefixLength)
+      : '';
+    const incomingFadeTail = showOutgoing
+      ? fadeIncomingText.slice(sharedPrefixLength)
+      : '';
+    const showAnimatedFadeTail = outgoingFadeTail.length > 0 || incomingFadeTail.length > 0 || showOutgoing;
 
     return renderedBaseLines.map((line, idx) => {
       const isLastLine = idx === lastLineIndex;
@@ -241,7 +277,12 @@ const PaperDisplay = ({
         >
           <span className="last-line-content">
             {line}
-            {isLastLine && (showOutgoing || showIncoming) && (
+            {isLastLine && stableFadeText.length > 0 && (
+              <span className="fade-ghost-stable" style={ghostTextStyles}>
+                {renderTextWithLineBreaks(stableFadeText)}
+              </span>
+            )}
+            {isLastLine && showAnimatedFadeTail && (
               <span className="fade-ghost-container" style={ghostTextStyles}>
                 {showOutgoing && (
                   <>
@@ -250,24 +291,24 @@ const PaperDisplay = ({
                       className="fade-ghost-layer smudge-fade-out"
                       style={smudgeFadeStyle}
                     >
-                      {renderTextWithLineBreaks(fadeOutgoingText)}
+                      {renderTextWithLineBreaks(outgoingFadeTail)}
                     </span>
                     <span
                       key={`fade-out-afterimage-${fadeGhost.key}`}
                       className="fade-ghost-layer afterimage-fade"
                       style={afterimageFadeStyle}
                     >
-                      {renderTextWithLineBreaks(fadeOutgoingText)}
+                      {renderTextWithLineBreaks(outgoingFadeTail)}
                     </span>
                   </>
                 )}
-                {showIncoming && (
+                {showIncoming && showOutgoing && (
                   <span
                     key={`fade-in-${fadeGhost.key}`}
                     className={`fade-ghost-layer ${showOutgoing ? 'fade-ghost-in' : 'fade-ghost-static'}`}
                     style={showOutgoing ? fadeInStyle : undefined}
                   >
-                    {renderTextWithLineBreaks(fadeIncomingText)}
+                    {renderTextWithLineBreaks(incomingFadeTail)}
                   </span>
                 )}
               </span>
@@ -277,14 +318,7 @@ const PaperDisplay = ({
                 {renderTextWithLineBreaks(userTailText)}
               </span>
             )}
-            {isLastLine && shouldRenderCursor && (
-              <span
-                className={`striker-cursor ${isProcessingSequence ? 'ghost-cursor-active' : ''}`}
-                data-testid="striker-cursor-element"
-                ref={strikerRef}
-                style={{ display: 'inline-block', position: 'relative' }}
-              />
-            )}
+            {isLastLine && shouldRenderCursor && renderCursor()}
           </span>
         </div>
       );
@@ -515,14 +549,7 @@ const PaperDisplay = ({
                           {processedSegments}
 
 
-                          {isLastLineOfRenderedSet && shouldRenderCursor && (
-                            <span
-                              className={`striker-cursor ${isProcessingSequence ? 'ghost-cursor-active' : ''}`}
-                              data-testid="striker-cursor-element"
-                              ref={strikerRef}
-                              style={{ display: 'inline-block', position: 'relative', left: STRIKER_CURSOR_OFFSET_LEFT }}
-                            />
-                          )}
+                          {isLastLineOfRenderedSet && shouldRenderCursor && renderCursor()}
 
                         </span>
                       </div>

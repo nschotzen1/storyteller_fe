@@ -27,6 +27,7 @@ const VIEW_OPTIONS = [
   { id: VIEW.ARENA, label: 'Arena' },
   { id: VIEW.TYPEWRITER, label: 'Typewriter' },
   { id: VIEW.STORY_ADMIN, label: 'Story Admin' },
+  { id: VIEW.MESSANGER, label: 'Messanger' },
   { id: VIEW.QUEST, label: 'Quest' },
   { id: VIEW.QUEST_ADMIN, label: 'Quest Admin' },
   { id: VIEW.MEMORY_SPREAD, label: 'Memory Spread' }
