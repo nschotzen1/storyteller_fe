@@ -216,7 +216,7 @@ describe('PaperDisplay Component', () => {
       expect(container.querySelector('.last-line-content')?.textContent).toContain('Base');
 
       act(() => {
-        vi.advanceTimersByTime(700);
+        vi.advanceTimersByTime(800);
       });
 
       expect(container.querySelector('.fade-ghost-layer.smudge-fade-out')).not.toBeInTheDocument();

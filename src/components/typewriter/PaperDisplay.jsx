@@ -14,6 +14,9 @@ const getRandomAnimationClass = () => {
 
 const MIN_GHOST_FONT_SIZE_PX = 28;
 const MIN_GHOST_FONT_SIZE_REM = 1.75;
+const DEFAULT_FADE_TRANSITION_MS = 650;
+const MIN_FADE_TRANSITION_MS = 350;
+const MAX_FADE_TRANSITION_MS = 12000;
 
 const normalizeGhostFontSize = (fontSize) => {
   if (typeof fontSize === 'number' && Number.isFinite(fontSize)) {
@@ -43,6 +46,12 @@ const normalizeGhostFontSize = (fontSize) => {
   }
 
   return null;
+};
+
+const resolveFadeTransitionMs = (durationMs) => {
+  const numeric = Number(durationMs);
+  if (!Number.isFinite(numeric)) return DEFAULT_FADE_TRANSITION_MS;
+  return Math.round(Math.max(MIN_FADE_TRANSITION_MS, Math.min(MAX_FADE_TRANSITION_MS, numeric)));
 };
 
 // This component will handle the rendering of the paper, text, film background,
@@ -114,9 +123,16 @@ const PaperDisplay = ({
   STRIKER_CURSOR_OFFSET_LEFT,
   SLIDE_DIRECTION_LEFT, // To compare with slideDir
 }) => {
-  const FADE_TRANSITION_MS = 650;
   const fadeTimerRef = React.useRef(null);
   const lastGhostSnapshotRef = React.useRef('');
+  const fadeTransitionMs = resolveFadeTransitionMs(fadeState?.duration_ms);
+  const smudgeFadeStyle = { animationDuration: `${fadeTransitionMs}ms` };
+  const afterimageDurationMs = Math.round(fadeTransitionMs * 1.08);
+  const afterimageFadeStyle = {
+    animationDuration: `${afterimageDurationMs}ms`,
+    transitionDuration: `${afterimageDurationMs}ms`
+  };
+  const fadeInStyle = { animationDuration: `${fadeTransitionMs}ms` };
   const [fadeGhost, setFadeGhost] = React.useState({
     outgoingText: '',
     incomingText: '',
@@ -185,7 +201,7 @@ const PaperDisplay = ({
         outgoingText: '',
         currentText: prev.incomingText,
       }));
-    }, FADE_TRANSITION_MS);
+    }, afterimageDurationMs);
 
     return () => {
       if (fadeTimerRef.current) {
@@ -193,7 +209,7 @@ const PaperDisplay = ({
         fadeTimerRef.current = null;
       }
     };
-  }, [fadeState?.isActive, fadeState?.to_text, fadeState?.phase]);
+  }, [fadeState?.isActive, fadeState?.to_text, fadeState?.phase, afterimageDurationMs]);
 
   const renderTextWithLineBreaks = (text = '') => (
     String(text ?? '').split('\n').map((line, index, array) => (
@@ -232,12 +248,14 @@ const PaperDisplay = ({
                     <span
                       key={`fade-out-${fadeGhost.key}`}
                       className="fade-ghost-layer smudge-fade-out"
+                      style={smudgeFadeStyle}
                     >
                       {renderTextWithLineBreaks(fadeOutgoingText)}
                     </span>
                     <span
                       key={`fade-out-afterimage-${fadeGhost.key}`}
                       className="fade-ghost-layer afterimage-fade"
+                      style={afterimageFadeStyle}
                     >
                       {renderTextWithLineBreaks(fadeOutgoingText)}
                     </span>
@@ -247,6 +265,7 @@ const PaperDisplay = ({
                   <span
                     key={`fade-in-${fadeGhost.key}`}
                     className={`fade-ghost-layer ${showOutgoing ? 'fade-ghost-in' : 'fade-ghost-static'}`}
+                    style={showOutgoing ? fadeInStyle : undefined}
                   >
                     {renderTextWithLineBreaks(fadeIncomingText)}
                   </span>

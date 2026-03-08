@@ -189,6 +189,26 @@
   color: rgba(230, 210, 167, 0.75);
 }
 
+.typewriter-continuation-insights-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.typewriter-continuation-insights-hide {
+  border: 1px solid rgba(230, 210, 167, 0.3);
+  border-radius: 0.42rem;
+  background: rgba(35, 28, 23, 0.72);
+  color: rgba(231, 219, 192, 0.95);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.16rem 0.42rem;
+  cursor: pointer;
+}
+
 .typewriter-continuation-insights-stats {
   display: flex;
   flex-wrap: wrap;
@@ -474,6 +494,14 @@
 .typewriter-key-wrapper.key-pressed .typewriter-key-img {
   transform: scale(0.94);
   filter: brightness(0.85);
+}
+
+.typewriter-key-wrapper.storyteller-slot-key {
+  cursor: default;
+}
+
+.typewriter-key-wrapper.storyteller-slot-filled .typewriter-key-img {
+  filter: drop-shadow(0 4px 10px rgba(182, 144, 88, 0.24)) contrast(1.08) brightness(1.02);
 }
 
 .typewriter-keyboard {

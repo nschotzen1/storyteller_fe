@@ -11,6 +11,7 @@ import '@testing-library/jest-dom';
 
 vi.mock('./apiService', () => ({
   fetchNextFilmImage: vi.fn(),
+  fetchShouldCreateStorytellerKey: vi.fn(),
   fetchTypewriterReply: vi.fn().mockResolvedValue({ data: { content: 'mock AI reply' }, error: null }),
   fetchShouldGenerateContinuation: vi.fn().mockResolvedValue({ shouldGenerate: false }),
   startTypewriterSession: vi.fn().mockResolvedValue({ data: { sessionId: 'test-session-id-123' }, error: null }),
@@ -30,11 +31,54 @@ vi.mock('./utils', async () => {
 
 import {
   fetchNextFilmImage,
+  fetchShouldCreateStorytellerKey,
   fetchTypewriterReply,
   fetchShouldGenerateContinuation,
   startTypewriterSession,
 } from './apiService';
 import { playEndOfPageSound } from './utils';
+
+const buildStorytellerSlotPayload = (overrides = {}) => ([
+  {
+    slotIndex: 0,
+    slotKey: 'STORYTELLER_SLOT_HORIZONTAL',
+    keyShape: 'horizontal',
+    blankTextureUrl: '/textures/keys/blank_horizontal_1.png',
+    filled: false,
+    storytellerId: '',
+    storytellerName: '',
+    keyImageUrl: '',
+    symbol: '',
+    description: '',
+  },
+  {
+    slotIndex: 1,
+    slotKey: 'STORYTELLER_SLOT_VERTICAL',
+    keyShape: 'vertical',
+    blankTextureUrl: '/textures/keys/blank_vertical_1.png',
+    filled: false,
+    storytellerId: '',
+    storytellerName: '',
+    keyImageUrl: '',
+    symbol: '',
+    description: '',
+  },
+  {
+    slotIndex: 2,
+    slotKey: 'STORYTELLER_SLOT_RECT_HORIZONTAL',
+    keyShape: 'rect_horizontal',
+    blankTextureUrl: '/textures/keys/blank_rect_horizontal_1.png',
+    filled: false,
+    storytellerId: '',
+    storytellerName: '',
+    keyImageUrl: '',
+    symbol: '',
+    description: '',
+  },
+]).map((slot) => ({
+  ...slot,
+  ...(overrides[slot.slotIndex] || {}),
+}));
 
 const localStorageMock = (() => {
   let store = {};
@@ -83,6 +127,10 @@ describe('TypewriterFramework integration', () => {
     localStorageMock.clear();
     localStorageMock.setItem('sessionId', 'test-session-id-123');
     fetchNextFilmImage.mockResolvedValue({ data: { image_url: 'default_mock_image.png' }, error: null });
+    fetchShouldCreateStorytellerKey.mockResolvedValue({
+      data: { slots: buildStorytellerSlotPayload() },
+      error: null
+    });
     fetchTypewriterReply.mockResolvedValue({ data: { sequence: [] }, error: null });
     startTypewriterSession.mockResolvedValue({ data: { sessionId: 'test-session-id-123' }, error: null });
   });
@@ -190,6 +238,47 @@ describe('TypewriterFramework integration', () => {
       const nextSlide = screen.getByTestId('next-bg-slide');
       expect(nextSlide).toHaveStyle('background-image: url("new_page_specific.png")');
     });
+  });
+
+  test('renders storyteller slots and swaps in generated storyteller key art', async () => {
+    fetchShouldCreateStorytellerKey.mockResolvedValue({
+      data: {
+        slots: buildStorytellerSlotPayload({
+          0: {
+            filled: true,
+            storytellerId: 'storyteller-1',
+            storytellerName: 'Aster Vell',
+            keyImageUrl: 'http://localhost:5001/assets/demo/aster_vell_key.png',
+            symbol: 'ink moth',
+            description: 'Weathered brass and smoky enamel.',
+          },
+        }),
+      },
+      error: null
+    });
+
+    render(<TypewriterFramework />);
+
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+
+    await waitFor(() => {
+      expect(fetchShouldCreateStorytellerKey).toHaveBeenCalled();
+    });
+
+    expect(screen.getByAltText('Storyteller key Aster Vell')).toHaveAttribute(
+      'src',
+      'http://localhost:5001/assets/demo/aster_vell_key.png'
+    );
+    expect(screen.getByAltText('Blank storyteller slot 2')).toHaveAttribute(
+      'src',
+      '/textures/keys/blank_vertical_1.png'
+    );
+    expect(screen.getByAltText('Blank storyteller slot 3')).toHaveAttribute(
+      'src',
+      '/textures/keys/blank_rect_horizontal_1.png'
+    );
   });
 
   test('normalizes mock and non-mock reply schemas into a single sequence', () => {

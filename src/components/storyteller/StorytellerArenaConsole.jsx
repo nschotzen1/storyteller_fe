@@ -160,6 +160,8 @@ const SESSION_STATE_DEFAULT = {
   lastFlowAction: null,
   presenceTokens: {},
   lastCollabMove: null,
+  beatVotes: {},
+  lastBeatSync: null,
   vows: {
     hush: false,
     anchor: false,
@@ -757,6 +759,19 @@ const StorytellerArenaConsole = ({
   const spotlightKey = focusPlayerKey || currentTurnKey;
   const spotlightLabel = getPlayerLabelByKey(spotlightKey, 'Unassigned');
   const spotlightTokens = spotlightKey ? getPresenceTokenCount(spotlightKey) : 0;
+  const beatVotes =
+    sessionState.beatVotes && typeof sessionState.beatVotes === 'object' ? sessionState.beatVotes : {};
+  const activeBeatId = activeBeat?.id || sceneBeats[0]?.id || 'arrival';
+  const readyPlayerKeys = players
+    .slice(0, playersCount)
+    .map((player, index) => getPlayerKey(player, index))
+    .filter((playerKey) => sessionState.readyMap?.[playerKey]);
+  const syncTargetKeys = readyPlayerKeys.length
+    ? readyPlayerKeys
+    : players.slice(0, playersCount).map((player, index) => getPlayerKey(player, index));
+  const beatSyncRequired = syncTargetKeys.length;
+  const beatSyncVotes = syncTargetKeys.filter((playerKey) => beatVotes[playerKey] === activeBeatId).length;
+  const beatSyncReady = beatSyncRequired > 0 && beatSyncVotes >= beatSyncRequired;
   const immersionGate = useMemo(
     () => ({
       charter: hasWorldCharter,
@@ -914,6 +929,17 @@ const StorytellerArenaConsole = ({
           spotlight: {
             player: spotlightLabel,
             tokens: spotlightTokens
+          },
+          beatSync: {
+            beat: activeBeat?.label || 'Arrival',
+            votes: beatSyncVotes,
+            required: beatSyncRequired,
+            synced: beatSyncReady,
+            lastSync: {
+              beat: sessionState.lastBeatSync?.label || '',
+              by: sessionState.lastBeatSync?.by || '',
+              at: sessionState.lastBeatSync?.at || ''
+            }
           }
         },
         roster: players.slice(0, playersCount).map((player, index) => ({
@@ -957,14 +983,20 @@ const StorytellerArenaConsole = ({
     currentTurnActions,
     players,
     playersCount,
+    activeBeatId,
+    beatSyncVotes,
+    beatSyncRequired,
+    beatSyncReady,
     sceneGoal,
     sceneRisk,
     threads,
     sessionState.lastFlowAction,
+    sessionState.lastBeatSync,
     immersionPrimer,
     spotlightLabel,
     spotlightTokens,
-    presenceTokens
+    presenceTokens,
+    beatVotes
   ]);
 
   useEffect(() => {
@@ -1256,7 +1288,12 @@ const StorytellerArenaConsole = ({
   const handleAdvanceBeat = () => {
     const currentIndex = sceneBeats.findIndex((beat) => beat.id === activeBeat?.id);
     const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % sceneBeats.length;
-    setSessionState((prev) => ({ ...prev, beatId: sceneBeats[nextIndex].id }));
+    setSessionState((prev) => ({
+      ...prev,
+      beatId: sceneBeats[nextIndex].id,
+      beatVotes: {},
+      lastBeatSync: null
+    }));
   };
 
   const handleToggleVow = (vowKey) => {
@@ -1702,6 +1739,64 @@ const StorytellerArenaConsole = ({
     }));
   };
 
+  const handleVoteCurrentBeat = () => {
+    if (!activeBeatId) return;
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const voterKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!voterKey) {
+      setNotice('Set focus or turn holder before voting beat sync.');
+      return;
+    }
+    const voterLabel = getPlayerLabelByKey(voterKey, 'Table');
+    setSessionState((prev) => {
+      const nextVotes = {
+        ...(prev.beatVotes && typeof prev.beatVotes === 'object' ? prev.beatVotes : {}),
+        [voterKey]: activeBeatId
+      };
+      const rosterKeys = players
+        .slice(0, playersCount)
+        .map((player, index) => getPlayerKey(player, index));
+      const readyKeys = rosterKeys.filter((playerKey) => prev.readyMap?.[playerKey]);
+      const requiredKeys = readyKeys.length ? readyKeys : rosterKeys;
+      const syncedVotes = requiredKeys.filter((playerKey) => nextVotes[playerKey] === activeBeatId).length;
+      const isSynced = requiredKeys.length > 0 && syncedVotes >= requiredKeys.length;
+      const alreadySynced = prev.lastBeatSync?.beatId === activeBeatId;
+      if (isSynced && !alreadySynced) {
+        const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+        const entry = createLedgerEntry({
+          type: 'canon',
+          text: `Beat sync achieved: ${activeBeat?.label || 'Arrival'}.`,
+          by: 'Table'
+        });
+        return {
+          ...prev,
+          beatVotes: nextVotes,
+          lastBeatSync: {
+            beatId: activeBeatId,
+            label: activeBeat?.label || 'Arrival',
+            by: voterLabel,
+            at: new Date().toISOString()
+          },
+          pulse: {
+            momentum: clampPulseValue((nextPulse?.momentum ?? 2) + 1),
+            clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+          },
+          ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+        };
+      }
+      return {
+        ...prev,
+        beatVotes: nextVotes
+      };
+    });
+    setNotice(`${voterLabel} votes to lock ${activeBeat?.label || 'Arrival'}.`);
+  };
+
+  const handleClearBeatVotes = () => {
+    setSessionState((prev) => ({ ...prev, beatVotes: {}, lastBeatSync: null }));
+    setNotice('Beat sync votes cleared.');
+  };
+
   const handleAdvanceTurn = () => {
     if (!turnOrder.length) {
       setNotice('Build turn order first.');
@@ -1757,6 +1852,8 @@ const StorytellerArenaConsole = ({
         turnIndex: 0,
         focusPlayerKey: firstKey || prev.focusPlayerKey,
         actionBank: createActionBank(nextOrder),
+        beatVotes: {},
+        lastBeatSync: null,
         ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), ritualEntry].slice(-24)
       };
     });
@@ -1779,6 +1876,8 @@ const StorytellerArenaConsole = ({
         diveMode: false,
         phase: 'worldbuild',
         actionBank: {},
+        beatVotes: {},
+        lastBeatSync: null,
         ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), ritualEntry].slice(-24)
       };
     });
@@ -3737,6 +3836,24 @@ const StorytellerArenaConsole = ({
                   ))}
                 </div>
               </div>
+              <div className="beatSyncRow">
+                <span>Beat Sync</span>
+                <div className="beatSyncMeter" aria-label={`Beat sync votes ${beatSyncVotes} of ${beatSyncRequired}`}>
+                  <strong>
+                    {beatSyncVotes}/{beatSyncRequired || 0}
+                  </strong>
+                  <em>{activeBeat?.label || 'Arrival'}</em>
+                  <span className={beatSyncReady ? 'synced' : ''}>{beatSyncReady ? 'Synced' : 'Awaiting votes'}</span>
+                </div>
+              </div>
+              <div className="beatSyncControls">
+                <button type="button" className="ghost subtle" onClick={handleVoteCurrentBeat} disabled={!syncTargetKeys.length}>
+                  Vote Beat
+                </button>
+                <button type="button" className="ghost subtle" onClick={handleClearBeatVotes} disabled={!Object.keys(beatVotes).length}>
+                  Clear Votes
+                </button>
+              </div>
               <div className="spotlightRow">
                 <span>Spotlight Tokens</span>
                 <div
@@ -3835,6 +3952,7 @@ const StorytellerArenaConsole = ({
               <span>{`Ready ${readyCount}/${playersCount}`}</span>
               <span>{ritualActive ? 'Ritual Live' : 'Ritual Staging'}</span>
               <span>{`Pressure ${sceneClock}/${SCENE_CLOCK_MAX}`}</span>
+              <span>{`Beat Sync ${beatSyncVotes}/${beatSyncRequired || 0}`}</span>
               {currentTurnKey && <span>{`Actions ${currentTurnActions}/${TURN_ACTIONS_PER_TURN}`}</span>}
               {currentFlowStep && <span>{`Step ${currentFlowStepIndex}/${flowSteps.length}`}</span>}
               {currentFlowStep && <span>{currentFlowStep.title}</span>}

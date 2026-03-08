@@ -6,7 +6,13 @@ import PaperDisplay from './components/typewriter/PaperDisplay.jsx';
 import PageNavigation from './components/typewriter/PageNavigation.jsx'; // Import the new PageNavigation component
 import OrreryComponent from './OrreryComponent.jsx';
 import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines, playGhostWriterSound, ambientSoundManager, playPreGhostSound, fetchAndPlayElevenLabsTTS } from './utils.js';
-import { fetchNextFilmImage, fetchShouldGenerateContinuation, fetchTypewriterReply, startTypewriterSession } from './apiService.js';
+import {
+  fetchNextFilmImage,
+  fetchShouldCreateStorytellerKey,
+  fetchShouldGenerateContinuation,
+  fetchTypewriterReply,
+  startTypewriterSession
+} from './apiService.js';
 
 // --- Constants ---
 const FILM_HEIGHT = 1400;
@@ -38,6 +44,8 @@ const LAST_PRESSED_KEY_TIMEOUT = 120; // ms
 const KEY_TEXTURE_REFRESH_INTERVAL = 20000; // ms
 const GHOSTWRITER_AI_TRIGGER_INTERVAL = 1000; // ms
 export const FIRST_FADE_HANDOFF_DELAY = 1400; // ms
+const STORYTELLER_KEY_CHECK_INTERVAL_WORDS = 5;
+const STORYTELLER_KEY_CHECK_DELAY_MS = 700;
 
 // Animation & Style Values
 const PAGE_SLIDE_X_OFFSET = -50; // Percentage for left slide
@@ -84,6 +92,29 @@ const STRIKER_CURSOR_OFFSET_LEFT = '-40px';
 const LEVER_LEVEL_WORD_THRESHOLDS = [0, 10, 20, 30]; // words for level 0, 1, 2, 3 respectively
 const SPECIAL_KEY_TEXT = 'THE XEROFAG';
 const SPECIAL_KEY_INSERT_TEXT = 'The Xerofag ';
+const STORYTELLER_SLOT_HORIZONTAL_KEY = 'STORYTELLER_SLOT_HORIZONTAL';
+const STORYTELLER_SLOT_VERTICAL_KEY = 'STORYTELLER_SLOT_VERTICAL';
+const STORYTELLER_SLOT_RECT_HORIZONTAL_KEY = 'STORYTELLER_SLOT_RECT_HORIZONTAL';
+const STORYTELLER_KEY_SLOT_DEFINITIONS = [
+  {
+    slotIndex: 0,
+    slotKey: STORYTELLER_SLOT_HORIZONTAL_KEY,
+    blankTextureUrl: '/textures/keys/blank_horizontal_1.png',
+    keyShape: 'horizontal'
+  },
+  {
+    slotIndex: 1,
+    slotKey: STORYTELLER_SLOT_VERTICAL_KEY,
+    blankTextureUrl: '/textures/keys/blank_vertical_1.png',
+    keyShape: 'vertical'
+  },
+  {
+    slotIndex: 2,
+    slotKey: STORYTELLER_SLOT_RECT_HORIZONTAL_KEY,
+    blankTextureUrl: '/textures/keys/blank_rect_horizontal_1.png',
+    keyShape: 'rect_horizontal'
+  }
+];
 const DEFAULT_TYPEWRITER_DEBUG_SETTINGS = {
   panelOpen: false,
   showInsightsPanel: true,
@@ -118,6 +149,33 @@ const readStoredTypewriterDebugSettings = () => {
   } catch {
     return { ...DEFAULT_TYPEWRITER_DEBUG_SETTINGS };
   }
+};
+
+const getStorytellerSlotDefinitionByKey = (key) =>
+  STORYTELLER_KEY_SLOT_DEFINITIONS.find((slot) => slot.slotKey === key) || null;
+
+const getInitialKeyTexture = (key) => {
+  const storytellerSlot = getStorytellerSlotDefinitionByKey(key);
+  if (storytellerSlot) {
+    return storytellerSlot.blankTextureUrl;
+  }
+  return getRandomTexture(key);
+};
+
+const createInitialStorytellerSlots = () =>
+  STORYTELLER_KEY_SLOT_DEFINITIONS.map((slot) => ({
+    ...slot,
+    filled: false,
+    storytellerId: '',
+    storytellerName: '',
+    keyImageUrl: '',
+    symbol: '',
+    description: ''
+  }));
+
+const countWordsInNarrative = (text = '') => {
+  if (typeof text !== 'string') return 0;
+  return text.trim().split(/\s+/).filter(Boolean).length;
 };
 
 // --- Page Transition Reducer ---
@@ -645,9 +703,9 @@ const formatTimingWithMs = (value) => {
 };
 
 const keys = [
-  'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P',
-  'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L',
-  'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'THE XEROFAG'
+  'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', STORYTELLER_SLOT_HORIZONTAL_KEY,
+  'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', STORYTELLER_SLOT_VERTICAL_KEY,
+  'Z', 'X', 'C', 'V', 'B', 'N', 'M', STORYTELLER_SLOT_RECT_HORIZONTAL_KEY, 'THE XEROFAG'
 ];
 
 const TypewriterFramework = (props) => {
@@ -690,7 +748,8 @@ const TypewriterFramework = (props) => {
   const [currentPage, setCurrentPage] = useState(0);
 
   // --- Other State ---
-  const [keyTextures, setKeyTextures] = useState(keys.map(getRandomTexture)); // UI specific, might remain useState
+  const [keyTextures, setKeyTextures] = useState(() => keys.map(getInitialKeyTexture));
+  const [storytellerSlots, setStorytellerSlots] = useState(() => createInitialStorytellerSlots());
   const [ghostPressedKey, setGhostPressedKey] = useState(null);
   const [preGhostAtmosphere, setPreGhostAtmosphere] = useState(false);
   // lastUserInputTime, responseQueued, lastGeneratedLength are now in ghostwriterState
@@ -712,6 +771,9 @@ const TypewriterFramework = (props) => {
   const strikerRef = useRef(null);
   const isProcessingSequenceRef = useRef(false);
   const ambientStartedRef = useRef(false);
+  const storytellerCheckInFlightRef = useRef(false);
+  const storytellerInitialSyncSessionRef = useRef('');
+  const lastStorytellerCheckIntervalRef = useRef(-1);
 
   const [sessionId, setSessionId] = useState(() => readStoredSessionId());
   const [isFreshSession, setIsFreshSession] = useState(false);
@@ -775,6 +837,13 @@ const TypewriterFramework = (props) => {
   // --- Derived ---
   const { text: pageText, filmBgUrl: pageBg } = pages[currentPage] || {};
   const visibleGhostText = `${typingState.currentGhostText || ''}${typingState.sequenceUserText || ''}`;
+  const displayedKeyTextures = keys.map((key, index) => {
+    const storytellerSlot = storytellerSlots.find((slot) => slot.slotKey === key);
+    if (storytellerSlot) {
+      return storytellerSlot.keyImageUrl || storytellerSlot.blankTextureUrl;
+    }
+    return keyTextures[index];
+  });
   const visibleLineCount = Math.min(countLines(pageText, visibleGhostText), MAX_LINES);
   const neededHeight = TOP_OFFSET + visibleLineCount * LINE_HEIGHT + NEEDED_HEIGHT_OFFSET;
   const scrollAreaHeight = Math.max(FRAME_HEIGHT, neededHeight);
@@ -782,6 +851,79 @@ const TypewriterFramework = (props) => {
     leverLevel === LEVER_LEVEL_WORD_THRESHOLDS.length - 1
     && !pageChangeInProgress
     && typingAllowed;
+
+  useEffect(() => {
+    if (!sessionId) return;
+    storytellerInitialSyncSessionRef.current = '';
+    storytellerCheckInFlightRef.current = false;
+    lastStorytellerCheckIntervalRef.current = -1;
+    setStorytellerSlots(createInitialStorytellerSlots());
+    setKeyTextures(keys.map(getInitialKeyTexture));
+  }, [sessionId]);
+
+  const syncTypewriterStorytellerSlots = useCallback(async (wordIntervalIndex = 0) => {
+    if (!sessionId || storytellerCheckInFlightRef.current) {
+      return false;
+    }
+
+    storytellerCheckInFlightRef.current = true;
+    try {
+      const { data, error } = await fetchShouldCreateStorytellerKey(sessionId);
+      if (error || !data) {
+        return false;
+      }
+
+      const slotMap = new Map(
+        (Array.isArray(data.slots) ? data.slots : []).map((slot) => [slot.slotIndex, slot])
+      );
+      setStorytellerSlots((prev) =>
+        prev.map((slot) => {
+          const nextSlot = slotMap.get(slot.slotIndex);
+          return nextSlot ? { ...slot, ...nextSlot } : slot;
+        })
+      );
+      lastStorytellerCheckIntervalRef.current = Math.max(
+        lastStorytellerCheckIntervalRef.current,
+        Number.isInteger(wordIntervalIndex) ? wordIntervalIndex : 0
+      );
+      return true;
+    } catch (error) {
+      console.error('Error syncing storyteller keys:', error);
+      return false;
+    } finally {
+      storytellerCheckInFlightRef.current = false;
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!isSessionReady || !sessionId) return;
+    if (storytellerInitialSyncSessionRef.current === sessionId) return;
+
+    const currentWordInterval = Math.floor(countWordsInNarrative(pageText || '') / STORYTELLER_KEY_CHECK_INTERVAL_WORDS);
+    const timeoutId = window.setTimeout(() => {
+      syncTypewriterStorytellerSlots(currentWordInterval).then((didSync) => {
+        if (didSync) {
+          storytellerInitialSyncSessionRef.current = sessionId;
+        }
+      });
+    }, STORYTELLER_KEY_CHECK_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isSessionReady, pageText, sessionId, syncTypewriterStorytellerSlots]);
+
+  useEffect(() => {
+    if (!isSessionReady || !sessionId) return;
+
+    const wordIntervalIndex = Math.floor(countWordsInNarrative(pageText || '') / STORYTELLER_KEY_CHECK_INTERVAL_WORDS);
+    if (wordIntervalIndex <= 0) return;
+    if (wordIntervalIndex <= lastStorytellerCheckIntervalRef.current) return;
+
+    const timeoutId = window.setTimeout(() => {
+      syncTypewriterStorytellerSlots(wordIntervalIndex);
+    }, STORYTELLER_KEY_CHECK_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isSessionReady, pageText, sessionId, syncTypewriterStorytellerSlots]);
 
   useEffect(() => {
     if (!isSessionReady || !sessionId) return;
@@ -1131,12 +1273,21 @@ const TypewriterFramework = (props) => {
 
   // --- Key Texture Refresh ---
   useEffect(() => {
+    const refreshableKeyIndexes = keys.reduce((indexes, key, index) => {
+      if (!getStorytellerSlotDefinitionByKey(key)) {
+        indexes.push(index);
+      }
+      return indexes;
+    }, []);
+    if (!refreshableKeyIndexes.length) {
+      return undefined;
+    }
     const interval = setInterval(() => {
-      const idx = Math.floor(Math.random() * keyTextures.length);
+      const idx = refreshableKeyIndexes[Math.floor(Math.random() * refreshableKeyIndexes.length)];
       setKeyTextures(prev => {
         const updated = [...prev];
         const key = keys[idx];
-        updated[idx] = getRandomTexture(key);
+        updated[idx] = getInitialKeyTexture(key);
         return updated;
       });
     }, KEY_TEXTURE_REFRESH_INTERVAL);
@@ -1664,7 +1815,20 @@ const TypewriterFramework = (props) => {
 
       {debugSettings.showInsightsPanel && lastContinuationInsights ? (
         <div className="typewriter-continuation-insights" aria-live="polite">
-          <div className="typewriter-continuation-insights-head">Last Ghostwrite</div>
+          <div className="typewriter-continuation-insights-head-row">
+            <div className="typewriter-continuation-insights-head">Last Ghostwrite</div>
+            <button
+              type="button"
+              className="typewriter-continuation-insights-hide"
+              onClick={() => setDebugSettings((prev) => ({
+                ...prev,
+                showInsightsPanel: false
+              }))}
+              aria-label="Hide last ghostwrite panel"
+            >
+              Hide
+            </button>
+          </div>
           <div className="typewriter-continuation-insights-stats">
             {lastContinuationInsights.continuation_word_count !== null ? (
               <span>Words {lastContinuationInsights.continuation_word_count}</span>
@@ -1769,7 +1933,8 @@ const TypewriterFramework = (props) => {
 
       <Keyboard
         keys={keys}
-        keyTextures={keyTextures}
+        keyTextures={displayedKeyTextures}
+        storytellerSlots={storytellerSlots}
         lastPressedKey={lastPressedKey}
         ghostPressedKey={ghostPressedKey}
         typingAllowed={typingAllowed}

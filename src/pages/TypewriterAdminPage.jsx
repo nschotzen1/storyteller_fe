@@ -20,19 +20,35 @@ const TYPEWRITER_SESSION_STORAGE_KEY = 'sessionId';
 const MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY = 'memorySpreadAdminMode';
 const DEFAULT_SESSION_SEED_FRAGMENT =
   'At dusk the courier reached the wind-scoured pass below a rusted watchtower, carrying a rain-dark satchel sealed with ash. No one answered the signal bell, but boot prints ringed the threshold and vanished into the shale. When the courier touched the gate, a hidden mechanism groaned awake beneath the stone.';
+const EMPTY_MODELS_PAYLOAD = {
+  textModels: [],
+  imageModels: [],
+  source: 'fallback',
+  fetchedAt: '',
+  providers: {}
+};
+const FALLBACK_ANTHROPIC_TEXT_MODELS = [
+  'claude-3-7-sonnet-latest',
+  'claude-3-opus-latest',
+  'claude-3-5-sonnet-latest'
+];
 
 const SETTING_PIPELINES = [
   {
     key: 'story_continuation',
     label: 'Story continuation',
     description: '/api/send_typewriter_text',
-    modelKind: 'text'
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
   },
   {
     key: 'memory_creation',
     label: 'Memory creation',
     description: '/api/fragmentToMemories',
     modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai',
     supportsCount: true,
     countProperty: 'memoryCount',
     countLabel: 'Default memory count',
@@ -45,6 +61,8 @@ const SETTING_PIPELINES = [
     label: 'Entity creation',
     description: '/api/textToEntity',
     modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai',
     supportsCount: true,
     countProperty: 'entityCount',
     countLabel: 'Default entity count',
@@ -57,6 +75,8 @@ const SETTING_PIPELINES = [
     label: 'Storyteller creation',
     description: '/api/textToStoryteller (persona stage)',
     modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai',
     supportsCount: true,
     countProperty: 'storytellerCount',
     countLabel: 'Default storyteller count',
@@ -68,19 +88,25 @@ const SETTING_PIPELINES = [
     key: 'relationship_evaluation',
     label: 'Relationship evaluation',
     description: '/api/arena/relationships/propose',
-    modelKind: 'text'
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
   },
   {
     key: 'texture_creation',
     label: 'Texture creation',
     description: 'Card/front/back image generation',
-    modelKind: 'image'
+    modelKind: 'image',
+    supportedProviders: ['openai'],
+    defaultProvider: 'openai'
   },
   {
     key: 'illustration_creation',
     label: 'Illustration creation',
     description: '/api/textToStoryteller (illustration stage)',
-    modelKind: 'image'
+    modelKind: 'image',
+    supportedProviders: ['openai'],
+    defaultProvider: 'openai'
   }
 ];
 
@@ -179,7 +205,8 @@ const buildEmptySettings = () => {
         key: pipeline.key,
         useMock: false,
         model: '',
-        modelKind: pipeline.modelKind
+        modelKind: pipeline.modelKind,
+        provider: pipeline.defaultProvider || 'openai'
       };
       if (pipeline.supportsCount && pipeline.countProperty) {
         pipelines[pipeline.key][pipeline.countProperty] = pipeline.defaultCount;
@@ -209,7 +236,7 @@ const TypewriterAdminPage = () => {
   const [apiBaseUrl, setApiBaseUrl] = useState(getInitialApiBaseUrl);
   const [adminKey, setAdminKey] = useState(getInitialAdminKey);
   const [settings, setSettings] = useState(buildEmptySettings);
-  const [models, setModels] = useState({ textModels: [], imageModels: [], source: 'fallback', fetchedAt: '' });
+  const [models, setModels] = useState(EMPTY_MODELS_PAYLOAD);
   const [prompts, setPrompts] = useState({ pipelines: {} });
   const [promptDrafts, setPromptDrafts] = useState({});
   const [promptVersions, setPromptVersions] = useState({});
@@ -265,7 +292,7 @@ const TypewriterAdminPage = () => {
         ]);
         if (!active) return;
         setSettings(settingsPayload || buildEmptySettings());
-        setModels(modelsPayload || { textModels: [], imageModels: [], source: 'fallback', fetchedAt: '' });
+        setModels(modelsPayload || EMPTY_MODELS_PAYLOAD);
         setPrompts(promptsPayload || { pipelines: {} });
         setPromptDrafts(() => {
           const nextDrafts = {};
@@ -291,11 +318,19 @@ const TypewriterAdminPage = () => {
   const pipelineRows = useMemo(() => {
     return SETTING_PIPELINES.map((pipeline) => {
       const current = settings?.pipelines?.[pipeline.key] || {};
+      const supportedProviders = Array.isArray(pipeline.supportedProviders) && pipeline.supportedProviders.length
+        ? pipeline.supportedProviders
+        : ['openai'];
+      const provider = typeof current.provider === 'string' && supportedProviders.includes(current.provider)
+        ? current.provider
+        : pipeline.defaultProvider || supportedProviders[0];
       return {
         ...pipeline,
         useMock: Boolean(current.useMock),
         model: typeof current.model === 'string' ? current.model : '',
         modelKind: current.modelKind || pipeline.modelKind,
+        provider,
+        supportedProviders,
         countValue: pipeline.supportsCount && pipeline.countProperty
           ? Number.isFinite(Number(current[pipeline.countProperty]))
             ? Number(current[pipeline.countProperty])
@@ -305,11 +340,29 @@ const TypewriterAdminPage = () => {
     });
   }, [settings]);
 
-  const getModelOptions = (modelKind, currentModel) => {
-    const sourceModels = modelKind === 'image' ? models.imageModels : models.textModels;
+  const getModelOptions = (modelKind, currentModel, provider = 'openai') => {
+    const normalizedProvider = provider === 'anthropic' ? 'anthropic' : 'openai';
+    const providerPayload = models?.providers?.[normalizedProvider];
+    let sourceModels = [];
+    if (modelKind === 'image') {
+      sourceModels = Array.isArray(providerPayload?.imageModels)
+        ? providerPayload.imageModels
+        : normalizedProvider === 'openai'
+          ? models.imageModels
+          : [];
+    } else {
+      sourceModels = Array.isArray(providerPayload?.textModels)
+        ? providerPayload.textModels
+        : normalizedProvider === 'openai'
+          ? models.textModels
+          : [];
+    }
     const modelIds = (Array.isArray(sourceModels) ? sourceModels : [])
       .map((entry) => (typeof entry?.id === 'string' ? entry.id.trim() : ''))
       .filter(Boolean);
+    if (normalizedProvider === 'anthropic' && modelIds.length === 0) {
+      modelIds.push(...FALLBACK_ANTHROPIC_TEXT_MODELS);
+    }
     if (currentModel && !modelIds.includes(currentModel)) {
       modelIds.unshift(currentModel);
     }
@@ -350,7 +403,8 @@ const TypewriterAdminPage = () => {
       for (const row of pipelineRows) {
         payload.pipelines[row.key] = {
           useMock: Boolean(row.useMock),
-          model: row.model
+          model: row.model,
+          provider: row.provider || 'openai'
         };
         if (row.supportsCount && row.countProperty) {
           payload.pipelines[row.key][row.countProperty] = row.countValue;
@@ -393,7 +447,7 @@ const TypewriterAdminPage = () => {
     setStatus('');
     try {
       const payload = await loadOpenAiModels(apiBaseUrl, { adminKey, forceRefresh: true });
-      setModels(payload || { textModels: [], imageModels: [], source: 'fallback', fetchedAt: '' });
+      setModels(payload || EMPTY_MODELS_PAYLOAD);
       setStatus('Refreshed model list.');
     } catch (err) {
       setError(err.message || 'Unable to refresh model list.');
@@ -694,7 +748,7 @@ const TypewriterAdminPage = () => {
           </thead>
           <tbody>
             {pipelineRows.map((row) => {
-              const options = getModelOptions(row.modelKind, row.model);
+              const options = getModelOptions(row.modelKind, row.model, row.provider);
               return (
                 <tr key={row.key}>
                   <td>
@@ -714,6 +768,28 @@ const TypewriterAdminPage = () => {
                     </label>
                   </td>
                   <td>
+                    {row.supportedProviders?.length > 1 ? (
+                      <label className="typewriterNumericSetting">
+                        <span>Provider</span>
+                        <select
+                          value={row.provider}
+                          onChange={(event) => {
+                            const nextProvider = event.target.value;
+                            const nextOptions = getModelOptions(row.modelKind, '', nextProvider);
+                            updatePipeline(row.key, {
+                              provider: nextProvider,
+                              model: nextOptions[0] || row.model
+                            });
+                          }}
+                        >
+                          {row.supportedProviders.map((providerId) => (
+                            <option key={providerId} value={providerId}>
+                              {providerId}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
                     <select
                       value={row.model}
                       onChange={(event) => updatePipeline(row.key, { model: event.target.value })}
