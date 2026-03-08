@@ -43,6 +43,14 @@ const SETTING_PIPELINES = [
     defaultProvider: 'openai'
   },
   {
+    key: 'messenger_chat',
+    label: 'Messenger chat',
+    description: '/api/messenger/chat',
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
+  },
+  {
     key: 'memory_creation',
     label: 'Memory creation',
     description: '/api/fragmentToMemories',
@@ -124,6 +132,12 @@ const PROMPT_PIPELINES = [
     label: 'Story continuation',
     description: '/api/send_typewriter_text',
     settingsKey: 'story_continuation'
+  },
+  {
+    key: 'messenger_chat',
+    label: 'Messenger chat',
+    description: '/api/messenger/chat assistant prompt',
+    settingsKey: 'messenger_chat'
   },
   {
     key: 'memory_creation',

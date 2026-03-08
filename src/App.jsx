@@ -11,6 +11,7 @@ import QuestAdminPage from './pages/QuestAdminPage';
 import MemorySpreadPage from './pages/MemorySpreadPage';
 import TypewriterAdminPage from './pages/TypewriterAdminPage';
 import TypewriterFramework from './TypewriterFramework';
+import Messanger from './Messanger';
 
 const VIEW = {
   ARENA: 'arena',
@@ -18,7 +19,8 @@ const VIEW = {
   STORY_ADMIN: 'story-admin',
   QUEST: 'quest',
   QUEST_ADMIN: 'quest-admin',
-  MEMORY_SPREAD: 'memory-spread'
+  MEMORY_SPREAD: 'memory-spread',
+  MESSANGER: 'messanger'
 };
 
 const VIEW_OPTIONS = [
@@ -94,6 +96,7 @@ function App() {
         {view === VIEW.QUEST && <QuestAdventurePage />}
         {view === VIEW.QUEST_ADMIN && <QuestAdminPage />}
         {view === VIEW.MEMORY_SPREAD && <MemorySpreadPage />}
+        {view === VIEW.MESSANGER && <Messanger />}
       </main>
     </div>
   );
