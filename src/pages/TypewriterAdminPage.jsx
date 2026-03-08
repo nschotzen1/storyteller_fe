@@ -85,6 +85,14 @@ const SETTING_PIPELINES = [
     defaultCount: 4
   },
   {
+    key: 'storyteller_mission',
+    label: 'Storyteller mission',
+    description: '/api/sendStorytellerToEntity',
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
+  },
+  {
     key: 'relationship_evaluation',
     label: 'Relationship evaluation',
     description: '/api/arena/relationships/propose',
@@ -160,6 +168,18 @@ const PROMPT_PIPELINES = [
     settingsKey: 'storyteller_creation'
   },
   {
+    key: 'storyteller_mission',
+    label: 'Storyteller mission',
+    description: '/api/sendStorytellerToEntity mission evaluation',
+    settingsKey: 'storyteller_mission'
+  },
+  {
+    key: 'relationship_evaluation',
+    label: 'Relationship evaluation',
+    description: '/api/arena/relationships/* judgment prompt',
+    settingsKey: 'relationship_evaluation'
+  },
+  {
     key: 'storyteller_key_creation',
     label: 'Storyteller key image',
     description: '/api/textToStoryteller typewriter key image generation',
@@ -198,9 +218,9 @@ const getInitialMemorySpreadAdminMode = () => {
   return normalized === '1' || normalized === 'true' || normalized === 'yes';
 };
 
-const buildEmptySettings = () => {
+const buildEmptySettings = (pipelineDefinitions = SETTING_PIPELINES) => {
   const pipelines = {};
-  for (const pipeline of SETTING_PIPELINES) {
+  for (const pipeline of pipelineDefinitions) {
       pipelines[pipeline.key] = {
         key: pipeline.key,
         useMock: false,
@@ -236,8 +256,10 @@ const TypewriterAdminPage = () => {
   const [apiBaseUrl, setApiBaseUrl] = useState(getInitialApiBaseUrl);
   const [adminKey, setAdminKey] = useState(getInitialAdminKey);
   const [settings, setSettings] = useState(buildEmptySettings);
+  const [settingDefinitions, setSettingDefinitions] = useState(SETTING_PIPELINES);
   const [models, setModels] = useState(EMPTY_MODELS_PAYLOAD);
   const [prompts, setPrompts] = useState({ pipelines: {} });
+  const [promptDefinitions, setPromptDefinitions] = useState(PROMPT_PIPELINES);
   const [promptDrafts, setPromptDrafts] = useState({});
   const [promptVersions, setPromptVersions] = useState({});
   const [status, setStatus] = useState('');
@@ -290,13 +312,21 @@ const TypewriterAdminPage = () => {
           loadOpenAiModels(apiBaseUrl, { adminKey }),
           loadTypewriterPrompts(apiBaseUrl, { adminKey })
         ]);
+        const nextSettingDefinitions = Array.isArray(settingsPayload?.pipelinesMeta) && settingsPayload.pipelinesMeta.length
+          ? settingsPayload.pipelinesMeta
+          : SETTING_PIPELINES;
+        const nextPromptDefinitions = Array.isArray(promptsPayload?.pipelinesMeta) && promptsPayload.pipelinesMeta.length
+          ? promptsPayload.pipelinesMeta
+          : PROMPT_PIPELINES;
         if (!active) return;
-        setSettings(settingsPayload || buildEmptySettings());
+        setSettingDefinitions(nextSettingDefinitions);
+        setPromptDefinitions(nextPromptDefinitions);
+        setSettings(settingsPayload || buildEmptySettings(nextSettingDefinitions));
         setModels(modelsPayload || EMPTY_MODELS_PAYLOAD);
         setPrompts(promptsPayload || { pipelines: {} });
         setPromptDrafts(() => {
           const nextDrafts = {};
-          PROMPT_PIPELINES.forEach((pipeline) => {
+          nextPromptDefinitions.forEach((pipeline) => {
             nextDrafts[pipeline.key] = promptsPayload?.pipelines?.[pipeline.key]?.promptTemplate || '';
           });
           return nextDrafts;
@@ -316,7 +346,7 @@ const TypewriterAdminPage = () => {
   }, [apiBaseUrl, adminKey]);
 
   const pipelineRows = useMemo(() => {
-    return SETTING_PIPELINES.map((pipeline) => {
+    return settingDefinitions.map((pipeline) => {
       const current = settings?.pipelines?.[pipeline.key] || {};
       const supportedProviders = Array.isArray(pipeline.supportedProviders) && pipeline.supportedProviders.length
         ? pipeline.supportedProviders
@@ -338,7 +368,7 @@ const TypewriterAdminPage = () => {
           : undefined
       };
     });
-  }, [settings]);
+  }, [settingDefinitions, settings]);
 
   const getModelOptions = (modelKind, currentModel, provider = 'openai') => {
     const normalizedProvider = provider === 'anthropic' ? 'anthropic' : 'openai';
@@ -414,7 +444,12 @@ const TypewriterAdminPage = () => {
         adminKey,
         updatedBy: 'story-admin-ui'
       });
-      setSettings(response || buildEmptySettings());
+      setSettingDefinitions(
+        Array.isArray(response?.pipelinesMeta) && response.pipelinesMeta.length
+          ? response.pipelinesMeta
+          : settingDefinitions
+      );
+      setSettings(response || buildEmptySettings(settingDefinitions));
       setStatus('Saved runtime AI settings.');
     } catch (err) {
       setError(err.message || 'Unable to save settings.');
@@ -432,7 +467,12 @@ const TypewriterAdminPage = () => {
         adminKey,
         updatedBy: 'story-admin-ui'
       });
-      setSettings(response || buildEmptySettings());
+      setSettingDefinitions(
+        Array.isArray(response?.pipelinesMeta) && response.pipelinesMeta.length
+          ? response.pipelinesMeta
+          : settingDefinitions
+      );
+      setSettings(response || buildEmptySettings(settingDefinitions));
       setStatus('Reset settings to defaults.');
     } catch (err) {
       setError(err.message || 'Unable to reset settings.');
@@ -471,6 +511,11 @@ const TypewriterAdminPage = () => {
         loadTypewriterPrompts(apiBaseUrl, { adminKey }),
         loadTypewriterPromptVersions(apiBaseUrl, pipelineKey, { adminKey, limit: 10 })
       ]);
+      setPromptDefinitions(
+        Array.isArray(latestPrompts?.pipelinesMeta) && latestPrompts.pipelinesMeta.length
+          ? latestPrompts.pipelinesMeta
+          : promptDefinitions
+      );
       setPrompts(latestPrompts || { pipelines: {} });
       setPromptVersions((prev) => ({
         ...prev,
@@ -495,10 +540,15 @@ const TypewriterAdminPage = () => {
         overwrite: false
       });
       const latestPrompts = await loadTypewriterPrompts(apiBaseUrl, { adminKey });
+      setPromptDefinitions(
+        Array.isArray(latestPrompts?.pipelinesMeta) && latestPrompts.pipelinesMeta.length
+          ? latestPrompts.pipelinesMeta
+          : promptDefinitions
+      );
       setPrompts(latestPrompts || { pipelines: {} });
       setPromptDrafts((prev) => {
         const nextDrafts = { ...prev };
-        PROMPT_PIPELINES.forEach((pipeline) => {
+        promptDefinitions.forEach((pipeline) => {
           nextDrafts[pipeline.key] = latestPrompts?.pipelines?.[pipeline.key]?.promptTemplate || prev[pipeline.key] || '';
         });
         return nextDrafts;
@@ -537,6 +587,11 @@ const TypewriterAdminPage = () => {
         id: versionId
       });
       const latestPrompts = await loadTypewriterPrompts(apiBaseUrl, { adminKey });
+      setPromptDefinitions(
+        Array.isArray(latestPrompts?.pipelinesMeta) && latestPrompts.pipelinesMeta.length
+          ? latestPrompts.pipelinesMeta
+          : promptDefinitions
+      );
       setPrompts(latestPrompts || { pipelines: {} });
       setPromptDrafts((prev) => ({
         ...prev,
@@ -848,7 +903,7 @@ const TypewriterAdminPage = () => {
             {savingPrompts ? 'Working...' : 'Seed current prompts'}
           </button>
         </div>
-        {PROMPT_PIPELINES.map((pipeline) => {
+        {promptDefinitions.map((pipeline) => {
           const latestPrompt = prompts?.pipelines?.[pipeline.key];
           const versions = promptVersions?.[pipeline.key] || [];
           return (
