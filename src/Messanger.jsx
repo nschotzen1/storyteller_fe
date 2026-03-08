@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, Eraser, LoaderCircle, Radio, RefreshCcw, Send, Sparkles } from 'lucide-react';
+import { AlertCircle, LoaderCircle, Send } from 'lucide-react';
 import './Messanger.css';
 import {
   DEFAULT_API_BASE_URL,
   DEFAULT_SCENE_ID,
   loadMessengerConversation,
-  resetMessengerConversation,
   sendMessengerMessage
 } from './api/messenger';
 
@@ -15,6 +14,9 @@ const SESSION_STORAGE_KEY = 'sessionId';
 const MOCK_STORAGE_KEY = 'messangerForceMock';
 const INTRO_AUDIO_SRC = '/audio/typewriter-narration.mp3';
 const INTRO_AUDIO_DELAY_MS = 160;
+const SYSTEM_TYPING_BASE_DELAY_MS = 16;
+const SYSTEM_TYPING_SPACE_DELAY_MS = 26;
+const SYSTEM_TYPING_PUNCTUATION_DELAY_MS = 92;
 
 const createSessionId = () => {
   if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
@@ -61,6 +63,13 @@ const formatMessageTime = (createdAt, pending = false) => {
   }
 };
 
+const getSystemTypingDelay = (currentCharacter) => {
+  if (!currentCharacter) return SYSTEM_TYPING_BASE_DELAY_MS;
+  if (/[,.!?;:]/.test(currentCharacter)) return SYSTEM_TYPING_PUNCTUATION_DELAY_MS;
+  if (/\s/.test(currentCharacter)) return SYSTEM_TYPING_SPACE_DELAY_MS;
+  return SYSTEM_TYPING_BASE_DELAY_MS;
+};
+
 const normalizeMessages = (payload) => {
   if (!Array.isArray(payload)) return [];
   return payload.map((message, index) => ({
@@ -95,7 +104,10 @@ const MessageCard = ({ message }) => {
       <span>{message.sender === 'system' ? 'Storyteller Society' : 'You'}</span>
       <span>{message.pending ? 'Outbound' : message.type === 'initial' ? 'Boot' : 'Secure'}</span>
     </div>
-    <div className="messangerMessage__body">{message.text}</div>
+    <div className="messangerMessage__body">
+      {message.text}
+      {message.isTyping ? <span className="messangerMessage__cursor" aria-hidden="true" /> : null}
+    </div>
     {(messageLabel || timeLabel) && (
       <div className="messangerMessage__footer">
         <span>{messageLabel}</span>
@@ -107,8 +119,8 @@ const MessageCard = ({ message }) => {
 };
 
 const Messanger = ({ start = true, onCurtainDropComplete }) => {
-  const [apiBaseUrl, setApiBaseUrl] = useState(getInitialApiBaseUrl);
-  const [sessionId, setSessionId] = useState(getInitialSessionId);
+  const apiBaseUrl = useMemo(getInitialApiBaseUrl, []);
+  const sessionId = useMemo(getInitialSessionId, []);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [forceMock, setForceMock] = useState(getInitialForceMock);
@@ -116,15 +128,17 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   const [chatEnded, setChatEnded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
-  const [resetting, setResetting] = useState(false);
-  const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [pendingMessage, setPendingMessage] = useState('');
+  const [revealedTextById, setRevealedTextById] = useState({});
+  const [typingMessageId, setTypingMessageId] = useState('');
 
   const threadRef = useRef(null);
   const introAudioRef = useRef(null);
   const introAudioTimerRef = useRef(null);
   const lastIntroPlaybackKeyRef = useRef('');
+  const typingTimerRef = useRef(null);
+  const previousMessageIdsRef = useRef([]);
 
   const stopIntroAudio = () => {
     if (introAudioTimerRef.current && typeof window !== 'undefined') {
@@ -146,15 +160,13 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
     }
   };
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(API_BASE_STORAGE_KEY, apiBaseUrl);
-  }, [apiBaseUrl]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
-  }, [sessionId]);
+  const stopTypingAnimation = () => {
+    if (typingTimerRef.current && typeof window !== 'undefined') {
+      window.clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    setTypingMessageId('');
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -163,10 +175,11 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
 
   useEffect(() => {
     threadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages, pendingMessage, sending]);
+  }, [messages, pendingMessage, sending, revealedTextById, typingMessageId]);
 
   useEffect(() => () => {
     stopIntroAudio();
+    stopTypingAnimation();
   }, []);
 
   useEffect(() => {
@@ -191,7 +204,6 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
         if (!active) return;
         setMessages(normalizeMessages(payload?.messages));
         setChatEnded(Boolean(payload?.hasChatEnded));
-        setStatus('Messenger console synced.');
       } catch (err) {
         if (!active) return;
         setError(err.message || 'Unable to load messenger conversation.');
@@ -251,20 +263,105 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
     };
   }, [messages, sessionId, start]);
 
+  useEffect(() => {
+    const previousIds = new Set(previousMessageIdsRef.current);
+    const animateInitialDispatch = (
+      previousMessageIdsRef.current.length === 0
+      && messages.length === 1
+      && messages[0]?.sender === 'system'
+      && messages[0]?.type === 'initial'
+    );
+
+    const animatedMessage = animateInitialDispatch
+      ? messages[0]
+      : [...messages].reverse().find((message) =>
+        message?.sender === 'system'
+        && !previousIds.has(message.id)
+        && typeof message.text === 'string'
+        && message.text.trim()
+      );
+
+    setRevealedTextById((previousMap) => {
+      const nextMap = {};
+      for (const message of messages) {
+        if (message.id === animatedMessage?.id) {
+          nextMap[message.id] = previousIds.has(message.id)
+            ? (previousMap[message.id] || '')
+            : '';
+          continue;
+        }
+        nextMap[message.id] = message.text;
+      }
+      return nextMap;
+    });
+
+    previousMessageIdsRef.current = messages.map((message) => message.id);
+
+    if (!animatedMessage) {
+      stopTypingAnimation();
+      return undefined;
+    }
+
+    stopTypingAnimation();
+    setTypingMessageId(animatedMessage.id);
+
+    const fullText = animatedMessage.text;
+    let nextLength = 0;
+
+    const revealNextSlice = () => {
+      nextLength += 1;
+      const revealedSlice = fullText.slice(0, nextLength);
+      setRevealedTextById((previousMap) => ({
+        ...previousMap,
+        [animatedMessage.id]: revealedSlice
+      }));
+
+      if (nextLength >= fullText.length) {
+        typingTimerRef.current = null;
+        setTypingMessageId('');
+        return;
+      }
+
+      typingTimerRef.current = window.setTimeout(
+        revealNextSlice,
+        getSystemTypingDelay(fullText[nextLength - 1])
+      );
+    };
+
+    revealNextSlice();
+
+    return () => {
+      if (typingTimerRef.current) {
+        window.clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = null;
+      }
+    };
+  }, [messages]);
+
   const threadMessages = useMemo(() => {
-    if (!pendingMessage) return messages;
+    const renderedMessages = messages.map((message) => ({
+      ...message,
+      text: message.sender === 'system'
+        ? (revealedTextById[message.id] ?? '')
+        : message.text,
+      isTyping: typingMessageId === message.id
+    }));
+
+    if (!pendingMessage) return renderedMessages;
     return [
-      ...messages,
+      ...renderedMessages,
       {
         id: 'pending-user-message',
         sender: 'user',
         text: pendingMessage,
         type: 'user',
         pending: true,
-        hasChatEnded: false
+        hasChatEnded: false,
+        createdAt: '',
+        isTyping: false
       }
     ];
-  }, [messages, pendingMessage]);
+  }, [messages, pendingMessage, revealedTextById, typingMessageId]);
 
   const handleSend = async () => {
     const draft = input.trim();
@@ -274,7 +371,6 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
     setPendingMessage(draft);
     setInput('');
     setError('');
-    setStatus('');
 
     try {
       const payload = await sendMessengerMessage(apiBaseUrl, {
@@ -286,7 +382,6 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
       setMessages(normalizeMessages(payload?.messages));
       setRuntime(payload?.runtime || null);
       setChatEnded(Boolean(payload?.has_chat_ended));
-      setStatus(payload?.mocked ? 'Mocked messenger response received.' : 'Live messenger response received.');
     } catch (err) {
       setInput(draft);
       setError(err.message || 'Unable to send messenger reply.');
@@ -295,68 +390,6 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
       setSending(false);
     }
   };
-
-  const handleResetConversation = async () => {
-    setResetting(true);
-    setError('');
-    setStatus('');
-    lastIntroPlaybackKeyRef.current = '';
-    stopIntroAudio();
-    try {
-      await resetMessengerConversation(apiBaseUrl, {
-        sessionId,
-        sceneId: DEFAULT_SCENE_ID
-      });
-      const payload = await loadMessengerConversation(apiBaseUrl, {
-        sessionId,
-        sceneId: DEFAULT_SCENE_ID
-      });
-      setMessages(normalizeMessages(payload?.messages));
-      setRuntime(null);
-      setChatEnded(false);
-      setStatus('Conversation cleared and re-opened from the initial dispatch.');
-    } catch (err) {
-      setError(err.message || 'Unable to reset messenger conversation.');
-    } finally {
-      setResetting(false);
-    }
-  };
-
-  const handleReload = async () => {
-    setLoading(true);
-    setError('');
-    setStatus('');
-    try {
-      const payload = await loadMessengerConversation(apiBaseUrl, {
-        sessionId,
-        sceneId: DEFAULT_SCENE_ID
-      });
-      setMessages(normalizeMessages(payload?.messages));
-      setChatEnded(Boolean(payload?.hasChatEnded));
-      setStatus('Conversation reloaded from the server.');
-    } catch (err) {
-      setError(err.message || 'Unable to reload messenger conversation.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleNewSession = () => {
-    const nextSessionId = createSessionId();
-    lastIntroPlaybackKeyRef.current = '';
-    stopIntroAudio();
-    setRuntime(null);
-    setMessages([]);
-    setChatEnded(false);
-    setPendingMessage('');
-    setError('');
-    setStatus(`Opened new messenger session ${nextSessionId}.`);
-    setSessionId(nextSessionId);
-  };
-
-  const runtimeLabel = runtime
-    ? `${runtime.mocked ? 'mock' : 'live'} / ${runtime.provider || 'openai'} / ${runtime.model || 'default'}`
-    : 'Awaiting response';
   const handsetTime = useMemo(() => {
     try {
       return new Intl.DateTimeFormat([], {
@@ -367,9 +400,8 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
       return '11:47';
     }
   }, []);
-  const circuitLabel = runtime?.mocked || forceMock ? 'Mock-SIM' : '5G ether';
-  const storageLabel = runtime?.storage === 'file' ? 'off-grid' : 'synced';
   const threadStateLabel = chatEnded ? 'Thread sealed' : 'Waiting for your note';
+  const transmissionModeLabel = runtime?.mocked || forceMock ? 'Mock transmission' : 'Live transmission';
 
   return (
     <div className={`messangerScene${chatEnded ? ' is-ended' : ''}`}>
@@ -378,6 +410,22 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
 
       <div className="messangerFrame">
         <div className="messangerPhoneWrap">
+          <div className="messangerUtilityBar">
+            <label className="messangerModeSwitch">
+              <input
+                type="checkbox"
+                checked={forceMock}
+                onChange={(event) => setForceMock(event.target.checked)}
+              />
+              <span className="messangerModeSwitch__track" aria-hidden="true">
+                <span className="messangerModeSwitch__thumb" />
+              </span>
+              <span className="messangerModeSwitch__label">
+                {forceMock ? 'Mock' : 'Live'}
+              </span>
+            </label>
+          </div>
+
           <div className="messangerPhone">
             <div className="messangerPhone__bezel">
               <span className="messangerPhone__camera" />
@@ -387,9 +435,15 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
             <div className="messangerPhone__screen">
               <div className="messangerStatusBar">
                 <span className="messangerStatusBar__time">{handsetTime}</span>
-                <div className="messangerStatusBar__icons">
-                  <span>{circuitLabel}</span>
-                  <span>{storageLabel}</span>
+                <div className="messangerStatusBar__icons" aria-hidden="true">
+                  <span className="messangerSignal">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  <span className="messangerBattery">
+                    <b />
+                  </span>
                 </div>
               </div>
 
@@ -407,12 +461,11 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
                   </div>
                   <div className="messangerConsole__status">
                     <span className={`messangerChip${runtime?.mocked || forceMock ? ' is-mock' : ''}`}>
-                      {runtime?.mocked || forceMock ? 'Mock' : 'Live'}
+                      {transmissionModeLabel}
                     </span>
                     <span className="messangerChip">{chatEnded ? 'Sealed' : 'Open'}</span>
                   </div>
                 </header>
-
                 <div className="messangerThread">
                   <div className="messangerThread__datePill">
                     Dispatch line · {DEFAULT_SCENE_ID}
@@ -422,13 +475,6 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
                     <div className="messangerBanner">
                       <LoaderCircle size={16} className="spin" />
                       <span>Loading conversation from the archive.</span>
-                    </div>
-                  )}
-
-                  {status && !error && (
-                    <div className="messangerBanner is-success">
-                      <Radio size={16} />
-                      <span>{status}</span>
                     </div>
                   )}
 
@@ -466,7 +512,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
                           ? 'Awaiting the Society...'
                           : 'Describe the room, the window, the weather, and where the typewriter could vanish if required.'
                       }
-                      disabled={sending || resetting}
+                      disabled={sending}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' && !event.shiftKey) {
                           event.preventDefault();
@@ -475,7 +521,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
                       }}
                     />
                   </div>
-                  <button type="button" onClick={handleSend} disabled={sending || resetting || !input.trim()}>
+                  <button type="button" onClick={handleSend} disabled={sending || !input.trim()}>
                     {sending ? <LoaderCircle size={18} className="spin" /> : <Send size={18} />}
                     <span>Send</span>
                   </button>
@@ -486,83 +532,6 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
             </div>
           </div>
         </div>
-
-        <aside className="messangerDossier">
-          <div className="messangerDossier__crest">
-            <span className="messangerDossier__eyebrow">Switchboard</span>
-            <h1>Messanger</h1>
-            <p>
-              The handset is the primary experience. This sidecar keeps the wiring visible so you can debug
-              sessions, runtime, and transport without breaking the mobile illusion.
-            </p>
-          </div>
-
-          <label className="messangerField">
-            <span>API base</span>
-            <input value={apiBaseUrl} onChange={(event) => setApiBaseUrl(event.target.value)} />
-          </label>
-
-          <label className="messangerField">
-            <span>Session</span>
-            <input value={sessionId} onChange={(event) => setSessionId(event.target.value)} />
-          </label>
-
-          <label className="messangerToggle">
-            <input
-              type="checkbox"
-              checked={forceMock}
-              onChange={(event) => setForceMock(event.target.checked)}
-            />
-            <span>Force mock replies on this handset</span>
-          </label>
-
-          <div className="messangerActions">
-            <button type="button" onClick={handleReload} disabled={loading || sending || resetting}>
-              <RefreshCcw size={15} />
-              Reload
-            </button>
-            <button type="button" onClick={handleResetConversation} disabled={loading || sending || resetting}>
-              <Eraser size={15} />
-              Reset Log
-            </button>
-            <button type="button" onClick={handleNewSession} disabled={sending || resetting}>
-              <Sparkles size={15} />
-              New Thread
-            </button>
-          </div>
-
-          <dl className="messangerStats">
-            <div>
-              <dt>Route</dt>
-              <dd>/api/messenger/chat</dd>
-            </div>
-            <div>
-              <dt>Legacy Alias</dt>
-              <dd>/api/sendMessage</dd>
-            </div>
-            <div>
-              <dt>Scene</dt>
-              <dd>{DEFAULT_SCENE_ID}</dd>
-            </div>
-            <div>
-              <dt>Messages</dt>
-              <dd>{messages.length}</dd>
-            </div>
-            <div>
-              <dt>Runtime</dt>
-              <dd>{runtimeLabel}</dd>
-            </div>
-            <div>
-              <dt>State</dt>
-              <dd>{threadStateLabel}</dd>
-            </div>
-          </dl>
-
-          <div className="messangerNotice">
-            <Radio size={16} />
-            <span>Open directly with `?view=messanger` when you want the handset and the debug wiring together.</span>
-          </div>
-        </aside>
       </div>
     </div>
   );
