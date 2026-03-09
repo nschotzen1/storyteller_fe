@@ -78,6 +78,31 @@
   color: #f6ecdd;
 }
 
+.typewriterAdminSectionTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.typewriterAdminSectionTab {
+  min-height: 40px;
+  padding: 0.65rem 1rem;
+  border-radius: 999px;
+  border: 1px solid #755c47;
+  background: rgba(33, 23, 18, 0.72);
+  color: #ddcfbc;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.typewriterAdminSectionTab.isActive {
+  background: linear-gradient(135deg, rgba(122, 86, 53, 0.92), rgba(70, 46, 29, 0.94));
+  border-color: #c29a74;
+  color: #fff2e0;
+  transform: translateY(-1px);
+}
+
 .typewriterAdminError,
 .typewriterAdminStatus,
 .typewriterAdminLoading {
@@ -298,6 +323,37 @@
   font-size: 0.9rem;
 }
 
+.typewriterAdminListToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.typewriterAdminFilter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: #d8ccb9;
+  font-size: 0.86rem;
+  width: min(380px, 100%);
+}
+
+.typewriterAdminFilter input {
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid #7d6653;
+  background: rgba(16, 12, 9, 0.96);
+  color: #efe5d7;
+  padding: 0 0.7rem;
+}
+
+.typewriterAdminListCount {
+  color: #bba98f;
+  font-size: 0.84rem;
+}
+
 .typewriterSeedPromptsBtn {
   height: 38px;
   padding: 0 0.9rem;
@@ -320,6 +376,33 @@
   padding: 0.9rem;
   background: rgba(20, 14, 11, 0.74);
   margin-bottom: 0.85rem;
+}
+
+.typewriterPromptCardToggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.15rem 0 0.7rem;
+  margin: 0 0 0.55rem;
+  border: none;
+  border-bottom: 1px solid rgba(127, 103, 83, 0.4);
+  background: transparent;
+  color: #f5e9d7;
+  cursor: pointer;
+  text-align: left;
+}
+
+.typewriterPromptCardToggle span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.16rem;
+}
+
+.typewriterPromptCardToggle small {
+  color: #b9a88e;
+  font-size: 0.74rem;
 }
 
 .typewriterPromptCard h3 {
@@ -449,6 +532,11 @@
 
 @media (max-width: 820px) {
   .typewriterPromptEditorHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .typewriterAdminListToolbar {
     flex-direction: column;
     align-items: stretch;
   }

@@ -17,6 +17,14 @@ const INTRO_AUDIO_DELAY_MS = 160;
 const SYSTEM_TYPING_BASE_DELAY_MS = 16;
 const SYSTEM_TYPING_SPACE_DELAY_MS = 26;
 const SYSTEM_TYPING_PUNCTUATION_DELAY_MS = 92;
+const INTERFERENCE_IDLE_MIN_DELAY_MS = 5600;
+const INTERFERENCE_IDLE_MAX_DELAY_MS = 12800;
+const INTERFERENCE_ACTIVE_MIN_DELAY_MS = 2400;
+const INTERFERENCE_ACTIVE_MAX_DELAY_MS = 6200;
+const INTERFERENCE_SOFT_MIN_DURATION_MS = 240;
+const INTERFERENCE_SOFT_MAX_DURATION_MS = 520;
+const INTERFERENCE_HARD_MIN_DURATION_MS = 520;
+const INTERFERENCE_HARD_MAX_DURATION_MS = 980;
 
 const createSessionId = () => {
   if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
@@ -132,6 +140,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   const [pendingMessage, setPendingMessage] = useState('');
   const [revealedTextById, setRevealedTextById] = useState({});
   const [typingMessageId, setTypingMessageId] = useState('');
+  const [interferenceLevel, setInterferenceLevel] = useState('');
 
   const threadRef = useRef(null);
   const introAudioRef = useRef(null);
@@ -139,6 +148,8 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   const lastIntroPlaybackKeyRef = useRef('');
   const typingTimerRef = useRef(null);
   const previousMessageIdsRef = useRef([]);
+  const interferenceTriggerTimerRef = useRef(null);
+  const interferenceClearTimerRef = useRef(null);
 
   const stopIntroAudio = () => {
     if (introAudioTimerRef.current && typeof window !== 'undefined') {
@@ -168,6 +179,20 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
     setTypingMessageId('');
   };
 
+  const stopInterference = () => {
+    if (typeof window !== 'undefined') {
+      if (interferenceTriggerTimerRef.current) {
+        window.clearTimeout(interferenceTriggerTimerRef.current);
+        interferenceTriggerTimerRef.current = null;
+      }
+      if (interferenceClearTimerRef.current) {
+        window.clearTimeout(interferenceClearTimerRef.current);
+        interferenceClearTimerRef.current = null;
+      }
+    }
+    setInterferenceLevel('');
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(MOCK_STORAGE_KEY, forceMock ? 'true' : 'false');
@@ -180,7 +205,50 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   useEffect(() => () => {
     stopIntroAudio();
     stopTypingAnimation();
+    stopInterference();
   }, []);
+
+  useEffect(() => {
+    if (!start || typeof window === 'undefined') {
+      setInterferenceLevel('');
+      return undefined;
+    }
+
+    let cancelled = false;
+    const isActiveTransmission = loading || sending || Boolean(typingMessageId);
+    const minDelay = isActiveTransmission ? INTERFERENCE_ACTIVE_MIN_DELAY_MS : INTERFERENCE_IDLE_MIN_DELAY_MS;
+    const maxDelay = isActiveTransmission ? INTERFERENCE_ACTIVE_MAX_DELAY_MS : INTERFERENCE_IDLE_MAX_DELAY_MS;
+
+    stopInterference();
+
+    const scheduleNextBurst = (isInitial = false) => {
+      const delay = isInitial
+        ? ((isActiveTransmission ? 900 : 1800) + Math.round(Math.random() * 1400))
+        : (minDelay + Math.round(Math.random() * (maxDelay - minDelay)));
+      interferenceTriggerTimerRef.current = window.setTimeout(() => {
+        if (cancelled) return;
+
+        const nextLevel = (isActiveTransmission || Math.random() < 0.34) ? 'hard' : 'soft';
+        const minDuration = nextLevel === 'hard' ? INTERFERENCE_HARD_MIN_DURATION_MS : INTERFERENCE_SOFT_MIN_DURATION_MS;
+        const maxDuration = nextLevel === 'hard' ? INTERFERENCE_HARD_MAX_DURATION_MS : INTERFERENCE_SOFT_MAX_DURATION_MS;
+        const duration = minDuration + Math.round(Math.random() * (maxDuration - minDuration));
+
+        setInterferenceLevel(nextLevel);
+        interferenceClearTimerRef.current = window.setTimeout(() => {
+          if (cancelled) return;
+          setInterferenceLevel('');
+          scheduleNextBurst();
+        }, duration);
+      }, delay);
+    };
+
+    scheduleNextBurst(true);
+
+    return () => {
+      cancelled = true;
+      stopInterference();
+    };
+  }, [loading, sending, start, typingMessageId]);
 
   useEffect(() => {
     if (!chatEnded || typeof onCurtainDropComplete !== 'function') return undefined;
@@ -427,12 +495,23 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
           </div>
 
           <div className="messangerPhone">
+            <div className="messangerPhone__hardware" aria-hidden="true">
+              <span className="messangerPhone__rail is-left" />
+              <span className="messangerPhone__rail is-right" />
+              <span className="messangerPhone__brace is-top" />
+              <span className="messangerPhone__brace is-bottom" />
+              <span className="messangerPhone__bolt is-top-left" />
+              <span className="messangerPhone__bolt is-top-right" />
+              <span className="messangerPhone__bolt is-bottom-left" />
+              <span className="messangerPhone__bolt is-bottom-right" />
+            </div>
+
             <div className="messangerPhone__bezel">
               <span className="messangerPhone__camera" />
               <span className="messangerPhone__speaker" />
             </div>
 
-            <div className="messangerPhone__screen">
+            <div className={`messangerPhone__screen${interferenceLevel ? ` is-interference-${interferenceLevel}` : ''}`}>
               <div className="messangerStatusBar">
                 <span className="messangerStatusBar__time">{handsetTime}</span>
                 <div className="messangerStatusBar__icons" aria-hidden="true">
@@ -454,7 +533,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
                       <span>SS</span>
                     </div>
                     <div className="messangerConsole__titles">
-                      <span className="messangerConsole__eyebrow">Encrypted thread</span>
+                      <span className="messangerConsole__eyebrow">Encrypted thread · carrier weak</span>
                       <h2>Storyteller Society</h2>
                       <p>{threadStateLabel}</p>
                     </div>
@@ -466,7 +545,21 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
                     <span className="messangerChip">{chatEnded ? 'Sealed' : 'Open'}</span>
                   </div>
                 </header>
-                <div className="messangerThread">
+
+                <div className="messangerConsole__radioScale" aria-hidden="true">
+                  <span className="messangerConsole__radioScaleDot" />
+                  <span className="messangerConsole__radioScaleNeedle" />
+                </div>
+
+                <div className={`messangerThread${interferenceLevel ? ` is-interference-${interferenceLevel}` : ''}`}>
+                  <div className={`messangerThread__interference${interferenceLevel ? ` is-${interferenceLevel}` : ''}`} aria-hidden="true">
+                    <span className="messangerThread__static" />
+                    <span className="messangerThread__scanlines" />
+                    <span className="messangerThread__burst" />
+                    <span className="messangerThread__break messangerThread__break--one" />
+                    <span className="messangerThread__break messangerThread__break--two" />
+                  </div>
+
                   <div className="messangerThread__datePill">
                     Dispatch line · {DEFAULT_SCENE_ID}
                   </div>

@@ -179,6 +179,14 @@ const SESSION_STATE_DEFAULT = {
   lastCollabMove: null,
   beatVotes: {},
   lastBeatSync: null,
+  resonance: {
+    pending: false,
+    cue: '',
+    calledByKey: '',
+    answeredByKey: '',
+    streak: 0,
+    at: ''
+  },
   vows: {
     hush: false,
     anchor: false,
@@ -407,6 +415,7 @@ const StorytellerArenaConsole = ({
   const [ledgerText, setLedgerText] = useState('');
   const [anchorInput, setAnchorInput] = useState('');
   const [threadInput, setThreadInput] = useState('');
+  const [resonanceInput, setResonanceInput] = useState('');
   const boardRef = useRef(null);
   const boardStageRef = useRef(null);
   const forgePanelRef = useRef(null);
@@ -810,16 +819,42 @@ const StorytellerArenaConsole = ({
   const vows =
     sessionState.vows && typeof sessionState.vows === 'object' ? sessionState.vows : SESSION_STATE_DEFAULT.vows;
   const activeVows = VOW_DEFINITIONS.filter((vow) => Boolean(vows[vow.id]));
+  const resonance =
+    sessionState.resonance && typeof sessionState.resonance === 'object'
+      ? sessionState.resonance
+      : SESSION_STATE_DEFAULT.resonance;
+  const resonancePending = Boolean(resonance.pending);
+  const resonanceCue = typeof resonance.cue === 'string' ? resonance.cue : '';
+  const resonanceCallerKey = resonance.calledByKey || '';
+  const resonanceAnswerKey = resonance.answeredByKey || '';
+  const resonanceCallerLabel = getPlayerLabelByKey(resonanceCallerKey, 'Unassigned');
+  const resonanceAnswerLabel = getPlayerLabelByKey(resonanceAnswerKey, 'Unassigned');
+  const resonanceStreak = Math.max(0, Number(resonance.streak) || 0);
   const immersionGate = useMemo(
     () => ({
       charter: hasWorldCharter,
       anchors: anchors.length > 0,
+      lens: Boolean(sceneGoal.trim() || sceneRisk.trim()),
+      intent: Boolean((sessionState.intent || '').trim()),
       ready: playersCount > 0 ? readyCount === playersCount : false,
       ritual: ritualActive
     }),
-    [anchors.length, hasWorldCharter, playersCount, readyCount, ritualActive]
+    [
+      anchors.length,
+      hasWorldCharter,
+      playersCount,
+      readyCount,
+      ritualActive,
+      sceneGoal,
+      sceneRisk,
+      sessionState.intent
+    ]
   );
-  const ritualGateReady = hasWorldCharter && (playersCount <= 1 || readyCount === playersCount);
+  const ritualGateReady =
+    hasWorldCharter &&
+    Boolean(sceneGoal.trim() || sceneRisk.trim()) &&
+    Boolean((sessionState.intent || '').trim()) &&
+    (playersCount <= 1 || readyCount === playersCount);
   const actionBank =
     sessionState.actionBank && typeof sessionState.actionBank === 'object'
       ? sessionState.actionBank
@@ -831,6 +866,88 @@ const StorytellerArenaConsole = ({
         Number.isFinite(rawCurrentTurnActions) ? rawCurrentTurnActions : TURN_ACTIONS_PER_TURN
       )
     : 0;
+  const flowRecommendation = useMemo(() => {
+    if (!hasWorldCharter) {
+      return {
+        title: 'Complete World Charter',
+        detail: 'Set world name/truth/pillars before moving to scene action.',
+        actionLabel: 'Open Charter',
+        actionId: 'charter'
+      };
+    }
+    if (!hasWorldAtlas) {
+      return {
+        title: 'Build World Atlas',
+        detail: 'Add at least one region, faction, or law for shared context.',
+        actionLabel: 'Build Atlas',
+        actionId: 'charter'
+      };
+    }
+    if (!sceneGoal.trim() && !sceneRisk.trim()) {
+      return {
+        title: 'Set Scene Lens',
+        detail: 'Define a goal and stakes to focus immersion.',
+        actionLabel: 'Set Lens',
+        actionId: 'lens'
+      };
+    }
+    if (!(sessionState.intent || '').trim()) {
+      return {
+        title: 'Align Shared Intent',
+        detail: 'Set one table intent so every move reinforces the same tone.',
+        actionLabel: 'Set Intent',
+        actionId: 'intent'
+      };
+    }
+    if (!anchors.length) {
+      return {
+        title: 'Pin First Anchor',
+        detail: 'Lock one concrete truth to keep narration grounded.',
+        actionLabel: 'Pin Anchor',
+        actionId: 'anchors'
+      };
+    }
+    if (!immersionGate.ready) {
+      return {
+        title: 'Ready the Table',
+        detail: 'All seats should mark Ready before ritual begins.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (!ritualActive) {
+      return {
+        title: 'Open Ritual Mode',
+        detail: 'Switch from setup into active immersion turns.',
+        actionLabel: 'Start Ritual',
+        actionId: 'start-ritual'
+      };
+    }
+    if (resonancePending) {
+      return {
+        title: 'Answer Resonance Call',
+        detail: 'A second voice should answer the current cue for a sync bonus.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    return {
+      title: 'Call a Resonance Cue',
+      detail: 'Use a short call-and-response to deepen immersion and steady scene pressure.',
+      actionLabel: 'Open Presence',
+      actionId: 'presence'
+    };
+  }, [
+    hasWorldCharter,
+    hasWorldAtlas,
+    sceneGoal,
+    sceneRisk,
+    sessionState.intent,
+    anchors.length,
+    immersionGate.ready,
+    ritualActive,
+    resonancePending
+  ]);
   const immersionPrimer = useMemo(() => {
     const lines = [];
     const name = worldProfile.worldName.trim();
@@ -936,9 +1053,12 @@ const StorytellerArenaConsole = ({
           gate: {
             charter: immersionGate.charter,
             anchors: immersionGate.anchors,
+            lens: immersionGate.lens,
+            intent: immersionGate.intent,
             ready: immersionGate.ready,
             ritual: immersionGate.ritual
-          }
+          },
+          recommendation: flowRecommendation.title
         },
         sceneLens: {
           goal: sceneGoal,
@@ -984,6 +1104,13 @@ const StorytellerArenaConsole = ({
               by: sessionState.lastBeatSync?.by || '',
               at: sessionState.lastBeatSync?.at || ''
             }
+          },
+          resonance: {
+            pending: resonancePending,
+            cue: resonanceCue,
+            caller: resonanceCallerLabel,
+            answeredBy: resonanceAnswerLabel,
+            streak: resonanceStreak
           }
         },
         roster: players.slice(0, playersCount).map((player, index) => ({
@@ -1017,6 +1144,7 @@ const StorytellerArenaConsole = ({
     currentFlowStep,
     immersionScore,
     flowGuidance,
+    flowRecommendation,
     immersionGate,
     ledgerEntries,
     anchors,
@@ -1038,6 +1166,11 @@ const StorytellerArenaConsole = ({
     threads,
     sessionState.lastFlowAction,
     sessionState.lastBeatSync,
+    resonancePending,
+    resonanceCue,
+    resonanceCallerLabel,
+    resonanceAnswerLabel,
+    resonanceStreak,
     immersionPrimer,
     spotlightLabel,
     spotlightTokens,
@@ -2029,6 +2162,126 @@ const StorytellerArenaConsole = ({
     setNotice(`Spotlight passed to ${getPlayerLabelByKey(nextKey, 'Table')}.`);
   };
 
+  const handleStartResonance = () => {
+    const cue = resonanceInput.trim();
+    if (!cue) {
+      setNotice('Write a short resonance cue before calling.');
+      return;
+    }
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const callerKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!callerKey) {
+      setNotice('Set focus or turn holder before starting a resonance call.');
+      return;
+    }
+    const callerLabel = getPlayerLabelByKey(callerKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const entry = createLedgerEntry({
+        type: 'oath',
+        text: `${callerLabel} calls resonance: "${cue}"`,
+        by: callerLabel
+      });
+      return {
+        ...prev,
+        pulse: {
+          ...nextPulse,
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+        },
+        resonance: {
+          pending: true,
+          cue,
+          calledByKey: callerKey,
+          answeredByKey: '',
+          streak: Math.max(0, Number(prev.resonance?.streak) || 0),
+          at: new Date().toISOString()
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setResonanceInput('');
+    setNotice(`${callerLabel} opens a resonance call.`);
+  };
+
+  const handleAnswerResonance = () => {
+    if (!resonancePending || !resonanceCue) {
+      setNotice('No open resonance call to answer.');
+      return;
+    }
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const responderKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!responderKey) {
+      setNotice('Set focus or turn holder before answering resonance.');
+      return;
+    }
+    if (responderKey === resonanceCallerKey) {
+      setNotice('A different seat must answer this resonance call.');
+      return;
+    }
+    const responderLabel = getPlayerLabelByKey(responderKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const previousClockRaw = Number(prev.sceneClock);
+      const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
+      const effect = applyVowModifiers(
+        { momentum: 1, clarity: 1, sceneClock: -1 },
+        prev.vows,
+        { ritualActive: Boolean(prev.ritualActive) }
+      );
+      const nextStreak = Math.max(0, Number(prev.resonance?.streak) || 0) + 1;
+      const entry = createLedgerEntry({
+        type: 'canon',
+        text: `${responderLabel} answers resonance "${prev.resonance?.cue || resonanceCue}".`,
+        by: responderLabel
+      });
+      const nextActionBank =
+        prev.ritualActive && currentTurnKey
+          ? {
+              ...(prev.actionBank || {}),
+              [currentTurnKey]: Math.min(
+                TURN_ACTIONS_PER_TURN + 1,
+                (Number(prev.actionBank?.[currentTurnKey]) || TURN_ACTIONS_PER_TURN) + 1
+              )
+            }
+          : prev.actionBank;
+      return {
+        ...prev,
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity)
+        },
+        sceneClock: clampSceneClockValue(previousClock + effect.sceneClock),
+        actionBank: nextActionBank,
+        resonance: {
+          pending: false,
+          cue: prev.resonance?.cue || resonanceCue,
+          calledByKey: prev.resonance?.calledByKey || resonanceCallerKey,
+          answeredByKey: responderKey,
+          streak: nextStreak,
+          at: new Date().toISOString()
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setNotice(`${responderLabel} answers the resonance call.`);
+  };
+
+  const handleClearResonance = () => {
+    setSessionState((prev) => ({
+      ...prev,
+      resonance: {
+        pending: false,
+        cue: '',
+        calledByKey: '',
+        answeredByKey: '',
+        streak: 0,
+        at: ''
+      }
+    }));
+    setResonanceInput('');
+    setNotice('Resonance channel reset.');
+  };
+
   const formattedSignalTime = (() => {
     if (!sessionState.lastSignal?.at || typeof window === 'undefined') return '';
     const time = new Date(sessionState.lastSignal.at);
@@ -2683,6 +2936,10 @@ const StorytellerArenaConsole = ({
     }
     if (targetId === 'brief') {
       diveBriefRef.current?.scrollIntoView(options);
+      return;
+    }
+    if (targetId === 'start-ritual') {
+      handleStartRitual();
     }
   };
 
@@ -2809,6 +3066,22 @@ const StorytellerArenaConsole = ({
               <div className="flowCompassNext">
                 <span>Next</span>
                 <strong>{flowGuidance.next}</strong>
+              </div>
+            </div>
+            <div className="flowDirector">
+              <div className="flowDirectorHeader">
+                <strong>Flow Director</strong>
+                <span>{flowRecommendation.actionLabel}</span>
+              </div>
+              <p>{flowRecommendation.detail}</p>
+              <div className="consoleButtonRow">
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => scrollToFlowTarget(flowRecommendation.actionId)}
+                >
+                  {flowRecommendation.title}
+                </button>
               </div>
             </div>
             <div className="flowPulse">
@@ -2956,6 +3229,8 @@ const StorytellerArenaConsole = ({
               </div>
               <div className="flowGateList">
                 <span className={immersionGate.charter ? 'ready' : ''}>Charter</span>
+                <span className={immersionGate.lens ? 'ready' : ''}>Lens</span>
+                <span className={immersionGate.intent ? 'ready' : ''}>Intent</span>
                 <span className={immersionGate.anchors ? 'ready' : ''}>Anchors</span>
                 <span className={immersionGate.ready ? 'ready' : ''}>
                   Ready {readyCount}/{playersCount}
@@ -3956,6 +4231,50 @@ const StorytellerArenaConsole = ({
                   Refresh Tokens
                 </button>
               </div>
+              <div className="resonanceRow">
+                <div className="resonanceHeader">
+                  <span>Resonance Call</span>
+                  <em>{resonanceStreak ? `Streak ${resonanceStreak}` : 'No streak yet'}</em>
+                </div>
+                <p>
+                  {resonancePending
+                    ? `Open cue: "${resonanceCue}" · called by ${resonanceCallerLabel}`
+                    : resonanceCue
+                      ? `Last cue: "${resonanceCue}" · answered by ${resonanceAnswerLabel}`
+                      : 'Call a short cue and let a different seat answer it.'}
+                </p>
+                <div className="resonanceInput">
+                  <input
+                    value={resonanceInput}
+                    placeholder="Cue example: Name what the wind is carrying..."
+                    onChange={(event) => setResonanceInput(event.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleStartResonance}
+                    disabled={resonancePending}
+                  >
+                    Call
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleAnswerResonance}
+                    disabled={!resonancePending}
+                  >
+                    Answer
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleClearResonance}
+                    disabled={!resonancePending && !resonanceCue && !resonanceStreak}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
               <div className="collabMoves">
                 <div className="collabMovesHeader">
                   <span>Co-Create Beats</span>
@@ -4026,6 +4345,7 @@ const StorytellerArenaConsole = ({
               <span>{ritualActive ? 'Ritual Live' : 'Ritual Staging'}</span>
               <span>{`Pressure ${sceneClock}/${SCENE_CLOCK_MAX}`}</span>
               <span>{`Beat Sync ${beatSyncVotes}/${beatSyncRequired || 0}`}</span>
+              <span>{resonancePending ? `Resonance Open: ${resonanceCallerLabel}` : `Resonance Streak ${resonanceStreak}`}</span>
               <span>{activeVows.length ? `Vows ${activeVows.map((vow) => vow.label).join('/')}` : 'Vows None'}</span>
               {currentTurnKey && <span>{`Actions ${currentTurnActions}/${TURN_ACTIONS_PER_TURN}`}</span>}
               {currentFlowStep && <span>{`Step ${currentFlowStepIndex}/${flowSteps.length}`}</span>}

@@ -87,21 +87,50 @@
 }
 
 .messangerModeSwitch {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.72rem;
-  padding: 0.55rem 0.78rem;
-  border-radius: 999px;
-  border: 1px solid rgba(200, 155, 98, 0.24);
+  padding: 0.58rem 0.92rem;
+  border-radius: 1.05rem;
+  border: 1px solid rgba(200, 155, 98, 0.28);
   background:
-    linear-gradient(180deg, rgba(15, 18, 20, 0.9), rgba(8, 10, 12, 0.96));
+    radial-gradient(circle at 20% 24%, rgba(255, 241, 214, 0.08), transparent 18%),
+    linear-gradient(180deg, rgba(46, 39, 31, 0.94), rgba(12, 13, 15, 0.98)),
+    repeating-linear-gradient(90deg, rgba(255, 240, 214, 0.03) 0 1px, transparent 1px 6px);
   box-shadow:
     0 12px 26px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 247, 231, 0.06);
+    inset 0 1px 0 rgba(255, 247, 231, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.34);
   color: var(--messanger-ink);
   font-size: 0.72rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+  overflow: hidden;
+}
+
+.messangerModeSwitch::before,
+.messangerModeSwitch::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 0.46rem;
+  height: 0.46rem;
+  margin-top: -0.23rem;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 35%, rgba(255, 244, 222, 0.52), rgba(93, 70, 46, 0.92) 62%, rgba(24, 20, 17, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.36);
+}
+
+.messangerModeSwitch::before {
+  left: 0.45rem;
+}
+
+.messangerModeSwitch::after {
+  right: 0.45rem;
 }
 
 .messangerModeSwitch input {
@@ -114,7 +143,7 @@
   position: relative;
   width: 3.4rem;
   height: 1.8rem;
-  border-radius: 999px;
+  border-radius: 0.78rem;
   border: 1px solid rgba(200, 155, 98, 0.22);
   background:
     linear-gradient(180deg, rgba(105, 41, 38, 0.9), rgba(48, 18, 17, 0.95));
@@ -156,15 +185,19 @@
 .messangerPhone {
   position: relative;
   width: 100%;
-  padding: 14px;
-  border-radius: 2.75rem;
+  padding: 18px 14px 16px;
+  border-radius: 2.2rem;
   background:
-    linear-gradient(145deg, rgba(108, 82, 57, 0.96), rgba(31, 24, 22, 0.98) 24%, rgba(12, 12, 12, 1) 72%, rgba(86, 64, 47, 0.98)),
-    radial-gradient(circle at top, rgba(255, 240, 210, 0.14), transparent 24%);
-  border: 1px solid rgba(235, 197, 143, 0.2);
+    radial-gradient(circle at 18% 16%, rgba(255, 236, 198, 0.16), transparent 18%),
+    radial-gradient(circle at 82% 78%, rgba(137, 211, 190, 0.1), transparent 20%),
+    linear-gradient(145deg, rgba(114, 88, 64, 0.98), rgba(41, 33, 30, 0.99) 22%, rgba(14, 15, 17, 1) 74%, rgba(94, 70, 54, 0.98)),
+    radial-gradient(circle at top, rgba(255, 240, 210, 0.14), transparent 24%),
+    repeating-linear-gradient(90deg, rgba(255, 226, 181, 0.03) 0 1px, transparent 1px 11px);
+  border: 1px solid rgba(235, 197, 143, 0.26);
   box-shadow:
-    0 30px 88px var(--messanger-phone-shadow),
-    0 0 0 1px rgba(255, 235, 204, 0.08),
+    0 34px 96px var(--messanger-phone-shadow),
+    0 0 0 1px rgba(255, 235, 204, 0.12),
+    0 0 0 6px rgba(14, 11, 10, 0.34),
     inset 0 1px 0 rgba(255, 250, 241, 0.2),
     inset 0 -8px 30px rgba(0, 0, 0, 0.4);
 }
@@ -173,28 +206,134 @@
   content: '';
   position: absolute;
   inset: 1px;
-  border-radius: calc(2.75rem - 1px);
+  border-radius: calc(2.2rem - 1px);
   pointer-events: none;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.11), transparent 22%, transparent 78%, rgba(255, 224, 180, 0.08)),
-    radial-gradient(circle at center, transparent 68%, rgba(200, 155, 98, 0.06) 100%);
+    radial-gradient(circle at center, transparent 68%, rgba(200, 155, 98, 0.06) 100%),
+    linear-gradient(90deg, transparent 0%, rgba(255, 223, 172, 0.04) 10%, transparent 20%, transparent 80%, rgba(137, 211, 190, 0.04) 90%, transparent 100%);
+}
+
+.messangerPhone__hardware {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.messangerPhone__rail,
+.messangerPhone__brace,
+.messangerPhone__bolt {
+  position: absolute;
+}
+
+.messangerPhone__rail {
+  top: 4.4rem;
+  bottom: 4.2rem;
+  width: 0.62rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 239, 209, 0.18), rgba(94, 73, 52, 0.7) 12%, rgba(19, 19, 21, 0.98) 88%, rgba(182, 145, 96, 0.2) 100%),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 8px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 245, 224, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(200, 155, 98, 0.08);
+}
+
+.messangerPhone__rail.is-left {
+  left: 0.7rem;
+}
+
+.messangerPhone__rail.is-right {
+  right: 0.7rem;
+}
+
+.messangerPhone__brace {
+  left: 2.4rem;
+  right: 2.4rem;
+  height: 0.46rem;
+  border-radius: 0.3rem;
+  background:
+    linear-gradient(180deg, rgba(86, 72, 55, 0.94), rgba(18, 18, 20, 0.98)),
+    repeating-linear-gradient(90deg, rgba(255, 239, 209, 0.03) 0 4px, transparent 4px 10px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 227, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.28);
+}
+
+.messangerPhone__brace.is-top {
+  top: 1rem;
+}
+
+.messangerPhone__brace.is-bottom {
+  bottom: 1rem;
+}
+
+.messangerPhone__bolt {
+  width: 0.82rem;
+  height: 0.82rem;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 35%, rgba(255, 247, 228, 0.72), rgba(111, 86, 58, 0.9) 54%, rgba(26, 22, 19, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.18),
+    0 1px 3px rgba(0, 0, 0, 0.38);
+}
+
+.messangerPhone__bolt::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.4rem;
+  height: 0.08rem;
+  margin: -0.04rem 0 0 -0.2rem;
+  border-radius: 999px;
+  background: rgba(20, 17, 15, 0.82);
+  box-shadow: 0 0 0 1px rgba(255, 243, 220, 0.04);
+}
+
+.messangerPhone__bolt.is-top-left {
+  top: 0.82rem;
+  left: 0.82rem;
+}
+
+.messangerPhone__bolt.is-top-right {
+  top: 0.82rem;
+  right: 0.82rem;
+}
+
+.messangerPhone__bolt.is-bottom-left {
+  bottom: 0.82rem;
+  left: 0.82rem;
+}
+
+.messangerPhone__bolt.is-bottom-right {
+  bottom: 0.82rem;
+  right: 0.82rem;
 }
 
 .messangerPhone__bezel {
   position: absolute;
-  top: 14px;
+  top: 18px;
   left: 50%;
   transform: translateX(-50%);
-  width: 42%;
-  height: 22px;
-  border-radius: 999px;
-  background: rgba(8, 8, 9, 0.96);
-  border: 1px solid rgba(255, 227, 179, 0.04);
+  width: 48%;
+  height: 25px;
+  border-radius: 0.7rem;
+  background:
+    linear-gradient(180deg, rgba(37, 34, 31, 0.98), rgba(8, 8, 9, 0.98)),
+    repeating-linear-gradient(90deg, rgba(255, 244, 221, 0.03) 0 2px, transparent 2px 6px);
+  border: 1px solid rgba(255, 227, 179, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
-  z-index: 2;
+  z-index: 3;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 226, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.24);
 }
 
 .messangerPhone__camera,
@@ -213,23 +352,30 @@
 .messangerPhone__speaker {
   width: 4rem;
   height: 0.32rem;
-  background: linear-gradient(180deg, rgba(111, 108, 102, 0.92), rgba(28, 28, 28, 0.98));
+  background:
+    linear-gradient(180deg, rgba(111, 108, 102, 0.92), rgba(28, 28, 28, 0.98)),
+    repeating-linear-gradient(90deg, rgba(6, 8, 10, 0.72) 0 2px, rgba(210, 204, 192, 0.08) 2px 4px);
+  background-blend-mode: multiply;
 }
 
 .messangerPhone__screen {
   position: relative;
+  height: min(84vh, 900px);
   min-height: min(84vh, 900px);
-  border-radius: 2.1rem;
+  max-height: min(84vh, 900px);
+  border-radius: 1.45rem;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(14, 18, 22, 0.98), rgba(5, 7, 9, 1)),
+    linear-gradient(180deg, rgba(11, 14, 17, 0.98), rgba(3, 5, 7, 1)),
     radial-gradient(circle at top, rgba(137, 211, 190, 0.08), transparent 28%);
-  border: 1px solid rgba(255, 234, 196, 0.06);
+  border: 1px solid rgba(255, 234, 196, 0.1);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
     inset 0 -80px 120px rgba(0, 0, 0, 0.34);
   display: flex;
   flex-direction: column;
+  z-index: 1;
+  transition: filter 140ms ease, box-shadow 140ms ease;
 }
 
 .messangerPhone__screen::before {
@@ -241,6 +387,8 @@
     radial-gradient(circle at top center, rgba(255, 250, 238, 0.05), transparent 18%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 18%);
   mix-blend-mode: screen;
+  opacity: 0.7;
+  transition: opacity 120ms ease, transform 120ms ease;
 }
 
 .messangerPhone__screen::after {
@@ -252,15 +400,53 @@
     radial-gradient(circle at 50% 12%, rgba(200, 155, 98, 0.12), transparent 18%),
     radial-gradient(circle at 50% 112%, rgba(110, 42, 40, 0.18), transparent 32%);
   opacity: 0.8;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.messangerPhone__screen.is-interference-soft {
+  filter: contrast(1.03) brightness(1.02) saturate(0.96);
+}
+
+.messangerPhone__screen.is-interference-soft::before {
+  opacity: 0.88;
+}
+
+.messangerPhone__screen.is-interference-soft::after {
+  opacity: 0.96;
+  transform: translateY(-1px);
+}
+
+.messangerPhone__screen.is-interference-hard {
+  filter: contrast(1.08) brightness(1.05) saturate(0.88);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 -80px 120px rgba(0, 0, 0, 0.42),
+    inset 0 0 32px rgba(255, 255, 255, 0.05);
+}
+
+.messangerPhone__screen.is-interference-hard::before {
+  opacity: 1;
+  animation: messangerScreenBurstHard 0.68s steps(4) 1;
+}
+
+.messangerPhone__screen.is-interference-hard::after {
+  opacity: 1;
+  transform: translateY(2px);
 }
 
 .messangerPhone__homebar {
-  width: 8.2rem;
-  height: 0.32rem;
-  border-radius: 999px;
-  background: rgba(242, 235, 223, 0.76);
-  margin: 0.78rem auto 0.9rem;
-  opacity: 0.76;
+  width: 7rem;
+  height: 0.48rem;
+  border-radius: 0.32rem;
+  border: 1px solid rgba(255, 232, 191, 0.1);
+  background:
+    linear-gradient(180deg, rgba(74, 67, 59, 0.94), rgba(17, 18, 20, 0.98)),
+    repeating-linear-gradient(90deg, rgba(255, 239, 216, 0.03) 0 4px, transparent 4px 10px);
+  margin: 0.84rem auto 0.88rem;
+  opacity: 0.9;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 222, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22);
 }
 
 .messangerStatusBar {
@@ -275,6 +461,7 @@
   font-size: 0.72rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+  text-shadow: 0 0 12px rgba(137, 211, 190, 0.16);
 }
 
 .messangerStatusBar__time {
@@ -410,6 +597,20 @@
   text-transform: uppercase;
 }
 
+.messangerConsole__eyebrow::before {
+  content: '';
+  width: 0.42rem;
+  height: 0.42rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 35%, rgba(255, 241, 223, 0.96), rgba(214, 128, 94, 0.96) 42%, rgba(108, 33, 30, 0.98) 100%);
+  box-shadow:
+    0 0 10px rgba(214, 128, 94, 0.36),
+    0 0 16px rgba(214, 128, 94, 0.16);
+  animation: messangerSignalFlicker 2.8s steps(1) infinite;
+}
+
 .messangerConsole__titles h2 {
   margin: 0.18rem 0 0;
   color: #f4ead5;
@@ -432,6 +633,60 @@
   justify-content: flex-end;
   gap: 0.45rem;
   padding-top: 0.12rem;
+}
+
+.messangerConsole__radioScale {
+  position: relative;
+  z-index: 1;
+  margin: 0 1rem 0.9rem;
+  height: 1.05rem;
+  border-radius: 999px;
+  border: 1px solid rgba(200, 155, 98, 0.12);
+  background:
+    linear-gradient(180deg, rgba(24, 28, 31, 0.9), rgba(10, 12, 14, 0.96)),
+    repeating-linear-gradient(90deg, rgba(255, 248, 233, 0.08) 0 1px, transparent 1px 14px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+}
+
+.messangerConsole__radioScale::before {
+  content: '';
+  position: absolute;
+  inset: 0.28rem 0.6rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(200, 155, 98, 0.12), rgba(137, 211, 190, 0.16) 52%, rgba(200, 155, 98, 0.08)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 18px);
+  opacity: 0.55;
+}
+
+.messangerConsole__radioScaleDot,
+.messangerConsole__radioScaleNeedle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.messangerConsole__radioScaleDot {
+  left: 1rem;
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(255, 244, 225, 1), rgba(211, 133, 94, 0.96) 48%, rgba(102, 31, 28, 0.98) 100%);
+  box-shadow: 0 0 10px rgba(211, 133, 94, 0.32);
+}
+
+.messangerConsole__radioScaleNeedle {
+  left: 61%;
+  width: 0.14rem;
+  height: 1.35rem;
+  margin-top: -0.02rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 239, 210, 0.98), rgba(200, 155, 98, 0.98));
+  box-shadow: 0 0 14px rgba(200, 155, 98, 0.22);
+  animation: messangerNeedleDrift 10s ease-in-out infinite;
 }
 
 .messangerChip {
@@ -465,11 +720,13 @@
   flex-direction: column;
   gap: 0.76rem;
   background:
-    radial-gradient(circle at top, rgba(137, 211, 190, 0.04), transparent 34%),
-    linear-gradient(180deg, rgba(18, 24, 28, 0.78), rgba(7, 10, 13, 0.82)),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-    linear-gradient(rgba(255, 255, 255, 0.014) 1px, transparent 1px);
+    radial-gradient(circle at top, rgba(137, 211, 190, 0.06), transparent 30%),
+    linear-gradient(180deg, rgba(13, 18, 22, 0.88), rgba(4, 6, 8, 0.94)),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.016) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px);
   background-size: auto, auto, 24px 24px, 24px 24px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  transition: filter 120ms ease, box-shadow 120ms ease;
 }
 
 .messangerThread::before,
@@ -491,6 +748,173 @@
   background:
     radial-gradient(circle at 0% 100%, rgba(110, 42, 40, 0.18), transparent 22%),
     radial-gradient(circle at 100% 0%, rgba(137, 211, 190, 0.08), transparent 20%);
+}
+
+.messangerThread__interference {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+  transition: opacity 120ms ease;
+}
+
+.messangerThread__interference.is-soft {
+  opacity: 0.96;
+}
+
+.messangerThread__interference.is-hard {
+  opacity: 1;
+  animation: messangerOverlayFlash 0.76s linear 1;
+}
+
+.messangerThread__static,
+.messangerThread__scanlines,
+.messangerThread__burst,
+.messangerThread__break {
+  position: absolute;
+  inset: 0;
+}
+
+.messangerThread__static {
+  opacity: 0.16;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 245, 225, 0.08), transparent 18%),
+    radial-gradient(circle at 78% 38%, rgba(137, 211, 190, 0.09), transparent 20%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.026) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 4px);
+  animation: messangerStaticDrift 8s steps(8) infinite;
+}
+
+.messangerThread__scanlines {
+  opacity: 0.1;
+  mix-blend-mode: screen;
+  background: repeating-linear-gradient(180deg, rgba(244, 236, 221, 0.08) 0 1px, transparent 1px 4px);
+}
+
+.messangerThread__burst {
+  opacity: 0.16;
+  mix-blend-mode: screen;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 252, 241, 0.04) 10%,
+    rgba(255, 252, 241, 0.16) 14%,
+    rgba(137, 211, 190, 0.18) 17%,
+    rgba(255, 252, 241, 0.06) 21%,
+    transparent 30%
+  );
+  transform: translateY(-135%);
+  animation: messangerSignalSweep 11s linear infinite;
+}
+
+.messangerThread__break {
+  left: -8%;
+  right: -10%;
+  inset: auto -10% auto -8%;
+  height: 12%;
+  border-radius: 0.35rem;
+  opacity: 0;
+  overflow: hidden;
+  mix-blend-mode: screen;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(255, 252, 242, 0.12) 8%, rgba(137, 211, 190, 0.2) 18%, rgba(255, 252, 242, 0.08) 28%, transparent 40%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.1) 0 3px, rgba(8, 8, 10, 0) 3px 9px),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 3px);
+  box-shadow:
+    0 0 24px rgba(255, 252, 242, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(0.8px) saturate(120%);
+}
+
+.messangerThread__break::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 30%, rgba(255, 255, 255, 0.18), transparent 16%),
+    radial-gradient(circle at 74% 68%, rgba(255, 255, 255, 0.12), transparent 14%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent 40%, rgba(110, 42, 40, 0.12) 100%);
+  opacity: 0.8;
+}
+
+.messangerThread__break--one {
+  top: 20%;
+  animation: messangerBreakShiftOne 8.6s linear infinite;
+}
+
+.messangerThread__break--two {
+  top: 61%;
+  height: 9%;
+  animation: messangerBreakShiftTwo 10.4s linear infinite;
+}
+
+.messangerThread.is-interference-soft {
+  filter: contrast(1.02);
+}
+
+.messangerThread.is-interference-soft .messangerThread__static {
+  opacity: 0.28;
+  animation: messangerBurstStatic 0.42s steps(10) 1;
+}
+
+.messangerThread.is-interference-soft .messangerThread__scanlines {
+  opacity: 0.18;
+}
+
+.messangerThread.is-interference-soft .messangerThread__burst {
+  opacity: 0.3;
+  animation: messangerSignalSweep 0.46s linear 1;
+}
+
+.messangerThread.is-interference-soft .messangerThread__break--one {
+  animation: messangerInterferencePulseSoft 0.4s linear 1;
+}
+
+.messangerThread.is-interference-soft .messangerThread__break--two {
+  animation: messangerInterferencePulseSoftAlt 0.36s linear 1;
+}
+
+.messangerThread.is-interference-hard {
+  filter: contrast(1.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 0 38px rgba(255, 255, 255, 0.05);
+}
+
+.messangerThread.is-interference-hard .messangerThread__static {
+  opacity: 0.38;
+  animation: messangerBurstStatic 0.76s steps(14) 1;
+}
+
+.messangerThread.is-interference-hard .messangerThread__scanlines {
+  opacity: 0.28;
+  animation: messangerScanlineJolt 0.72s linear 1;
+}
+
+.messangerThread.is-interference-hard .messangerThread__burst {
+  opacity: 0.42;
+  animation: messangerSignalSweep 0.72s linear 1;
+}
+
+.messangerThread.is-interference-hard .messangerThread__break--one {
+  animation: messangerInterferencePulseHard 0.82s linear 1;
+}
+
+.messangerThread.is-interference-hard .messangerThread__break--two {
+  animation: messangerInterferencePulseHardAlt 0.74s linear 1;
+}
+
+.messangerThread__interference::after {
+  content: '';
+  position: absolute;
+  inset: -8% 0 auto;
+  height: 38%;
+  opacity: 0.18;
+  background: linear-gradient(180deg, rgba(110, 42, 40, 0.16), transparent 72%);
+  animation: messangerBandJitter 6.4s ease-in-out infinite;
 }
 
 .messangerThread__datePill {
@@ -546,6 +970,21 @@
   background:
     linear-gradient(180deg, rgba(45, 74, 66, 0.95), rgba(25, 41, 38, 0.98));
   color: #eef7f0;
+  box-shadow:
+    0 18px 30px rgba(0, 0, 0, 0.24),
+    0 0 22px rgba(137, 211, 190, 0.08);
+}
+
+.messangerMessage--system::before {
+  content: '';
+  position: absolute;
+  inset: 0.38rem;
+  border-radius: 1.08rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 28%),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 3px);
+  opacity: 0.28;
+  pointer-events: none;
 }
 
 .messangerMessage--system::after {
@@ -568,6 +1007,9 @@
   background:
     linear-gradient(180deg, rgba(122, 79, 47, 0.97), rgba(78, 48, 24, 0.99));
   color: #fff4e5;
+  box-shadow:
+    0 18px 30px rgba(0, 0, 0, 0.24),
+    0 0 18px rgba(200, 155, 98, 0.07);
 }
 
 .messangerMessage--user::after {
@@ -606,6 +1048,10 @@
   white-space: pre-wrap;
   line-height: 1.62;
   font-size: 0.92rem;
+}
+
+.messangerMessage--system .messangerMessage__body {
+  text-shadow: 0 0 12px rgba(137, 211, 190, 0.12);
 }
 
 .messangerMessage__cursor {
@@ -775,6 +1221,307 @@
   }
 }
 
+@keyframes messangerStaticDrift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.12;
+  }
+  20% {
+    transform: translate3d(-1.5%, 0, 0) scale(1.01);
+    opacity: 0.18;
+  }
+  42% {
+    transform: translate3d(1.2%, -0.5%, 0) scale(1);
+    opacity: 0.14;
+  }
+  64% {
+    transform: translate3d(-0.6%, 0.8%, 0) scale(1.015);
+    opacity: 0.19;
+  }
+  82% {
+    transform: translate3d(1%, 0, 0) scale(1);
+    opacity: 0.15;
+  }
+}
+
+@keyframes messangerBurstStatic {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.14;
+  }
+  20% {
+    transform: translate3d(-1.8%, -0.2%, 0);
+    opacity: 0.34;
+  }
+  42% {
+    transform: translate3d(1.6%, 0.6%, 0);
+    opacity: 0.18;
+  }
+  64% {
+    transform: translate3d(-1.2%, -0.8%, 0);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.16;
+  }
+}
+
+@keyframes messangerOverlayFlash {
+  0%,
+  100% {
+    opacity: 0.92;
+  }
+  24% {
+    opacity: 1;
+  }
+  48% {
+    opacity: 0.78;
+  }
+  72% {
+    opacity: 1;
+  }
+}
+
+@keyframes messangerSignalSweep {
+  0% {
+    transform: translateY(-135%);
+  }
+  42% {
+    transform: translateY(128%);
+  }
+  100% {
+    transform: translateY(128%);
+  }
+}
+
+@keyframes messangerBandJitter {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.12;
+  }
+  35% {
+    transform: translateY(6%);
+    opacity: 0.2;
+  }
+  68% {
+    transform: translateY(-4%);
+    opacity: 0.14;
+  }
+}
+
+@keyframes messangerScreenBurstHard {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  20% {
+    transform: translateY(-1px);
+    opacity: 1;
+  }
+  38% {
+    transform: translateY(2px);
+    opacity: 0.86;
+  }
+  62% {
+    transform: translateY(-2px);
+    opacity: 1;
+  }
+}
+
+@keyframes messangerScanlineJolt {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.1;
+  }
+  35% {
+    transform: translateY(2px);
+    opacity: 0.24;
+  }
+  68% {
+    transform: translateY(-1px);
+    opacity: 0.28;
+  }
+}
+
+@keyframes messangerNeedleDrift {
+  0%,
+  100% {
+    left: 58%;
+  }
+  50% {
+    left: 66%;
+  }
+}
+
+@keyframes messangerInterferencePulseSoft {
+  0% {
+    transform: translate3d(-16%, 0, 0) skewX(-12deg);
+    opacity: 0;
+  }
+  26% {
+    opacity: 0.24;
+  }
+  58% {
+    transform: translate3d(2%, 1%, 0) skewX(8deg);
+    opacity: 0.32;
+  }
+  100% {
+    transform: translate3d(12%, 0, 0) skewX(-4deg);
+    opacity: 0;
+  }
+}
+
+@keyframes messangerInterferencePulseSoftAlt {
+  0% {
+    transform: translate3d(14%, 0, 0) skewX(10deg);
+    opacity: 0;
+  }
+  22% {
+    opacity: 0.2;
+  }
+  52% {
+    transform: translate3d(-4%, -1%, 0) skewX(-8deg);
+    opacity: 0.28;
+  }
+  100% {
+    transform: translate3d(-12%, 0, 0) skewX(5deg);
+    opacity: 0;
+  }
+}
+
+@keyframes messangerBreakShiftOne {
+  0%,
+  100% {
+    transform: translate3d(-12%, -160%, 0) skewX(-14deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0;
+  }
+  11% {
+    transform: translate3d(4%, 0, 0) skewX(-14deg);
+    opacity: 0.26;
+  }
+  13% {
+    transform: translate3d(-2%, 2%, 0) skewX(8deg);
+    opacity: 0.34;
+  }
+  16% {
+    transform: translate3d(6%, -1%, 0) skewX(-9deg);
+    opacity: 0.18;
+  }
+  19% {
+    transform: translate3d(12%, 160%, 0) skewX(-4deg);
+    opacity: 0;
+  }
+}
+
+@keyframes messangerBreakShiftTwo {
+  0%,
+  100% {
+    transform: translate3d(14%, 180%, 0) skewX(12deg);
+    opacity: 0;
+  }
+  26% {
+    opacity: 0;
+  }
+  30% {
+    transform: translate3d(-5%, 0, 0) skewX(10deg);
+    opacity: 0.22;
+  }
+  32% {
+    transform: translate3d(3%, -2%, 0) skewX(-7deg);
+    opacity: 0.3;
+  }
+  35% {
+    transform: translate3d(-8%, 2%, 0) skewX(6deg);
+    opacity: 0.14;
+  }
+  38% {
+    transform: translate3d(-14%, -180%, 0) skewX(-12deg);
+    opacity: 0;
+  }
+}
+
+@keyframes messangerInterferencePulseHard {
+  0% {
+    transform: translate3d(-18%, 0, 0) skewX(-14deg);
+    opacity: 0;
+  }
+  14% {
+    opacity: 0.3;
+  }
+  28% {
+    transform: translate3d(6%, 1%, 0) skewX(12deg);
+    opacity: 0.42;
+  }
+  46% {
+    transform: translate3d(-3%, -1%, 0) skewX(-9deg);
+    opacity: 0.18;
+  }
+  62% {
+    transform: translate3d(8%, 2%, 0) skewX(7deg);
+    opacity: 0.36;
+  }
+  100% {
+    transform: translate3d(18%, 0, 0) skewX(-5deg);
+    opacity: 0;
+  }
+}
+
+@keyframes messangerInterferencePulseHardAlt {
+  0% {
+    transform: translate3d(18%, 0, 0) skewX(12deg);
+    opacity: 0;
+  }
+  16% {
+    opacity: 0.24;
+  }
+  34% {
+    transform: translate3d(-6%, -2%, 0) skewX(-10deg);
+    opacity: 0.38;
+  }
+  55% {
+    transform: translate3d(4%, 2%, 0) skewX(6deg);
+    opacity: 0.16;
+  }
+  72% {
+    transform: translate3d(-8%, 0, 0) skewX(-7deg);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translate3d(-18%, 0, 0) skewX(4deg);
+    opacity: 0;
+  }
+}
+
+@keyframes messangerSignalFlicker {
+  0%,
+  100% {
+    opacity: 0.92;
+  }
+  16% {
+    opacity: 0.56;
+  }
+  21% {
+    opacity: 1;
+  }
+  54% {
+    opacity: 0.62;
+  }
+  58% {
+    opacity: 0.98;
+  }
+  83% {
+    opacity: 0.7;
+  }
+}
+
 @keyframes messangerCursorBlink {
   0%,
   49% {
@@ -793,26 +1540,32 @@
   }
 
   .messangerPhone {
-    padding: 10px;
-    border-radius: 2rem;
+    padding: 14px 10px 12px;
+    border-radius: 1.78rem;
   }
 
   .messangerPhone::before {
-    border-radius: calc(2rem - 1px);
+    border-radius: calc(1.78rem - 1px);
   }
 
   .messangerPhone__screen {
+    height: calc(100vh - 7.2rem);
     min-height: calc(100vh - 7.2rem);
-    border-radius: 1.55rem;
+    max-height: calc(100vh - 7.2rem);
+    border-radius: 1.2rem;
   }
 
   .messangerPhone__bezel {
-    top: 10px;
-    width: 46%;
+    top: 14px;
+    width: 52%;
   }
 
   .messangerConsole__header {
     padding-inline: 0.86rem;
+  }
+
+  .messangerConsole__radioScale {
+    margin-inline: 0.86rem;
   }
 
   .messangerConsole__status {
@@ -835,5 +1588,25 @@
   .messangerComposer button {
     min-width: 3.75rem;
     min-height: 3.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .messangerConsole__eyebrow::before,
+  .messangerPhone__screen::before,
+  .messangerConsole__radioScaleNeedle,
+  .messangerThread__static,
+  .messangerThread__scanlines,
+  .messangerThread__burst,
+  .messangerThread__break--one,
+  .messangerThread__break--two,
+  .messangerThread__interference.is-hard,
+  .messangerThread__interference::after {
+    animation: none;
+  }
+
+  .messangerPhone__screen,
+  .messangerThread {
+    filter: none !important;
   }
 }
