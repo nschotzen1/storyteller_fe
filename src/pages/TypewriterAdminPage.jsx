@@ -99,6 +99,14 @@ const SETTING_PIPELINES = [
     defaultCount: 4
   },
   {
+    key: 'storyteller_intervention',
+    label: 'Storyteller intervention',
+    description: '/api/send_storyteller_typewriter_text',
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
+  },
+  {
     key: 'storyteller_mission',
     label: 'Storyteller mission',
     description: '/api/sendStorytellerToEntity',
@@ -186,6 +194,12 @@ const PROMPT_PIPELINES = [
     label: 'Storyteller creation',
     description: '/api/textToStoryteller persona generation',
     settingsKey: 'storyteller_creation'
+  },
+  {
+    key: 'storyteller_intervention',
+    label: 'Storyteller intervention',
+    description: '/api/send_storyteller_typewriter_text storyteller entrance continuation',
+    settingsKey: 'storyteller_intervention'
   },
   {
     key: 'storyteller_mission',

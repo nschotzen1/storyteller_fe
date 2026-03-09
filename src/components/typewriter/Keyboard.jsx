@@ -8,9 +8,11 @@ const Keyboard = ({
   keyTextures, // Array of texture URLs corresponding to `keys`
   storytellerSlots = [],
   lastPressedKey,
+  pressedStorytellerKey,
   ghostPressedKey, // New prop for ghost typing
   typingAllowed,
   onKeyPress, // (keyText: string) => void
+  onStorytellerPress, // (slot) => void
   onXerofagPress, // () => void
   onSpacebarPress, // () => void
   playEndOfPageSound, // () => void;
@@ -61,15 +63,24 @@ const Keyboard = ({
 
         const isSpecialKey = key === SPECIAL_KEY_TEXT;
         const altText = getKeyAltText(key, storytellerSlot);
+        const isStorytellerPressed = storytellerSlot?.slotKey === pressedStorytellerKey;
 
         return (
           <div
             key={storytellerSlot?.slotKey || key}
-            className={`typewriter-key-wrapper ${storytellerSlot ? 'storyteller-slot-key' : ''} ${storytellerSlot?.filled ? 'storyteller-slot-filled' : ''} ${lastPressedKey === key ? 'key-pressed' : ''} ${ghostPressedKey === key ? 'ghost-key-glow' : ''} ${!typingAllowed && !storytellerSlot ? 'key-disabled' : ''}`}
+            className={`typewriter-key-wrapper ${storytellerSlot ? 'storyteller-slot-key' : ''} ${storytellerSlot?.filled ? 'storyteller-slot-filled' : ''} ${storytellerSlot?.filled ? 'storyteller-slot-pressable' : ''} ${lastPressedKey === key || isStorytellerPressed ? 'key-pressed' : ''} ${isStorytellerPressed ? 'storyteller-key-held' : ''} ${ghostPressedKey === key ? 'ghost-key-glow' : ''} ${!typingAllowed && !storytellerSlot ? 'key-disabled' : ''}`}
             style={{ '--offset-y': `${offset}px`, '--tilt': `${tilt}deg` }}
             title={storytellerSlot?.storytellerName || ''}
             onClick={() => {
               if (storytellerSlot) {
+                if (!storytellerSlot.filled || !onStorytellerPress) {
+                  return;
+                }
+                if (!typingAllowed) {
+                  playEndOfPageSound();
+                  return;
+                }
+                onStorytellerPress(storytellerSlot);
                 return;
               }
               if (!typingAllowed) {

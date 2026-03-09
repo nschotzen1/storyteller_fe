@@ -1,9 +1,10 @@
 import './index.css';
 import './FlipCard.css';
-import './CurtainIntro.css';
 import './App.css';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import CurtainIntro from './CurtainIntro';
+import CurtainOutro from './CurtainOutro';
 import StorytellerArenaConsole from './components/storyteller/StorytellerArenaConsole';
 import PlayerLogin from './pages/PlayerLogin';
 import QuestAdventurePage from './pages/QuestAdventurePage';
@@ -33,6 +34,12 @@ const VIEW_OPTIONS = [
   { id: VIEW.MEMORY_SPREAD, label: 'Memory Spread' }
 ];
 
+const TYPEWRITER_CURTAIN_PHASE = {
+  IDLE: 'idle',
+  INTRO: 'intro',
+  OUTRO: 'outro'
+};
+
 const readInitialView = () => {
   if (typeof window === 'undefined') return VIEW.ARENA;
   const params = new URLSearchParams(window.location.search);
@@ -48,6 +55,10 @@ const readInitialView = () => {
 
 function App() {
   const [view, setView] = useState(readInitialView);
+  const [pendingView, setPendingView] = useState(null);
+  const [typewriterCurtainPhase, setTypewriterCurtainPhase] = useState(() => (
+    readInitialView() === VIEW.TYPEWRITER ? TYPEWRITER_CURTAIN_PHASE.INTRO : TYPEWRITER_CURTAIN_PHASE.IDLE
+  ));
   const [login, setLogin] = useState(null);
 
   useEffect(() => {
@@ -75,15 +86,47 @@ function App() {
     );
   }, [login]);
 
+  const isTypewriterCurtainActive = view === VIEW.TYPEWRITER && typewriterCurtainPhase !== TYPEWRITER_CURTAIN_PHASE.IDLE;
+
+  const handleViewChange = (nextView) => {
+    if (nextView === view) return;
+    if (isTypewriterCurtainActive) return;
+
+    if (view === VIEW.TYPEWRITER) {
+      setPendingView(nextView);
+      setTypewriterCurtainPhase(TYPEWRITER_CURTAIN_PHASE.OUTRO);
+      return;
+    }
+
+    setPendingView(null);
+    setView(nextView);
+    setTypewriterCurtainPhase(
+      nextView === VIEW.TYPEWRITER ? TYPEWRITER_CURTAIN_PHASE.INTRO : TYPEWRITER_CURTAIN_PHASE.IDLE
+    );
+  };
+
+  const handleTypewriterOutroComplete = () => {
+    if (!pendingView) {
+      setTypewriterCurtainPhase(TYPEWRITER_CURTAIN_PHASE.IDLE);
+      return;
+    }
+
+    setView(pendingView);
+    setPendingView(null);
+    setTypewriterCurtainPhase(
+      pendingView === VIEW.TYPEWRITER ? TYPEWRITER_CURTAIN_PHASE.INTRO : TYPEWRITER_CURTAIN_PHASE.IDLE
+    );
+  };
+
   return (
     <div className="appShell">
-      <nav className="appViewSwitch" aria-label="App views">
+      <nav className={`appViewSwitch ${isTypewriterCurtainActive ? 'appViewSwitch-obscured' : ''}`} aria-label="App views">
         {VIEW_OPTIONS.map((option) => (
           <button
             key={option.id}
             type="button"
             className={view === option.id ? 'active' : ''}
-            onClick={() => setView(option.id)}
+            onClick={() => handleViewChange(option.id)}
           >
             {option.label}
           </button>
@@ -92,7 +135,17 @@ function App() {
 
       <main className="appMain">
         {view === VIEW.ARENA && arenaContent}
-        {view === VIEW.TYPEWRITER && <TypewriterFramework />}
+        {view === VIEW.TYPEWRITER && (
+          <div className="typewriterViewShell">
+            <TypewriterFramework />
+            {typewriterCurtainPhase === TYPEWRITER_CURTAIN_PHASE.INTRO ? (
+              <CurtainIntro onReveal={() => setTypewriterCurtainPhase(TYPEWRITER_CURTAIN_PHASE.IDLE)} />
+            ) : null}
+            {typewriterCurtainPhase === TYPEWRITER_CURTAIN_PHASE.OUTRO ? (
+              <CurtainOutro onDropComplete={handleTypewriterOutroComplete} />
+            ) : null}
+          </div>
+        )}
         {view === VIEW.STORY_ADMIN && <TypewriterAdminPage />}
         {view === VIEW.QUEST && <QuestAdventurePage />}
         {view === VIEW.QUEST_ADMIN && <QuestAdminPage />}

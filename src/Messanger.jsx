@@ -13,7 +13,10 @@ const API_BASE_STORAGE_KEY = 'typewriterAdminApiBaseUrl';
 const SESSION_STORAGE_KEY = 'sessionId';
 const MOCK_STORAGE_KEY = 'messangerForceMock';
 const INTRO_AUDIO_SRC = '/audio/typewriter-narration.mp3';
+const INTRO_COVER_SRC = '/tapestries/intro.png';
 const INTRO_AUDIO_DELAY_MS = 160;
+const INTRO_FLIP_PRELUDE_MS = 1480;
+const INTRO_FLIP_DURATION_MS = 6400;
 const SYSTEM_TYPING_BASE_DELAY_MS = 16;
 const SYSTEM_TYPING_SPACE_DELAY_MS = 26;
 const SYSTEM_TYPING_PUNCTUATION_DELAY_MS = 92;
@@ -141,6 +144,9 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   const [revealedTextById, setRevealedTextById] = useState({});
   const [typingMessageId, setTypingMessageId] = useState('');
   const [interferenceLevel, setInterferenceLevel] = useState('');
+  const [isOpeningMessenger, setIsOpeningMessenger] = useState(false);
+  const [isFlippingMessenger, setIsFlippingMessenger] = useState(false);
+  const [hasOpenedMessenger, setHasOpenedMessenger] = useState(false);
 
   const threadRef = useRef(null);
   const introAudioRef = useRef(null);
@@ -150,6 +156,8 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   const previousMessageIdsRef = useRef([]);
   const interferenceTriggerTimerRef = useRef(null);
   const interferenceClearTimerRef = useRef(null);
+  const introFlipTimerRef = useRef(null);
+  const introFlipCompletionTimerRef = useRef(null);
 
   const stopIntroAudio = () => {
     if (introAudioTimerRef.current && typeof window !== 'undefined') {
@@ -203,13 +211,21 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   }, [messages, pendingMessage, sending, revealedTextById, typingMessageId]);
 
   useEffect(() => () => {
+    if (introFlipTimerRef.current && typeof window !== 'undefined') {
+      window.clearTimeout(introFlipTimerRef.current);
+      introFlipTimerRef.current = null;
+    }
+    if (introFlipCompletionTimerRef.current && typeof window !== 'undefined') {
+      window.clearTimeout(introFlipCompletionTimerRef.current);
+      introFlipCompletionTimerRef.current = null;
+    }
     stopIntroAudio();
     stopTypingAnimation();
     stopInterference();
   }, []);
 
   useEffect(() => {
-    if (!start || typeof window === 'undefined') {
+    if (!start || typeof window === 'undefined' || !hasOpenedMessenger) {
       setInterferenceLevel('');
       return undefined;
     }
@@ -248,7 +264,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
       cancelled = true;
       stopInterference();
     };
-  }, [loading, sending, start, typingMessageId]);
+  }, [hasOpenedMessenger, loading, sending, start, typingMessageId]);
 
   useEffect(() => {
     if (!chatEnded || typeof onCurtainDropComplete !== 'function') return undefined;
@@ -287,7 +303,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   }, [apiBaseUrl, sessionId, start]);
 
   useEffect(() => {
-    if (!start || typeof window === 'undefined' || typeof Audio !== 'function') {
+    if (!start || !hasOpenedMessenger || typeof window === 'undefined' || typeof Audio !== 'function') {
       return undefined;
     }
 
@@ -329,7 +345,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
         introAudioTimerRef.current = null;
       }
     };
-  }, [messages, sessionId, start]);
+  }, [hasOpenedMessenger, messages, sessionId, start]);
 
   useEffect(() => {
     const previousIds = new Set(previousMessageIdsRef.current);
@@ -471,6 +487,24 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   const threadStateLabel = chatEnded ? 'Thread sealed' : 'Waiting for your note';
   const transmissionModeLabel = runtime?.mocked || forceMock ? 'Mock transmission' : 'Live transmission';
 
+  const handleOpenMessenger = () => {
+    if (hasOpenedMessenger || isOpeningMessenger || isFlippingMessenger || typeof window === 'undefined') {
+      return;
+    }
+
+    setIsOpeningMessenger(true);
+    introFlipTimerRef.current = window.setTimeout(() => {
+      setIsOpeningMessenger(false);
+      setIsFlippingMessenger(true);
+      introFlipTimerRef.current = null;
+      introFlipCompletionTimerRef.current = window.setTimeout(() => {
+        setIsFlippingMessenger(false);
+        setHasOpenedMessenger(true);
+        introFlipCompletionTimerRef.current = null;
+      }, INTRO_FLIP_DURATION_MS);
+    }, INTRO_FLIP_PRELUDE_MS);
+  };
+
   return (
     <div className={`messangerScene${chatEnded ? ' is-ended' : ''}`}>
       <div className="messangerScene__grain" />
@@ -512,116 +546,134 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
             </div>
 
             <div className={`messangerPhone__screen${interferenceLevel ? ` is-interference-${interferenceLevel}` : ''}`}>
-              <div className="messangerStatusBar">
-                <span className="messangerStatusBar__time">{handsetTime}</span>
-                <div className="messangerStatusBar__icons" aria-hidden="true">
-                  <span className="messangerSignal">
-                    <i />
-                    <i />
-                    <i />
+              <div className={`messangerFlipStage${isOpeningMessenger ? ' is-opening' : ''}${isFlippingMessenger ? ' is-flipping' : ''}${hasOpenedMessenger ? ' is-open' : ''}`}>
+                <button
+                  type="button"
+                  className="messangerIntroFace"
+                  onClick={handleOpenMessenger}
+                  aria-label="Open messenger transmission"
+                  disabled={isOpeningMessenger || isFlippingMessenger || hasOpenedMessenger}
+                >
+                  <span className="messangerIntroFace__frame" aria-hidden="true" />
+                  <img src={INTRO_COVER_SRC} alt="Storyteller Society transmission cover" className="messangerIntroFace__image" />
+                  <span className="messangerIntroFace__caption">
+                    Tap to receive transmission
                   </span>
-                  <span className="messangerBattery">
-                    <b />
-                  </span>
+                </button>
+
+                <div className="messangerChatFace">
+                  <div className="messangerStatusBar">
+                    <span className="messangerStatusBar__time">{handsetTime}</span>
+                    <div className="messangerStatusBar__icons" aria-hidden="true">
+                      <span className="messangerSignal">
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                      <span className="messangerBattery">
+                        <b />
+                      </span>
+                    </div>
+                  </div>
+
+                  <section className="messangerConsole">
+                    <header className="messangerConsole__header">
+                      <div className="messangerConsole__contact">
+                        <div className="messangerAvatar">
+                          <span>SS</span>
+                        </div>
+                        <div className="messangerConsole__titles">
+                          <span className="messangerConsole__eyebrow">Encrypted thread · carrier weak</span>
+                          <h2>Storyteller Society</h2>
+                          <p>{threadStateLabel}</p>
+                        </div>
+                      </div>
+                      <div className="messangerConsole__status">
+                        <span className={`messangerChip${runtime?.mocked || forceMock ? ' is-mock' : ''}`}>
+                          {transmissionModeLabel}
+                        </span>
+                        <span className="messangerChip">{chatEnded ? 'Sealed' : 'Open'}</span>
+                      </div>
+                    </header>
+
+                    <div className="messangerConsole__radioScale" aria-hidden="true">
+                      <span className="messangerConsole__radioScaleDot" />
+                      <span className="messangerConsole__radioScaleNeedle" />
+                    </div>
+
+                    <div className={`messangerThread${interferenceLevel ? ` is-interference-${interferenceLevel}` : ''}`}>
+                      <div className={`messangerThread__interference${interferenceLevel ? ` is-${interferenceLevel}` : ''}`} aria-hidden="true">
+                        <span className="messangerThread__static" />
+                        <span className="messangerThread__scanlines" />
+                        <span className="messangerThread__burst" />
+                        <span className="messangerThread__break messangerThread__break--one" />
+                        <span className="messangerThread__break messangerThread__break--two" />
+                      </div>
+
+                      <div className="messangerThread__datePill">
+                        Dispatch line · {DEFAULT_SCENE_ID}
+                      </div>
+
+                      {loading && (
+                        <div className="messangerBanner">
+                          <LoaderCircle size={16} className="spin" />
+                          <span>Loading conversation from the archive.</span>
+                        </div>
+                      )}
+
+                      {error && (
+                        <div className="messangerBanner is-error">
+                          <AlertCircle size={16} />
+                          <span>{error}</span>
+                        </div>
+                      )}
+
+                      <AnimatePresence initial={false}>
+                        {threadMessages.map((message) => (
+                          <MessageCard key={message.id} message={message} />
+                        ))}
+                      </AnimatePresence>
+
+                      {sending && (
+                        <div className="messangerTyping">
+                          <span />
+                          <span />
+                          <span />
+                        </div>
+                      )}
+
+                      <div ref={threadRef} />
+                    </div>
+
+                    <div className="messangerComposer">
+                      <div className="messangerComposer__field">
+                        <textarea
+                          value={input}
+                          onChange={(event) => setInput(event.target.value)}
+                          placeholder={
+                            sending
+                              ? 'Awaiting the Society...'
+                              : 'Describe the room, the window, the weather, and where the typewriter could vanish if required.'
+                          }
+                          disabled={sending}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' && !event.shiftKey) {
+                              event.preventDefault();
+                              handleSend();
+                            }
+                          }}
+                        />
+                      </div>
+                      <button type="button" onClick={handleSend} disabled={sending || !input.trim()}>
+                        {sending ? <LoaderCircle size={18} className="spin" /> : <Send size={18} />}
+                        <span>Send</span>
+                      </button>
+                    </div>
+                  </section>
+
+                  <div className="messangerPhone__homebar" />
                 </div>
               </div>
-
-              <section className="messangerConsole">
-                <header className="messangerConsole__header">
-                  <div className="messangerConsole__contact">
-                    <div className="messangerAvatar">
-                      <span>SS</span>
-                    </div>
-                    <div className="messangerConsole__titles">
-                      <span className="messangerConsole__eyebrow">Encrypted thread · carrier weak</span>
-                      <h2>Storyteller Society</h2>
-                      <p>{threadStateLabel}</p>
-                    </div>
-                  </div>
-                  <div className="messangerConsole__status">
-                    <span className={`messangerChip${runtime?.mocked || forceMock ? ' is-mock' : ''}`}>
-                      {transmissionModeLabel}
-                    </span>
-                    <span className="messangerChip">{chatEnded ? 'Sealed' : 'Open'}</span>
-                  </div>
-                </header>
-
-                <div className="messangerConsole__radioScale" aria-hidden="true">
-                  <span className="messangerConsole__radioScaleDot" />
-                  <span className="messangerConsole__radioScaleNeedle" />
-                </div>
-
-                <div className={`messangerThread${interferenceLevel ? ` is-interference-${interferenceLevel}` : ''}`}>
-                  <div className={`messangerThread__interference${interferenceLevel ? ` is-${interferenceLevel}` : ''}`} aria-hidden="true">
-                    <span className="messangerThread__static" />
-                    <span className="messangerThread__scanlines" />
-                    <span className="messangerThread__burst" />
-                    <span className="messangerThread__break messangerThread__break--one" />
-                    <span className="messangerThread__break messangerThread__break--two" />
-                  </div>
-
-                  <div className="messangerThread__datePill">
-                    Dispatch line · {DEFAULT_SCENE_ID}
-                  </div>
-
-                  {loading && (
-                    <div className="messangerBanner">
-                      <LoaderCircle size={16} className="spin" />
-                      <span>Loading conversation from the archive.</span>
-                    </div>
-                  )}
-
-                  {error && (
-                    <div className="messangerBanner is-error">
-                      <AlertCircle size={16} />
-                      <span>{error}</span>
-                    </div>
-                  )}
-
-                  <AnimatePresence initial={false}>
-                    {threadMessages.map((message) => (
-                      <MessageCard key={message.id} message={message} />
-                    ))}
-                  </AnimatePresence>
-
-                  {sending && (
-                    <div className="messangerTyping">
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                  )}
-
-                  <div ref={threadRef} />
-                </div>
-
-                <div className="messangerComposer">
-                  <div className="messangerComposer__field">
-                    <textarea
-                      value={input}
-                      onChange={(event) => setInput(event.target.value)}
-                      placeholder={
-                        sending
-                          ? 'Awaiting the Society...'
-                          : 'Describe the room, the window, the weather, and where the typewriter could vanish if required.'
-                      }
-                      disabled={sending}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' && !event.shiftKey) {
-                          event.preventDefault();
-                          handleSend();
-                        }
-                      }}
-                    />
-                  </div>
-                  <button type="button" onClick={handleSend} disabled={sending || !input.trim()}>
-                    {sending ? <LoaderCircle size={18} className="spin" /> : <Send size={18} />}
-                    <span>Send</span>
-                  </button>
-                </div>
-              </section>
-
-              <div className="messangerPhone__homebar" />
             </div>
           </div>
         </div>

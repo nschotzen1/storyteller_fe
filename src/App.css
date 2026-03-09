@@ -7,6 +7,16 @@
   min-height: 100vh;
 }
 
+.typewriterViewShell {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+.typewriterViewShell .curtain-stage {
+  z-index: 1600;
+}
+
 .appViewSwitch {
   position: fixed;
   top: 0.75rem;
@@ -20,6 +30,12 @@
   border: 1px solid rgba(247, 211, 153, 0.42);
   background: rgba(12, 9, 7, 0.77);
   backdrop-filter: blur(7px);
+  transition: opacity 180ms ease;
+}
+
+.appViewSwitch-obscured {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .appViewSwitch button {
