@@ -5,11 +5,12 @@ import Keyboard from './components/typewriter/Keyboard.jsx';
 import PaperDisplay from './components/typewriter/PaperDisplay.jsx';
 import PageNavigation from './components/typewriter/PageNavigation.jsx'; // Import the new PageNavigation component
 import OrreryComponent from './OrreryComponent.jsx';
-import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines, playGhostWriterSound, ambientSoundManager, playPreGhostSound, fetchAndPlayElevenLabsTTS } from './utils.js';
+import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines, playGhostWriterSound, ambientSoundManager, playPreGhostSound, fetchAndPlayElevenLabsTTS, playStorytellerKeyPressSound } from './utils.js';
 import {
   fetchNextFilmImage,
   fetchShouldCreateStorytellerKey,
   fetchShouldGenerateContinuation,
+  fetchStorytellerTypewriterReply,
   fetchTypewriterReply,
   startTypewriterSession
 } from './apiService.js';
@@ -172,6 +173,48 @@ const createInitialStorytellerSlots = () =>
     symbol: '',
     description: ''
   }));
+
+const normalizeStoryEntityKey = (entityKey) => {
+  if (!entityKey || typeof entityKey !== 'object') return null;
+  const entityName = typeof entityKey.entityName === 'string'
+    ? entityKey.entityName.trim()
+    : typeof entityKey.name === 'string'
+      ? entityKey.name.trim()
+      : '';
+  const keyText = typeof entityKey.keyText === 'string'
+    ? entityKey.keyText.trim()
+    : typeof entityKey.typewriterKeyText === 'string'
+      ? entityKey.typewriterKeyText.trim()
+      : '';
+  const id = typeof entityKey.id === 'string'
+    ? entityKey.id.trim()
+    : typeof entityKey._id === 'string'
+      ? entityKey._id.trim()
+      : '';
+  if (!entityName && !keyText && !id) return null;
+  return {
+    id,
+    entityName: entityName || keyText || 'Unnamed entity',
+    keyText: keyText || entityName || 'Hidden Omen',
+    summary: typeof entityKey.summary === 'string' ? entityKey.summary.trim() : '',
+    storytellerId: typeof entityKey.storytellerId === 'string' ? entityKey.storytellerId.trim() : '',
+    storytellerName: typeof entityKey.storytellerName === 'string' ? entityKey.storytellerName.trim() : '',
+  };
+};
+
+const mergeStoryEntityKeys = (currentKeys = [], incomingKeys = []) => {
+  const merged = [];
+  const seen = new Set();
+  [...incomingKeys, ...currentKeys].forEach((candidate) => {
+    const normalized = normalizeStoryEntityKey(candidate);
+    if (!normalized) return;
+    const identity = normalized.id || `${normalized.keyText}::${normalized.entityName}`;
+    if (seen.has(identity)) return;
+    seen.add(identity);
+    merged.push(normalized);
+  });
+  return merged.slice(0, 6);
+};
 
 const countWordsInNarrative = (text = '') => {
   if (typeof text !== 'string') return 0;
@@ -483,13 +526,133 @@ function typingReducer(state, action) {
   }
 }
 
+const TYPEWRITER_MAX_FONT_COLOR_LUMINANCE = 0.24;
+const TYPEWRITER_FONT_COLOR_FALLBACK = '#2a120f';
+const TYPEWRITER_FONT_COLOR_KEYWORD_MAP = [
+  { keywords: ['red', 'crimson', 'scarlet', 'ember', 'rust', 'wine', 'oxblood', 'garnet'], color: '#5a1f17' },
+  { keywords: ['blue', 'azure', 'indigo', 'navy', 'storm', 'sea', 'cobalt'], color: '#1f3558' },
+  { keywords: ['green', 'moss', 'verdigris', 'jade', 'pine', 'forest'], color: '#253f33' },
+  { keywords: ['violet', 'plum', 'amethyst', 'mulberry'], color: '#43233d' },
+  { keywords: ['brown', 'sepia', 'umber', 'bronze', 'copper', 'sienna'], color: '#4a2d1f' },
+  { keywords: ['black', 'obsidian', 'ink', 'graphite', 'charcoal', 'ash', 'gray', 'grey', 'silver', 'iron'], color: '#2b2421' },
+];
+
+const expandHexColor = (value) => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  const shortMatch = trimmed.match(/^#([0-9a-f]{3})$/i);
+  if (shortMatch) {
+    return `#${shortMatch[1].split('').map((char) => `${char}${char}`).join('').toLowerCase()}`;
+  }
+  const longMatch = trimmed.match(/^#([0-9a-f]{6})$/i);
+  if (longMatch) {
+    return `#${longMatch[1].toLowerCase()}`;
+  }
+  return null;
+};
+
+const parseHexColor = (value) => {
+  const expanded = expandHexColor(value);
+  if (!expanded) return null;
+  return {
+    r: Number.parseInt(expanded.slice(1, 3), 16),
+    g: Number.parseInt(expanded.slice(3, 5), 16),
+    b: Number.parseInt(expanded.slice(5, 7), 16),
+  };
+};
+
+const toHexColor = ({ r, g, b }) =>
+  `#${[r, g, b]
+    .map((channel) => Math.max(0, Math.min(255, Math.round(channel))).toString(16).padStart(2, '0'))
+    .join('')}`;
+
+const getRelativeLuminance = ({ r, g, b }) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+
+const darkenColorForTypewriter = (rgb) => {
+  const luminance = getRelativeLuminance(rgb);
+  if (luminance <= TYPEWRITER_MAX_FONT_COLOR_LUMINANCE) {
+    return rgb;
+  }
+  const scale = TYPEWRITER_MAX_FONT_COLOR_LUMINANCE / luminance;
+  return {
+    r: Math.max(12, Math.round(rgb.r * scale)),
+    g: Math.max(12, Math.round(rgb.g * scale)),
+    b: Math.max(12, Math.round(rgb.b * scale)),
+  };
+};
+
+const pickTypewriterKeywordColor = (value) => {
+  const lowered = `${value || ''}`.trim().toLowerCase();
+  if (!lowered) return null;
+  const match = TYPEWRITER_FONT_COLOR_KEYWORD_MAP.find((entry) =>
+    entry.keywords.some((keyword) => lowered.includes(keyword))
+  );
+  return match?.color || null;
+};
+
+export const sanitizeTypewriterFontColor = (fontColor) => {
+  if (typeof fontColor !== 'string' || !fontColor.trim()) {
+    return TYPEWRITER_FONT_COLOR_FALLBACK;
+  }
+  const normalizedRaw = fontColor.trim().toLowerCase();
+  const expanded = expandHexColor(fontColor);
+  const parsed = parseHexColor(fontColor);
+  if (parsed) {
+    const darkenedHex = toHexColor(darkenColorForTypewriter(parsed));
+    return darkenedHex === expanded ? normalizedRaw : darkenedHex;
+  }
+  const keywordMatch = pickTypewriterKeywordColor(fontColor);
+  if (keywordMatch) {
+    return keywordMatch;
+  }
+  return TYPEWRITER_FONT_COLOR_FALLBACK;
+};
+
 export const normalizeFontMetadata = (metadata) => {
   if (!metadata || typeof metadata !== 'object') return null;
   const font = metadata.font || metadata.fontName || metadata.font_family || metadata.fontFamily;
   const font_size = metadata.font_size || metadata.fontSize || metadata.size;
   const font_color = metadata.font_color || metadata.fontColor || metadata.color;
   if (!font && !font_size && !font_color) return null;
-  return { font, font_size, font_color };
+  return {
+    font,
+    font_size,
+    font_color: sanitizeTypewriterFontColor(font_color)
+  };
+};
+
+const mergeFontMetadata = (baseMetadata, overrideMetadata) => {
+  const base = normalizeFontMetadata(baseMetadata);
+  const override = normalizeFontMetadata(overrideMetadata);
+  if (!base && !override) return null;
+  return {
+    font: override?.font || base?.font || '',
+    font_size: override?.font_size || base?.font_size || '',
+    font_color: override?.font_color || base?.font_color || '',
+  };
+};
+
+const getFirstSequenceStyle = (sequence = []) => {
+  if (!Array.isArray(sequence)) return null;
+  for (const step of sequence) {
+    const style = normalizeFontMetadata(step?.style);
+    if (style) return style;
+  }
+  return null;
+};
+
+const getStorytellerSlotDebugState = (slot) => {
+  const slotLabel = `Slot ${Number.isInteger(slot?.slotIndex) ? slot.slotIndex + 1 : '?'}`;
+  if (!slot?.filled || !slot?.keyImageUrl) {
+    return { label: slotLabel, status: 'empty', storytellerName: '' };
+  }
+  const isMock = typeof slot.keyImageUrl === 'string'
+    && slot.keyImageUrl.includes('/assets/mocks/storyteller_keys/');
+  return {
+    label: slotLabel,
+    status: isMock ? 'mock' : 'live',
+    storytellerName: slot.storytellerName || ''
+  };
 };
 
 export const normalizeTypewriterReply = (reply) => {
@@ -510,6 +673,7 @@ export const normalizeTypewriterReply = (reply) => {
     if (!type) return acc;
 
     const delay = Number.isFinite(action.delay) ? action.delay : 0;
+    const normalizedActionStyle = normalizeFontMetadata(action.style || action.metadata || action.meta);
 
     if (type === 'type') {
       const text = typeof action.text === 'string'
@@ -519,7 +683,7 @@ export const normalizeTypewriterReply = (reply) => {
           : typeof action.to_text === 'string'
             ? action.to_text
             : '';
-      acc.push({ action: 'type', text, style: action.style, delay });
+      acc.push({ action: 'type', text, style: normalizedActionStyle, delay });
       return acc;
     }
 
@@ -551,7 +715,7 @@ export const normalizeTypewriterReply = (reply) => {
       );
       fadePhaseCounter += 1;
       sawFade = true;
-      acc.push({ action: 'fade', to_text, phase, style: action.style, delay, leadDelay });
+      acc.push({ action: 'fade', to_text, phase, style: normalizedActionStyle, delay, leadDelay });
       return acc;
     }
 
@@ -620,7 +784,7 @@ const normalizeEntityInsights = (value) => {
     .filter(Boolean);
 };
 
-export const normalizeContinuationInsights = (reply) => {
+export const normalizeContinuationInsights = (reply, fallbackStyle = null) => {
   if (!reply || typeof reply !== 'object') return null;
   const source = reply.continuation_insights && typeof reply.continuation_insights === 'object'
     ? reply.continuation_insights
@@ -633,7 +797,7 @@ export const normalizeContinuationInsights = (reply) => {
   const storytellingPool = toFiniteNumber(source.current_storytelling_points_pool);
   const pointsEarned = toFiniteNumber(source.points_earned);
   const entities = normalizeEntityInsights(source.Entities || source.entities);
-  const style = normalizeFontMetadata(source.style || source.metadata);
+  const style = normalizeFontMetadata(source.style || source.metadata || fallbackStyle);
   const hasContent = Boolean(
     meaning.length
     || contextualStrengthening
@@ -750,6 +914,8 @@ const TypewriterFramework = (props) => {
   // --- Other State ---
   const [keyTextures, setKeyTextures] = useState(() => keys.map(getInitialKeyTexture));
   const [storytellerSlots, setStorytellerSlots] = useState(() => createInitialStorytellerSlots());
+  const [storyEntityKeys, setStoryEntityKeys] = useState([]);
+  const [activeStorytellerPress, setActiveStorytellerPress] = useState(null);
   const [ghostPressedKey, setGhostPressedKey] = useState(null);
   const [preGhostAtmosphere, setPreGhostAtmosphere] = useState(false);
   // lastUserInputTime, responseQueued, lastGeneratedLength are now in ghostwriterState
@@ -774,6 +940,7 @@ const TypewriterFramework = (props) => {
   const storytellerCheckInFlightRef = useRef(false);
   const storytellerInitialSyncSessionRef = useRef('');
   const lastStorytellerCheckIntervalRef = useRef(-1);
+  const wasProcessingSequenceRef = useRef(false);
 
   const [sessionId, setSessionId] = useState(() => readStoredSessionId());
   const [isFreshSession, setIsFreshSession] = useState(false);
@@ -815,6 +982,9 @@ const TypewriterFramework = (props) => {
         type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH,
         payload: data.fragment.length
       });
+      if (Array.isArray(data?.entityKeys)) {
+        setStoryEntityKeys(mergeStoryEntityKeys([], data.entityKeys));
+      }
       setIsSessionReady(true);
     };
 
@@ -858,6 +1028,8 @@ const TypewriterFramework = (props) => {
     storytellerCheckInFlightRef.current = false;
     lastStorytellerCheckIntervalRef.current = -1;
     setStorytellerSlots(createInitialStorytellerSlots());
+    setStoryEntityKeys([]);
+    setActiveStorytellerPress(null);
     setKeyTextures(keys.map(getInitialKeyTexture));
   }, [sessionId]);
 
@@ -882,6 +1054,9 @@ const TypewriterFramework = (props) => {
           return nextSlot ? { ...slot, ...nextSlot } : slot;
         })
       );
+      if (Array.isArray(data.entityKeys)) {
+        setStoryEntityKeys((prev) => mergeStoryEntityKeys(prev, data.entityKeys));
+      }
       lastStorytellerCheckIntervalRef.current = Math.max(
         lastStorytellerCheckIntervalRef.current,
         Number.isInteger(wordIntervalIndex) ? wordIntervalIndex : 0
@@ -937,7 +1112,7 @@ const TypewriterFramework = (props) => {
     return () => window.clearTimeout(timeoutId);
   }, [isSessionReady, pageText, sessionId]);
 
-  const applyTypewriterReply = useCallback((reply, fullText) => {
+  const applyTypewriterReply = useCallback((reply, fullText, options = {}) => {
     if (isProcessingSequenceRef.current) {
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
       return false;
@@ -949,10 +1124,13 @@ const TypewriterFramework = (props) => {
       return false;
     }
 
-    if (metadata) {
-      setCurrentFontStyles(metadata);
+    const resolvedSequenceStyle = getFirstSequenceStyle(sequence);
+    const resolvedStyle = mergeFontMetadata(metadata, resolvedSequenceStyle);
+
+    if (resolvedStyle) {
+      setCurrentFontStyles(resolvedStyle);
     }
-    setLastContinuationInsights(normalizeContinuationInsights(reply));
+    setLastContinuationInsights(normalizeContinuationInsights(reply, resolvedStyle));
     const continuationTiming = normalizeContinuationTiming(reply);
     const visualFadeDurationMs = Number.isFinite(continuationTiming?.fade_interval_ms)
       ? Math.max(350, Math.round(continuationTiming.fade_interval_ms * debugSettings.fadeVisualScale))
@@ -978,6 +1156,9 @@ const TypewriterFramework = (props) => {
     const delay = import.meta.env.MODE === 'test' ? 1 : 1500;
     setTimeout(() => {
       setPreGhostAtmosphere(false);
+      if (typeof options?.onSequenceStart === 'function') {
+        options.onSequenceStart();
+      }
       dispatchTyping({ type: typingActionTypes.START_NEW_SEQUENCE, payload: sequence });
     }, delay);
 
@@ -987,6 +1168,14 @@ const TypewriterFramework = (props) => {
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
     return true;
   }, [dispatchTyping, dispatchGhostwriter, setCurrentFontStyles, debugSettings.fadeVisualScale]);
+
+  useEffect(() => {
+    const wasProcessingSequence = wasProcessingSequenceRef.current;
+    if (activeStorytellerPress && wasProcessingSequence && !typingState.isProcessingSequence) {
+      setActiveStorytellerPress(null);
+    }
+    wasProcessingSequenceRef.current = typingState.isProcessingSequence;
+  }, [typingState.isProcessingSequence, activeStorytellerPress]);
 
   const ensureAmbientStarted = useCallback(() => {
     if (ambientStartedRef.current) return;
@@ -1337,6 +1526,9 @@ const TypewriterFramework = (props) => {
           return updatedPages;
         });
       }
+      if (activeStorytellerPress) {
+        setActiveStorytellerPress(null);
+      }
       dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
@@ -1349,6 +1541,11 @@ const TypewriterFramework = (props) => {
     const currentAction = typingState.actionSequence[typingState.currentActionIndex];
     const basePageText = String(pageText || '');
     const existingGhostText = toGhostString(typingState.currentGhostText);
+    const currentActionStyle = normalizeFontMetadata(currentAction?.style);
+
+    if (currentActionStyle) {
+      setCurrentFontStyles((previous) => mergeFontMetadata(previous, currentActionStyle));
+    }
 
     switch (currentAction.action) {
       case 'type': {
@@ -1476,6 +1673,7 @@ const TypewriterFramework = (props) => {
     typingState.actionSequence,
     typingState.currentActionIndex,
     typingState.sequenceUserText,
+    activeStorytellerPress,
     dispatchTyping,
     dispatchGhostwriter,
     pageText,
@@ -1613,6 +1811,7 @@ const TypewriterFramework = (props) => {
     }
 
     dispatchTyping({ type: typingActionTypes.CANCEL_SEQUENCE });
+    setActiveStorytellerPress(null);
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: pageText.length + frozenText.length });
@@ -1625,6 +1824,7 @@ const TypewriterFramework = (props) => {
     currentPage,
     pageText,
     setPages,
+    setActiveStorytellerPress,
     dispatchTyping,
     dispatchGhostwriter
   ]);
@@ -1694,6 +1894,54 @@ const TypewriterFramework = (props) => {
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
     playKeySound();
   };
+
+  const handleStorytellerPress = async (slot) => {
+    if (!slot?.filled || !sessionId || !typingState.typingAllowed) return;
+    ensureAmbientStarted();
+    setActiveStorytellerPress({ slotKey: slot.slotKey });
+    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: true });
+    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
+    dispatchGhostwriter({
+      type: ghostwriterActionTypes.SET_AWAITING_USER_INPUT_AFTER_SEQUENCE,
+      payload: false
+    });
+    playStorytellerKeyPressSound();
+
+    try {
+      const response = await fetchStorytellerTypewriterReply(sessionId, slot.storytellerId, {
+        slotIndex: slot.slotIndex,
+        fadeTimingScale: debugSettings.fadeTimingScale
+      });
+      if (response?.error || !response?.data) {
+        setActiveStorytellerPress(null);
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+        return;
+      }
+
+      if (Array.isArray(response.data.entityKeys)) {
+        setStoryEntityKeys((prev) => mergeStoryEntityKeys(prev, response.data.entityKeys));
+      } else if (response.data.entityKey) {
+        setStoryEntityKeys((prev) => mergeStoryEntityKeys(prev, [response.data.entityKey]));
+      }
+
+      const sequenceStarted = applyTypewriterReply(response.data, pageText);
+
+      if (!sequenceStarted) {
+        setActiveStorytellerPress(null);
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
+        dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+      }
+    } catch (error) {
+      console.error('Error triggering storyteller intervention:', error);
+      setActiveStorytellerPress(null);
+      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
+      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+    }
+  };
+
+  const debugGhostStyle = mergeFontMetadata(lastContinuationInsights?.style, currentFontStyles);
+  const storytellerSlotDebugStates = storytellerSlots.map((slot) => getStorytellerSlotDebugState(slot));
 
   // --- RENDER ---
   return (
@@ -1803,11 +2051,20 @@ const TypewriterFramework = (props) => {
             />
             <span>x{Number(debugSettings.fadeVisualScale).toFixed(2)}</span>
           </label>
-          {debugSettings.showTimingDetails && lastContinuationTiming ? (
+          {debugSettings.showTimingDetails || storytellerSlotDebugStates.length ? (
             <div className="typewriter-debug-runtime">
-              <span>Last fade interval {formatTimingWithMs(lastContinuationTiming.fade_interval_ms) || 'n/a'}</span>
-              <span>Last visual fade {formatTimingWithMs(lastContinuationTiming.visual_fade_duration_ms) || 'n/a'}</span>
-              <span>Last total fade {formatTimingWithMs(lastContinuationTiming.estimated_total_duration_ms) || 'n/a'}</span>
+              {debugSettings.showTimingDetails && lastContinuationTiming ? (
+                <>
+                  <span>Last fade interval {formatTimingWithMs(lastContinuationTiming.fade_interval_ms) || 'n/a'}</span>
+                  <span>Last visual fade {formatTimingWithMs(lastContinuationTiming.visual_fade_duration_ms) || 'n/a'}</span>
+                  <span>Last total fade {formatTimingWithMs(lastContinuationTiming.estimated_total_duration_ms) || 'n/a'}</span>
+                </>
+              ) : null}
+              {storytellerSlotDebugStates.map((slotState) => (
+                <span key={`${slotState.label}-${slotState.status}`}>
+                  {slotState.label} {slotState.status}{slotState.storytellerName ? ` (${slotState.storytellerName})` : ''}
+                </span>
+              ))}
             </div>
           ) : null}
         </div>
@@ -1840,6 +2097,15 @@ const TypewriterFramework = (props) => {
               <span>
                 Delta {lastContinuationInsights.points_earned >= 0 ? `+${lastContinuationInsights.points_earned}` : lastContinuationInsights.points_earned}
               </span>
+            ) : null}
+            {debugGhostStyle?.font ? (
+              <span>Font {debugGhostStyle.font}</span>
+            ) : null}
+            {debugGhostStyle?.font_size ? (
+              <span>Size {debugGhostStyle.font_size}</span>
+            ) : null}
+            {debugGhostStyle?.font_color ? (
+              <span>Color {debugGhostStyle.font_color}</span>
             ) : null}
             {lastContinuationInsights.entities.length ? (
               <span>Entities {lastContinuationInsights.entities.length}</span>
@@ -1931,14 +2197,31 @@ const TypewriterFramework = (props) => {
         />
       </div>
 
+      {storyEntityKeys.length > 0 ? (
+        <div className="story-entity-key-rail" aria-label="Story entities">
+          {storyEntityKeys.map((entityKey, index) => (
+            <div
+              key={entityKey.id || `${entityKey.keyText}-${index}`}
+              className="story-entity-key-chip"
+              title={entityKey.summary || entityKey.entityName}
+            >
+              <span className="story-entity-key-label">{entityKey.keyText}</span>
+              <span className="story-entity-key-name">{entityKey.entityName}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <Keyboard
         keys={keys}
         keyTextures={displayedKeyTextures}
         storytellerSlots={storytellerSlots}
         lastPressedKey={lastPressedKey}
+        pressedStorytellerKey={activeStorytellerPress?.slotKey || null}
         ghostPressedKey={ghostPressedKey}
         typingAllowed={typingAllowed}
         onKeyPress={handleRegularKeyPress}
+        onStorytellerPress={handleStorytellerPress}
         onXerofagPress={handleXerofagKeyPress}
         onSpacebarPress={handleSpacebarPress}
         playEndOfPageSound={playEndOfPageSound} // Pass the function directly

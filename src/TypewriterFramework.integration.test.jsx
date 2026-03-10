@@ -5,13 +5,16 @@ import TypewriterFramework, {
   FIRST_FADE_HANDOFF_DELAY,
   MAX_LINES,
   normalizeContinuationInsights,
+  normalizeFontMetadata,
   normalizeTypewriterReply,
+  sanitizeTypewriterFontColor,
 } from './TypewriterFramework';
 import '@testing-library/jest-dom';
 
 vi.mock('./apiService', () => ({
   fetchNextFilmImage: vi.fn(),
   fetchShouldCreateStorytellerKey: vi.fn(),
+  fetchStorytellerTypewriterReply: vi.fn(),
   fetchTypewriterReply: vi.fn().mockResolvedValue({ data: { content: 'mock AI reply' }, error: null }),
   fetchShouldGenerateContinuation: vi.fn().mockResolvedValue({ shouldGenerate: false }),
   startTypewriterSession: vi.fn().mockResolvedValue({ data: { sessionId: 'test-session-id-123' }, error: null }),
@@ -26,12 +29,14 @@ vi.mock('./utils', async () => {
     playXerofagHowl: vi.fn(),
     playEndOfPageSound: vi.fn(),
     playGhostWriterSound: vi.fn(),
+    playStorytellerKeyPressSound: vi.fn(),
   };
 });
 
 import {
   fetchNextFilmImage,
   fetchShouldCreateStorytellerKey,
+  fetchStorytellerTypewriterReply,
   fetchTypewriterReply,
   fetchShouldGenerateContinuation,
   startTypewriterSession,
@@ -128,9 +133,10 @@ describe('TypewriterFramework integration', () => {
     localStorageMock.setItem('sessionId', 'test-session-id-123');
     fetchNextFilmImage.mockResolvedValue({ data: { image_url: 'default_mock_image.png' }, error: null });
     fetchShouldCreateStorytellerKey.mockResolvedValue({
-      data: { slots: buildStorytellerSlotPayload() },
+      data: { slots: buildStorytellerSlotPayload(), entityKeys: [] },
       error: null
     });
+    fetchStorytellerTypewriterReply.mockResolvedValue({ data: { sequence: [] }, error: null });
     fetchTypewriterReply.mockResolvedValue({ data: { sequence: [] }, error: null });
     startTypewriterSession.mockResolvedValue({ data: { sessionId: 'test-session-id-123' }, error: null });
   });
@@ -253,6 +259,7 @@ describe('TypewriterFramework integration', () => {
             description: 'Weathered brass and smoky enamel.',
           },
         }),
+        entityKeys: [],
       },
       error: null
     });
@@ -279,13 +286,103 @@ describe('TypewriterFramework integration', () => {
       'src',
       '/textures/keys/blank_rect_horizontal_1.png'
     );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Debug' }));
+    expect(screen.getByText('Slot 1 live (Aster Vell)')).toBeInTheDocument();
+  });
+
+  test('pressing a filled storyteller key keeps it held during intervention and reveals an entity key', async () => {
+    fetchShouldCreateStorytellerKey.mockResolvedValue({
+      data: {
+        slots: buildStorytellerSlotPayload({
+          0: {
+            filled: true,
+            storytellerId: 'storyteller-1',
+            storytellerName: 'Aster Vell',
+            keyImageUrl: 'http://localhost:5001/assets/demo/aster_vell_key.png',
+            symbol: 'ink moth',
+            description: 'Weathered brass and smoky enamel.',
+          },
+        }),
+        entityKeys: [],
+      },
+      error: null
+    });
+    fetchStorytellerTypewriterReply.mockResolvedValue({
+      data: {
+        sequence: [
+          { action: 'type', text: 'OK', delay: 0 },
+          { action: 'pause', delay: 10 },
+          { action: 'fade', to_text: '', phase: 1, delay: 10, start_delay: 0 },
+        ],
+        entityKey: {
+          id: 'entity-1',
+          entityName: 'Buraha Light-Wake',
+          keyText: 'Buraha Light',
+          summary: 'A slow intelligence hiding inside the sea-lights.',
+          storytellerId: 'storyteller-1',
+          storytellerName: 'Aster Vell',
+        },
+        entityKeys: [
+          {
+            id: 'entity-1',
+            entityName: 'Buraha Light-Wake',
+            keyText: 'Buraha Light',
+            summary: 'A slow intelligence hiding inside the sea-lights.',
+            storytellerId: 'storyteller-1',
+            storytellerName: 'Aster Vell',
+          },
+        ],
+      },
+      error: null,
+    });
+
+    render(<TypewriterFramework />);
+
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByAltText('Storyteller key Aster Vell')).toBeInTheDocument();
+    });
+
+    const storytellerKey = screen.getByAltText('Storyteller key Aster Vell').closest('.typewriter-key-wrapper');
+    fireEvent.click(storytellerKey);
+
+    expect(fetchStorytellerTypewriterReply).toHaveBeenCalledWith(
+      'test-session-id-123',
+      'storyteller-1',
+      expect.objectContaining({
+        slotIndex: 0,
+      })
+    );
+    expect(storytellerKey).toHaveClass('storyteller-key-held');
+
+    await waitFor(() => {
+      expect(screen.getByText('Buraha Light')).toBeInTheDocument();
+      expect(screen.getByText('Buraha Light-Wake')).toBeInTheDocument();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(5200);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByAltText('Storyteller key Aster Vell').closest('.typewriter-key-wrapper')).not.toHaveClass('storyteller-key-held');
+    });
   });
 
   test('normalizes mock and non-mock reply schemas into a single sequence', () => {
     const mockStyle = normalizeTypewriterReply({
       metadata: { fontName: 'Test Font', fontSize: '1rem', fontColor: '#111' },
       writing_sequence: [
-        { action: 'type', continuation: 'hello', delay: 0 },
+        {
+          action: 'type',
+          continuation: 'hello',
+          delay: 0,
+          style: { fontName: 'Step Font', fontSize: '33px', fontColor: '#222' },
+        },
         { action: 'pause', delay: 20 },
       ],
       fade_sequence: [
@@ -300,6 +397,11 @@ describe('TypewriterFramework integration', () => {
     });
     expect(mockStyle.sequence.map((s) => s.action)).toEqual(['type', 'pause', 'fade']);
     expect(mockStyle.sequence[0].text).toBe('hello');
+    expect(mockStyle.sequence[0].style).toEqual({
+      font: 'Step Font',
+      font_size: '33px',
+      font_color: '#222',
+    });
     expect(mockStyle.sequence[2].to_text).toBe('short');
 
     const nonMockStyle = normalizeTypewriterReply({
@@ -318,6 +420,68 @@ describe('TypewriterFramework integration', () => {
     });
     expect(nonMockStyle.sequence.map((s) => s.action)).toEqual(['type', 'delete', 'fade']);
     expect(nonMockStyle.sequence[0].text).toBe('abc');
+  });
+
+  test('sanitizes storyteller font colors into dark readable tones', () => {
+    expect(sanitizeTypewriterFontColor('#ffffff')).toBe('#3d3d3d');
+    expect(sanitizeTypewriterFontColor('deep azure')).toBe('#1f3558');
+    expect(normalizeFontMetadata({ fontName: 'Test Font', fontColor: 'crimson mist' })).toEqual({
+      font: 'Test Font',
+      font_size: undefined,
+      font_color: '#5a1f17',
+    });
+  });
+
+  test('applies per-step ghost style metadata and shows it in the ghostwrite debug panel', async () => {
+    fetchShouldGenerateContinuation.mockResolvedValue({ shouldGenerate: true });
+    fetchTypewriterReply.mockResolvedValue({
+      data: {
+        sequence: [
+          {
+            action: 'type',
+            text: 'Ghost',
+            delay: 0,
+            style: { fontName: 'IM Fell English', fontSize: '31px', fontColor: '#654321' },
+          },
+          { action: 'pause', delay: 10 },
+          {
+            action: 'fade',
+            to_text: 'Gh',
+            phase: 1,
+            delay: 600,
+            style: { fontName: 'IM Fell English', fontSize: '31px', fontColor: '#654321' },
+          },
+        ],
+      },
+      error: null,
+    });
+
+    const { container } = render(<TypewriterFramework />);
+
+    clickKey('H');
+    clickKey('I');
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(2100);
+    });
+
+    const ghostAppeared = await advanceUntil(() => container.querySelector('.ghost-char') !== null, 4000);
+    expect(ghostAppeared).toBe(true);
+
+    await waitFor(() => {
+      const ghostGlyph = container.querySelector('.ghost-char');
+      expect(ghostGlyph).not.toBeNull();
+      expect(ghostGlyph.style.fontFamily).toContain('IM Fell English');
+      expect(ghostGlyph.style.fontSize).toBe('31px');
+      expect(ghostGlyph.style.color).toBe('rgb(86, 57, 28)');
+    });
+
+    expect(screen.getByText('Font IM Fell English')).toBeInTheDocument();
+    expect(screen.getByText('Size 31px')).toBeInTheDocument();
+    expect(screen.getByText('Color #56391c')).toBeInTheDocument();
   });
 
   test('normalizes continuation insights payload including Entities array', () => {

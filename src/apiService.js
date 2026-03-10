@@ -85,21 +85,36 @@ export const fetchTypewriterReply = async (text, sessionId, options = {}) => {
 // Use axios or fetch—here’s a fetch version for clarity:
 export async function fetchShouldGenerateContinuation(currentText, latestAddition, latestPauseSeconds, lastGhostwriterWordCount) {
   if (!latestAddition) {
-    return { data: { shouldGenerate: false }, error: null };
+    return { shouldGenerate: false };
   }
-  const res = await fetch(`${SERVER}/api/shouldGenerateContinuation`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      currentText,
-      latestAddition,
-      latestPauseSeconds,
-      lastGhostwriterWordCount, // new field!
-    }),
-  });
-  return await res.json();
+  try {
+    const res = await fetch(`${SERVER}/api/shouldGenerateContinuation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        currentText,
+        latestAddition,
+        latestPauseSeconds,
+        lastGhostwriterWordCount, // new field!
+      }),
+    });
+    if (!res.ok) {
+      console.error(`API error in fetchShouldGenerateContinuation: ${res.status} ${res.statusText}`);
+      return {
+        shouldGenerate: false,
+        error: { message: `API error: ${res.status} ${res.statusText}`, status: res.status }
+      };
+    }
+    return await res.json();
+  } catch (error) {
+    console.error('Network error fetching shouldGenerateContinuation:', error);
+    return {
+      shouldGenerate: false,
+      error: { message: error.message }
+    };
+  }
 }
 
 export const fetchShouldCreateStorytellerKey = async (sessionId, options = {}) => {
@@ -130,6 +145,47 @@ export const fetchShouldCreateStorytellerKey = async (sessionId, options = {}) =
     return { data, error: null };
   } catch (error) {
     console.error('Network error fetching storyteller key state:', error);
+    return { data: null, error: { message: error.message } };
+  }
+};
+
+export const fetchStorytellerTypewriterReply = async (sessionId, storytellerId, options = {}) => {
+  if (!sessionId || (!storytellerId && !Number.isInteger(options?.slotIndex))) {
+    return { data: null, error: { message: 'Missing sessionId and storytellerId or slotIndex' } };
+  }
+  try {
+    const payload = { sessionId };
+    if (storytellerId) {
+      payload.storytellerId = storytellerId;
+    }
+    if (Number.isInteger(options?.slotIndex)) {
+      payload.slotIndex = options.slotIndex;
+    }
+    if (options?.playerId) {
+      payload.playerId = options.playerId;
+    }
+    if (Number.isFinite(options?.fadeTimingScale)) {
+      payload.fadeTimingScale = options.fadeTimingScale;
+    }
+    if (options?.mocked_api_calls !== undefined) {
+      payload.mocked_api_calls = options.mocked_api_calls;
+    }
+    const response = await fetch(`${SERVER}/api/send_storyteller_typewriter_text`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      console.error(`API error in fetchStorytellerTypewriterReply: ${response.status} ${response.statusText}`);
+      return {
+        data: null,
+        error: { message: `API error: ${response.status} ${response.statusText}`, status: response.status }
+      };
+    }
+    const data = await response.json();
+    return { data, error: null };
+  } catch (error) {
+    console.error('Network error fetching storyteller typewriter reply:', error);
     return { data: null, error: { message: error.message } };
   }
 };

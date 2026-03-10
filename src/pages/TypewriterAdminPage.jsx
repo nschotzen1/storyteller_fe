@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_API_BASE_URL,
   loadLlmRouteConfigs,
@@ -22,7 +22,9 @@ import './TypewriterAdminPage.css';
 const TYPEWRITER_ADMIN_API_BASE_STORAGE_KEY = 'typewriterAdminApiBaseUrl';
 const TYPEWRITER_ADMIN_KEY_STORAGE_KEY = 'typewriterAdminApiKey';
 const TYPEWRITER_SESSION_STORAGE_KEY = 'sessionId';
+const IMMERSIVE_RPG_PLAYER_NAME_STORAGE_KEY = 'immersiveRpgPlayerName';
 const MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY = 'memorySpreadAdminMode';
+const STORY_ADMIN_SECTION_STORAGE_KEY = 'storyAdminSection';
 const DEFAULT_SESSION_SEED_FRAGMENT =
   'At dusk the courier reached the wind-scoured pass below a rusted watchtower, carrying a rain-dark satchel sealed with ash. No one answered the signal bell, but boot prints ringed the threshold and vanished into the shale. When the courier touched the gate, a hidden mechanism groaned awake beneath the stone.';
 const EMPTY_MODELS_PAYLOAD = {
@@ -51,6 +53,14 @@ const SETTING_PIPELINES = [
     key: 'messenger_chat',
     label: 'Messenger chat',
     description: '/api/messenger/chat',
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
+  },
+  {
+    key: 'immersive_rpg_gm',
+    label: 'Immersive RPG GM',
+    description: '/api/immersive-rpg/chat',
     modelKind: 'text',
     supportedProviders: ['openai', 'anthropic'],
     defaultProvider: 'openai'
@@ -96,6 +106,14 @@ const SETTING_PIPELINES = [
     minCount: 1,
     maxCount: 10,
     defaultCount: 4
+  },
+  {
+    key: 'storyteller_intervention',
+    label: 'Storyteller intervention',
+    description: '/api/send_storyteller_typewriter_text',
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
   },
   {
     key: 'storyteller_mission',
@@ -145,6 +163,12 @@ const PROMPT_PIPELINES = [
     settingsKey: 'messenger_chat'
   },
   {
+    key: 'immersive_rpg_gm',
+    label: 'Immersive RPG GM',
+    description: '/api/immersive-rpg/chat GM orchestration prompt',
+    settingsKey: 'immersive_rpg_gm'
+  },
+  {
     key: 'memory_creation',
     label: 'Memory creation',
     description: '/api/fragmentToMemories memory extraction',
@@ -187,6 +211,12 @@ const PROMPT_PIPELINES = [
     settingsKey: 'storyteller_creation'
   },
   {
+    key: 'storyteller_intervention',
+    label: 'Storyteller intervention',
+    description: '/api/send_storyteller_typewriter_text storyteller entrance continuation',
+    settingsKey: 'storyteller_intervention'
+  },
+  {
     key: 'storyteller_mission',
     label: 'Storyteller mission',
     description: '/api/sendStorytellerToEntity mission evaluation',
@@ -212,6 +242,13 @@ const PROMPT_PIPELINES = [
   }
 ];
 
+const ADMIN_SECTIONS = [
+  { key: 'runtime', label: 'Runtime' },
+  { key: 'session', label: 'Session' },
+  { key: 'prompts', label: 'Prompt Templates' },
+  { key: 'contracts', label: 'JSON Contracts' }
+];
+
 const getInitialApiBaseUrl = () => {
   if (typeof window === 'undefined') return DEFAULT_API_BASE_URL;
   const stored = window.localStorage.getItem(TYPEWRITER_ADMIN_API_BASE_STORAGE_KEY);
@@ -230,11 +267,23 @@ const getInitialStoredSessionId = () => {
   return stored && stored.trim() ? stored.trim() : '';
 };
 
+const getInitialStoredPlayerName = () => {
+  if (typeof window === 'undefined') return '';
+  const stored = window.localStorage.getItem(IMMERSIVE_RPG_PLAYER_NAME_STORAGE_KEY);
+  return stored && stored.trim() ? stored.trim() : '';
+};
+
 const getInitialMemorySpreadAdminMode = () => {
   if (typeof window === 'undefined') return false;
   const stored = window.localStorage.getItem(MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY);
   const normalized = `${stored || ''}`.trim().toLowerCase();
   return normalized === '1' || normalized === 'true' || normalized === 'yes';
+};
+
+const getInitialAdminSection = () => {
+  if (typeof window === 'undefined') return 'runtime';
+  const stored = window.localStorage.getItem(STORY_ADMIN_SECTION_STORAGE_KEY);
+  return ADMIN_SECTIONS.some((section) => section.key === stored) ? stored : 'runtime';
 };
 
 const buildEmptySettings = (pipelineDefinitions = SETTING_PIPELINES) => {
@@ -384,8 +433,16 @@ const TypewriterAdminPage = () => {
   const [refreshingModels, setRefreshingModels] = useState(false);
   const [sessionSaving, setSessionSaving] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(getInitialStoredSessionId);
+  const [currentPlayerCharacterName, setCurrentPlayerCharacterName] = useState(getInitialStoredPlayerName);
   const [sessionFragmentDraft, setSessionFragmentDraft] = useState(DEFAULT_SESSION_SEED_FRAGMENT);
   const [memorySpreadAdminEnabled, setMemorySpreadAdminEnabled] = useState(getInitialMemorySpreadAdminMode);
+  const [activeSection, setActiveSection] = useState(getInitialAdminSection);
+  const [promptFilter, setPromptFilter] = useState('');
+  const [contractFilter, setContractFilter] = useState('');
+  const [expandedPromptKey, setExpandedPromptKey] = useState('story_continuation');
+  const [expandedContractKey, setExpandedContractKey] = useState('');
+  const deferredPromptFilter = useDeferredValue(promptFilter);
+  const deferredContractFilter = useDeferredValue(contractFilter);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -408,11 +465,25 @@ const TypewriterAdminPage = () => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (currentPlayerCharacterName) {
+      window.localStorage.setItem(IMMERSIVE_RPG_PLAYER_NAME_STORAGE_KEY, currentPlayerCharacterName);
+      return;
+    }
+    window.localStorage.removeItem(IMMERSIVE_RPG_PLAYER_NAME_STORAGE_KEY);
+  }, [currentPlayerCharacterName]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     window.localStorage.setItem(
       MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY,
       memorySpreadAdminEnabled ? 'true' : 'false'
     );
   }, [memorySpreadAdminEnabled]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORY_ADMIN_SECTION_STORAGE_KEY, activeSection);
+  }, [activeSection]);
 
   useEffect(() => {
     let active = true;
@@ -498,6 +569,36 @@ const TypewriterAdminPage = () => {
       `${left?.routeKey || ''}`.localeCompare(`${right?.routeKey || ''}`)
     );
   }, [llmRouteConfigs]);
+
+  const visiblePromptDefinitions = useMemo(() => {
+    const needle = `${deferredPromptFilter || ''}`.trim().toLowerCase();
+    if (!needle) return promptDefinitions;
+    return promptDefinitions.filter((pipeline) =>
+      `${pipeline.label} ${pipeline.key} ${pipeline.description}`.toLowerCase().includes(needle)
+    );
+  }, [deferredPromptFilter, promptDefinitions]);
+
+  const visibleLlmRouteRows = useMemo(() => {
+    const needle = `${deferredContractFilter || ''}`.trim().toLowerCase();
+    if (!needle) return llmRouteRows;
+    return llmRouteRows.filter((config) =>
+      `${config.routeKey} ${config.routePath} ${config.description}`.toLowerCase().includes(needle)
+    );
+  }, [deferredContractFilter, llmRouteRows]);
+
+  useEffect(() => {
+    if (!visiblePromptDefinitions.length) return;
+    if (!visiblePromptDefinitions.some((pipeline) => pipeline.key === expandedPromptKey)) {
+      setExpandedPromptKey(visiblePromptDefinitions[0].key);
+    }
+  }, [expandedPromptKey, visiblePromptDefinitions]);
+
+  useEffect(() => {
+    if (!visibleLlmRouteRows.length) return;
+    if (!visibleLlmRouteRows.some((config) => config.routeKey === expandedContractKey)) {
+      setExpandedContractKey(visibleLlmRouteRows[0].routeKey);
+    }
+  }, [expandedContractKey, visibleLlmRouteRows]);
 
   const getModelOptions = (modelKind, currentModel, provider = 'openai') => {
     const normalizedProvider = provider === 'anthropic' ? 'anthropic' : 'openai';
@@ -1006,6 +1107,20 @@ const TypewriterAdminPage = () => {
       {status ? <p className="typewriterAdminStatus">{status}</p> : null}
       {loading ? <p className="typewriterAdminLoading">Loading settings...</p> : null}
 
+      <nav className="typewriterAdminSectionTabs" aria-label="Story Admin sections">
+        {ADMIN_SECTIONS.map((section) => (
+          <button
+            key={section.key}
+            type="button"
+            className={section.key === activeSection ? 'typewriterAdminSectionTab isActive' : 'typewriterAdminSectionTab'}
+            onClick={() => setActiveSection(section.key)}
+          >
+            {section.label}
+          </button>
+        ))}
+      </nav>
+
+      {activeSection === 'session' ? (
       <section className="typewriterAdminSessionTools">
         <div className="typewriterAdminSessionHeader">
           <div>
@@ -1025,6 +1140,15 @@ const TypewriterAdminPage = () => {
           <label>
             Current stored session
             <input type="text" value={currentSessionId} readOnly placeholder="No session stored" />
+          </label>
+          <label>
+            Player character name
+            <input
+              type="text"
+              value={currentPlayerCharacterName}
+              onChange={(event) => setCurrentPlayerCharacterName(event.target.value)}
+              placeholder="Optional shared PC name"
+            />
           </label>
           <label className="typewriterAdminSessionFragment">
             Session fragment seed
@@ -1055,7 +1179,9 @@ const TypewriterAdminPage = () => {
           </div>
         </div>
       </section>
+      ) : null}
 
+      {activeSection === 'runtime' ? (
       <section className="typewriterAdminTableWrap">
         <table className="typewriterAdminTable">
           <thead>
@@ -1152,7 +1278,9 @@ const TypewriterAdminPage = () => {
           </tbody>
         </table>
       </section>
+      ) : null}
 
+      {activeSection === 'prompts' ? (
       <section className="typewriterPromptEditor">
         <div className="typewriterPromptEditorHeader">
           <div>
@@ -1168,11 +1296,37 @@ const TypewriterAdminPage = () => {
             {savingPrompts ? 'Working...' : 'Seed current prompts'}
           </button>
         </div>
-        {promptDefinitions.map((pipeline) => {
+        <div className="typewriterAdminListToolbar">
+          <label className="typewriterAdminFilter">
+            Filter prompts
+            <input
+              type="text"
+              value={promptFilter}
+              onChange={(event) => setPromptFilter(event.target.value)}
+              placeholder="Search by key, label, or route"
+            />
+          </label>
+          <span className="typewriterAdminListCount">
+            Showing {visiblePromptDefinitions.length} of {promptDefinitions.length}
+          </span>
+        </div>
+        {visiblePromptDefinitions.map((pipeline) => {
           const latestPrompt = prompts?.pipelines?.[pipeline.key];
           const versions = promptVersions?.[pipeline.key] || [];
+          const isExpanded = expandedPromptKey === pipeline.key;
           return (
             <article key={pipeline.key} className="typewriterPromptCard">
+              <button
+                type="button"
+                className="typewriterPromptCardToggle"
+                onClick={() => setExpandedPromptKey((prev) => (prev === pipeline.key ? '' : pipeline.key))}
+              >
+                <span>
+                  <strong>{pipeline.label}</strong>
+                  <small>{pipeline.key}</small>
+                </span>
+                <span>{isExpanded ? 'Hide' : 'Open'}</span>
+              </button>
               <header>
                 <h3>{pipeline.label}</h3>
                 <p>{pipeline.description}</p>
@@ -1185,6 +1339,8 @@ const TypewriterAdminPage = () => {
                   <p className="typewriterPromptMeta">Source: {latestPrompt.meta.source}</p>
                 ) : null}
               </header>
+              {isExpanded ? (
+              <>
               <textarea
                 value={promptDrafts[pipeline.key] || ''}
                 onChange={(event) => updatePromptDraft(pipeline.key, event.target.value)}
@@ -1227,11 +1383,15 @@ const TypewriterAdminPage = () => {
                   ))}
                 </ul>
               ) : null}
+              </>
+              ) : null}
             </article>
           );
         })}
       </section>
+      ) : null}
 
+      {activeSection === 'contracts' ? (
       <section className="typewriterPromptEditor typewriterStructuredEditor">
         <div className="typewriterPromptEditorHeader">
           <div>
@@ -1242,9 +1402,24 @@ const TypewriterAdminPage = () => {
             </p>
           </div>
         </div>
-        {llmRouteRows.map((config) => {
+        <div className="typewriterAdminListToolbar">
+          <label className="typewriterAdminFilter">
+            Filter contracts
+            <input
+              type="text"
+              value={contractFilter}
+              onChange={(event) => setContractFilter(event.target.value)}
+              placeholder="Search by route key, path, or description"
+            />
+          </label>
+          <span className="typewriterAdminListCount">
+            Showing {visibleLlmRouteRows.length} of {llmRouteRows.length}
+          </span>
+        </div>
+        {visibleLlmRouteRows.map((config) => {
           const draft = llmRouteConfigDrafts?.[config.routeKey] || buildLlmConfigDraft(config);
           const versions = llmRouteConfigVersions?.[config.routeKey] || [];
+          const isExpanded = expandedContractKey === config.routeKey;
           let previewText = '';
           let previewError = '';
           try {
@@ -1255,6 +1430,17 @@ const TypewriterAdminPage = () => {
 
           return (
             <article key={config.routeKey} className="typewriterPromptCard typewriterStructuredCard">
+              <button
+                type="button"
+                className="typewriterPromptCardToggle"
+                onClick={() => setExpandedContractKey((prev) => (prev === config.routeKey ? '' : config.routeKey))}
+              >
+                <span>
+                  <strong>{config.routeKey}</strong>
+                  <small>{config.routePath}</small>
+                </span>
+                <span>{isExpanded ? 'Hide' : 'Open'}</span>
+              </button>
               <header>
                 <h3>{config.routeKey}</h3>
                 <p>{config.description}</p>
@@ -1268,7 +1454,8 @@ const TypewriterAdminPage = () => {
                   Current mode: <strong>{config.promptMode || 'manual'}</strong>
                 </p>
               </header>
-
+              {isExpanded ? (
+              <>
               <div className="typewriterStructuredModeRow">
                 <label>
                   Prompt mode
@@ -1407,10 +1594,13 @@ const TypewriterAdminPage = () => {
                   ))}
                 </ul>
               ) : null}
+              </>
+              ) : null}
             </article>
           );
         })}
       </section>
+      ) : null}
     </div>
   );
 };

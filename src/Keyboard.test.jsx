@@ -38,6 +38,7 @@ const allKeyTextures = allKeys.map((key) => {
 
 describe('Keyboard Component', () => {
   const mockOnKeyPress = jest.fn();
+  const mockOnStorytellerPress = jest.fn();
   const mockOnXerofagPress = jest.fn();
   const mockOnSpacebarPress = jest.fn();
   const mockPlayEndOfPageSound = jest.fn();
@@ -51,8 +52,10 @@ describe('Keyboard Component', () => {
       { slotIndex: 2, slotKey: 'STORYTELLER_SLOT_RECT_HORIZONTAL', storytellerName: '', filled: false },
     ],
     lastPressedKey: null,
+    pressedStorytellerKey: null,
     typingAllowed: true,
     onKeyPress: mockOnKeyPress,
+    onStorytellerPress: mockOnStorytellerPress,
     onXerofagPress: mockOnXerofagPress,
     onSpacebarPress: mockOnSpacebarPress,
     playEndOfPageSound: mockPlayEndOfPageSound,
@@ -120,6 +123,23 @@ describe('Keyboard Component', () => {
     expect(spacebarWrapper).toHaveClass('key-pressed');
   });
 
+  test('applies held pressed state for a filled storyteller key', () => {
+    render(
+      <Keyboard
+        {...defaultProps}
+        pressedStorytellerKey="STORYTELLER_SLOT_HORIZONTAL"
+        storytellerSlots={[
+          { slotIndex: 0, slotKey: 'STORYTELLER_SLOT_HORIZONTAL', storytellerName: 'Aster Vell', filled: true },
+          { slotIndex: 1, slotKey: 'STORYTELLER_SLOT_VERTICAL', storytellerName: '', filled: false },
+          { slotIndex: 2, slotKey: 'STORYTELLER_SLOT_RECT_HORIZONTAL', storytellerName: '', filled: false },
+        ]}
+      />
+    );
+    const keyWrapper = screen.getByAltText('Storyteller key Aster Vell').closest('.typewriter-key-wrapper');
+    expect(keyWrapper).toHaveClass('key-pressed');
+    expect(keyWrapper).toHaveClass('storyteller-key-held');
+  });
+
 
   test('calls onKeyPress for regular key click', () => {
     render(<Keyboard {...defaultProps} />);
@@ -138,6 +158,27 @@ describe('Keyboard Component', () => {
     render(<Keyboard {...defaultProps} />);
     fireEvent.click(screen.getByAltText('Spacebar').closest('.spacebar-wrapper'));
     expect(mockOnSpacebarPress).toHaveBeenCalledTimes(1);
+  });
+
+  test('calls onStorytellerPress for a filled storyteller key click', () => {
+    render(
+      <Keyboard
+        {...defaultProps}
+        storytellerSlots={[
+          { slotIndex: 0, slotKey: 'STORYTELLER_SLOT_HORIZONTAL', storytellerName: 'Aster Vell', filled: true },
+          { slotIndex: 1, slotKey: 'STORYTELLER_SLOT_VERTICAL', storytellerName: '', filled: false },
+          { slotIndex: 2, slotKey: 'STORYTELLER_SLOT_RECT_HORIZONTAL', storytellerName: '', filled: false },
+        ]}
+      />
+    );
+    fireEvent.click(screen.getByAltText('Storyteller key Aster Vell').closest('.typewriter-key-wrapper'));
+    expect(mockOnStorytellerPress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        slotKey: 'STORYTELLER_SLOT_HORIZONTAL',
+        storytellerName: 'Aster Vell',
+        filled: true,
+      })
+    );
   });
 
   describe('when typingAllowed is false', () => {
@@ -162,6 +203,22 @@ describe('Keyboard Component', () => {
       fireEvent.click(screen.getByAltText('Spacebar').closest('.spacebar-wrapper'));
       expect(mockPlayEndOfPageSound).toHaveBeenCalledTimes(1);
       expect(mockOnSpacebarPress).not.toHaveBeenCalled();
+    });
+
+    test('calls playEndOfPageSound and not onStorytellerPress for a filled storyteller key', () => {
+      render(
+        <Keyboard
+          {...propsWithTypingDisabled}
+          storytellerSlots={[
+            { slotIndex: 0, slotKey: 'STORYTELLER_SLOT_HORIZONTAL', storytellerName: 'Aster Vell', filled: true },
+            { slotIndex: 1, slotKey: 'STORYTELLER_SLOT_VERTICAL', storytellerName: '', filled: false },
+            { slotIndex: 2, slotKey: 'STORYTELLER_SLOT_RECT_HORIZONTAL', storytellerName: '', filled: false },
+          ]}
+        />
+      );
+      fireEvent.click(screen.getByAltText('Storyteller key Aster Vell').closest('.typewriter-key-wrapper'));
+      expect(mockPlayEndOfPageSound).toHaveBeenCalledTimes(1);
+      expect(mockOnStorytellerPress).not.toHaveBeenCalled();
     });
 
     test('key wrappers and spacebar wrapper have key-disabled class', () => {

@@ -1,5 +1,6 @@
 import {
   fetchNextFilmImage,
+  fetchStorytellerTypewriterReply,
   fetchTypewriterReply,
   fetchShouldGenerateContinuation,
   // SERVER constant is not explicitly exported by apiService.js,
@@ -174,7 +175,7 @@ describe('apiService', () => {
           body: JSON.stringify({ currentText, latestAddition, latestPauseSeconds }),
         })
       );
-      expect(result).toEqual({ data: mockApiResponse, error: null });
+      expect(result).toEqual(mockApiResponse);
     });
 
     it('should successfully fetch and return false for shouldGenerate', async () => {
@@ -187,7 +188,7 @@ describe('apiService', () => {
       const result = await fetchShouldGenerateContinuation(currentText, latestAddition, latestPauseSeconds);
 
       expect(global.fetch).toHaveBeenCalledWith(endpoint, expect.anything());
-      expect(result).toEqual({ data: mockApiResponse, error: null });
+      expect(result).toEqual(mockApiResponse);
     });
 
     it('should handle API error for fetchShouldGenerateContinuation', async () => {
@@ -201,7 +202,7 @@ describe('apiService', () => {
 
       expect(global.fetch).toHaveBeenCalledWith(endpoint, expect.anything());
       expect(result).toEqual({
-        data: null,
+        shouldGenerate: false,
         error: { message: 'API error: 403 Forbidden', status: 403 },
       });
     });
@@ -214,7 +215,7 @@ describe('apiService', () => {
 
       expect(global.fetch).toHaveBeenCalledWith(endpoint, expect.anything());
       expect(result).toEqual({
-        data: null,
+        shouldGenerate: false,
         error: { message: 'Failed to connect' },
       });
     });
@@ -223,7 +224,41 @@ describe('apiService', () => {
       const result = await fetchShouldGenerateContinuation(currentText, '', latestPauseSeconds);
 
       expect(global.fetch).not.toHaveBeenCalled();
-      expect(result).toEqual({ data: { shouldGenerate: false }, error: null });
+      expect(result).toEqual({ shouldGenerate: false });
+    });
+  });
+
+  describe('fetchStorytellerTypewriterReply', () => {
+    const endpoint = `${SERVER_URL}/api/send_storyteller_typewriter_text`;
+    const sessionId = 'session-storyteller';
+    const storytellerId = 'storyteller-1';
+
+    it('should fetch storyteller intervention reply successfully', async () => {
+      const mockApiResponse = { sequence: [], entityKey: { keyText: 'Buraha Light' } };
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockApiResponse,
+      });
+
+      const result = await fetchStorytellerTypewriterReply(sessionId, storytellerId, {
+        slotIndex: 0,
+        fadeTimingScale: 1.2,
+      });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        endpoint,
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId,
+            storytellerId,
+            slotIndex: 0,
+            fadeTimingScale: 1.2,
+          }),
+        })
+      );
+      expect(result).toEqual({ data: mockApiResponse, error: null });
     });
   });
 });

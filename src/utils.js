@@ -45,6 +45,13 @@ export const playEndOfPageSound = () => {
   audio.play();
 };
 
+export const playStorytellerKeyPressSound = () => {
+  const audio = new Audio('/sounds/typewriter-enter.mp3');
+  audio.volume = 0.26;
+  audio.playbackRate = 0.82;
+  audio.play();
+};
+
 export function countLines(typed, ghost = '') {
   return (typed + ghost).split('\n').length;
 }

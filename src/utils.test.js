@@ -6,6 +6,7 @@ import {
   playXerofagHowl,
   playEndOfPageSound,
   playPreGhostSound,
+  playStorytellerKeyPressSound,
 } from './utils';
 
 // Mocking HTMLMediaElement and Audio
@@ -131,6 +132,16 @@ describe('Sound Functions', () => {
       playEndOfPageSound();
       expect(Audio).toHaveBeenCalledWith('/sounds/page_turn.mp3');
       expect(mockAudioInstance.volume).toBe(0.4);
+      expect(mockAudioInstance.play).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('playStorytellerKeyPressSound', () => {
+    it('should play the placeholder storyteller press sound with lowered rate', () => {
+      playStorytellerKeyPressSound();
+      expect(Audio).toHaveBeenCalledWith('/sounds/typewriter-enter.mp3');
+      expect(mockAudioInstance.volume).toBe(0.26);
+      expect(mockAudioInstance.playbackRate).toBe(0.82);
       expect(mockAudioInstance.play).toHaveBeenCalledTimes(1);
     });
   });
