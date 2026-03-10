@@ -22,6 +22,7 @@ import './TypewriterAdminPage.css';
 const TYPEWRITER_ADMIN_API_BASE_STORAGE_KEY = 'typewriterAdminApiBaseUrl';
 const TYPEWRITER_ADMIN_KEY_STORAGE_KEY = 'typewriterAdminApiKey';
 const TYPEWRITER_SESSION_STORAGE_KEY = 'sessionId';
+const IMMERSIVE_RPG_PLAYER_NAME_STORAGE_KEY = 'immersiveRpgPlayerName';
 const MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY = 'memorySpreadAdminMode';
 const STORY_ADMIN_SECTION_STORAGE_KEY = 'storyAdminSection';
 const DEFAULT_SESSION_SEED_FRAGMENT =
@@ -52,6 +53,14 @@ const SETTING_PIPELINES = [
     key: 'messenger_chat',
     label: 'Messenger chat',
     description: '/api/messenger/chat',
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
+  },
+  {
+    key: 'immersive_rpg_gm',
+    label: 'Immersive RPG GM',
+    description: '/api/immersive-rpg/chat',
     modelKind: 'text',
     supportedProviders: ['openai', 'anthropic'],
     defaultProvider: 'openai'
@@ -154,6 +163,12 @@ const PROMPT_PIPELINES = [
     settingsKey: 'messenger_chat'
   },
   {
+    key: 'immersive_rpg_gm',
+    label: 'Immersive RPG GM',
+    description: '/api/immersive-rpg/chat GM orchestration prompt',
+    settingsKey: 'immersive_rpg_gm'
+  },
+  {
     key: 'memory_creation',
     label: 'Memory creation',
     description: '/api/fragmentToMemories memory extraction',
@@ -249,6 +264,12 @@ const getInitialAdminKey = () => {
 const getInitialStoredSessionId = () => {
   if (typeof window === 'undefined') return '';
   const stored = window.localStorage.getItem(TYPEWRITER_SESSION_STORAGE_KEY);
+  return stored && stored.trim() ? stored.trim() : '';
+};
+
+const getInitialStoredPlayerName = () => {
+  if (typeof window === 'undefined') return '';
+  const stored = window.localStorage.getItem(IMMERSIVE_RPG_PLAYER_NAME_STORAGE_KEY);
   return stored && stored.trim() ? stored.trim() : '';
 };
 
@@ -412,6 +433,7 @@ const TypewriterAdminPage = () => {
   const [refreshingModels, setRefreshingModels] = useState(false);
   const [sessionSaving, setSessionSaving] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(getInitialStoredSessionId);
+  const [currentPlayerCharacterName, setCurrentPlayerCharacterName] = useState(getInitialStoredPlayerName);
   const [sessionFragmentDraft, setSessionFragmentDraft] = useState(DEFAULT_SESSION_SEED_FRAGMENT);
   const [memorySpreadAdminEnabled, setMemorySpreadAdminEnabled] = useState(getInitialMemorySpreadAdminMode);
   const [activeSection, setActiveSection] = useState(getInitialAdminSection);
@@ -440,6 +462,15 @@ const TypewriterAdminPage = () => {
     }
     window.localStorage.removeItem(TYPEWRITER_SESSION_STORAGE_KEY);
   }, [currentSessionId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (currentPlayerCharacterName) {
+      window.localStorage.setItem(IMMERSIVE_RPG_PLAYER_NAME_STORAGE_KEY, currentPlayerCharacterName);
+      return;
+    }
+    window.localStorage.removeItem(IMMERSIVE_RPG_PLAYER_NAME_STORAGE_KEY);
+  }, [currentPlayerCharacterName]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1109,6 +1140,15 @@ const TypewriterAdminPage = () => {
           <label>
             Current stored session
             <input type="text" value={currentSessionId} readOnly placeholder="No session stored" />
+          </label>
+          <label>
+            Player character name
+            <input
+              type="text"
+              value={currentPlayerCharacterName}
+              onChange={(event) => setCurrentPlayerCharacterName(event.target.value)}
+              placeholder="Optional shared PC name"
+            />
           </label>
           <label className="typewriterAdminSessionFragment">
             Session fragment seed

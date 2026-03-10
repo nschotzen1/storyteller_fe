@@ -441,9 +441,7 @@
   flex: 1;
   min-height: 0;
   height: 100%;
-  transform-style: preserve-3d;
-  transform-origin: left center;
-  will-change: transform;
+  overflow: hidden;
 }
 
 .messangerFlipStage::after {
@@ -460,16 +458,8 @@
   transition: opacity 2480ms ease;
 }
 
-.messangerFlipStage.is-flipping {
-  animation: messangerCeremonialFlip 6400ms cubic-bezier(0.08, 0.72, 0.08, 1) forwards;
-}
-
-.messangerFlipStage.is-open {
-  transform: rotateY(-180deg);
-}
-
 .messangerFlipStage.is-open::after {
-  opacity: 0.55;
+  opacity: 0.46;
 }
 
 .messangerFlipStage.is-opening::after {
@@ -484,9 +474,6 @@
 .messangerChatFace {
   position: absolute;
   inset: 0;
-  transform-style: preserve-3d;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 .messangerFlipStage:not(.is-open) .messangerChatFace {
@@ -512,7 +499,13 @@
     radial-gradient(circle at top, rgba(255, 240, 206, 0.08), transparent 26%);
   color: inherit;
   transition: filter 2280ms ease, transform 3280ms cubic-bezier(0.12, 0.74, 0.08, 1);
-  transform: translateZ(1px);
+  transform: translateZ(1px) rotateY(0deg) scale(1);
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  z-index: 2;
+  will-change: transform, opacity;
 }
 
 .messangerIntroFace:disabled {
@@ -582,12 +575,16 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  transform: rotateY(180deg) translateZ(1px);
+  z-index: 1;
+  opacity: 0.08;
+  filter: blur(12px) brightness(0.72);
+  transform: scale(0.988);
+  transition: opacity 1800ms ease, filter 1800ms ease, transform 1800ms ease;
 }
 
 .messangerFlipStage.is-opening .messangerIntroFace {
   filter: brightness(0.72) saturate(0.7);
-  transform: translateZ(1px) scale(0.978);
+  transform: translateZ(1px) rotateY(0deg) scale(0.978);
 }
 
 .messangerFlipStage.is-opening .messangerIntroFace__image {
@@ -600,9 +597,15 @@
   transform: translateY(8px);
 }
 
+.messangerFlipStage.is-opening .messangerChatFace {
+  opacity: 0.16;
+  filter: blur(10px) brightness(0.76);
+  transform: scale(0.99);
+}
+
 .messangerFlipStage.is-flipping .messangerIntroFace {
+  animation: messangerCeremonialFlip 6400ms cubic-bezier(0.08, 0.72, 0.08, 1) forwards;
   filter: brightness(0.62) saturate(0.62);
-  transform: translateZ(1px) scale(0.972);
 }
 
 .messangerFlipStage.is-flipping .messangerIntroFace__image {
@@ -615,9 +618,17 @@
   transform: translateY(12px);
 }
 
+.messangerFlipStage.is-flipping .messangerChatFace {
+  opacity: 0.72;
+  filter: blur(4px) brightness(0.9);
+  transform: scale(0.996);
+}
+
 .messangerFlipStage.is-open .messangerIntroFace {
   filter: brightness(0.82) saturate(0.78);
-  transform: translateZ(1px) scale(0.985);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateZ(1px) rotateY(-180deg) scale(0.985);
 }
 
 .messangerFlipStage.is-open .messangerIntroFace__image {
@@ -628,6 +639,12 @@
 .messangerFlipStage.is-open .messangerIntroFace__caption {
   opacity: 0;
   transform: translateY(10px);
+}
+
+.messangerFlipStage.is-open .messangerChatFace {
+  opacity: 1;
+  filter: none;
+  transform: none;
 }
 
 .messangerPhone__homebar {
@@ -1855,25 +1872,27 @@
 
 @keyframes messangerCeremonialFlip {
   0% {
-    transform: rotateY(0deg) translateX(0) scale(1);
+    transform: translateZ(1px) rotateY(0deg) scale(0.978);
+    opacity: 1;
   }
   8% {
-    transform: rotateY(-7deg) translateX(-0.2%) scale(0.998);
+    transform: translateZ(1px) rotateY(-7deg) scale(0.976);
   }
   18% {
-    transform: rotateY(4deg) translateX(0) scale(0.997);
+    transform: translateZ(1px) rotateY(4deg) scale(0.975);
   }
   34% {
-    transform: rotateY(-28deg) translateX(-0.6%) scale(0.994);
+    transform: translateZ(1px) rotateY(-28deg) scale(0.972);
   }
   56% {
-    transform: rotateY(-86deg) translateX(-1.2%) scale(0.988);
+    transform: translateZ(1px) rotateY(-86deg) scale(0.968);
   }
   74% {
-    transform: rotateY(-136deg) translateX(-1.45%) scale(0.984);
+    transform: translateZ(1px) rotateY(-136deg) scale(0.97);
   }
   100% {
-    transform: rotateY(-180deg) translateX(0) scale(1);
+    transform: translateZ(1px) rotateY(-180deg) scale(0.985);
+    opacity: 0.04;
   }
 }
 

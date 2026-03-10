@@ -10,6 +10,7 @@ import PlayerLogin from './pages/PlayerLogin';
 import QuestAdventurePage from './pages/QuestAdventurePage';
 import QuestAdminPage from './pages/QuestAdminPage';
 import MemorySpreadPage from './pages/MemorySpreadPage';
+import ImmersiveRpgPage from './pages/ImmersiveRpgPage';
 import TypewriterAdminPage from './pages/TypewriterAdminPage';
 import TypewriterFramework from './TypewriterFramework';
 import Messanger from './Messanger';
@@ -21,7 +22,8 @@ const VIEW = {
   QUEST: 'quest',
   QUEST_ADMIN: 'quest-admin',
   MEMORY_SPREAD: 'memory-spread',
-  MESSANGER: 'messanger'
+  MESSANGER: 'messanger',
+  IMMERSIVE_RPG: 'immersive-rpg'
 };
 
 const VIEW_OPTIONS = [
@@ -31,7 +33,8 @@ const VIEW_OPTIONS = [
   { id: VIEW.MESSANGER, label: 'Messanger' },
   { id: VIEW.QUEST, label: 'Quest' },
   { id: VIEW.QUEST_ADMIN, label: 'Quest Admin' },
-  { id: VIEW.MEMORY_SPREAD, label: 'Memory Spread' }
+  { id: VIEW.MEMORY_SPREAD, label: 'Memory Spread' },
+  { id: VIEW.IMMERSIVE_RPG, label: 'Immersive RPG' }
 ];
 
 const TYPEWRITER_CURTAIN_PHASE = {
@@ -151,6 +154,7 @@ function App() {
         {view === VIEW.QUEST_ADMIN && <QuestAdminPage />}
         {view === VIEW.MEMORY_SPREAD && <MemorySpreadPage />}
         {view === VIEW.MESSANGER && <Messanger />}
+        {view === VIEW.IMMERSIVE_RPG && <ImmersiveRpgPage />}
       </main>
     </div>
   );
