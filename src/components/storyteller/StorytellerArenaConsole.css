@@ -1567,6 +1567,86 @@
   flex-wrap: wrap;
 }
 
+.expeditionRow {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(30, 20, 8, 0.5);
+}
+
+.expeditionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.expeditionHeader span {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(251, 191, 36, 0.95);
+}
+
+.expeditionHeader em {
+  font-style: normal;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: rgba(226, 214, 191, 0.7);
+}
+
+.expeditionRow p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(226, 214, 191, 0.8);
+}
+
+.expeditionStops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.expeditionStops span {
+  border: 1px solid rgba(226, 214, 191, 0.2);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: rgba(226, 214, 191, 0.72);
+  background: rgba(12, 14, 20, 0.62);
+}
+
+.expeditionStops span.active {
+  border-color: rgba(245, 158, 11, 0.55);
+  color: rgba(254, 243, 199, 0.95);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+}
+
+.expeditionMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: rgba(226, 214, 191, 0.68);
+}
+
+.expeditionMeta em {
+  font-style: normal;
+  color: rgba(226, 214, 191, 0.86);
+}
+
+.expeditionMoves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .beatSyncRow {
   display: flex;
   justify-content: space-between;

@@ -242,11 +242,12 @@
 .questBody {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(240px, 0.84fr) minmax(260px, 1.16fr);
+  grid-template-columns: minmax(220px, 0.78fr) minmax(280px, 1.05fr) minmax(280px, 1.12fr);
   gap: 0.75rem;
 }
 
 .questDirections,
+.questSceneGuidance,
 .questPrompt {
   min-height: 0;
   border-radius: 12px;
@@ -257,6 +258,7 @@
 }
 
 .questDirections h2,
+.questSceneGuidance h2,
 .questPrompt h2 {
   margin: 0 0 0.7rem;
   font-family: 'Cinzel', 'Times New Roman', serif;
@@ -307,6 +309,46 @@
 .questPrompt {
   display: grid;
   grid-template-rows: auto 1fr;
+}
+
+.questSceneGuidance {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 0.65rem;
+}
+
+.questGuidanceMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.questGuidanceMeta span {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.28rem 0.56rem;
+  border: 1px solid rgba(245, 204, 139, 0.26);
+  background: rgba(7, 5, 5, 0.34);
+  color: #f7d8a2;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+}
+
+.questGuidanceCopy {
+  margin: 0;
+  color: #f8e7c8;
+  font-size: 0.9rem;
+  line-height: 1.42;
+}
+
+.questGuidanceCopy--subtle {
+  color: rgba(248, 231, 200, 0.72);
+  font-size: 0.82rem;
+}
+
+.questStageDeck {
+  min-height: 0;
 }
 
 .questPrompt form {
@@ -386,7 +428,11 @@
   }
 
   .questBody {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .questPrompt {
+    grid-column: 1 / -1;
   }
 }
 
@@ -411,5 +457,13 @@
 
   .questMetaCluster {
     justify-items: start;
+  }
+
+  .questBody {
+    grid-template-columns: 1fr;
+  }
+
+  .questPrompt {
+    grid-column: auto;
   }
 }

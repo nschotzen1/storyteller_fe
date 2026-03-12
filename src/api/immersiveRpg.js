@@ -35,20 +35,6 @@ export const fetchImmersiveRpgScene = async (
   });
 };
 
-export const bootstrapImmersiveRpgScene = async (
-  baseUrl = DEFAULT_API_BASE_URL,
-  payload = {}
-) => {
-  const safeBaseUrl = normalizeBaseUrl(baseUrl);
-  return requestJson(`${safeBaseUrl}/api/immersive-rpg/scene/bootstrap`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  });
-};
-
 export const sendImmersiveRpgChat = async (
   baseUrl = DEFAULT_API_BASE_URL,
   payload = {}

@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   DEFAULT_API_BASE_URL,
+  advanceQuest,
   loadQuestScreens,
-  loadQuestTraversal,
-  logQuestTraversal
+  loadQuestTraversal
 } from '../api/questScreens';
+import ImmersiveRpgStageModules from '../components/immersive-rpg/ImmersiveRpgStageModules';
+import './ImmersiveRpgPage.css';
 import './QuestAdventurePage.css';
 
 const QUEST_API_BASE_STORAGE_KEY = 'questApiBaseUrl';
@@ -58,11 +60,14 @@ const QuestAdventurePage = ({
   const [config, setConfig] = useState(null);
   const [currentScreenId, setCurrentScreenId] = useState('');
   const [playerPrompt, setPlayerPrompt] = useState('');
-  const [promptHistory, setPromptHistory] = useState([]);
+  const [traversalEvents, setTraversalEvents] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
   const [error, setError] = useState('');
   const [imageStatus, setImageStatus] = useState('idle');
   const [traversalCount, setTraversalCount] = useState(0);
+  const [lastAdvanceRuntime, setLastAdvanceRuntime] = useState(null);
+  const [lastMockedData, setLastMockedData] = useState(null);
 
   const screenMap = useMemo(() => toScreenMap(config), [config]);
 
@@ -76,6 +81,18 @@ const QuestAdventurePage = ({
       config.screens[0]
     );
   }, [config, currentScreenId, screenMap]);
+
+  const anchorScreen = useMemo(() => {
+    if (!activeScreen) return null;
+    const anchorId = typeof activeScreen.anchorScreenId === 'string' ? activeScreen.anchorScreenId.trim() : '';
+    return (anchorId && screenMap.get(anchorId)) || activeScreen;
+  }, [activeScreen, screenMap]);
+
+  const parentScreen = useMemo(() => {
+    if (!activeScreen) return null;
+    const parentId = typeof activeScreen.parentScreenId === 'string' ? activeScreen.parentScreenId.trim() : '';
+    return (parentId && screenMap.get(parentId)) || null;
+  }, [activeScreen, screenMap]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -111,6 +128,7 @@ const QuestAdventurePage = ({
         if (!active) return;
 
         setConfig(questPayload);
+        setTraversalEvents(Array.isArray(traversalPayload?.traversal) ? traversalPayload.traversal : []);
         setTraversalCount(Array.isArray(traversalPayload?.traversal) ? traversalPayload.traversal.length : 0);
         setCurrentScreenId((prev) => {
           if (prev && questPayload?.screens?.some((screen) => screen.id === prev)) {
@@ -136,68 +154,88 @@ const QuestAdventurePage = ({
     };
   }, [apiBaseUrl, sessionId, questId]);
 
-  const canSubmitPrompt = playerPrompt.trim().length > 0;
+  const canSubmitPrompt = playerPrompt.trim().length > 0 && !advancing;
+
+  const applyAdvancePayload = (payload) => {
+    if (payload?.config && typeof payload.config === 'object') {
+      setConfig(payload.config);
+    }
+    if (payload?.screen?.id) {
+      setCurrentScreenId(payload.screen.id);
+    }
+    if (payload?.event) {
+      setTraversalEvents((prev) => [...prev, payload.event].slice(-400));
+    }
+    if (typeof payload?.traversalCount === 'number') {
+      setTraversalCount(payload.traversalCount);
+    }
+    if (Object.prototype.hasOwnProperty.call(payload || {}, 'runtime')) {
+      setLastAdvanceRuntime(payload?.runtime || null);
+    }
+    if (Object.prototype.hasOwnProperty.call(payload || {}, 'mockedData')) {
+      setLastMockedData(payload?.mockedData || null);
+    }
+  };
 
   const handleSubmitPrompt = async (event) => {
     event.preventDefault();
     if (!activeScreen || !canSubmitPrompt) return;
 
     const promptText = playerPrompt.trim();
-    const entry = {
-      id: `${activeScreen.id}-${Date.now()}`,
-      screenId: activeScreen.id,
-      text: promptText,
-      createdAt: new Date().toISOString()
-    };
-
-    setPromptHistory((prev) => [entry, ...prev].slice(0, 8));
-    setPlayerPrompt('');
-
     try {
-      const response = await logQuestTraversal(apiBaseUrl, {
+      setAdvancing(true);
+      setError('');
+      const response = await advanceQuest(apiBaseUrl, {
         sessionId,
         questId,
         playerId,
-        fromScreenId: activeScreen.id,
-        toScreenId: activeScreen.id,
-        direction: 'prompt',
+        currentScreenId: activeScreen.id,
+        actionType: 'prompt',
         promptText
       });
-      if (typeof response?.traversalCount === 'number') {
-        setTraversalCount(response.traversalCount);
-      }
+      applyAdvancePayload(response);
+      setPlayerPrompt('');
     } catch (err) {
-      console.error('Failed to persist prompt traversal event:', err);
+      setError(err.message || 'Unable to advance quest prompt.');
+    } finally {
+      setAdvancing(false);
     }
   };
 
   const handleDirectionClick = async (direction) => {
-    const fromScreenId = activeScreen?.id || '';
-    const toScreenId = direction?.targetScreenId;
+    if (!activeScreen) return;
+    const toScreenId = typeof direction?.targetScreenId === 'string' ? direction.targetScreenId.trim() : '';
     if (!toScreenId || !screenMap.has(toScreenId)) return;
 
-    setCurrentScreenId(toScreenId);
-
     try {
-      const response = await logQuestTraversal(apiBaseUrl, {
+      setAdvancing(true);
+      setError('');
+      const response = await advanceQuest(apiBaseUrl, {
         sessionId,
         questId,
         playerId,
-        fromScreenId,
-        toScreenId,
-        direction: direction?.direction || ''
+        currentScreenId: activeScreen.id,
+        actionType: 'direction',
+        direction: direction?.direction || '',
+        targetScreenId: toScreenId
       });
-      if (typeof response?.traversalCount === 'number') {
-        setTraversalCount(response.traversalCount);
-      }
+      applyAdvancePayload(response);
     } catch (err) {
-      console.error('Failed to persist traversal event:', err);
+      setError(err.message || 'Unable to follow that direction.');
+    } finally {
+      setAdvancing(false);
     }
   };
 
-  const visibleHistory = promptHistory.slice(0, 4);
+  const visibleHistory = traversalEvents
+    .filter((entry) => typeof entry?.promptText === 'string' && entry.promptText.trim())
+    .slice()
+    .reverse()
+    .slice(0, 4);
   const directions = Array.isArray(activeScreen?.directions) ? activeScreen.directions : [];
   const backgroundUrl = activeScreen?.imageUrl || '/ruin_south_a.png';
+  const stageLayout = activeScreen?.stageLayout || 'focus-left';
+  const stageModules = Array.isArray(activeScreen?.stageModules) ? activeScreen.stageModules : [];
 
   useEffect(() => {
     if (!backgroundUrl) {
@@ -224,6 +262,73 @@ const QuestAdventurePage = ({
       isActive = false;
     };
   }, [backgroundUrl]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    window.render_game_to_text = () => JSON.stringify({
+      mode: 'quest',
+      sessionId,
+      questId,
+      playerId,
+      currentScreenId: activeScreen?.id || '',
+      currentScreenTitle: activeScreen?.title || '',
+      screenType: activeScreen?.screenType || 'authored',
+      anchorScreenId: anchorScreen?.id || '',
+      parentScreenId: parentScreen?.id || '',
+      expectationSummary: activeScreen?.expectationSummary || '',
+      continuitySummary: activeScreen?.continuitySummary || '',
+      lastAdvanceRuntime: lastAdvanceRuntime
+        ? {
+            pipeline: lastAdvanceRuntime.pipeline || '',
+            provider: lastAdvanceRuntime.provider || '',
+            model: lastAdvanceRuntime.model || '',
+            mocked: Boolean(lastAdvanceRuntime.mocked)
+          }
+        : null,
+      lastMockedDataSource: lastMockedData?.source || '',
+      traversalCount,
+      directions: directions.map((direction) => ({
+        direction: direction.direction,
+        label: direction.label,
+        targetScreenId: direction.targetScreenId
+      })),
+      promptHistory: visibleHistory.map((entry) => ({
+        fromScreenId: entry.fromScreenId || '',
+        toScreenId: entry.toScreenId || '',
+        promptText: entry.promptText || ''
+      })),
+      stage: {
+        layout: stageLayout,
+        modules: stageModules.map((module) => ({
+          type: module.type,
+          title: module.title,
+          hasImage: Boolean(module.imageUrl)
+        }))
+      }
+    });
+
+    window.advanceTime = () => {};
+
+    return () => {
+      delete window.render_game_to_text;
+      delete window.advanceTime;
+    };
+  }, [
+    activeScreen,
+    anchorScreen,
+    directions,
+    parentScreen,
+    playerId,
+    questId,
+    sessionId,
+    stageLayout,
+    stageModules,
+    lastAdvanceRuntime,
+    lastMockedData,
+    traversalCount,
+    visibleHistory
+  ]);
 
   return (
     <div className="questRoot">
@@ -322,6 +427,21 @@ const QuestAdventurePage = ({
                 <p className="questScreenMeta">Image Prompt: {activeScreen.image_prompt}</p>
               )}
               <p className="questScreenMeta">Traversal events: {traversalCount}</p>
+              {lastAdvanceRuntime && (
+                <p className="questScreenMeta">
+                  Runtime: {lastAdvanceRuntime.mocked ? 'mock' : 'live'} via {lastAdvanceRuntime.provider || 'openai'} /
+                  {' '}{lastAdvanceRuntime.model || 'default'}
+                </p>
+              )}
+              {lastMockedData?.source && (
+                <p className="questScreenMeta">
+                  Mocked Data: {lastMockedData.source}
+                  {lastMockedData?.plan?.title ? ` (${lastMockedData.plan.title})` : ''}
+                </p>
+              )}
+              {activeScreen?.screenType === 'generated' && (
+                <p className="questScreenMeta">Generated branch from {parentScreen?.title || activeScreen.parentScreenId}</p>
+              )}
             </div>
           </header>
 
@@ -342,7 +462,7 @@ const QuestAdventurePage = ({
                         key={`${direction.direction}-${direction.targetScreenId}-${index}`}
                         className="questDirectionButton"
                         onClick={() => handleDirectionClick(direction)}
-                        disabled={!targetExists}
+                        disabled={!targetExists || advancing}
                       >
                         <span>{direction.label || direction.direction}</span>
                         <small>{(direction.direction || '').toUpperCase()}</small>
@@ -351,6 +471,32 @@ const QuestAdventurePage = ({
                   })}
                 </div>
               )}
+            </section>
+
+            <section className="questSceneGuidance" aria-label="Scene guidance">
+              <h2>Scene Guidance</h2>
+              <div className="questGuidanceMeta">
+                <span>Type: {activeScreen?.screenType || 'authored'}</span>
+                <span>Anchor: {anchorScreen?.title || 'Unknown'}</span>
+                {parentScreen && <span>From: {parentScreen.title}</span>}
+              </div>
+              <p className="questGuidanceCopy">
+                {activeScreen?.expectationSummary || 'This screen does not yet advertise a distinct expectation.'}
+              </p>
+              {activeScreen?.continuitySummary && (
+                <p className="questGuidanceCopy questGuidanceCopy--subtle">{activeScreen.continuitySummary}</p>
+              )}
+              <div className="immersiveRpgStageDeck questStageDeck">
+                <div className="immersiveRpgStageDeck__header">
+                  <span className="immersiveRpgSceneCard__label">GM Surface</span>
+                  <span className="immersiveRpgStageDeck__layout">{stageLayout}</span>
+                </div>
+                <ImmersiveRpgStageModules
+                  apiBaseUrl={apiBaseUrl}
+                  stageLayout={stageLayout}
+                  stageModules={stageModules}
+                />
+              </div>
             </section>
 
             <section className="questPrompt" aria-label="Text prompt">
@@ -363,7 +509,7 @@ const QuestAdventurePage = ({
                   rows={4}
                 />
                 <button type="submit" disabled={!canSubmitPrompt || !activeScreen}>
-                  Send Prompt
+                  {advancing ? 'Advancing…' : 'Send Prompt'}
                 </button>
               </form>
               <div className="questPromptHistory">
@@ -371,12 +517,15 @@ const QuestAdventurePage = ({
                   <p className="questMessage">Prompt log is empty for this run.</p>
                 )}
                 {visibleHistory.map((entry) => (
-                  <article key={entry.id} className="questPromptEntry">
+                  <article
+                    key={`${entry.createdAt || 'prompt'}-${entry.toScreenId || entry.fromScreenId || ''}`}
+                    className="questPromptEntry"
+                  >
                     <header>
-                      <span>{entry.screenId}</span>
+                      <span>{entry.fromScreenId || entry.toScreenId || activeScreen?.id || 'screen'}</span>
                       <time>{formatTime(entry.createdAt)}</time>
                     </header>
-                    <p>{entry.text}</p>
+                    <p>{entry.promptText}</p>
                   </article>
                 ))}
               </div>

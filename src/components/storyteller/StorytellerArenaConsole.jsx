@@ -119,6 +119,32 @@ const FLOW_LOOP_ACTIONS = [
     text: 'seals a shared truth into canon.'
   }
 ];
+const EXPEDITION_MOVES = [
+  {
+    id: 'scout',
+    label: 'Scout',
+    detail: 'Call out a landmark, omen, or rumor from the current stop.',
+    ledgerType: 'location',
+    effects: { momentum: 0, clarity: 1, sceneClock: 0 },
+    text: 'scouts the route and names a vivid detail.'
+  },
+  {
+    id: 'traverse',
+    label: 'Traverse',
+    detail: 'Push forward to the next stop and accept pressure.',
+    ledgerType: 'location',
+    effects: { momentum: 1, clarity: 0, sceneClock: 1 },
+    text: 'pushes the table onward through uncertain ground.'
+  },
+  {
+    id: 'camp',
+    label: 'Camp',
+    detail: 'Take a brief pause to restore clarity and steady pressure.',
+    ledgerType: 'oath',
+    effects: { momentum: 0, clarity: 1, sceneClock: -1 },
+    text: 'holds a short camp to regroup before moving on.'
+  }
+];
 const VOW_DEFINITIONS = [
   {
     id: 'hush',
@@ -191,6 +217,11 @@ const SESSION_STATE_DEFAULT = {
     hush: false,
     anchor: false,
     pact: false
+  },
+  expedition: {
+    route: [],
+    currentIndex: 0,
+    lastAction: null
   }
 };
 
@@ -623,74 +654,6 @@ const StorytellerArenaConsole = ({
     return { ...active, next };
   }, [currentFlowStepId, flowSteps]);
 
-  const flowPulseItems = useMemo(() => {
-    const lensReady = Boolean(sceneGoal.trim() || sceneRisk.trim());
-    const intentReady = Boolean((sessionState.intent || '').trim());
-    const anchorsReady = anchors.length > 0;
-    const readyReady = playersCount > 0 ? readyCount === playersCount : false;
-    return [
-      {
-        id: 'charter',
-        label: 'World Charter',
-        detail: hasWorldCharter ? 'Canon defined' : 'Name the world + pillars',
-        ready: hasWorldCharter,
-        actionLabel: 'Open Charter',
-        actionId: 'charter'
-      },
-      {
-        id: 'atlas',
-        label: 'World Atlas',
-        detail: hasWorldAtlas ? 'Meta anchors set' : 'Add regions, factions, laws',
-        ready: hasWorldAtlas,
-        actionLabel: 'Build Atlas',
-        actionId: 'charter'
-      },
-      {
-        id: 'lens',
-        label: 'Scene Lens',
-        detail: lensReady ? 'Goal & stakes set' : 'Define goal + stakes',
-        ready: lensReady,
-        actionLabel: 'Set Lens',
-        actionId: 'lens'
-      },
-      {
-        id: 'intent',
-        label: 'Shared Intent',
-        detail: intentReady ? 'Intent aligned' : 'Align the table',
-        ready: intentReady,
-        actionLabel: 'Set Intent',
-        actionId: 'intent'
-      },
-      {
-        id: 'anchors',
-        label: 'World Anchors',
-        detail: anchorsReady ? `${anchors.length} anchored` : 'Pin 1-3 anchors',
-        ready: anchorsReady,
-        actionLabel: 'Pin Anchors',
-        actionId: 'anchors'
-      },
-      {
-        id: 'presence',
-        label: 'Table Ready',
-        detail: readyReady ? 'All seats ready' : `Ready ${readyCount}/${playersCount}`,
-        ready: readyReady,
-        actionLabel: 'Go to Presence',
-        actionId: 'presence'
-      }
-    ];
-  }, [
-    anchors.length,
-    hasWorldCharter,
-    hasWorldAtlas,
-    playersCount,
-    readyCount,
-    sceneGoal,
-    sceneRisk,
-    sessionState.intent
-  ]);
-
-  const flowPulseBlockers = flowPulseItems.filter((item) => !item.ready).length;
-
   const roleLabels = useMemo(
     () => ['Lorekeeper', 'Cartographer', 'Warden', 'Oracle'],
     []
@@ -830,6 +793,25 @@ const StorytellerArenaConsole = ({
   const resonanceCallerLabel = getPlayerLabelByKey(resonanceCallerKey, 'Unassigned');
   const resonanceAnswerLabel = getPlayerLabelByKey(resonanceAnswerKey, 'Unassigned');
   const resonanceStreak = Math.max(0, Number(resonance.streak) || 0);
+  const expedition =
+    sessionState.expedition && typeof sessionState.expedition === 'object'
+      ? sessionState.expedition
+      : SESSION_STATE_DEFAULT.expedition;
+  const expeditionRoute = Array.isArray(expedition.route)
+    ? expedition.route
+        .map((stop) => (typeof stop === 'string' ? stop.trim() : ''))
+        .filter(Boolean)
+        .slice(0, 3)
+    : [];
+  const expeditionCurrentIndex = expeditionRoute.length
+    ? Math.max(0, Math.min(expeditionRoute.length - 1, Number(expedition.currentIndex) || 0))
+    : 0;
+  const expeditionCurrentStop = expeditionRoute[expeditionCurrentIndex] || '';
+  const expeditionNextStop = expeditionRoute.length
+    ? expeditionRoute[(expeditionCurrentIndex + 1) % expeditionRoute.length]
+    : '';
+  const expeditionLastAction =
+    expedition.lastAction && typeof expedition.lastAction === 'object' ? expedition.lastAction : null;
   const immersionGate = useMemo(
     () => ({
       charter: hasWorldCharter,
@@ -866,6 +848,72 @@ const StorytellerArenaConsole = ({
         Number.isFinite(rawCurrentTurnActions) ? rawCurrentTurnActions : TURN_ACTIONS_PER_TURN
       )
     : 0;
+  const flowPulseItems = useMemo(() => {
+    const lensReady = Boolean(sceneGoal.trim() || sceneRisk.trim());
+    const intentReady = Boolean((sessionState.intent || '').trim());
+    const anchorsReady = anchors.length > 0;
+    const readyReady = playersCount > 0 ? readyCount === playersCount : false;
+    return [
+      {
+        id: 'charter',
+        label: 'World Charter',
+        detail: hasWorldCharter ? 'Canon defined' : 'Name the world + pillars',
+        ready: hasWorldCharter,
+        actionLabel: 'Open Charter',
+        actionId: 'charter'
+      },
+      {
+        id: 'atlas',
+        label: 'World Atlas',
+        detail: hasWorldAtlas ? 'Meta anchors set' : 'Add regions, factions, laws',
+        ready: hasWorldAtlas,
+        actionLabel: 'Build Atlas',
+        actionId: 'charter'
+      },
+      {
+        id: 'lens',
+        label: 'Scene Lens',
+        detail: lensReady ? 'Goal & stakes set' : 'Define goal + stakes',
+        ready: lensReady,
+        actionLabel: 'Set Lens',
+        actionId: 'lens'
+      },
+      {
+        id: 'intent',
+        label: 'Shared Intent',
+        detail: intentReady ? 'Intent aligned' : 'Align the table',
+        ready: intentReady,
+        actionLabel: 'Set Intent',
+        actionId: 'intent'
+      },
+      {
+        id: 'anchors',
+        label: 'World Anchors',
+        detail: anchorsReady ? `${anchors.length} anchored` : 'Pin 1-3 anchors',
+        ready: anchorsReady,
+        actionLabel: 'Pin Anchors',
+        actionId: 'anchors'
+      },
+      {
+        id: 'presence',
+        label: 'Table Ready',
+        detail: readyReady ? 'All seats ready' : `Ready ${readyCount}/${playersCount}`,
+        ready: readyReady,
+        actionLabel: 'Go to Presence',
+        actionId: 'presence'
+      }
+    ];
+  }, [
+    anchors.length,
+    hasWorldCharter,
+    hasWorldAtlas,
+    playersCount,
+    readyCount,
+    sceneGoal,
+    sceneRisk,
+    sessionState.intent
+  ]);
+  const flowPulseBlockers = flowPulseItems.filter((item) => !item.ready).length;
   const flowRecommendation = useMemo(() => {
     if (!hasWorldCharter) {
       return {
@@ -923,6 +971,14 @@ const StorytellerArenaConsole = ({
         actionId: 'start-ritual'
       };
     }
+    if (!expeditionRoute.length) {
+      return {
+        title: 'Plot Expedition Route',
+        detail: 'Set 1-3 atlas stops so the table can travel through the world in play.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
     if (resonancePending) {
       return {
         title: 'Answer Resonance Call',
@@ -946,6 +1002,7 @@ const StorytellerArenaConsole = ({
     anchors.length,
     immersionGate.ready,
     ritualActive,
+    expeditionRoute.length,
     resonancePending
   ]);
   const immersionPrimer = useMemo(() => {
@@ -1111,6 +1168,16 @@ const StorytellerArenaConsole = ({
             caller: resonanceCallerLabel,
             answeredBy: resonanceAnswerLabel,
             streak: resonanceStreak
+          },
+          expedition: {
+            route: expeditionRoute,
+            currentStop: expeditionCurrentStop,
+            nextStop: expeditionNextStop,
+            lastAction: {
+              label: expeditionLastAction?.label || '',
+              by: expeditionLastAction?.by || '',
+              at: expeditionLastAction?.at || ''
+            }
           }
         },
         roster: players.slice(0, playersCount).map((player, index) => ({
@@ -1171,6 +1238,10 @@ const StorytellerArenaConsole = ({
     resonanceCallerLabel,
     resonanceAnswerLabel,
     resonanceStreak,
+    expeditionRoute,
+    expeditionCurrentStop,
+    expeditionNextStop,
+    expeditionLastAction,
     immersionPrimer,
     spotlightLabel,
     spotlightTokens,
@@ -1707,6 +1778,140 @@ const StorytellerArenaConsole = ({
       handlePassFocus();
     }
     setNotice(`${action.label} logged to the ledger.`);
+  };
+
+  const handlePlotExpeditionRoute = () => {
+    const baseStops = (worldProfile.regions || [])
+      .map((region) => (typeof region === 'string' ? region.trim() : ''))
+      .filter(Boolean)
+      .slice(0, 3);
+    if (!baseStops.length) {
+      setNotice('Add at least one region in World Atlas before plotting a route.');
+      return;
+    }
+    const actorLabel = focusPlayerLabel || currentTurnLabel || 'Table';
+    setSessionState((prev) => {
+      const entry = createLedgerEntry({
+        type: 'location',
+        text: `${actorLabel} charts expedition route: ${baseStops.join(' → ')}`,
+        by: actorLabel
+      });
+      return {
+        ...prev,
+        expedition: {
+          route: baseStops,
+          currentIndex: 0,
+          lastAction: {
+            id: 'plot',
+            label: 'Plot Route',
+            by: actorLabel,
+            at: new Date().toISOString()
+          }
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setNotice(`Expedition route set (${baseStops.length} stop${baseStops.length > 1 ? 's' : ''}).`);
+  };
+
+  const handleAdvanceExpeditionStop = () => {
+    if (expeditionRoute.length < 2) {
+      setNotice('Route needs at least two stops to advance.');
+      return;
+    }
+    const actorLabel = focusPlayerLabel || currentTurnLabel || 'Table';
+    setSessionState((prev) => {
+      const currentRoute = Array.isArray(prev.expedition?.route)
+        ? prev.expedition.route
+            .map((stop) => (typeof stop === 'string' ? stop.trim() : ''))
+            .filter(Boolean)
+            .slice(0, 3)
+        : [];
+      if (currentRoute.length < 2) return prev;
+      const previousIndex = Math.max(
+        0,
+        Math.min(currentRoute.length - 1, Number(prev.expedition?.currentIndex) || 0)
+      );
+      const nextIndex = (previousIndex + 1) % currentRoute.length;
+      const nextStop = currentRoute[nextIndex];
+      const entry = createLedgerEntry({
+        type: 'location',
+        text: `${actorLabel} advances the expedition to ${nextStop}.`,
+        by: actorLabel
+      });
+      return {
+        ...prev,
+        expedition: {
+          route: currentRoute,
+          currentIndex: nextIndex,
+          lastAction: {
+            id: 'advance',
+            label: `Advance to ${nextStop}`,
+            by: actorLabel,
+            at: new Date().toISOString()
+          }
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setNotice('Expedition advanced to next stop.');
+  };
+
+  const handleExpeditionMove = (moveId) => {
+    const move = EXPEDITION_MOVES.find((item) => item.id === moveId);
+    if (!move) return;
+    if (!ritualActive) {
+      setNotice('Open ritual mode before using expedition moves.');
+      return;
+    }
+    if (!expeditionRoute.length) {
+      setNotice('Plot an expedition route first.');
+      return;
+    }
+    const actorLabel = focusPlayerLabel || currentTurnLabel || 'Table';
+    const currentStop = expeditionCurrentStop || expeditionRoute[0] || 'the current route';
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const previousClockRaw = Number(prev.sceneClock);
+      const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
+      const effect = applyVowModifiers(move.effects, prev.vows, {
+        ritualActive: Boolean(prev.ritualActive)
+      });
+      const entry = createLedgerEntry({
+        type: move.ledgerType,
+        text: `${actorLabel} ${move.text} (${currentStop}).`,
+        by: actorLabel
+      });
+      const currentRoute = Array.isArray(prev.expedition?.route)
+        ? prev.expedition.route
+            .map((stop) => (typeof stop === 'string' ? stop.trim() : ''))
+            .filter(Boolean)
+            .slice(0, 3)
+        : [];
+      const currentIndex = currentRoute.length
+        ? Math.max(0, Math.min(currentRoute.length - 1, Number(prev.expedition?.currentIndex) || 0))
+        : 0;
+      return {
+        ...prev,
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity)
+        },
+        sceneClock: clampSceneClockValue(previousClock + effect.sceneClock),
+        expedition: {
+          route: currentRoute,
+          currentIndex,
+          lastAction: {
+            id: move.id,
+            label: `${move.label} @ ${currentStop}`,
+            by: actorLabel,
+            at: new Date().toISOString()
+          }
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setNotice(`${actorLabel}: ${move.label} at ${currentStop}.`);
   };
 
   const handleCollabMove = (moveId) => {
@@ -3206,6 +3411,7 @@ const StorytellerArenaConsole = ({
               <span>Arena {hasArenaCards ? 'Active' : 'Empty'}</span>
               <span>Links {arenaEdges?.length || 0}</span>
               <span>Atlas {worldAtlasCount}/9</span>
+              <span>{`Route ${expeditionRoute.length ? `${expeditionCurrentIndex + 1}/${expeditionRoute.length}` : 'Unset'}`}</span>
               <span>Threads {threads.length}/3</span>
             </div>
             <div className="flowMeta">
@@ -4153,6 +4359,57 @@ const StorytellerArenaConsole = ({
                   Press
                 </button>
               </div>
+              <div className="expeditionRow">
+                <div className="expeditionHeader">
+                  <span>Expedition Route</span>
+                  <em>{expeditionRoute.length ? `${expeditionCurrentIndex + 1}/${expeditionRoute.length}` : 'Unset'}</em>
+                </div>
+                <p>
+                  {expeditionRoute.length
+                    ? `Current stop: ${expeditionCurrentStop}${
+                        expeditionRoute.length > 1 ? ` · Next: ${expeditionNextStop}` : ''
+                      }`
+                    : 'Plot 1-3 stops from your World Atlas regions.'}
+                </p>
+                <div className="expeditionStops">
+                  {expeditionRoute.map((stop, index) => (
+                    <span key={`${stop}-${index}`} className={index === expeditionCurrentIndex ? 'active' : ''}>
+                      {stop}
+                    </span>
+                  ))}
+                </div>
+                {expeditionLastAction?.label && (
+                  <div className="expeditionMeta">
+                    <span>{expeditionLastAction.label}</span>
+                    <em>{expeditionLastAction.by || 'Table'}</em>
+                  </div>
+                )}
+                <div className="expeditionMoves">
+                  <button type="button" className="ghost subtle" onClick={handlePlotExpeditionRoute}>
+                    Plot Route
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleAdvanceExpeditionStop}
+                    disabled={expeditionRoute.length < 2}
+                  >
+                    Advance Stop
+                  </button>
+                  {EXPEDITION_MOVES.map((move) => (
+                    <button
+                      key={move.id}
+                      type="button"
+                      className="ghost subtle"
+                      title={move.detail}
+                      onClick={() => handleExpeditionMove(move.id)}
+                      disabled={!ritualActive || !expeditionRoute.length}
+                    >
+                      {move.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="turnActionRow">
                 <span>
                   {currentTurnKey
@@ -4344,6 +4601,7 @@ const StorytellerArenaConsole = ({
               <span>{`Ready ${readyCount}/${playersCount}`}</span>
               <span>{ritualActive ? 'Ritual Live' : 'Ritual Staging'}</span>
               <span>{`Pressure ${sceneClock}/${SCENE_CLOCK_MAX}`}</span>
+              {expeditionCurrentStop && <span>{`Route ${expeditionCurrentStop}`}</span>}
               <span>{`Beat Sync ${beatSyncVotes}/${beatSyncRequired || 0}`}</span>
               <span>{resonancePending ? `Resonance Open: ${resonanceCallerLabel}` : `Resonance Streak ${resonanceStreak}`}</span>
               <span>{activeVows.length ? `Vows ${activeVows.map((vow) => vow.label).join('/')}` : 'Vows None'}</span>

@@ -102,7 +102,7 @@ export const saveTypewriterPrompt = async (
   baseUrl = DEFAULT_API_BASE_URL,
   pipelineKey,
   promptTemplate,
-  { adminKey, updatedBy = 'admin', markLatest = true } = {}
+  { adminKey, updatedBy = 'admin', markLatest = true, meta } = {}
 ) => {
   const safeBaseUrl = normalizeBaseUrl(baseUrl);
   return requestJson(`${safeBaseUrl}/api/admin/typewriter/prompts/${encodeURIComponent(pipelineKey)}`, {
@@ -111,7 +111,8 @@ export const saveTypewriterPrompt = async (
     body: JSON.stringify({
       promptTemplate,
       updatedBy,
-      markLatest
+      markLatest,
+      meta
     })
   });
 };

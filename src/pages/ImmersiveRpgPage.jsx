@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { LoaderCircle, NotebookPen, RefreshCcw, Save, Send, Dices } from 'lucide-react';
+import { LoaderCircle, NotebookPen, Save, Send } from 'lucide-react';
 import './ImmersiveRpgPage.css';
 import {
   DEFAULT_API_BASE_URL,
-  bootstrapImmersiveRpgScene,
   fetchImmersiveRpgScene,
   rollImmersiveRpg,
   saveImmersiveRpgCharacterSheet,
   sendImmersiveRpgChat
 } from '../api/immersiveRpg';
+import ImmersiveRpgStageModules from '../components/immersive-rpg/ImmersiveRpgStageModules';
+import ImmersiveRpgNotebookPanel from '../components/immersive-rpg/ImmersiveRpgNotebookPanel';
 
 const API_BASE_STORAGE_KEY = 'typewriterAdminApiBaseUrl';
 const SESSION_STORAGE_KEY = 'sessionId';
@@ -49,6 +50,32 @@ const defaultRollForm = {
   successesRequired: 2
 };
 
+const defaultNotebook = {
+  mode: 'idle',
+  title: 'Mechanics Notebook',
+  prompt: 'Notebook standing by.',
+  instruction: '',
+  scratchLines: [],
+  focusTags: [],
+  pendingRoll: null,
+  diceFaces: [],
+  successTrack: null,
+  resultSummary: 'No roll pending.'
+};
+
+const defaultStage = {
+  stageLayout: 'focus-left',
+  stageModules: []
+};
+
+const defaultSceneMeta = {
+  ready: true,
+  currentSceneNumber: 3,
+  currentSceneKey: 'scene_3_mysterious_encounter',
+  missingContext: [],
+  mockedContext: []
+};
+
 const rollFormFromPending = (pendingRoll) => ({
   skill: pendingRoll?.skill || defaultRollForm.skill,
   label: pendingRoll?.label || defaultRollForm.label,
@@ -68,14 +95,49 @@ const formatTimestamp = (value) => {
   }).format(parsed);
 };
 
+const getSceneNotebook = (scene) => {
+  if (!scene) return defaultNotebook;
+
+  const notebook = scene.notebook || {};
+  const pendingRoll = notebook.pendingRoll || scene.pendingRoll || null;
+  const lastRoll = Array.isArray(scene.rollLog) && scene.rollLog.length
+    ? scene.rollLog[scene.rollLog.length - 1]
+    : null;
+
+  return {
+    ...defaultNotebook,
+    ...notebook,
+    pendingRoll,
+    diceFaces: Array.isArray(notebook.diceFaces) && notebook.diceFaces.length
+      ? notebook.diceFaces
+      : Array.isArray(lastRoll?.rolls)
+        ? lastRoll.rolls
+        : [],
+    successTrack: notebook.successTrack || (lastRoll
+      ? {
+        successes: lastRoll.successes,
+        successesRequired: lastRoll.successesRequired,
+        passed: lastRoll.passed
+      }
+      : null),
+    resultSummary: notebook.resultSummary || lastRoll?.summary || defaultNotebook.resultSummary
+  };
+};
+
+const getSceneStage = (scene) => ({
+  ...defaultStage,
+  stageLayout: scene?.stageLayout || defaultStage.stageLayout,
+  stageModules: Array.isArray(scene?.stageModules) ? scene.stageModules : defaultStage.stageModules
+});
+
 function ImmersiveRpgPage() {
   const [sharedConfig, setSharedConfig] = useState(readSharedConfig);
   const [scene, setScene] = useState(null);
+  const [sceneMeta, setSceneMeta] = useState(defaultSceneMeta);
   const [characterSheet, setCharacterSheet] = useState(null);
   const [chatInput, setChatInput] = useState('');
   const [rollForm, setRollForm] = useState(defaultRollForm);
   const [loading, setLoading] = useState(() => Boolean(readSharedConfig().sessionId));
-  const [bootstrapping, setBootstrapping] = useState(false);
   const [chatting, setChatting] = useState(false);
   const [rolling, setRolling] = useState(false);
   const [savingSheet, setSavingSheet] = useState(false);
@@ -84,50 +146,24 @@ function ImmersiveRpgPage() {
   const sessionId = sharedConfig.sessionId;
   const playerName = sharedConfig.playerName;
   const hasSharedSession = Boolean(sessionId);
+  const notebook = getSceneNotebook(scene);
+  const stage = getSceneStage(scene);
+  const activePendingRoll = notebook.pendingRoll;
+  const isNotebookDrivenRoll = Boolean(activePendingRoll);
 
   const hydrateFromPayload = (payload) => {
     setScene(payload?.scene || null);
+    setSceneMeta({
+      ready: payload?.ready !== false,
+      currentSceneNumber: payload?.currentSceneNumber ?? payload?.scene?.currentSceneNumber ?? defaultSceneMeta.currentSceneNumber,
+      currentSceneKey: payload?.currentSceneKey || payload?.scene?.currentSceneKey || defaultSceneMeta.currentSceneKey,
+      missingContext: Array.isArray(payload?.missingContext) ? payload.missingContext : [],
+      mockedContext: Array.isArray(payload?.mockedContext) ? payload.mockedContext : []
+    });
     setCharacterSheet(payload?.characterSheet || payload?.scene?.characterSheet || null);
-    if (payload?.scene?.pendingRoll) {
-      setRollForm(rollFormFromPending(payload.scene.pendingRoll));
-    }
-  };
-
-  const loadScene = async ({ forceReset = false } = {}) => {
-    if (!sessionId) {
-      setScene(null);
-      setCharacterSheet(null);
-      setLoading(false);
-      setBootstrapping(false);
-      setRollForm(defaultRollForm);
-      return;
-    }
-
-    setError('');
-    if (forceReset) {
-      setBootstrapping(true);
-    } else {
-      setLoading(true);
-    }
-
-    try {
-      const payload = forceReset
-        ? await bootstrapImmersiveRpgScene(apiBaseUrl, {
-          sessionId,
-          playerName,
-          forceReset: true
-        })
-        : await fetchImmersiveRpgScene(apiBaseUrl, {
-          sessionId,
-          playerName,
-          bootstrap: true
-        });
-      hydrateFromPayload(payload);
-    } catch (loadError) {
-      setError(loadError.message || 'Failed to load the immersive RPG scene.');
-    } finally {
-      setLoading(false);
-      setBootstrapping(false);
+    const nextPendingRoll = payload?.scene?.notebook?.pendingRoll || payload?.scene?.pendingRoll || null;
+    if (nextPendingRoll) {
+      setRollForm(rollFormFromPending(nextPendingRoll));
     }
   };
 
@@ -173,6 +209,7 @@ function ImmersiveRpgPage() {
 
     if (!sessionId) {
       setScene(null);
+      setSceneMeta(defaultSceneMeta);
       setCharacterSheet(null);
       setRollForm(defaultRollForm);
       setLoading(false);
@@ -187,11 +224,7 @@ function ImmersiveRpgPage() {
 
     const run = async () => {
       try {
-        const payload = await fetchImmersiveRpgScene(apiBaseUrl, {
-          sessionId,
-          playerName,
-          bootstrap: true
-        });
+        const payload = await fetchImmersiveRpgScene(apiBaseUrl, { sessionId, playerName });
         if (!active) return;
         hydrateFromPayload(payload);
       } catch (loadError) {
@@ -212,9 +245,9 @@ function ImmersiveRpgPage() {
   }, [apiBaseUrl, sessionId, playerName]);
 
   useEffect(() => {
-    if (!scene?.pendingRoll) return;
-    setRollForm(rollFormFromPending(scene.pendingRoll));
-  }, [scene?.pendingRoll]);
+    if (!activePendingRoll) return;
+    setRollForm(rollFormFromPending(activePendingRoll));
+  }, [activePendingRoll]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -222,16 +255,35 @@ function ImmersiveRpgPage() {
     window.render_game_to_text = () => JSON.stringify({
       mode: 'immersive-rpg',
       sessionId,
+      ready: sceneMeta.ready,
+      currentSceneNumber: sceneMeta.currentSceneNumber,
+      currentSceneKey: sceneMeta.currentSceneKey,
+      missingContext: sceneMeta.missingContext,
       sceneTitle: scene?.sceneTitle || '',
       currentBeat: scene?.currentBeat || '',
       transcriptCount: scene?.transcript?.length || 0,
-      pendingRoll: scene?.pendingRoll
+      pendingRoll: activePendingRoll
         ? {
-          skill: scene.pendingRoll.skill,
-          diceNotation: scene.pendingRoll.diceNotation,
-          difficulty: scene.pendingRoll.difficulty
+          skill: activePendingRoll.skill,
+          diceNotation: activePendingRoll.diceNotation,
+          difficulty: activePendingRoll.difficulty
         }
         : null,
+      notebook: {
+        mode: notebook.mode,
+        title: notebook.title,
+        prompt: notebook.prompt,
+        diceFaces: notebook.diceFaces,
+        successTrack: notebook.successTrack
+      },
+      stage: {
+        layout: stage.stageLayout,
+        modules: stage.stageModules.map((module) => ({
+          type: module.type,
+          title: module.title,
+          hasImage: Boolean(module.imageUrl)
+        }))
+      },
       lastRoll: scene?.rollLog?.length ? scene.rollLog[scene.rollLog.length - 1] : null,
       characterName: characterSheet?.identity?.name || characterSheet?.playerName || ''
     });
@@ -242,7 +294,7 @@ function ImmersiveRpgPage() {
       delete window.render_game_to_text;
       delete window.advanceTime;
     };
-  }, [sessionId, scene, characterSheet]);
+  }, [sessionId, sceneMeta, scene, characterSheet, activePendingRoll, notebook, stage]);
 
   const updateCharacterSheetField = (section, key, value) => {
     setCharacterSheet((current) => ({
@@ -332,17 +384,15 @@ function ImmersiveRpgPage() {
   };
 
   const lastRoll = scene?.rollLog?.length ? scene.rollLog[scene.rollLog.length - 1] : null;
-
   return (
     <section className="immersiveRpgPage">
       <header className="immersiveRpgHero">
         <div className="immersiveRpgHero__copy">
-          <span className="immersiveRpgHero__eyebrow">Immersive RPG Skeleton</span>
-          <h1>{scene?.sceneTitle || 'Scene 3: The Mysterious Encounter'}</h1>
+          <span className="immersiveRpgHero__eyebrow">Immersive RPG</span>
+          <h1>{scene?.sceneTitle || `Scene ${sceneMeta.currentSceneNumber}: The Mysterious Encounter`}</h1>
           <p>
-            Messenger-derived location bootstrap, Mongo scene progression, free-text GM/PC chat,
-            and notebook roll scaffolding are wired here. Shared API, session, and PC identity are
-            managed in Story Admin.
+            Mongo decides the active scene from the shared session. This screen only reads that session state,
+            renders the modular scene surface, and waits when required context has not been persisted yet.
           </p>
         </div>
 
@@ -359,15 +409,6 @@ function ImmersiveRpgPage() {
             <strong className="immersiveRpgHero__metaValue">{apiBaseUrl}</strong>
             <span className="immersiveRpgHero__metaHint">Runtime model and mock/live mode come from Story Admin.</span>
           </div>
-          <button
-            type="button"
-            className="immersiveRpgButton immersiveRpgButton--ghost"
-            onClick={() => void loadScene({ forceReset: true })}
-            disabled={bootstrapping || !hasSharedSession}
-          >
-            {bootstrapping ? <LoaderCircle size={16} className="spin" /> : <RefreshCcw size={16} />}
-            Reset Scene
-          </button>
         </div>
       </header>
 
@@ -383,6 +424,42 @@ function ImmersiveRpgPage() {
         <div className="immersiveRpgLoading">
           <LoaderCircle size={22} className="spin" />
           <span>Loading scene state from Mongo...</span>
+        </div>
+      ) : !sceneMeta.ready ? (
+        <div className="immersiveRpgSceneCard">
+          <div className="immersiveRpgSceneCard__header">
+            <div>
+              <span className="immersiveRpgSceneCard__label">Scene Blocked</span>
+              <h2>{sceneMeta.currentSceneKey}</h2>
+            </div>
+            <div className="immersiveRpgSceneCard__badgeRow">
+              <span>waiting</span>
+              <span>session scoped</span>
+            </div>
+          </div>
+          <p className="immersiveRpgSceneCard__summary">
+            The RPG engine could resolve the active scene, but Mongo is still missing persisted context needed to run it.
+          </p>
+          <div className="immersiveRpgTranscript">
+            <article className="immersiveRpgTranscript__entry immersiveRpgTranscript__entry--system">
+              <header>
+                <span>System</span>
+                <span>Now</span>
+              </header>
+              <p>
+                Missing context: {sceneMeta.missingContext.length ? sceneMeta.missingContext.join(', ') : 'unknown'}.
+              </p>
+            </article>
+            {sceneMeta.mockedContext.length ? (
+              <article className="immersiveRpgTranscript__entry immersiveRpgTranscript__entry--system">
+                <header>
+                  <span>System</span>
+                  <span>Mock</span>
+                </header>
+                <p>Mockable dependencies currently active: {sceneMeta.mockedContext.join(', ')}.</p>
+              </article>
+            ) : null}
+          </div>
         </div>
       ) : (
         <div className="immersiveRpgLayout">
@@ -402,6 +479,18 @@ function ImmersiveRpgPage() {
               <p className="immersiveRpgSceneCard__summary">
                 {scene?.sourceSceneBrief?.placeSummary || 'Bootstrap the messenger scene first to anchor the encounter.'}
               </p>
+
+              <div className="immersiveRpgStageDeck">
+                <div className="immersiveRpgStageDeck__header">
+                  <span className="immersiveRpgSceneCard__label">Scene Collage</span>
+                  <span className="immersiveRpgStageDeck__layout">{stage.stageLayout}</span>
+                </div>
+                <ImmersiveRpgStageModules
+                  apiBaseUrl={apiBaseUrl}
+                  stageLayout={stage.stageLayout}
+                  stageModules={stage.stageModules}
+                />
+              </div>
 
               <div className="immersiveRpgTranscript">
                 {(scene?.transcript || []).map((entry) => (
@@ -484,82 +573,17 @@ function ImmersiveRpgPage() {
               </div>
             </div>
 
-            <div className="immersiveRpgNotebook">
-              <div className="immersiveRpgPanelHeader">
-                <div>
-                  <span className="immersiveRpgPanelHeader__label">Mechanics Notebook</span>
-                  <h3>Square Roll Pad</h3>
-                </div>
-                <NotebookPen size={20} />
-              </div>
-
-              <form className="immersiveRpgNotebook__form" onSubmit={handleRollSubmit}>
-                <label>
-                  <span>Skill</span>
-                  <input
-                    value={rollForm.skill}
-                    onChange={(event) => setRollForm((current) => ({ ...current, skill: event.target.value }))}
-                  />
-                </label>
-                <label>
-                  <span>Dice</span>
-                  <input
-                    value={rollForm.diceNotation}
-                    onChange={(event) => setRollForm((current) => ({ ...current, diceNotation: event.target.value }))}
-                  />
-                </label>
-                <label>
-                  <span>Threshold</span>
-                  <input
-                    type="number"
-                    value={rollForm.successThreshold}
-                    onChange={(event) => setRollForm((current) => ({ ...current, successThreshold: Number(event.target.value) || 1 }))}
-                  />
-                </label>
-                <label>
-                  <span>Needed</span>
-                  <input
-                    type="number"
-                    value={rollForm.successesRequired}
-                    onChange={(event) => setRollForm((current) => ({ ...current, successesRequired: Number(event.target.value) || 1 }))}
-                  />
-                </label>
-                <label className="immersiveRpgNotebook__wide">
-                  <span>Label</span>
-                  <input
-                    value={rollForm.label}
-                    onChange={(event) => setRollForm((current) => ({ ...current, label: event.target.value }))}
-                  />
-                </label>
-                <button type="submit" className="immersiveRpgButton immersiveRpgButton--ink" disabled={rolling}>
-                  {rolling ? <LoaderCircle size={16} className="spin" /> : <Dices size={16} />}
-                  Resolve Roll
-                </button>
-              </form>
-
-              <div className="immersiveRpgNotebook__results">
-                <h4>Latest Result</h4>
-                {lastRoll ? (
-                  <>
-                    <p className="immersiveRpgNotebook__summary">{lastRoll.summary}</p>
-                    <div className="immersiveRpgNotebook__chips">
-                      {lastRoll.rolls.map((value, index) => (
-                        <span key={`${lastRoll.rollId}-${index}`} className={value >= lastRoll.successThreshold ? 'is-success' : ''}>
-                          {value}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="immersiveRpgNotebook__meta">
-                      {lastRoll.successes} success{lastRoll.successes === 1 ? '' : 'es'} / need {lastRoll.successesRequired}
-                    </p>
-                  </>
-                ) : (
-                  <p className="immersiveRpgNotebook__summary">
-                    No roll logged yet. Trigger a journal check or roll manually to populate the notebook.
-                  </p>
-                )}
-              </div>
-            </div>
+            <ImmersiveRpgNotebookPanel
+              notebook={notebook}
+              sceneId={scene?.id || ''}
+              lastRoll={lastRoll}
+              activePendingRoll={activePendingRoll}
+              rollForm={rollForm}
+              setRollForm={setRollForm}
+              handleRollSubmit={handleRollSubmit}
+              isNotebookDrivenRoll={isNotebookDrivenRoll}
+              rolling={rolling}
+            />
           </aside>
         </div>
       )}

@@ -106,4 +106,16 @@ export const loadQuestTraversal = async (
   );
 };
 
+export const advanceQuest = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  payload = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/quest/advance`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+};
+
 export { DEFAULT_API_BASE_URL };
