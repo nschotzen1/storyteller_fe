@@ -2,8 +2,8 @@ export const STORY_ADMIN_CONTROL_COMPONENTS = [
   {
     key: 'typewriter',
     label: 'Typewriter',
-    description: 'Core writing routes for continuation and storyteller interruption.',
-    searchTerms: ['ghostwriter', 'continuation', 'writer'],
+    description: 'Core writing routes for continuation, Xerofag insertion, and storyteller interruption.',
+    searchTerms: ['ghostwriter', 'continuation', 'writer', 'xerofag'],
     routes: [
       {
         key: 'story_continuation_route',
@@ -13,6 +13,16 @@ export const STORY_ADMIN_CONTROL_COMPONENTS = [
         summary: 'Continues the live fragment saved under the active typewriter session.',
         runtimeKeys: ['story_continuation'],
         directPromptKeys: ['story_continuation'],
+        contractBindings: []
+      },
+      {
+        key: 'xerofag_inspection_route',
+        label: 'Xerofag inspection',
+        method: 'POST',
+        path: '/api/shouldAllowXerofag',
+        summary: 'Judges whether the Xerofag proper noun can be appended to the active narrative.',
+        runtimeKeys: ['xerofag_inspection'],
+        directPromptKeys: ['xerofag_inspection'],
         contractBindings: []
       },
       {

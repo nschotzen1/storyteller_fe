@@ -1,5 +1,6 @@
 import {
   fetchNextFilmImage,
+  fetchShouldAllowXerofag,
   fetchStorytellerTypewriterReply,
   fetchTypewriterReply,
   fetchShouldGenerateContinuation,
@@ -149,6 +150,56 @@ describe('apiService', () => {
 
       expect(global.fetch).not.toHaveBeenCalled();
       expect(result).toEqual({ data: null, error: null });
+    });
+  });
+
+  describe('fetchShouldAllowXerofag', () => {
+    const endpoint = `${SERVER_URL}/api/shouldAllowXerofag`;
+    const sessionId = 'session-xerofag';
+    const currentNarrative = 'The grave-hound dragged its ribs through the ash.';
+    const candidateNarrative = 'The grave-hound dragged its ribs through the ash. The Xerofag';
+
+    it('should fetch an allow verdict successfully', async () => {
+      const mockApiResponse = { allowed: true };
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockApiResponse,
+      });
+
+      const result = await fetchShouldAllowXerofag(sessionId, currentNarrative, candidateNarrative);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        endpoint,
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, currentNarrative, candidateNarrative }),
+        })
+      );
+      expect(result).toEqual(mockApiResponse);
+    });
+
+    it('should return false without calling fetch when narrative is empty', async () => {
+      const result = await fetchShouldAllowXerofag(sessionId, '   ', candidateNarrative);
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(result).toEqual({ allowed: false });
+    });
+
+    it('should handle API error for fetchShouldAllowXerofag', async () => {
+      global.fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 502,
+        statusText: 'Bad Gateway',
+      });
+
+      const result = await fetchShouldAllowXerofag(sessionId, currentNarrative, candidateNarrative);
+
+      expect(global.fetch).toHaveBeenCalledWith(endpoint, expect.anything());
+      expect(result).toEqual({
+        allowed: false,
+        error: { message: 'API error: 502 Bad Gateway', status: 502 },
+      });
     });
   });
 

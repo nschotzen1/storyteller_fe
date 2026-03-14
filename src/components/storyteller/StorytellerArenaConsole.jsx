@@ -213,6 +213,12 @@ const SESSION_STATE_DEFAULT = {
     streak: 0,
     at: ''
   },
+  canonProposal: {
+    text: '',
+    proposedByKey: '',
+    votes: {},
+    at: ''
+  },
   vows: {
     hush: false,
     anchor: false,
@@ -447,6 +453,7 @@ const StorytellerArenaConsole = ({
   const [anchorInput, setAnchorInput] = useState('');
   const [threadInput, setThreadInput] = useState('');
   const [resonanceInput, setResonanceInput] = useState('');
+  const [canonProposalInput, setCanonProposalInput] = useState('');
   const boardRef = useRef(null);
   const boardStageRef = useRef(null);
   const forgePanelRef = useRef(null);
@@ -779,6 +786,20 @@ const StorytellerArenaConsole = ({
   const beatSyncRequired = syncTargetKeys.length;
   const beatSyncVotes = syncTargetKeys.filter((playerKey) => beatVotes[playerKey] === activeBeatId).length;
   const beatSyncReady = beatSyncRequired > 0 && beatSyncVotes >= beatSyncRequired;
+  const canonProposal =
+    sessionState.canonProposal && typeof sessionState.canonProposal === 'object'
+      ? sessionState.canonProposal
+      : SESSION_STATE_DEFAULT.canonProposal;
+  const canonProposalText = typeof canonProposal.text === 'string' ? canonProposal.text.trim() : '';
+  const canonProposalVotesMap =
+    canonProposal.votes && typeof canonProposal.votes === 'object' ? canonProposal.votes : {};
+  const canonProposalVotes = syncTargetKeys.filter((playerKey) => Boolean(canonProposalVotesMap[playerKey])).length;
+  const canonProposalRequired = syncTargetKeys.length;
+  const canonProposalReady =
+    Boolean(canonProposalText) &&
+    canonProposalRequired > 0 &&
+    canonProposalVotes >= canonProposalRequired;
+  const canonProposalByLabel = getPlayerLabelByKey(canonProposal.proposedByKey || '', 'Table');
   const vows =
     sessionState.vows && typeof sessionState.vows === 'object' ? sessionState.vows : SESSION_STATE_DEFAULT.vows;
   const activeVows = VOW_DEFINITIONS.filter((vow) => Boolean(vows[vow.id]));
@@ -987,9 +1008,25 @@ const StorytellerArenaConsole = ({
         actionId: 'presence'
       };
     }
+    if (!canonProposalText) {
+      return {
+        title: 'Draft Canon Proposal',
+        detail: 'Propose one concise world truth for table ratification.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (!canonProposalReady) {
+      return {
+        title: 'Vote Canon Proposal',
+        detail: 'Have all ready seats vote to lock the new world truth.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
     return {
-      title: 'Call a Resonance Cue',
-      detail: 'Use a short call-and-response to deepen immersion and steady scene pressure.',
+      title: 'Ratify Canon Proposal',
+      detail: 'Ratify the voted truth to add it to canon and pulse.',
       actionLabel: 'Open Presence',
       actionId: 'presence'
     };
@@ -1003,7 +1040,9 @@ const StorytellerArenaConsole = ({
     immersionGate.ready,
     ritualActive,
     expeditionRoute.length,
-    resonancePending
+    resonancePending,
+    canonProposalText,
+    canonProposalReady
   ]);
   const immersionPrimer = useMemo(() => {
     const lines = [];
@@ -1162,6 +1201,13 @@ const StorytellerArenaConsole = ({
               at: sessionState.lastBeatSync?.at || ''
             }
           },
+          canonProposal: {
+            text: canonProposalText,
+            proposedBy: canonProposalByLabel,
+            votes: canonProposalVotes,
+            required: canonProposalRequired,
+            ready: canonProposalReady
+          },
           resonance: {
             pending: resonancePending,
             cue: resonanceCue,
@@ -1226,6 +1272,11 @@ const StorytellerArenaConsole = ({
     beatSyncVotes,
     beatSyncRequired,
     beatSyncReady,
+    canonProposalText,
+    canonProposalByLabel,
+    canonProposalVotes,
+    canonProposalRequired,
+    canonProposalReady,
     vows,
     activeVows,
     sceneGoal,
@@ -2202,6 +2253,114 @@ const StorytellerArenaConsole = ({
   const handleClearBeatVotes = () => {
     setSessionState((prev) => ({ ...prev, beatVotes: {}, lastBeatSync: null }));
     setNotice('Beat sync votes cleared.');
+  };
+
+  const handleDraftCanonProposal = () => {
+    const text = canonProposalInput.trim();
+    if (!text) {
+      setNotice('Write one concise canon proposal first.');
+      return;
+    }
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const proposerKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!proposerKey) {
+      setNotice('Set focus or turn holder before proposing canon.');
+      return;
+    }
+    const proposerLabel = getPlayerLabelByKey(proposerKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const entry = createLedgerEntry({
+        type: 'oath',
+        text: `${proposerLabel} proposes canon: "${text}"`,
+        by: proposerLabel
+      });
+      return {
+        ...prev,
+        canonProposal: {
+          text,
+          proposedByKey: proposerKey,
+          votes: { [proposerKey]: true },
+          at: new Date().toISOString()
+        },
+        pulse: {
+          ...nextPulse,
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setCanonProposalInput('');
+    setNotice(`${proposerLabel} drafts a canon proposal.`);
+  };
+
+  const handleVoteCanonProposal = () => {
+    if (!canonProposalText) {
+      setNotice('Draft a canon proposal before voting.');
+      return;
+    }
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const voterKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!voterKey) {
+      setNotice('Set focus or turn holder before voting.');
+      return;
+    }
+    const voterLabel = getPlayerLabelByKey(voterKey, 'Table');
+    setSessionState((prev) => ({
+      ...prev,
+      canonProposal: {
+        ...(prev.canonProposal && typeof prev.canonProposal === 'object'
+          ? prev.canonProposal
+          : SESSION_STATE_DEFAULT.canonProposal),
+        votes: {
+          ...((prev.canonProposal && typeof prev.canonProposal.votes === 'object'
+            ? prev.canonProposal.votes
+            : {})),
+          [voterKey]: true
+        }
+      }
+    }));
+    setNotice(`${voterLabel} supports the canon proposal.`);
+  };
+
+  const handleRatifyCanonProposal = () => {
+    if (!canonProposalText) {
+      setNotice('No canon proposal to ratify.');
+      return;
+    }
+    if (!canonProposalReady) {
+      setNotice(`Consensus required (${canonProposalVotes}/${canonProposalRequired} votes).`);
+      return;
+    }
+    const ratifierLabel = focusPlayerLabel || currentTurnLabel || 'Table';
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const entry = createLedgerEntry({
+        type: 'canon',
+        text: `Canon ratified: ${canonProposalText}`,
+        by: ratifierLabel
+      });
+      return {
+        ...prev,
+        canonProposal: { ...SESSION_STATE_DEFAULT.canonProposal },
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + 1),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setCanonProposalInput('');
+    setNotice('Canon ratified and committed to the ledger.');
+  };
+
+  const handleClearCanonProposal = () => {
+    setSessionState((prev) => ({
+      ...prev,
+      canonProposal: { ...SESSION_STATE_DEFAULT.canonProposal }
+    }));
+    setCanonProposalInput('');
+    setNotice('Canon proposal cleared.');
   };
 
   const handleAdvanceTurn = () => {
@@ -4441,13 +4600,58 @@ const StorytellerArenaConsole = ({
                   <span className={beatSyncReady ? 'synced' : ''}>{beatSyncReady ? 'Synced' : 'Awaiting votes'}</span>
                 </div>
               </div>
-              <div className="beatSyncControls">
-                <button type="button" className="ghost subtle" onClick={handleVoteCurrentBeat} disabled={!syncTargetKeys.length}>
-                  Vote Beat
-                </button>
-                <button type="button" className="ghost subtle" onClick={handleClearBeatVotes} disabled={!Object.keys(beatVotes).length}>
-                  Clear Votes
-                </button>
+                <div className="beatSyncControls">
+                  <button type="button" className="ghost subtle" onClick={handleVoteCurrentBeat} disabled={!syncTargetKeys.length}>
+                    Vote Beat
+                  </button>
+                  <button type="button" className="ghost subtle" onClick={handleClearBeatVotes} disabled={!Object.keys(beatVotes).length}>
+                    Clear Votes
+                  </button>
+                </div>
+              <div className="canonProposalRow">
+                <div className="canonProposalHeader">
+                  <span>Canon Proposal</span>
+                  <em>{`${canonProposalVotes}/${canonProposalRequired || 0} votes`}</em>
+                </div>
+                <p>
+                  {canonProposalText
+                    ? `"${canonProposalText}" · proposed by ${canonProposalByLabel}`
+                    : 'Propose one concise world truth, gather votes, then ratify into canon.'}
+                </p>
+                <div className="canonProposalInput">
+                  <input
+                    value={canonProposalInput}
+                    placeholder="Example: The watchtower bells ring before every storm."
+                    onChange={(event) => setCanonProposalInput(event.target.value)}
+                  />
+                  <button type="button" className="ghost subtle" onClick={handleDraftCanonProposal}>
+                    Propose
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleVoteCanonProposal}
+                    disabled={!canonProposalText}
+                  >
+                    Vote
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleRatifyCanonProposal}
+                    disabled={!canonProposalReady}
+                  >
+                    Ratify
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleClearCanonProposal}
+                    disabled={!canonProposalText && !Object.keys(canonProposalVotesMap).length}
+                  >
+                    Reset
+                  </button>
+                </div>
               </div>
               <div className="vowStatusRow">
                 <span>Ritual Vows</span>
@@ -4603,6 +4807,11 @@ const StorytellerArenaConsole = ({
               <span>{`Pressure ${sceneClock}/${SCENE_CLOCK_MAX}`}</span>
               {expeditionCurrentStop && <span>{`Route ${expeditionCurrentStop}`}</span>}
               <span>{`Beat Sync ${beatSyncVotes}/${beatSyncRequired || 0}`}</span>
+              <span>
+                {canonProposalText
+                  ? `Canon ${canonProposalVotes}/${canonProposalRequired || 0}`
+                  : 'Canon Draft Empty'}
+              </span>
               <span>{resonancePending ? `Resonance Open: ${resonanceCallerLabel}` : `Resonance Streak ${resonanceStreak}`}</span>
               <span>{activeVows.length ? `Vows ${activeVows.map((vow) => vow.label).join('/')}` : 'Vows None'}</span>
               {currentTurnKey && <span>{`Actions ${currentTurnActions}/${TURN_ACTIONS_PER_TURN}`}</span>}

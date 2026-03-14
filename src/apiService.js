@@ -82,6 +82,40 @@ export const fetchTypewriterReply = async (text, sessionId, options = {}) => {
   }
 };
 
+export const fetchShouldAllowXerofag = async (sessionId, currentNarrative, candidateNarrative, options = {}) => {
+  if (!sessionId || typeof currentNarrative !== 'string' || !currentNarrative.trim()) {
+    return { allowed: false };
+  }
+  try {
+    const payload = { sessionId, currentNarrative };
+    if (typeof candidateNarrative === 'string' && candidateNarrative.trim()) {
+      payload.candidateNarrative = candidateNarrative;
+    }
+    if (options?.mocked_api_calls !== undefined) {
+      payload.mocked_api_calls = options.mocked_api_calls;
+    }
+    const response = await fetch(`${SERVER}/api/shouldAllowXerofag`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      console.error(`API error in fetchShouldAllowXerofag: ${response.status} ${response.statusText}`);
+      return {
+        allowed: false,
+        error: { message: `API error: ${response.status} ${response.statusText}`, status: response.status }
+      };
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Network error fetching shouldAllowXerofag:', error);
+    return {
+      allowed: false,
+      error: { message: error.message }
+    };
+  }
+};
+
 // Use axios or fetch—here’s a fetch version for clarity:
 export async function fetchShouldGenerateContinuation(currentText, latestAddition, latestPauseSeconds, lastGhostwriterWordCount) {
   if (!latestAddition) {

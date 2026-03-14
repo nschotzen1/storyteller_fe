@@ -58,6 +58,14 @@ const SETTING_PIPELINES = [
     defaultProvider: 'openai'
   },
   {
+    key: 'xerofag_inspection',
+    label: 'Xerofag inspection',
+    description: '/api/shouldAllowXerofag',
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
+  },
+  {
     key: 'messenger_chat',
     label: 'Messenger chat',
     description: '/api/messenger/chat',
@@ -163,6 +171,12 @@ const PROMPT_PIPELINES = [
     label: 'Story continuation',
     description: '/api/send_typewriter_text',
     settingsKey: 'story_continuation'
+  },
+  {
+    key: 'xerofag_inspection',
+    label: 'Xerofag inspection',
+    description: '/api/shouldAllowXerofag',
+    settingsKey: 'xerofag_inspection'
   },
   {
     key: 'messenger_chat',

@@ -8,6 +8,7 @@ import OrreryComponent from './OrreryComponent.jsx';
 import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines, playGhostWriterSound, ambientSoundManager, playPreGhostSound, fetchAndPlayElevenLabsTTS, playStorytellerKeyPressSound } from './utils.js';
 import {
   fetchNextFilmImage,
+  fetchShouldAllowXerofag,
   fetchShouldCreateStorytellerKey,
   fetchShouldGenerateContinuation,
   fetchStorytellerTypewriterReply,
@@ -918,6 +919,7 @@ const TypewriterFramework = (props) => {
   const [activeStorytellerPress, setActiveStorytellerPress] = useState(null);
   const [ghostPressedKey, setGhostPressedKey] = useState(null);
   const [preGhostAtmosphere, setPreGhostAtmosphere] = useState(false);
+  const [isXerofagInspectionPending, setIsXerofagInspectionPending] = useState(false);
   // lastUserInputTime, responseQueued, lastGeneratedLength are now in ghostwriterState
   // Level: 0 = empty, 3 = full (ready for page turn)
   const [leverLevel, setLeverLevel] = useState(0);
@@ -1007,6 +1009,7 @@ const TypewriterFramework = (props) => {
   // --- Derived ---
   const { text: pageText, filmBgUrl: pageBg } = pages[currentPage] || {};
   const visibleGhostText = `${typingState.currentGhostText || ''}${typingState.sequenceUserText || ''}`;
+  const typingInteractionAllowed = typingAllowed && !isXerofagInspectionPending;
   const displayedKeyTextures = keys.map((key, index) => {
     const storytellerSlot = storytellerSlots.find((slot) => slot.slotKey === key);
     if (storytellerSlot) {
@@ -1020,7 +1023,31 @@ const TypewriterFramework = (props) => {
   const canPullTurnPageLever =
     leverLevel === LEVER_LEVEL_WORD_THRESHOLDS.length - 1
     && !pageChangeInProgress
-    && typingAllowed;
+    && typingInteractionAllowed;
+
+  const buildXerofagCandidateNarrative = useCallback((currentNarrative = '') => {
+    const baseText = typeof currentNarrative === 'string' ? currentNarrative : '';
+    const candidateTerm = SPECIAL_KEY_INSERT_TEXT.trim();
+    if (!baseText) return candidateTerm;
+    return /\s$/.test(baseText)
+      ? `${baseText}${candidateTerm}`
+      : `${baseText} ${candidateTerm}`;
+  }, []);
+
+  const buildXerofagInsertText = useCallback((currentNarrative = '') => {
+    const baseText = typeof currentNarrative === 'string' ? currentNarrative : '';
+    const candidateNarrative = buildXerofagCandidateNarrative(baseText);
+    const appendedText = candidateNarrative.slice(baseText.length);
+    return `${appendedText} `;
+  }, [buildXerofagCandidateNarrative]);
+
+  const getCurrentNarrativeSnapshot = useCallback(() => (
+    `${pageText || ''}${visibleGhostText || ''}${typingState.inputBuffer || ''}`
+  ), [
+    pageText,
+    visibleGhostText,
+    typingState.inputBuffer
+  ]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -1361,7 +1388,7 @@ const TypewriterFramework = (props) => {
 
   // --- Keyboard Handler ---
   const handleKeyDown = (e) => {
-    if (pageTransitionState.pageChangeInProgress || !typingState.typingAllowed) {
+    if (pageTransitionState.pageChangeInProgress || !typingInteractionAllowed) {
       if (pageTransitionState.pageChangeInProgress)
         playEndOfPageSound();
       return;
@@ -1851,7 +1878,7 @@ const TypewriterFramework = (props) => {
 
   // --- Keyboard Event Handlers for <Keyboard /> component ---
   const handleRegularKeyPress = (keyText) => {
-    if (!typingState.typingAllowed) return;
+    if (!typingInteractionAllowed) return;
     ensureAmbientStarted();
     if (typingState.isProcessingSequence) {
       takeOverSequenceAtCursor();
@@ -1865,23 +1892,37 @@ const TypewriterFramework = (props) => {
     playKeySound();
   };
 
-  const handleXerofagKeyPress = () => {
-    if (!typingState.typingAllowed) return;
+  const handleXerofagKeyPress = async () => {
+    if (!typingInteractionAllowed || !sessionId) return;
     ensureAmbientStarted();
+    const currentNarrative = getCurrentNarrativeSnapshot();
+    if (!currentNarrative.trim()) return;
     if (typingState.isProcessingSequence) {
       takeOverSequenceAtCursor();
     } else if (typingState.currentGhostText) {
       commitGhostText();
     }
-    dispatchTyping({ type: typingActionTypes.ADD_TO_INPUT_BUFFER, payload: SPECIAL_KEY_INSERT_TEXT });
-    dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: SPECIAL_KEY_TEXT.toUpperCase() });
-    dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
-    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
-    playXerofagHowl();
+    const candidateNarrative = buildXerofagCandidateNarrative(currentNarrative);
+    const insertText = buildXerofagInsertText(currentNarrative);
+
+    setIsXerofagInspectionPending(true);
+    try {
+      const verdict = await fetchShouldAllowXerofag(sessionId, currentNarrative, candidateNarrative);
+      if (!verdict?.allowed) return;
+      dispatchTyping({ type: typingActionTypes.ADD_TO_INPUT_BUFFER, payload: insertText });
+      dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: SPECIAL_KEY_TEXT.toUpperCase() });
+      dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
+      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+      playXerofagHowl();
+    } catch (error) {
+      console.error('Error triggering Xerofag inspection:', error);
+    } finally {
+      setIsXerofagInspectionPending(false);
+    }
   };
 
   const handleSpacebarPress = () => {
-    if (!typingState.typingAllowed) return;
+    if (!typingInteractionAllowed) return;
     ensureAmbientStarted();
     if (typingState.isProcessingSequence) {
       takeOverSequenceAtCursor();
@@ -1896,7 +1937,7 @@ const TypewriterFramework = (props) => {
   };
 
   const handleStorytellerPress = async (slot) => {
-    if (!slot?.filled || !sessionId || !typingState.typingAllowed) return;
+    if (!slot?.filled || !sessionId || !typingInteractionAllowed) return;
     ensureAmbientStarted();
     setActiveStorytellerPress({ slotKey: slot.slotKey });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: true });
@@ -2219,7 +2260,7 @@ const TypewriterFramework = (props) => {
         lastPressedKey={lastPressedKey}
         pressedStorytellerKey={activeStorytellerPress?.slotKey || null}
         ghostPressedKey={ghostPressedKey}
-        typingAllowed={typingAllowed}
+        typingAllowed={typingInteractionAllowed}
         onKeyPress={handleRegularKeyPress}
         onStorytellerPress={handleStorytellerPress}
         onXerofagPress={handleXerofagKeyPress}

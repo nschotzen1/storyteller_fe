@@ -1706,6 +1706,56 @@
   gap: 8px;
 }
 
+.canonProposalRow {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(74, 222, 128, 0.24);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(8, 28, 16, 0.55);
+}
+
+.canonProposalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.canonProposalHeader span {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(187, 247, 208, 0.95);
+}
+
+.canonProposalHeader em {
+  font-style: normal;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: rgba(226, 214, 191, 0.65);
+}
+
+.canonProposalRow p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(226, 214, 191, 0.82);
+}
+
+.canonProposalInput {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  gap: 6px;
+}
+
+@media (max-width: 760px) {
+  .canonProposalInput {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .turnActionRow {
   display: grid;
   gap: 8px;

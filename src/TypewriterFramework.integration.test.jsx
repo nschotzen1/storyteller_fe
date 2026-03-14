@@ -13,6 +13,7 @@ import '@testing-library/jest-dom';
 
 vi.mock('./apiService', () => ({
   fetchNextFilmImage: vi.fn(),
+  fetchShouldAllowXerofag: vi.fn().mockResolvedValue({ allowed: true }),
   fetchShouldCreateStorytellerKey: vi.fn(),
   fetchStorytellerTypewriterReply: vi.fn(),
   fetchTypewriterReply: vi.fn().mockResolvedValue({ data: { content: 'mock AI reply' }, error: null }),
@@ -35,6 +36,7 @@ vi.mock('./utils', async () => {
 
 import {
   fetchNextFilmImage,
+  fetchShouldAllowXerofag,
   fetchShouldCreateStorytellerKey,
   fetchStorytellerTypewriterReply,
   fetchTypewriterReply,
@@ -132,6 +134,7 @@ describe('TypewriterFramework integration', () => {
     localStorageMock.clear();
     localStorageMock.setItem('sessionId', 'test-session-id-123');
     fetchNextFilmImage.mockResolvedValue({ data: { image_url: 'default_mock_image.png' }, error: null });
+    fetchShouldAllowXerofag.mockResolvedValue({ allowed: true });
     fetchShouldCreateStorytellerKey.mockResolvedValue({
       data: { slots: buildStorytellerSlotPayload(), entityKeys: [] },
       error: null
@@ -243,6 +246,61 @@ describe('TypewriterFramework integration', () => {
       expect(fetchNextFilmImage).toHaveBeenCalled();
       const nextSlide = screen.getByTestId('next-bg-slide');
       expect(nextSlide).toHaveStyle('background-image: url("new_page_specific.png")');
+    });
+  });
+
+  test('xerofag key inserts the term only when the backend allows it', async () => {
+    const { container } = render(<TypewriterFramework />);
+
+    clickKey('H');
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+    clickKey(' ');
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+
+    fireEvent.click(screen.getByAltText('Key THE XEROFAG').closest('.typewriter-key-wrapper'));
+
+    await waitFor(() => {
+      expect(fetchShouldAllowXerofag).toHaveBeenCalledWith(
+        'test-session-id-123',
+        'H ',
+        'H The Xerofag'
+      );
+    });
+
+    const inserted = await advanceUntil(() => {
+      const lines = container.querySelectorAll('.typewriter-line .last-line-content');
+      return lines[0]?.textContent?.includes('H The Xerofag');
+    }, 4000, 100);
+
+    expect(inserted).toBe(true);
+  });
+
+  test('xerofag key does nothing when the backend rejects the term', async () => {
+    fetchShouldAllowXerofag.mockResolvedValueOnce({ allowed: false });
+    const { container } = render(<TypewriterFramework />);
+
+    clickKey('H');
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+
+    fireEvent.click(screen.getByAltText('Key THE XEROFAG').closest('.typewriter-key-wrapper'));
+
+    await waitFor(() => {
+      expect(fetchShouldAllowXerofag).toHaveBeenCalled();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(240);
+    });
+
+    await waitFor(() => {
+      const lines = container.querySelectorAll('.typewriter-line .last-line-content');
+      expect(lines[0].textContent).toBe('H');
     });
   });
 
