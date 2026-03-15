@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, LoaderCircle, Send } from 'lucide-react';
+import { AlertCircle, LoaderCircle, RotateCcw, Send } from 'lucide-react';
 import './Messanger.css';
 import {
   DEFAULT_API_BASE_URL,
@@ -131,7 +131,7 @@ const MessageCard = ({ message }) => {
 
 const Messanger = ({ start = true, onCurtainDropComplete }) => {
   const apiBaseUrl = useMemo(getInitialApiBaseUrl, []);
-  const sessionId = useMemo(getInitialSessionId, []);
+  const [sessionId, setSessionId] = useState(getInitialSessionId);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [forceMock, setForceMock] = useState(getInitialForceMock);
@@ -152,6 +152,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   const introAudioRef = useRef(null);
   const introAudioTimerRef = useRef(null);
   const lastIntroPlaybackKeyRef = useRef('');
+  const sessionIdRef = useRef(sessionId);
   const typingTimerRef = useRef(null);
   const previousMessageIdsRef = useRef([]);
   const interferenceTriggerTimerRef = useRef(null);
@@ -201,24 +202,58 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
     setInterferenceLevel('');
   };
 
+  const stopIntroFlipTransition = () => {
+    if (typeof window === 'undefined') return;
+    if (introFlipTimerRef.current) {
+      window.clearTimeout(introFlipTimerRef.current);
+      introFlipTimerRef.current = null;
+    }
+    if (introFlipCompletionTimerRef.current) {
+      window.clearTimeout(introFlipCompletionTimerRef.current);
+      introFlipCompletionTimerRef.current = null;
+    }
+  };
+
+  const resetMessengerViewState = () => {
+    stopIntroFlipTransition();
+    stopIntroAudio();
+    stopTypingAnimation();
+    stopInterference();
+    lastIntroPlaybackKeyRef.current = '';
+    previousMessageIdsRef.current = [];
+    setMessages([]);
+    setInput('');
+    setRuntime(null);
+    setChatEnded(false);
+    setLoading(false);
+    setSending(false);
+    setError('');
+    setPendingMessage('');
+    setRevealedTextById({});
+    setTypingMessageId('');
+    setInterferenceLevel('');
+    setIsOpeningMessenger(false);
+    setIsFlippingMessenger(false);
+    setHasOpenedMessenger(false);
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(MOCK_STORAGE_KEY, forceMock ? 'true' : 'false');
   }, [forceMock]);
 
   useEffect(() => {
+    sessionIdRef.current = sessionId;
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+  }, [sessionId]);
+
+  useEffect(() => {
     threadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, pendingMessage, sending, revealedTextById, typingMessageId]);
 
   useEffect(() => () => {
-    if (introFlipTimerRef.current && typeof window !== 'undefined') {
-      window.clearTimeout(introFlipTimerRef.current);
-      introFlipTimerRef.current = null;
-    }
-    if (introFlipCompletionTimerRef.current && typeof window !== 'undefined') {
-      window.clearTimeout(introFlipCompletionTimerRef.current);
-      introFlipCompletionTimerRef.current = null;
-    }
+    stopIntroFlipTransition();
     stopIntroAudio();
     stopTypingAnimation();
     stopInterference();
@@ -450,6 +485,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   const handleSend = async () => {
     const draft = input.trim();
     if (!draft || sending) return;
+    const requestSessionId = sessionId;
 
     setSending(true);
     setPendingMessage(draft);
@@ -463,15 +499,23 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
         message: draft,
         mocked_api_calls: forceMock ? true : undefined
       });
+      if (sessionIdRef.current !== requestSessionId) {
+        return;
+      }
       setMessages(normalizeMessages(payload?.messages));
       setRuntime(payload?.runtime || null);
       setChatEnded(Boolean(payload?.has_chat_ended));
     } catch (err) {
+      if (sessionIdRef.current !== requestSessionId) {
+        return;
+      }
       setInput(draft);
       setError(err.message || 'Unable to send messenger reply.');
     } finally {
-      setPendingMessage('');
-      setSending(false);
+      if (sessionIdRef.current === requestSessionId) {
+        setPendingMessage('');
+        setSending(false);
+      }
     }
   };
   const handsetTime = useMemo(() => {
@@ -505,6 +549,16 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
     }, INTRO_FLIP_PRELUDE_MS);
   };
 
+  const handleRestartDebug = () => {
+    const nextSessionId = createSessionId();
+    sessionIdRef.current = nextSessionId;
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(SESSION_STORAGE_KEY, nextSessionId);
+    }
+    resetMessengerViewState();
+    setSessionId(nextSessionId);
+  };
+
   return (
     <div className={`messangerScene${chatEnded ? ' is-ended' : ''}`}>
       <div className="messangerScene__grain" />
@@ -513,6 +567,14 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
       <div className="messangerFrame">
         <div className="messangerPhoneWrap">
           <div className="messangerUtilityBar">
+            <button
+              type="button"
+              className="messangerDebugButton"
+              onClick={handleRestartDebug}
+            >
+              <RotateCcw size={14} />
+              <span>Restart debug</span>
+            </button>
             <label className="messangerModeSwitch">
               <input
                 type="checkbox"

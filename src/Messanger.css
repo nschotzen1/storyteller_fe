@@ -84,6 +84,55 @@
 .messangerUtilityBar {
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 0.74rem;
+  flex-wrap: wrap;
+}
+
+.messangerDebugButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.52rem;
+  padding: 0.58rem 0.92rem;
+  border: 1px solid rgba(200, 155, 98, 0.28);
+  border-radius: 1.05rem;
+  background:
+    radial-gradient(circle at 22% 24%, rgba(255, 241, 214, 0.08), transparent 18%),
+    linear-gradient(180deg, rgba(46, 39, 31, 0.94), rgba(12, 13, 15, 0.98)),
+    repeating-linear-gradient(90deg, rgba(255, 240, 214, 0.03) 0 1px, transparent 1px 6px);
+  box-shadow:
+    0 12px 26px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 247, 231, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.34);
+  color: rgba(239, 229, 209, 0.82);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+.messangerDebugButton:hover {
+  transform: translateY(-1px);
+  border-color: rgba(211, 133, 94, 0.34);
+  color: rgba(255, 238, 216, 0.96);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 247, 231, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.34);
+}
+
+.messangerDebugButton:active {
+  transform: translateY(0);
+}
+
+.messangerDebugButton svg {
+  color: rgba(211, 133, 94, 0.88);
+}
+
+.messangerDebugButton:focus-visible {
+  outline: 2px solid rgba(211, 133, 94, 0.54);
+  outline-offset: 2px;
 }
 
 .messangerModeSwitch {
