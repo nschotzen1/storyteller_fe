@@ -38,6 +38,10 @@ vi.mock('./pages/RoseCourtProloguePage', () => ({
   default: () => <div data-testid="rose-court-page">Rose Court</div>
 }));
 
+vi.mock('./pages/WellDemoPage', () => ({
+  default: () => <div data-testid="well-page">Well</div>
+}));
+
 vi.mock('./pages/QuestAdminPage', () => ({
   default: () => <div data-testid="quest-admin-page">Quest admin</div>
 }));
@@ -105,5 +109,11 @@ describe('App curtain view orchestration', () => {
 
     expect(screen.getByTestId('typewriter-framework')).toBeInTheDocument();
     expect(screen.getByTestId('curtain-intro')).toBeInTheDocument();
+  });
+
+  it('opens the well view directly from the query param', () => {
+    renderAppAt('?view=well');
+
+    expect(screen.getByTestId('well-page')).toBeInTheDocument();
   });
 });

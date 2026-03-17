@@ -585,16 +585,16 @@ function RoseCourtProloguePage({
 
   if (isBlackoutScreen) {
     return (
-      <div className="sierraRoot sierraRoot--blackout">
+      <div className="taleRoot taleRoot--blackout">
         <div className="roseCourtBlackout" aria-label="The opening scene ends in darkness" />
       </div>
     );
   }
 
   return (
-    <div className="sierraRoot">
+    <div className="taleRoot">
       {/* ── Scene illustration ── */}
-      <section className={`sierraScene ${isWellScreen ? 'sierraScene--well' : ''}`} aria-label="Rose Court scene">
+      <section className={`taleScene ${isWellScreen ? 'taleScene--well' : ''}`} aria-label="Rose Court scene">
         {isWellScreen ? (
           <RoseCourtWellScene
             backgroundSrc={activeScreen?.imageUrl || '/well/well_background.png'}
@@ -607,36 +607,34 @@ function RoseCourtProloguePage({
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeScreen?.id || 'loading'}
-                className="sierraSceneImage"
+                className="taleSceneImage"
                 style={{ backgroundImage: `url(${backgroundUrl})` }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: 0.5 }}
               />
             </AnimatePresence>
-            <div className="sierraSceneVignette" />
+            <div className="taleSceneVignette" />
 
-            {/* In-scene narration overlay (Sierra-style) */}
             {activeScreen?.title ? (
-              <div className="sierraSceneCaption">
+              <div className="taleSceneCaption">
                 <span>{activeScreen.title}</span>
               </div>
             ) : null}
 
-            {/* Variant gallery cards overlaid on scene */}
             {activeScreenId === 'location_mural_gallery' && variantScreens.length > 0 ? (
-              <div className="sierraVariantOverlay">
+              <div className="taleVariantOverlay">
                 {variantScreens.map((screen) => (
                   <button
                     key={screen.id}
                     type="button"
-                    className="sierraVariantCard"
+                    className="taleVariantCard"
                     onClick={() => handleDirectionClick(
                       directions.find((d) => d.targetScreenId === screen.id) || {}
                     )}
                   >
-                    <span className="sierraVariantCard__label">Second Wall</span>
+                    <span className="taleVariantCard__label">Second Wall</span>
                     <strong>{screen.title}</strong>
                     <p>{screen.expectationSummary || screen.prompt}</p>
                   </button>
@@ -647,69 +645,69 @@ function RoseCourtProloguePage({
         )}
       </section>
 
-      {/* ── Status bar ── */}
-      <div className="sierraStatusBar">
-        <span className="sierraStatusBar__beat">{stageBeat}</span>
-        <span className="sierraStatusBar__sep">│</span>
+      {/* ── Chapter header ── */}
+      <div className="taleChapterBar">
+        <span className="taleChapterBar__beat">{stageBeat}</span>
+        <span className="taleChapterBar__sep">·</span>
         {stageCues.map((cue) => (
-          <span key={cue} className="sierraStatusBar__cue">{cue}</span>
+          <span key={cue} className="taleChapterBar__cue">{cue}</span>
         ))}
-        <span className="sierraStatusBar__sep">│</span>
-        <span className={`sierraStatusBar__chip ${imageStatus === 'error' ? 'is-error' : ''}`}>
-          img:{imageStatus}
+        <span className="taleChapterBar__sep">·</span>
+        <span className={`taleChapterBar__chip ${imageStatus === 'error' ? 'is-error' : ''}`}>
+          Scene {imageStatus === 'loaded' ? '✓' : imageStatus}
         </span>
-        <span className={`sierraStatusBar__chip ${locationMessengerState.hasChatEnded ? 'is-ready' : ''}`}>
-          clerk:{locationMessengerState.hasChatEnded ? 'ok' : '??'}
+        <span className={`taleChapterBar__chip ${locationMessengerState.hasChatEnded ? 'is-ready' : ''}`}>
+          Clerk {locationMessengerState.hasChatEnded ? '✓' : '…'}
         </span>
-        <span className={`sierraStatusBar__chip ${transportMessengerState.hasChatEnded ? 'is-ready' : ''}`}>
-          relay:{transportMessengerState.hasChatEnded ? 'ok' : '--'}
+        <span className={`taleChapterBar__chip ${transportMessengerState.hasChatEnded ? 'is-ready' : ''}`}>
+          Relay {transportMessengerState.hasChatEnded ? '✓' : '–'}
         </span>
-        <span className={`sierraStatusBar__chip ${locationVariantsReady ? 'is-ready' : ''}`}>
-          murals:{locationVariantsReady ? 'open' : '--'}
+        <span className={`taleChapterBar__chip ${locationVariantsReady ? 'is-ready' : ''}`}>
+          Murals {locationVariantsReady ? '✓' : '–'}
         </span>
       </div>
 
-      {/* ── Text parser panel ── */}
-      <section className="sierraTextPanel" ref={textPanelRef}>
+      {/* ── Parchment text panel ── */}
+      <section className="taleTextPanel" ref={textPanelRef}>
         {/* Narrative text */}
-        <div className="sierraTextPanel__narrative">
+        <div className="taleTextPanel__narrative">
           <p>{activeScreen?.prompt || 'Summoning the wall…'}</p>
           {activeScreen?.expectationSummary ? (
-            <p className="sierraTextPanel__note">{activeScreen.expectationSummary}</p>
+            <p className="taleTextPanel__note">{activeScreen.expectationSummary}</p>
           ) : null}
           {activeScreen?.continuitySummary ? (
-            <p className="sierraTextPanel__note">{activeScreen.continuitySummary}</p>
+            <p className="taleTextPanel__note">{activeScreen.continuitySummary}</p>
           ) : null}
           {isWellScreen && wellSceneState.latestFragment ? (
-            <p className="sierraTextPanel__note">
+            <p className="taleTextPanel__note">
               Resurfacing fragment: "{wellSceneState.latestFragment}"
             </p>
           ) : null}
           {locationMessengerState.sceneBrief?.placeName ? (
-            <p className="sierraTextPanel__ledger">
+            <p className="taleTextPanel__ledger">
               Earthly destination: {locationMessengerState.sceneBrief.placeName}
             </p>
           ) : null}
           {locationMessengerState.sceneBrief?.placeSummary ? (
-            <p className="sierraTextPanel__ledger">{locationMessengerState.sceneBrief.placeSummary}</p>
+            <p className="taleTextPanel__ledger">{locationMessengerState.sceneBrief.placeSummary}</p>
           ) : null}
           {transportMessengerState.hasChatEnded ? (
-            <p className="sierraTextPanel__ledger">
+            <p className="taleTextPanel__ledger">
               Transport logged: {getTransportSummaryLabel(transportMessengerState.sceneBrief)}
             </p>
           ) : null}
-          <p className="sierraTextPanel__transmission">{transmissionStatus}</p>
+          <p className="taleTextPanel__transmission">{transmissionStatus}</p>
         </div>
 
-        {/* Error / loading notices */}
-        {error ? <p className="sierraNotice is-error">&gt; ERROR: {error}</p> : null}
-        {messengerError ? <p className="sierraNotice is-error">&gt; ERROR: {messengerError}</p> : null}
-        {materializing ? <p className="sierraNotice">&gt; Materializing the second wall of murals…</p> : null}
-        {loading ? <p className="sierraNotice">&gt; Loading the outer wall…</p> : null}
+        {/* Notices */}
+        {error ? <p className="taleNotice is-error">{error}</p> : null}
+        {messengerError ? <p className="taleNotice is-error">{messengerError}</p> : null}
+        {materializing ? <p className="taleNotice">Materializing the second wall of murals…</p> : null}
+        {loading ? <p className="taleNotice">Loading the outer wall…</p> : null}
 
-        {/* Stage modules (if any) */}
+        {/* Stage modules */}
         {activeScreen?.stageModules?.length ? (
-          <div className="sierraModules">
+          <div className="taleModules">
             <ImmersiveRpgStageModules
               apiBaseUrl={apiBaseUrl}
               stageLayout={activeScreen.stageLayout || 'focus-left'}
@@ -718,35 +716,35 @@ function RoseCourtProloguePage({
           </div>
         ) : null}
 
-        {/* Direction commands */}
+        {/* Direction choices */}
         {isWellScreen ? (
-          <div className="sierraDirections">
-            <p className="sierraMuted">The parchment waits in the scene above.</p>
+          <div className="taleDirections">
+            <p className="taleMuted">The parchment waits in the scene above.</p>
           </div>
         ) : (
-          <div className="sierraDirections">
+          <div className="taleDirections">
             {activeScreenId === 'phone_found' ? (
               <button
                 type="button"
-                className="sierraCmd"
+                className="taleCmd"
                 onClick={() => {
                   setActiveMessengerSceneId(LOCATION_CLERK_SCENE_ID);
                   setMessengerOpen(true);
                 }}
               >
-                &gt; {locationMessengerState.hasChatEnded ? 'Location logged' : 'Answer the handset'}
+                ❧ {locationMessengerState.hasChatEnded ? 'Location logged' : 'Answer the handset'}
               </button>
             ) : null}
             {isWellApproachScreen && !transportMessengerState.hasChatEnded ? (
               <button
                 type="button"
-                className="sierraCmd"
+                className="taleCmd"
                 onClick={() => {
                   setActiveMessengerSceneId(TRANSPORT_CLERK_SCENE_ID);
                   setMessengerOpen(true);
                 }}
               >
-                &gt; Answer the returning transmission
+                ❧ Answer the returning transmission
               </button>
             ) : null}
 
@@ -755,42 +753,42 @@ function RoseCourtProloguePage({
                 <button
                   key={`${direction.direction}-${direction.targetScreenId}`}
                   type="button"
-                  className="sierraCmd"
+                  className="taleCmd"
                   onClick={() => handleDirectionClick(direction)}
                   disabled={advancing}
                 >
-                  &gt; {direction.label || direction.direction}
+                  ❧ {direction.label || direction.direction}
                 </button>
               ))
             ) : (
-              <p className="sierraMuted">No movement opens from this beat yet.</p>
+              <p className="taleMuted">No path opens from this moment yet.</p>
             )}
           </div>
         )}
 
         {/* Prompt history */}
         {visibleHistory.length > 0 ? (
-          <div className="sierraHistory">
+          <div className="taleHistory">
             {visibleHistory.map((entry) => (
               <p
                 key={`${entry.createdAt || 'p'}-${entry.toScreenId || entry.fromScreenId || ''}`}
-                className="sierraHistory__line"
+                className="taleHistory__line"
               >
-                <span className="sierraHistory__from">[{entry.fromScreenId || activeScreen?.id || 'scene'}]</span>
+                <span className="taleHistory__from">[{entry.fromScreenId || activeScreen?.id || 'scene'}]</span>
                 {' '}{entry.promptText}
-                {entry.createdAt ? <time className="sierraHistory__time">{formatTime(entry.createdAt)}</time> : null}
+                {entry.createdAt ? <time className="taleHistory__time">{formatTime(entry.createdAt)}</time> : null}
               </p>
             ))}
           </div>
         ) : null}
 
-        {/* Free-text parser input */}
+        {/* Quill prompt input */}
         {isWellScreen ? null : (
-          <form onSubmit={handlePromptSubmit} className="sierraPrompt">
-            <span className="sierraPrompt__chevron">&gt;</span>
+          <form onSubmit={handlePromptSubmit} className="talePrompt">
+            <span className="talePrompt__ornament">❧</span>
             <input
               type="text"
-              className="sierraPrompt__input"
+              className="talePrompt__input"
               value={playerPrompt}
               onChange={(event) => setPlayerPrompt(event.target.value)}
               onKeyDown={handlePromptKeyDown}
@@ -798,13 +796,13 @@ function RoseCourtProloguePage({
               disabled={advancing}
               autoFocus
             />
-            <span className="sierraPrompt__cursor">█</span>
-            {advancing ? <span className="sierraPrompt__loading">…</span> : null}
+            <span className="talePrompt__cursor">✎</span>
+            {advancing ? <span className="talePrompt__loading">…</span> : null}
           </form>
         )}
       </section>
 
-      {/* ── Messenger modal (unchanged) ── */}
+      {/* ── Messenger modal ── */}
       {messengerOpen ? (
           <div className="roseCourtMessengerModal" role="dialog" aria-modal="true" aria-label="Storyteller Society clerk">
           <button type="button" className="roseCourtMessengerModal__scrim" onClick={() => setMessengerOpen(false)} />

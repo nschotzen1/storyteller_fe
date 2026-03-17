@@ -1,4 +1,5 @@
 import React from 'react';
+import './ImmersiveRpgStageModules.css';
 
 const normalizeApiBaseUrl = (baseUrl = '') => {
   const trimmed = typeof baseUrl === 'string' ? baseUrl.trim() : '';
@@ -84,6 +85,7 @@ export default function ImmersiveRpgStageModules({
   stageModules = []
 }) {
   const safeModules = Array.isArray(stageModules) ? stageModules.slice(0, 4) : [];
+  const effectiveStageLayout = safeModules.length <= 1 ? 'stacked' : (stageLayout || 'focus-left');
 
   if (!safeModules.length) {
     return (
@@ -97,7 +99,7 @@ export default function ImmersiveRpgStageModules({
   }
 
   return (
-    <div className={`immersiveRpgStageModules immersiveRpgStageModules--${stageLayout || 'focus-left'}`}>
+    <div className={`immersiveRpgStageModules immersiveRpgStageModules--${effectiveStageLayout}`}>
       {safeModules.map((module, index) => {
         const Renderer = MODULE_RENDERERS[module?.type] || FallbackModule;
         return (

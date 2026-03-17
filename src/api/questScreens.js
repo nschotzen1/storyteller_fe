@@ -105,6 +105,19 @@ export const inspectQuestDebugContext = async (
   });
 };
 
+export const generateQuestAuthoringDraft = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  payload = {},
+  { adminKey } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/admin/quest/authoring-draft`, {
+    method: 'POST',
+    headers: buildAdminHeaders(adminKey),
+    body: JSON.stringify(payload)
+  });
+};
+
 export const logQuestTraversal = async (
   baseUrl = DEFAULT_API_BASE_URL,
   payload = {}

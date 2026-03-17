@@ -14,6 +14,12 @@ import {
   saveTypewriterPrompt
 } from '../api/typewriterAdmin';
 import QuestAdminDebugPanel from './quest-admin/QuestAdminDebugPanel';
+import QuestAdminAiDraftPanel from './quest-admin/QuestAdminAiDraftPanel';
+import {
+  VISUAL_TRANSITION_OPTIONS,
+  applyQuestAuthoringChanges,
+  buildQuestScreenVisualContext
+} from './quest-admin/questAdminAuthoringDraftUtils';
 import './QuestAdminPage.css';
 
 const QUEST_API_BASE_STORAGE_KEY = 'questApiBaseUrl';
@@ -24,6 +30,7 @@ const QUEST_ID_STORAGE_KEY = 'questId';
 const DEFAULT_QUEST_SESSION_ID = 'rose-court-demo';
 const DEFAULT_QUEST_ID = 'ruined_rose_court';
 const QUEST_GENERATION_PIPELINE_KEY = 'quest_generation';
+const QUEST_SCENE_AUTHORING_PIPELINE_KEY = 'quest_scene_authoring';
 const EMPTY_MODELS_PAYLOAD = {
   textModels: [],
   imageModels: [],
@@ -163,6 +170,12 @@ const normalizeScreen = (screen) => {
     imageUrl: typeof screen.imageUrl === 'string' ? screen.imageUrl.trim() : '',
     image_prompt: typeof screen.image_prompt === 'string' ? screen.image_prompt : '',
     referenceImagePrompt: typeof screen.referenceImagePrompt === 'string' ? screen.referenceImagePrompt : '',
+    visualContinuityGuidance: typeof screen.visualContinuityGuidance === 'string' ? screen.visualContinuityGuidance : '',
+    visualTransitionIntent: ['inherit', 'drift', 'break'].includes(
+      typeof screen.visualTransitionIntent === 'string' ? screen.visualTransitionIntent.trim().toLowerCase() : ''
+    )
+      ? screen.visualTransitionIntent.trim().toLowerCase()
+      : 'inherit',
     screenType: screen.screenType === 'generated' ? 'generated' : 'authored',
     parentScreenId: typeof screen.parentScreenId === 'string' ? screen.parentScreenId.trim() : '',
     anchorScreenId: typeof screen.anchorScreenId === 'string' ? screen.anchorScreenId.trim() : '',
@@ -203,7 +216,9 @@ const normalizeConfig = (payload) => {
           ? source.questId.trim()
           : DEFAULT_QUEST_ID,
       startScreenId: '',
+      authoringBrief: typeof source.authoringBrief === 'string' ? source.authoringBrief : '',
       phaseGuidance: typeof source.phaseGuidance === 'string' ? source.phaseGuidance : '',
+      visualStyleGuide: typeof source.visualStyleGuide === 'string' ? source.visualStyleGuide : '',
       promptRoutes: Array.isArray(source.promptRoutes) ? source.promptRoutes.map(normalizePromptRoute).filter(Boolean) : [],
       screens: [],
       updatedAt: ''
@@ -228,7 +243,9 @@ const normalizeConfig = (payload) => {
         ? source.questId.trim()
         : DEFAULT_QUEST_ID,
     startScreenId: screenIds.has(requestedStartScreenId) ? requestedStartScreenId : filteredScreens[0].id,
+    authoringBrief: typeof source.authoringBrief === 'string' ? source.authoringBrief : '',
     phaseGuidance: typeof source.phaseGuidance === 'string' ? source.phaseGuidance : '',
+    visualStyleGuide: typeof source.visualStyleGuide === 'string' ? source.visualStyleGuide : '',
     promptRoutes: Array.isArray(source.promptRoutes) ? source.promptRoutes.map(normalizePromptRoute).filter(Boolean) : [],
     screens: filteredScreens,
     updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : ''
@@ -307,6 +324,8 @@ const QuestAdminPage = ({
   const [models, setModels] = useState(EMPTY_MODELS_PAYLOAD);
   const [questPromptEntry, setQuestPromptEntry] = useState(null);
   const [questPromptDraft, setQuestPromptDraft] = useState('');
+  const [authoringPromptEntry, setAuthoringPromptEntry] = useState(null);
+  const [authoringPromptDraft, setAuthoringPromptDraft] = useState('');
   const [runtimeLoading, setRuntimeLoading] = useState(false);
   const [runtimeSaving, setRuntimeSaving] = useState(false);
   const [promptSaving, setPromptSaving] = useState(false);
@@ -330,9 +349,25 @@ const QuestAdminPage = ({
     () => aiSettings?.pipelines?.[QUEST_GENERATION_PIPELINE_KEY] || null,
     [aiSettings]
   );
+  const questSceneAuthoringSettings = useMemo(
+    () => aiSettings?.pipelines?.[QUEST_SCENE_AUTHORING_PIPELINE_KEY] || null,
+    [aiSettings]
+  );
   const questGenerationModelOptions = useMemo(
     () => getTextModelOptions(models, questGenerationSettings?.model || '', questGenerationSettings?.provider || 'openai'),
     [models, questGenerationSettings]
+  );
+  const questSceneAuthoringModelOptions = useMemo(
+    () => getTextModelOptions(
+      models,
+      questSceneAuthoringSettings?.model || '',
+      questSceneAuthoringSettings?.provider || 'openai'
+    ),
+    [models, questSceneAuthoringSettings]
+  );
+  const selectedScreenVisualContext = useMemo(
+    () => buildQuestScreenVisualContext(config, selectedScreenId),
+    [config, selectedScreenId]
   );
 
   useEffect(() => {
@@ -417,9 +452,12 @@ const QuestAdminPage = ({
         if (!active) return;
         setAiSettings(settingsPayload || { pipelines: {} });
         setModels(modelsPayload || EMPTY_MODELS_PAYLOAD);
-        const promptEntry = promptsPayload?.pipelines?.[QUEST_GENERATION_PIPELINE_KEY] || null;
-        setQuestPromptEntry(promptEntry);
-        setQuestPromptDraft(promptEntry?.promptTemplate || '');
+        const questGenerationPromptEntry = promptsPayload?.pipelines?.[QUEST_GENERATION_PIPELINE_KEY] || null;
+        const questSceneAuthoringPromptEntry = promptsPayload?.pipelines?.[QUEST_SCENE_AUTHORING_PIPELINE_KEY] || null;
+        setQuestPromptEntry(questGenerationPromptEntry);
+        setQuestPromptDraft(questGenerationPromptEntry?.promptTemplate || '');
+        setAuthoringPromptEntry(questSceneAuthoringPromptEntry);
+        setAuthoringPromptDraft(questSceneAuthoringPromptEntry?.promptTemplate || '');
       } catch (err) {
         if (active) {
           setRuntimeError(err.message || 'Unable to load quest generator settings.');
@@ -476,6 +514,8 @@ const QuestAdminPage = ({
         imageUrl: '',
         image_prompt: 'Cinematic fantasy quest scene, ruined rose-court setting, weathered stone architecture, dusk atmosphere.',
         referenceImagePrompt: '',
+        visualContinuityGuidance: '',
+        visualTransitionIntent: 'inherit',
         screenType: 'authored',
         parentScreenId: '',
         anchorScreenId: '',
@@ -741,7 +781,9 @@ const QuestAdminPage = ({
         sessionId,
         questId,
         startScreenId: config.startScreenId,
+        authoringBrief: config.authoringBrief,
         phaseGuidance: config.phaseGuidance,
+        visualStyleGuide: config.visualStyleGuide,
         promptRoutes: (Array.isArray(config.promptRoutes) ? config.promptRoutes : []).map(serializePromptRoute),
         screens: config.screens
       };
@@ -788,9 +830,9 @@ const QuestAdminPage = ({
     }
   };
 
-  const updateQuestGenerationSettings = (patch) => {
+  const updatePipelineSettings = (pipelineKey, patch) => {
     setAiSettings((prev) => {
-      const current = prev?.pipelines?.[QUEST_GENERATION_PIPELINE_KEY] || {
+      const current = prev?.pipelines?.[pipelineKey] || {
         provider: 'openai',
         model: '',
         useMock: false
@@ -799,13 +841,71 @@ const QuestAdminPage = ({
         ...(prev || {}),
         pipelines: {
           ...(prev?.pipelines || {}),
-          [QUEST_GENERATION_PIPELINE_KEY]: {
+          [pipelineKey]: {
             ...current,
             ...patch
           }
         }
       };
     });
+  };
+
+  const updateQuestGenerationSettings = (patch) => {
+    updatePipelineSettings(QUEST_GENERATION_PIPELINE_KEY, patch);
+  };
+
+  const updateQuestSceneAuthoringSettings = (patch) => {
+    updatePipelineSettings(QUEST_SCENE_AUTHORING_PIPELINE_KEY, patch);
+  };
+
+  const savePipelineRuntime = async (pipelineKey) => {
+    const settings = aiSettings?.pipelines?.[pipelineKey];
+    if (!settings) {
+      throw new Error('Pipeline settings are unavailable.');
+    }
+
+    const payload = await saveTypewriterAiSettings(
+      apiBaseUrl,
+      {
+        pipelines: {
+          [pipelineKey]: {
+            provider: settings.provider || 'openai',
+            model: settings.model || '',
+            useMock: Boolean(settings.useMock)
+          }
+        }
+      },
+      {
+        adminKey: adminKey.trim() ? adminKey.trim() : undefined,
+        updatedBy: 'quest-admin-ui'
+      }
+    );
+    setAiSettings(payload || { pipelines: {} });
+    return payload;
+  };
+
+  const savePipelinePrompt = async (pipelineKey, promptDraft) => {
+    if (!String(promptDraft || '').trim()) {
+      throw new Error('Prompt cannot be empty.');
+    }
+
+    const trimmedAdminKey = adminKey.trim() ? adminKey.trim() : undefined;
+    await saveTypewriterPrompt(apiBaseUrl, pipelineKey, promptDraft, {
+      adminKey: trimmedAdminKey,
+      updatedBy: 'quest-admin-ui',
+      markLatest: true
+    });
+    const promptsPayload = await loadTypewriterPrompts(apiBaseUrl, { adminKey: trimmedAdminKey });
+    const promptEntry = promptsPayload?.pipelines?.[pipelineKey] || null;
+    if (pipelineKey === QUEST_GENERATION_PIPELINE_KEY) {
+      setQuestPromptEntry(promptEntry);
+      setQuestPromptDraft(promptEntry?.promptTemplate || promptDraft);
+    }
+    if (pipelineKey === QUEST_SCENE_AUTHORING_PIPELINE_KEY) {
+      setAuthoringPromptEntry(promptEntry);
+      setAuthoringPromptDraft(promptEntry?.promptTemplate || promptDraft);
+    }
+    return promptEntry;
   };
 
   const handleSaveQuestRuntime = async () => {
@@ -816,23 +916,7 @@ const QuestAdminPage = ({
     setRuntimeStatus('');
 
     try {
-      const payload = await saveTypewriterAiSettings(
-        apiBaseUrl,
-        {
-          pipelines: {
-            [QUEST_GENERATION_PIPELINE_KEY]: {
-              provider: questGenerationSettings.provider || 'openai',
-              model: questGenerationSettings.model || '',
-              useMock: Boolean(questGenerationSettings.useMock)
-            }
-          }
-        },
-        {
-          adminKey: adminKey.trim() ? adminKey.trim() : undefined,
-          updatedBy: 'quest-admin-ui'
-        }
-      );
-      setAiSettings(payload || { pipelines: {} });
+      await savePipelineRuntime(QUEST_GENERATION_PIPELINE_KEY);
       setRuntimeStatus('Saved quest generator runtime.');
     } catch (err) {
       setRuntimeError(err.message || 'Unable to save quest generator runtime.');
@@ -853,16 +937,7 @@ const QuestAdminPage = ({
     setRuntimeStatus('');
 
     try {
-      const trimmedAdminKey = adminKey.trim() ? adminKey.trim() : undefined;
-      await saveTypewriterPrompt(apiBaseUrl, QUEST_GENERATION_PIPELINE_KEY, questPromptDraft, {
-        adminKey: trimmedAdminKey,
-        updatedBy: 'quest-admin-ui',
-        markLatest: true
-      });
-      const promptsPayload = await loadTypewriterPrompts(apiBaseUrl, { adminKey: trimmedAdminKey });
-      const promptEntry = promptsPayload?.pipelines?.[QUEST_GENERATION_PIPELINE_KEY] || null;
-      setQuestPromptEntry(promptEntry);
-      setQuestPromptDraft(promptEntry?.promptTemplate || questPromptDraft);
+      await savePipelinePrompt(QUEST_GENERATION_PIPELINE_KEY, questPromptDraft);
       setRuntimeStatus('Saved quest generator prompt to the prompt store.');
     } catch (err) {
       setRuntimeError(err.message || 'Unable to save quest generator prompt.');
@@ -908,6 +983,17 @@ const QuestAdminPage = ({
     } finally {
       setUploadingSceneImage(false);
     }
+  };
+
+  const handleApplyAuthoringDraft = (changes, selectedChangeIds) => {
+    if (!config) return;
+    const result = applyQuestAuthoringChanges(config, changes, selectedChangeIds);
+    setConfig(result.config);
+    if (result.selectedScreenId) {
+      setSelectedScreenId(result.selectedScreenId);
+    }
+    setStatus(`Applied ${selectedChangeIds.length} AI drafted change${selectedChangeIds.length === 1 ? '' : 's'} to the editor.`);
+    setError('');
   };
 
   const promptSourceLabel = questPromptEntry?.meta?.fallbackFromCode
@@ -1027,20 +1113,20 @@ const QuestAdminPage = ({
               </div>
               <div className="editorPrimerGrid">
                 <article className="editorPrimerCard">
-                  <strong>1. GM Scene Guide</strong>
-                  <p>Write the one global guideline prompt the GM should follow across all screens in this scene.</p>
+                  <strong>1. Scene Brief</strong>
+                  <p>Write the one short authoring brief that explains what this scene is trying to accomplish.</p>
                 </article>
                 <article className="editorPrimerCard">
-                  <strong>2. Screen Details</strong>
-                  <p>For any screen, optionally add extra guidance and an image that only belong to that screen.</p>
+                  <strong>2. GM + Visual Guides</strong>
+                  <p>Keep one global GM guide and one global visual guide for the whole scene.</p>
                 </article>
                 <article className="editorPrimerCard">
-                  <strong>3. Built-In Choices</strong>
-                  <p>Define every fixed choice from the screen and exactly which screen each one leads to.</p>
+                  <strong>3. Screen Details</strong>
+                  <p>For any screen, add only the local guidance, image, and continuity notes that belong there.</p>
                 </article>
                 <article className="editorPrimerCard">
-                  <strong>4. Free-Text Routes</strong>
-                  <p>Map typed actions like “listen for the signal” to an existing screen instead of generating a new one.</p>
+                  <strong>4. Connections + AI Drafts</strong>
+                  <p>Define built-in choices and free-text routes, then use AI drafts as reviewable patches when helpful.</p>
                 </article>
               </div>
             </section>
@@ -1048,10 +1134,29 @@ const QuestAdminPage = ({
             <section className="editorSection">
               <div className="editorSectionHeader">
                 <div>
-                  <h3>GM Scene Guide</h3>
-                  <p>This single guideline is sent to the GM for the whole scene.</p>
+                  <h3>Scene Brief & Visual Tone</h3>
+                  <p>These are the scene-wide anchors that the human editor and the AI drafter both build from.</p>
                 </div>
               </div>
+              <label>
+                Master Scene Brief
+                <textarea
+                  rows={4}
+                  value={config?.authoringBrief || ''}
+                  onChange={(event) =>
+                    setConfig((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            authoringBrief: event.target.value
+                          }
+                        : prev
+                    )
+                  }
+                  placeholder="A compact authoring brief that explains the purpose, sequence, and important constraints of this scene."
+                />
+              </label>
+
               <label>
                 Global GM Guidance
                 <textarea
@@ -1070,7 +1175,46 @@ const QuestAdminPage = ({
                   placeholder="What is possible in this phase, what must stay fixed, and what should be deferred."
                 />
               </label>
+
+              <label>
+                Scene Visual Guide
+                <textarea
+                  rows={4}
+                  value={config?.visualStyleGuide || ''}
+                  onChange={(event) =>
+                    setConfig((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            visualStyleGuide: event.target.value
+                          }
+                        : prev
+                    )
+                  }
+                  placeholder="The overall visual language for this scene: continuity rules, lighting, material palette, framing, and mood."
+                />
+              </label>
             </section>
+
+            <QuestAdminAiDraftPanel
+              apiBaseUrl={apiBaseUrl}
+              adminKey={adminKey}
+              sessionId={sessionId}
+              questId={questId}
+              config={config}
+              selectedScreen={selectedScreen}
+              formatDate={formatDate}
+              pipelineSettings={questSceneAuthoringSettings}
+              pipelineModelOptions={questSceneAuthoringModelOptions}
+              promptEntry={authoringPromptEntry}
+              promptDraft={authoringPromptDraft}
+              runtimeLoading={runtimeLoading}
+              onPromptDraftChange={setAuthoringPromptDraft}
+              onPipelineSettingsChange={updateQuestSceneAuthoringSettings}
+              onSaveRuntime={() => savePipelineRuntime(QUEST_SCENE_AUTHORING_PIPELINE_KEY)}
+              onSavePrompt={() => savePipelinePrompt(QUEST_SCENE_AUTHORING_PIPELINE_KEY, authoringPromptDraft)}
+              onApplyDraft={handleApplyAuthoringDraft}
+            />
 
             {!selectedScreen && (
               <p className="editorMessage">Choose a screen from the list.</p>
@@ -1197,6 +1341,40 @@ const QuestAdminPage = ({
                       placeholder="Optional condition that tells the GM when this screen is complete."
                     />
                   </label>
+
+                  <label>
+                    Visual Continuity Notes
+                    <textarea
+                      rows={3}
+                      value={selectedScreen.visualContinuityGuidance || ''}
+                      onChange={(event) =>
+                        updateSelectedScreen((screen) => ({
+                          ...screen,
+                          visualContinuityGuidance: event.target.value
+                        }))
+                      }
+                      placeholder="Optional note about how this screen should visually relate to the screens around it."
+                    />
+                  </label>
+
+                  <label>
+                    Transition From Nearby Screens
+                    <select
+                      value={selectedScreen.visualTransitionIntent || 'inherit'}
+                      onChange={(event) =>
+                        updateSelectedScreen((screen) => ({
+                          ...screen,
+                          visualTransitionIntent: event.target.value
+                        }))
+                      }
+                    >
+                      {VISUAL_TRANSITION_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </section>
 
                 <section className="editorSection">
@@ -1263,6 +1441,51 @@ const QuestAdminPage = ({
                       placeholder="A richer visual brief for generating or commissioning art for this screen."
                     />
                   </label>
+
+                  <section className="visualContextPanel">
+                    <div className="editorSectionHeader">
+                      <div>
+                        <h3>Nearby Visual Context</h3>
+                        <p>Read-only context from connected screens so visual continuity stays easy to judge while editing.</p>
+                      </div>
+                    </div>
+
+                    <div className="visualContextGrid">
+                      <div className="visualContextColumn">
+                        <strong>Leads here from</strong>
+                        {selectedScreenVisualContext.incoming.length === 0 && (
+                          <p className="editorMessage">No linked incoming screens yet.</p>
+                        )}
+                        {selectedScreenVisualContext.incoming.map((entry) => (
+                          <article key={`incoming-${entry.screen.id}-${entry.via}`} className="visualContextCard">
+                            <span>{entry.via}</span>
+                            <strong>{entry.screen.title}</strong>
+                            {entry.screen.referenceImagePrompt ? <p>{entry.screen.referenceImagePrompt}</p> : null}
+                            {entry.screen.visualContinuityGuidance ? (
+                              <p>{entry.screen.visualContinuityGuidance}</p>
+                            ) : null}
+                          </article>
+                        ))}
+                      </div>
+
+                      <div className="visualContextColumn">
+                        <strong>Leads out to</strong>
+                        {selectedScreenVisualContext.outgoing.length === 0 && (
+                          <p className="editorMessage">No linked outgoing screens yet.</p>
+                        )}
+                        {selectedScreenVisualContext.outgoing.map((entry) => (
+                          <article key={`outgoing-${entry.screen.id}-${entry.via}`} className="visualContextCard">
+                            <span>{entry.via}</span>
+                            <strong>{entry.screen.title}</strong>
+                            {entry.screen.referenceImagePrompt ? <p>{entry.screen.referenceImagePrompt}</p> : null}
+                            {entry.screen.visualContinuityGuidance ? (
+                              <p>{entry.screen.visualContinuityGuidance}</p>
+                            ) : null}
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                  </section>
                 </section>
 
                 <section className="editorSection directionEditor">
@@ -1731,14 +1954,26 @@ const QuestAdminPage = ({
                   <p>{selectedScreen.prompt || 'No prompt yet.'}</p>
                 </div>
                 <div className="previewDirections">
+                  {config?.authoringBrief ? (
+                    <span>Master brief: {config.authoringBrief}</span>
+                  ) : null}
                   {config?.phaseGuidance ? (
                     <span>GM scene guide: {config.phaseGuidance}</span>
+                  ) : null}
+                  {config?.visualStyleGuide ? (
+                    <span>Scene visual guide: {config.visualStyleGuide}</span>
                   ) : null}
                   {selectedScreen.promptGuidance ? (
                     <span>Screen-only guidance: {selectedScreen.promptGuidance}</span>
                   ) : null}
                   {selectedScreen.sceneEndCondition ? (
                     <span>Ends when: {selectedScreen.sceneEndCondition}</span>
+                  ) : null}
+                  {selectedScreen.visualContinuityGuidance ? (
+                    <span>Visual continuity: {selectedScreen.visualContinuityGuidance}</span>
+                  ) : null}
+                  {selectedScreen.visualTransitionIntent ? (
+                    <span>Transition intent: {selectedScreen.visualTransitionIntent}</span>
                   ) : null}
                   {selectedScreen.imageUrl ? (
                     <span>Image: {selectedScreen.imageUrl}</span>

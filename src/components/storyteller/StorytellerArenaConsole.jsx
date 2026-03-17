@@ -219,6 +219,13 @@ const SESSION_STATE_DEFAULT = {
     votes: {},
     at: ''
   },
+  scenePromise: {
+    text: '',
+    proposedByKey: '',
+    affirmedBy: {},
+    fulfilledByKey: '',
+    fulfilledAt: ''
+  },
   vows: {
     hush: false,
     anchor: false,
@@ -460,6 +467,7 @@ const StorytellerArenaConsole = ({
   const [threadInput, setThreadInput] = useState('');
   const [resonanceInput, setResonanceInput] = useState('');
   const [canonProposalInput, setCanonProposalInput] = useState('');
+  const [scenePromiseInput, setScenePromiseInput] = useState('');
   const boardRef = useRef(null);
   const boardStageRef = useRef(null);
   const forgePanelRef = useRef(null);
@@ -806,6 +814,24 @@ const StorytellerArenaConsole = ({
     canonProposalRequired > 0 &&
     canonProposalVotes >= canonProposalRequired;
   const canonProposalByLabel = getPlayerLabelByKey(canonProposal.proposedByKey || '', 'Table');
+  const scenePromise =
+    sessionState.scenePromise && typeof sessionState.scenePromise === 'object'
+      ? sessionState.scenePromise
+      : SESSION_STATE_DEFAULT.scenePromise;
+  const scenePromiseText = typeof scenePromise.text === 'string' ? scenePromise.text.trim() : '';
+  const scenePromiseAffirmedMap =
+    scenePromise.affirmedBy && typeof scenePromise.affirmedBy === 'object'
+      ? scenePromise.affirmedBy
+      : {};
+  const scenePromiseAffirmed = syncTargetKeys.filter((playerKey) => Boolean(scenePromiseAffirmedMap[playerKey])).length;
+  const scenePromiseRequired = syncTargetKeys.length;
+  const scenePromiseReady =
+    Boolean(scenePromiseText) &&
+    scenePromiseRequired > 0 &&
+    scenePromiseAffirmed >= scenePromiseRequired;
+  const scenePromiseFulfilled = Boolean(scenePromise.fulfilledAt);
+  const scenePromiseByLabel = getPlayerLabelByKey(scenePromise.proposedByKey || '', 'Table');
+  const scenePromiseFulfilledByLabel = getPlayerLabelByKey(scenePromise.fulfilledByKey || '', 'Table');
   const vows =
     sessionState.vows && typeof sessionState.vows === 'object' ? sessionState.vows : SESSION_STATE_DEFAULT.vows;
   const activeVows = VOW_DEFINITIONS.filter((vow) => Boolean(vows[vow.id]));
@@ -1022,6 +1048,30 @@ const StorytellerArenaConsole = ({
         actionId: 'presence'
       };
     }
+    if (ritualActive && !scenePromiseText) {
+      return {
+        title: 'Set Scene Promise',
+        detail: 'Draft one concise scene promise so every seat pulls in the same direction.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (ritualActive && scenePromiseText && !scenePromiseReady) {
+      return {
+        title: 'Affirm Scene Promise',
+        detail: `Collect full table affirmation (${scenePromiseAffirmed}/${scenePromiseRequired}).`,
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (ritualActive && scenePromiseReady && !scenePromiseFulfilled) {
+      return {
+        title: 'Fulfill Scene Promise',
+        detail: 'Mark the promise fulfilled once the scene delivers it on-screen.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
     if (!expeditionRoute.length) {
       return {
         title: 'Plot Expedition Route',
@@ -1074,6 +1124,11 @@ const StorytellerArenaConsole = ({
     relayTouchedCount,
     expeditionRoute.length,
     resonancePending,
+    scenePromiseText,
+    scenePromiseAffirmed,
+    scenePromiseRequired,
+    scenePromiseReady,
+    scenePromiseFulfilled,
     canonProposalText,
     canonProposalReady
   ]);
@@ -1241,6 +1296,15 @@ const StorytellerArenaConsole = ({
             required: canonProposalRequired,
             ready: canonProposalReady
           },
+          scenePromise: {
+            text: scenePromiseText,
+            proposedBy: scenePromiseByLabel,
+            affirmed: scenePromiseAffirmed,
+            required: scenePromiseRequired,
+            ready: scenePromiseReady,
+            fulfilled: scenePromiseFulfilled,
+            fulfilledBy: scenePromiseFulfilledByLabel
+          },
           resonance: {
             pending: resonancePending,
             cue: resonanceCue,
@@ -1322,6 +1386,13 @@ const StorytellerArenaConsole = ({
     canonProposalVotes,
     canonProposalRequired,
     canonProposalReady,
+    scenePromiseText,
+    scenePromiseByLabel,
+    scenePromiseAffirmed,
+    scenePromiseRequired,
+    scenePromiseReady,
+    scenePromiseFulfilled,
+    scenePromiseFulfilledByLabel,
     vows,
     activeVows,
     sceneGoal,
@@ -2416,6 +2487,132 @@ const StorytellerArenaConsole = ({
     setNotice('Canon proposal cleared.');
   };
 
+  const handleDraftScenePromise = () => {
+    const text = scenePromiseInput.trim();
+    if (!text) {
+      setNotice('Write one concise scene promise first.');
+      return;
+    }
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const proposerKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!proposerKey) {
+      setNotice('Set focus or turn holder before drafting a promise.');
+      return;
+    }
+    const proposerLabel = getPlayerLabelByKey(proposerKey, 'Table');
+    setSessionState((prev) => {
+      const entry = createLedgerEntry({
+        type: 'oath',
+        text: `${proposerLabel} drafts scene promise: "${text}"`,
+        by: proposerLabel
+      });
+      return {
+        ...prev,
+        scenePromise: {
+          text,
+          proposedByKey: proposerKey,
+          affirmedBy: { [proposerKey]: true },
+          fulfilledByKey: '',
+          fulfilledAt: ''
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setScenePromiseInput('');
+    setNotice(`${proposerLabel} drafts a shared scene promise.`);
+  };
+
+  const handleAffirmScenePromise = () => {
+    if (!scenePromiseText) {
+      setNotice('Draft a scene promise first.');
+      return;
+    }
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const voterKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!voterKey) {
+      setNotice('Set focus or turn holder before affirming.');
+      return;
+    }
+    const voterLabel = getPlayerLabelByKey(voterKey, 'Table');
+    setSessionState((prev) => ({
+      ...prev,
+      scenePromise: {
+        ...(prev.scenePromise && typeof prev.scenePromise === 'object'
+          ? prev.scenePromise
+          : SESSION_STATE_DEFAULT.scenePromise),
+        affirmedBy: {
+          ...((prev.scenePromise && typeof prev.scenePromise.affirmedBy === 'object'
+            ? prev.scenePromise.affirmedBy
+            : {})),
+          [voterKey]: true
+        }
+      }
+    }));
+    setNotice(`${voterLabel} affirms the scene promise.`);
+  };
+
+  const handleFulfillScenePromise = () => {
+    if (!scenePromiseText) {
+      setNotice('No scene promise to fulfill.');
+      return;
+    }
+    if (!ritualActive) {
+      setNotice('Open ritual mode before fulfilling promises.');
+      return;
+    }
+    if (!scenePromiseReady) {
+      setNotice(`Table affirmation required (${scenePromiseAffirmed}/${scenePromiseRequired}).`);
+      return;
+    }
+    if (scenePromiseFulfilled) {
+      setNotice('This scene promise is already fulfilled.');
+      return;
+    }
+    const actorKey = focusPlayerKey || currentTurnKey || getPlayerKey(activePlayer, activePlayerIndex);
+    const actorLabel = getPlayerLabelByKey(actorKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const previousClockRaw = Number(prev.sceneClock);
+      const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
+      const effect = applyVowModifiers(
+        { momentum: 1, clarity: 1, sceneClock: -1 },
+        prev.vows,
+        { ritualActive: Boolean(prev.ritualActive) }
+      );
+      const entry = createLedgerEntry({
+        type: 'canon',
+        text: `Scene promise fulfilled: ${scenePromiseText}`,
+        by: actorLabel
+      });
+      return {
+        ...prev,
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity)
+        },
+        sceneClock: clampSceneClockValue(previousClock + effect.sceneClock),
+        scenePromise: {
+          ...(prev.scenePromise && typeof prev.scenePromise === 'object'
+            ? prev.scenePromise
+            : SESSION_STATE_DEFAULT.scenePromise),
+          fulfilledByKey: actorKey,
+          fulfilledAt: new Date().toISOString()
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setNotice(`${actorLabel} fulfills the scene promise.`);
+  };
+
+  const handleClearScenePromise = () => {
+    setSessionState((prev) => ({
+      ...prev,
+      scenePromise: { ...SESSION_STATE_DEFAULT.scenePromise }
+    }));
+    setScenePromiseInput('');
+    setNotice('Scene promise cleared.');
+  };
+
   const handleAdvanceTurn = () => {
     if (!turnOrder.length) {
       setNotice('Build turn order first.');
@@ -2504,6 +2701,7 @@ const StorytellerArenaConsole = ({
         beatVotes: {},
         lastBeatSync: null,
         relay: { ...SESSION_STATE_DEFAULT.relay },
+        scenePromise: { ...SESSION_STATE_DEFAULT.scenePromise },
         ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), ritualEntry].slice(-24)
       };
     });
@@ -4799,6 +4997,53 @@ const StorytellerArenaConsole = ({
                   </button>
                 </div>
               </div>
+              <div className="scenePromiseRow">
+                <div className="scenePromiseHeader">
+                  <span>Scene Promise</span>
+                  <em>{`${scenePromiseAffirmed}/${scenePromiseRequired || 0} affirmed`}</em>
+                </div>
+                <p>
+                  {scenePromiseText
+                    ? `"${scenePromiseText}" · proposed by ${scenePromiseByLabel}${
+                        scenePromiseFulfilled ? ` · fulfilled by ${scenePromiseFulfilledByLabel}` : ''
+                      }`
+                    : 'Set one concrete promise for this scene, affirm it as a table, then fulfill it in ritual play.'}
+                </p>
+                <div className="scenePromiseInput">
+                  <input
+                    value={scenePromiseInput}
+                    placeholder="Example: We find proof the tower bells predict the storm."
+                    onChange={(event) => setScenePromiseInput(event.target.value)}
+                  />
+                  <button type="button" className="ghost subtle" onClick={handleDraftScenePromise}>
+                    Draft
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleAffirmScenePromise}
+                    disabled={!scenePromiseText || scenePromiseFulfilled}
+                  >
+                    Affirm
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleFulfillScenePromise}
+                    disabled={!scenePromiseReady || scenePromiseFulfilled || !ritualActive}
+                  >
+                    Fulfill
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleClearScenePromise}
+                    disabled={!scenePromiseText && !Object.keys(scenePromiseAffirmedMap).length}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
               <div className="vowStatusRow">
                 <span>Ritual Vows</span>
                 <div className="vowStatusChips">
@@ -4990,6 +5235,13 @@ const StorytellerArenaConsole = ({
               {expeditionCurrentStop && <span>{`Route ${expeditionCurrentStop}`}</span>}
               <span>{`Beat Sync ${beatSyncVotes}/${beatSyncRequired || 0}`}</span>
               <span>{`Relay ${relayTouchedCount}/${relayRequired || 0}`}</span>
+              <span>
+                {scenePromiseText
+                  ? `Promise ${scenePromiseAffirmed}/${scenePromiseRequired || 0}${
+                      scenePromiseFulfilled ? ' Fulfilled' : ''
+                    }`
+                  : 'Promise Unset'}
+              </span>
               <span>
                 {canonProposalText
                   ? `Canon ${canonProposalVotes}/${canonProposalRequired || 0}`
