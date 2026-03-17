@@ -194,6 +194,25 @@
   opacity: 0.75;
 }
 
+.screenListMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.screenListBadge {
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.63rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 211, 129, 0.52);
+  background: rgba(217, 153, 57, 0.22);
+  padding: 0.16rem 0.4rem;
+  color: #ffebc8;
+}
+
 .screenListButton.active {
   border-color: rgba(255, 211, 129, 0.72);
   background: linear-gradient(130deg, rgba(217, 153, 57, 0.3), rgba(48, 29, 21, 0.84));
@@ -210,6 +229,59 @@
   display: grid;
   align-content: flex-start;
   gap: 0.7rem;
+}
+
+.editorSection {
+  display: grid;
+  gap: 0.7rem;
+  border-radius: 12px;
+  border: 1px solid rgba(238, 196, 143, 0.18);
+  background: rgba(12, 9, 8, 0.28);
+  padding: 0.8rem;
+}
+
+.editorPrimerGrid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.editorPrimerCard {
+  display: grid;
+  gap: 0.35rem;
+  border-radius: 10px;
+  border: 1px solid rgba(238, 196, 143, 0.18);
+  background: rgba(8, 7, 6, 0.38);
+  padding: 0.72rem;
+}
+
+.editorPrimerCard strong {
+  color: #f8e6cf;
+}
+
+.editorPrimerCard p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #e9cfaa;
+}
+
+.editorSectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.editorSectionHeader h3 {
+  margin: 0;
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-size: 1rem;
+}
+
+.editorSectionHeader p {
+  margin: 0.22rem 0 0;
+  font-size: 0.78rem;
+  color: #ecd3ae;
 }
 
 .questAdminEditor label {
@@ -243,6 +315,201 @@
   background: rgba(120, 35, 31, 0.55);
 }
 
+.questAdminInlineNotice {
+  border-radius: 10px;
+  padding: 0.58rem 0.7rem;
+  font-size: 0.82rem;
+}
+
+.questAdminInlineNotice.ok {
+  background: rgba(110, 182, 118, 0.16);
+  border: 1px solid rgba(144, 229, 146, 0.38);
+}
+
+.questAdminInlineNotice.error {
+  background: rgba(213, 92, 88, 0.16);
+  border: 1px solid rgba(247, 129, 124, 0.45);
+}
+
+.questRuntimeGrid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.toggleField {
+  align-content: end;
+}
+
+.toggleField input {
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  accent-color: #d3923f;
+}
+
+.sceneEditorActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.sceneEditorActions button {
+  border-radius: 999px;
+  border: 1px solid rgba(252, 213, 152, 0.45);
+  color: #251106;
+  background: linear-gradient(120deg, #efc175, #c17f2f);
+  font-weight: 700;
+  padding: 0.54rem 0.95rem;
+  cursor: pointer;
+}
+
+.sceneEditorActions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sceneImagePreview {
+  min-height: 180px;
+  border-radius: 12px;
+  border: 1px solid rgba(250, 213, 154, 0.34);
+  background-size: cover;
+  background-position: center;
+}
+
+.editorDetails {
+  border-radius: 12px;
+  border: 1px solid rgba(238, 196, 143, 0.22);
+  background: rgba(12, 9, 8, 0.24);
+  overflow: hidden;
+}
+
+.editorDetails > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.8rem 0.9rem;
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-size: 0.98rem;
+  color: #f6debb;
+}
+
+.editorDetails > summary::-webkit-details-marker {
+  display: none;
+}
+
+.editorDetailsBody {
+  padding: 0 0.7rem 0.7rem;
+}
+
+.editorSectionNested {
+  margin: 0;
+}
+
+.sceneUploadField input[type="file"] {
+  padding: 0.4rem 0.45rem;
+}
+
+.debugSummaryGrid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.debugSummaryCard {
+  display: grid;
+  gap: 0.18rem;
+  border-radius: 10px;
+  border: 1px solid rgba(238, 196, 143, 0.18);
+  background: rgba(8, 7, 6, 0.4);
+  padding: 0.65rem 0.72rem;
+}
+
+.debugSummaryCard strong {
+  font-size: 0.9rem;
+  color: #f7e7d0;
+}
+
+.debugSummaryCard span {
+  font-size: 0.75rem;
+  color: #e9cfaa;
+}
+
+.debugLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.debugDetails {
+  border-radius: 10px;
+  border: 1px solid rgba(238, 196, 143, 0.18);
+  background: rgba(8, 7, 6, 0.4);
+  padding: 0.55rem 0.68rem;
+}
+
+.debugDetails summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #f5deba;
+}
+
+.debugDetails pre {
+  margin: 0.75rem 0 0;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  padding: 0.72rem;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: #f8ead6;
+}
+
+.debugRouteList {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.debugRouteCard {
+  display: grid;
+  gap: 0.4rem;
+  border-radius: 10px;
+  border: 1px solid rgba(238, 196, 143, 0.16);
+  background: rgba(0, 0, 0, 0.22);
+  padding: 0.72rem;
+}
+
+.debugRouteCard.matched {
+  border-color: rgba(144, 229, 146, 0.42);
+  background: rgba(40, 77, 44, 0.18);
+}
+
+.debugRouteHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  align-items: baseline;
+}
+
+.debugRouteHeader span,
+.debugRouteMeta {
+  font-size: 0.76rem;
+  color: #e9cfaa;
+}
+
+.debugRouteCard p {
+  margin: 0;
+}
+
+.debugRouteCard pre {
+  margin-top: 0.1rem;
+}
+
 .directionEditor {
   margin-top: 0.3rem;
   display: grid;
@@ -261,15 +528,118 @@
   font-size: 1rem;
 }
 
+.directionEditorHeader p {
+  margin: 0.22rem 0 0;
+  font-size: 0.78rem;
+  color: #ecd3ae;
+}
+
+.directionLegend {
+  display: grid;
+  grid-template-columns: minmax(140px, 180px) minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  gap: 0.45rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #dcbc8f;
+}
+
 .directionRow {
   display: grid;
-  grid-template-columns: 120px 1fr 1fr auto;
+  grid-template-columns: minmax(140px, 180px) minmax(180px, 1fr) minmax(180px, 1fr) auto;
   gap: 0.45rem;
   align-items: center;
 }
 
+.directionField {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.directionFieldLabel {
+  font-size: 0.7rem;
+  color: #dcbc8f;
+}
+
 .removeDirection {
   white-space: nowrap;
+}
+
+.metadataBlock {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.promptRouteList {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.promptRouteCard {
+  display: grid;
+  gap: 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(238, 196, 143, 0.18);
+  background: rgba(8, 7, 6, 0.36);
+  padding: 0.8rem;
+}
+
+.promptRouteHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.65rem;
+  align-items: flex-start;
+}
+
+.promptRouteHeader strong {
+  display: block;
+  color: #f8e6cf;
+}
+
+.promptRouteHeader span {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.76rem;
+  color: #e9cfaa;
+}
+
+.promptRouteGrid {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.promptRouteScope {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.promptRouteScopeScreens {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.promptRouteScreenChecklist {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.routeScreenOption {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 8px;
+  border: 1px solid rgba(238, 196, 143, 0.16);
+  background: rgba(0, 0, 0, 0.18);
+  padding: 0.48rem 0.58rem;
+}
+
+.routeScreenOption input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: #d3923f;
 }
 
 .previewCard {
@@ -346,5 +716,9 @@
 
   .directionRow {
     grid-template-columns: 1fr;
+  }
+
+  .directionLegend {
+    display: none;
   }
 }

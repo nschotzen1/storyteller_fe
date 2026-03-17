@@ -17,6 +17,18 @@ const requestJson = async (url, options = {}) => {
   return payload;
 };
 
+const buildAdminHeaders = (adminKey) => {
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+
+  if (adminKey && typeof adminKey === 'string' && adminKey.trim()) {
+    headers['x-admin-key'] = adminKey.trim();
+  }
+
+  return headers;
+};
+
 const buildQuery = (params = {}) => {
   const search = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -44,17 +56,9 @@ export const saveQuestScreens = async (
   { adminKey } = {}
 ) => {
   const safeBaseUrl = normalizeBaseUrl(baseUrl);
-  const headers = {
-    'Content-Type': 'application/json'
-  };
-
-  if (adminKey && typeof adminKey === 'string' && adminKey.trim()) {
-    headers['x-admin-key'] = adminKey.trim();
-  }
-
   return requestJson(`${safeBaseUrl}/api/admin/quest/screens`, {
     method: 'PUT',
-    headers,
+    headers: buildAdminHeaders(adminKey),
     body: JSON.stringify(payload)
   });
 };
@@ -65,21 +69,39 @@ export const resetQuestScreens = async (
   { adminKey } = {}
 ) => {
   const safeBaseUrl = normalizeBaseUrl(baseUrl);
-  const headers = {
-    'Content-Type': 'application/json'
-  };
-
-  if (adminKey && typeof adminKey === 'string' && adminKey.trim()) {
-    headers['x-admin-key'] = adminKey.trim();
-  }
-
   return requestJson(`${safeBaseUrl}/api/admin/quest/screens/reset`, {
     method: 'POST',
-    headers,
+    headers: buildAdminHeaders(adminKey),
     body: JSON.stringify({
       sessionId: payload?.sessionId,
       questId: payload?.questId
     })
+  });
+};
+
+export const uploadQuestSceneImage = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  payload = {},
+  { adminKey } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/admin/quest/scene-image`, {
+    method: 'POST',
+    headers: buildAdminHeaders(adminKey),
+    body: JSON.stringify(payload)
+  });
+};
+
+export const inspectQuestDebugContext = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  payload = {},
+  { adminKey } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/admin/quest/debug-context`, {
+    method: 'POST',
+    headers: buildAdminHeaders(adminKey),
+    body: JSON.stringify(payload)
   });
 };
 
@@ -112,6 +134,18 @@ export const advanceQuest = async (
 ) => {
   const safeBaseUrl = normalizeBaseUrl(baseUrl);
   return requestJson(`${safeBaseUrl}/api/quest/advance`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+};
+
+export const materializeRoseCourtLocationMurals = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  payload = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/rose-court/prologue/materialize-location`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)

@@ -228,6 +228,12 @@ const SESSION_STATE_DEFAULT = {
     route: [],
     currentIndex: 0,
     lastAction: null
+  },
+  relay: {
+    round: 1,
+    touched: {},
+    streak: 0,
+    lastPass: null
   }
 };
 
@@ -833,6 +839,22 @@ const StorytellerArenaConsole = ({
     : '';
   const expeditionLastAction =
     expedition.lastAction && typeof expedition.lastAction === 'object' ? expedition.lastAction : null;
+  const relay =
+    sessionState.relay && typeof sessionState.relay === 'object'
+      ? sessionState.relay
+      : SESSION_STATE_DEFAULT.relay;
+  const relayTouchedMap =
+    relay.touched && typeof relay.touched === 'object' ? relay.touched : {};
+  const relayRound = Math.max(1, Number(relay.round) || 1);
+  const relayStreak = Math.max(0, Number(relay.streak) || 0);
+  const relayTargetKeys = syncTargetKeys;
+  const relayRequired = relayTargetKeys.length;
+  const relayTouchedCount = relayTargetKeys.filter((playerKey) => Boolean(relayTouchedMap[playerKey])).length;
+  const relayRoundComplete = relayRequired > 0 && relayTouchedCount >= relayRequired;
+  const relayLastPass =
+    relay.lastPass && typeof relay.lastPass === 'object' ? relay.lastPass : null;
+  const relayLastFromLabel = getPlayerLabelByKey(relayLastPass?.fromKey || '', 'Table');
+  const relayLastToLabel = getPlayerLabelByKey(relayLastPass?.toKey || '', 'Table');
   const immersionGate = useMemo(
     () => ({
       charter: hasWorldCharter,
@@ -992,6 +1014,14 @@ const StorytellerArenaConsole = ({
         actionId: 'start-ritual'
       };
     }
+    if (relayRequired > 1 && !relayRoundComplete) {
+      return {
+        title: 'Complete Ritual Relay',
+        detail: `Pass focus so all ready seats contribute (${relayTouchedCount}/${relayRequired}).`,
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
     if (!expeditionRoute.length) {
       return {
         title: 'Plot Expedition Route',
@@ -1039,6 +1069,9 @@ const StorytellerArenaConsole = ({
     anchors.length,
     immersionGate.ready,
     ritualActive,
+    relayRequired,
+    relayRoundComplete,
+    relayTouchedCount,
     expeditionRoute.length,
     resonancePending,
     canonProposalText,
@@ -1224,6 +1257,18 @@ const StorytellerArenaConsole = ({
               by: expeditionLastAction?.by || '',
               at: expeditionLastAction?.at || ''
             }
+          },
+          relay: {
+            round: relayRound,
+            streak: relayStreak,
+            touched: relayTouchedCount,
+            required: relayRequired,
+            complete: relayRoundComplete,
+            lastPass: {
+              from: relayLastFromLabel,
+              to: relayLastToLabel,
+              at: relayLastPass?.at || ''
+            }
           }
         },
         roster: players.slice(0, playersCount).map((player, index) => ({
@@ -1293,6 +1338,14 @@ const StorytellerArenaConsole = ({
     expeditionCurrentStop,
     expeditionNextStop,
     expeditionLastAction,
+    relayRound,
+    relayStreak,
+    relayTouchedCount,
+    relayRequired,
+    relayRoundComplete,
+    relayLastFromLabel,
+    relayLastToLabel,
+    relayLastPass,
     immersionPrimer,
     spotlightLabel,
     spotlightTokens,
@@ -2420,6 +2473,12 @@ const StorytellerArenaConsole = ({
         actionBank: createActionBank(nextOrder),
         beatVotes: {},
         lastBeatSync: null,
+        relay: {
+          round: 1,
+          touched: firstKey ? { [firstKey]: true } : {},
+          streak: 0,
+          lastPass: null
+        },
         ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), ritualEntry].slice(-24)
       };
     });
@@ -2444,6 +2503,7 @@ const StorytellerArenaConsole = ({
         actionBank: {},
         beatVotes: {},
         lastBeatSync: null,
+        relay: { ...SESSION_STATE_DEFAULT.relay },
         ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), ritualEntry].slice(-24)
       };
     });
@@ -2644,6 +2704,92 @@ const StorytellerArenaConsole = ({
     }));
     setResonanceInput('');
     setNotice('Resonance channel reset.');
+  };
+
+  const handleRelayPass = (targetKey) => {
+    const roster = players.slice(0, playersCount);
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const actorKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!actorKey) {
+      setNotice('Set focus or turn holder before passing relay.');
+      return;
+    }
+    if (!targetKey) return;
+    if (targetKey === actorKey) {
+      setNotice('Pick another seat for relay.');
+      return;
+    }
+    const actorLabel = getPlayerLabelByKey(actorKey, 'Table');
+    const targetLabel = getPlayerLabelByKey(targetKey, 'Table');
+    setSessionState((prev) => {
+      const previousRelay =
+        prev.relay && typeof prev.relay === 'object' ? prev.relay : SESSION_STATE_DEFAULT.relay;
+      const touched =
+        previousRelay.touched && typeof previousRelay.touched === 'object' ? previousRelay.touched : {};
+      const nextTouched = {
+        ...touched,
+        [actorKey]: true,
+        [targetKey]: true
+      };
+      const requiredKeys = relayTargetKeys;
+      const touchedCount = requiredKeys.filter((playerKey) => Boolean(nextTouched[playerKey])).length;
+      const completed = requiredKeys.length > 0 && touchedCount >= requiredKeys.length;
+      const round = Math.max(1, Number(previousRelay.round) || 1);
+      const streak = Math.max(0, Number(previousRelay.streak) || 0);
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const passEntry = createLedgerEntry({
+        type: 'oath',
+        text: `${actorLabel} relays spotlight to ${targetLabel}.`,
+        by: actorLabel
+      });
+      const completionEntry = completed
+        ? createLedgerEntry({
+            type: 'canon',
+            text: `Relay round ${round} complete. Every ready seat has contributed.`,
+            by: 'Table'
+          })
+        : null;
+      return {
+        ...prev,
+        focusPlayerKey: targetKey,
+        pulse: completed
+          ? {
+              momentum: clampPulseValue((nextPulse?.momentum ?? 2) + 1),
+              clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+            }
+          : nextPulse,
+        relay: {
+          round: completed ? round + 1 : round,
+          streak: completed ? streak + 1 : streak,
+          touched: completed ? { [targetKey]: true } : nextTouched,
+          lastPass: {
+            fromKey: actorKey,
+            toKey: targetKey,
+            at: new Date().toISOString()
+          }
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), passEntry, completionEntry]
+          .filter(Boolean)
+          .slice(-24)
+      };
+    });
+    const nextPlayerIndex = roster.findIndex((player, index) => getPlayerKey(player, index) === targetKey);
+    if (nextPlayerIndex >= 0) {
+      setActivePlayerIndex(nextPlayerIndex);
+    }
+    if (relayRequired > 0 && relayTouchedCount + 1 >= relayRequired) {
+      setNotice(`${targetLabel} takes focus. Relay round completed.`);
+      return;
+    }
+    setNotice(`${actorLabel} passes relay focus to ${targetLabel}.`);
+  };
+
+  const handleResetRelay = () => {
+    setSessionState((prev) => ({
+      ...prev,
+      relay: { ...SESSION_STATE_DEFAULT.relay }
+    }));
+    setNotice('Ritual relay reset.');
   };
 
   const formattedSignalTime = (() => {
@@ -4736,6 +4882,42 @@ const StorytellerArenaConsole = ({
                   </button>
                 </div>
               </div>
+              <div className="relayRow">
+                <div className="relayHeader">
+                  <span>Ritual Relay</span>
+                  <em>{relayStreak ? `Streak ${relayStreak}` : 'No streak yet'}</em>
+                </div>
+                <p>
+                  {relayRequired
+                    ? `Round ${relayRound} · ${relayTouchedCount}/${relayRequired} seats contributed this round.`
+                    : 'Build ready seats to start relay rounds.'}
+                </p>
+                {relayLastPass?.at && (
+                  <div className="relayMeta">
+                    <span>{`${relayLastFromLabel} → ${relayLastToLabel}`}</span>
+                    <em>{relayRoundComplete ? 'Round complete' : 'In progress'}</em>
+                  </div>
+                )}
+                <div className="relayTargets">
+                  {relayTargetKeys.map((playerKey) => (
+                    <button
+                      key={playerKey}
+                      type="button"
+                      className={`ghost subtle ${relayTouchedMap[playerKey] ? 'active' : ''}`}
+                      onClick={() => handleRelayPass(playerKey)}
+                      disabled={playerKey === (focusPlayerKey || currentTurnKey || getPlayerKey(activePlayer, activePlayerIndex))}
+                    >
+                      {getPlayerLabelByKey(playerKey, playerKey)}
+                    </button>
+                  ))}
+                  {!relayTargetKeys.length && <span className="consoleHint">No relay targets yet.</span>}
+                </div>
+                <div className="consoleButtonRow">
+                  <button type="button" className="ghost subtle" onClick={handleResetRelay}>
+                    Reset Relay
+                  </button>
+                </div>
+              </div>
               <div className="collabMoves">
                 <div className="collabMovesHeader">
                   <span>Co-Create Beats</span>
@@ -4807,6 +4989,7 @@ const StorytellerArenaConsole = ({
               <span>{`Pressure ${sceneClock}/${SCENE_CLOCK_MAX}`}</span>
               {expeditionCurrentStop && <span>{`Route ${expeditionCurrentStop}`}</span>}
               <span>{`Beat Sync ${beatSyncVotes}/${beatSyncRequired || 0}`}</span>
+              <span>{`Relay ${relayTouchedCount}/${relayRequired || 0}`}</span>
               <span>
                 {canonProposalText
                   ? `Canon ${canonProposalVotes}/${canonProposalRequired || 0}`

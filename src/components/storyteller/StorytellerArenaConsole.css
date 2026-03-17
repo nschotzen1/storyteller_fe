@@ -1871,6 +1871,70 @@
   }
 }
 
+.relayRow {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(147, 197, 253, 0.24);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(12, 20, 34, 0.58);
+}
+
+.relayHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.relayHeader span {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(191, 219, 254, 0.95);
+}
+
+.relayHeader em {
+  font-style: normal;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: rgba(226, 214, 191, 0.65);
+}
+
+.relayRow p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(226, 214, 191, 0.78);
+}
+
+.relayMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: rgba(226, 214, 191, 0.75);
+}
+
+.relayMeta em {
+  font-style: normal;
+  color: rgba(191, 219, 254, 0.88);
+}
+
+.relayTargets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.relayTargets button.active {
+  border-color: rgba(147, 197, 253, 0.6);
+  color: rgba(191, 219, 254, 0.92);
+  background: rgba(29, 78, 216, 0.18);
+}
+
 .collabMoves {
   display: grid;
   gap: 8px;

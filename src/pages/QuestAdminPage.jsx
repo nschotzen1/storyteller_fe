@@ -3,8 +3,17 @@ import {
   DEFAULT_API_BASE_URL,
   loadQuestScreens,
   resetQuestScreens,
-  saveQuestScreens
+  saveQuestScreens,
+  uploadQuestSceneImage
 } from '../api/questScreens';
+import {
+  loadOpenAiModels,
+  loadTypewriterAiSettings,
+  loadTypewriterPrompts,
+  saveTypewriterAiSettings,
+  saveTypewriterPrompt
+} from '../api/typewriterAdmin';
+import QuestAdminDebugPanel from './quest-admin/QuestAdminDebugPanel';
 import './QuestAdminPage.css';
 
 const QUEST_API_BASE_STORAGE_KEY = 'questApiBaseUrl';
@@ -14,6 +23,26 @@ const QUEST_ID_STORAGE_KEY = 'questId';
 
 const DEFAULT_QUEST_SESSION_ID = 'rose-court-demo';
 const DEFAULT_QUEST_ID = 'ruined_rose_court';
+const QUEST_GENERATION_PIPELINE_KEY = 'quest_generation';
+const EMPTY_MODELS_PAYLOAD = {
+  textModels: [],
+  imageModels: [],
+  source: 'fallback',
+  fetchedAt: '',
+  providers: {}
+};
+const FALLBACK_ANTHROPIC_TEXT_MODELS = [
+  'claude-opus-4-6',
+  'claude-sonnet-4-6',
+  'claude-haiku-4-5',
+  'claude-opus-4-1-20250805',
+  'claude-opus-4-20250514',
+  'claude-sonnet-4-20250514',
+  'claude-3-7-sonnet-latest',
+  'claude-3-opus-latest',
+  'claude-3-5-sonnet-latest',
+  'claude-3-5-haiku-latest'
+];
 
 const DIRECTION_OPTIONS = [
   'north',
@@ -73,6 +102,56 @@ const normalizeDirection = (direction) => {
   };
 };
 
+const normalizePromptRoute = (route) => {
+  if (!route || typeof route !== 'object') return null;
+  return {
+    id: typeof route.id === 'string' ? route.id.trim() : '',
+    description: typeof route.description === 'string' ? route.description : '',
+    fromScreenIds: Array.isArray(route.fromScreenIds)
+      ? [...new Set(route.fromScreenIds.map((screenId) => (typeof screenId === 'string' ? screenId.trim() : '')).filter(Boolean))]
+      : [],
+    matchMode: route.matchMode === 'all' ? 'all' : 'any',
+    patterns: Array.isArray(route.patterns)
+      ? route.patterns.map((pattern) => (typeof pattern === 'string' ? pattern : '')).filter(Boolean)
+      : [],
+    targetScreenId: typeof route.targetScreenId === 'string' ? route.targetScreenId.trim() : ''
+  };
+};
+
+const serializePromptRoute = (route) => {
+  const normalized = normalizePromptRoute(route);
+  if (!normalized) {
+    return {
+      id: '',
+      description: '',
+      fromScreenIds: [],
+      matchMode: 'any',
+      patterns: [],
+      targetScreenId: ''
+    };
+  }
+  return normalized;
+};
+
+const promptRouteAppliesToScreen = (route, screenId = '') => {
+  if (!screenId || !route || typeof route !== 'object') return false;
+  if (!Array.isArray(route.fromScreenIds) || route.fromScreenIds.length === 0) return true;
+  return route.fromScreenIds.includes(screenId);
+};
+
+const getPromptRouteScope = (route, selectedScreenId = '') => {
+  if (!route || typeof route !== 'object') return 'current';
+  if (!Array.isArray(route.fromScreenIds) || route.fromScreenIds.length === 0) return 'all';
+  if (
+    selectedScreenId
+    && route.fromScreenIds.length === 1
+    && route.fromScreenIds[0] === selectedScreenId
+  ) {
+    return 'current';
+  }
+  return 'custom';
+};
+
 const normalizeScreen = (screen) => {
   if (!screen || typeof screen !== 'object') return null;
   const id = typeof screen.id === 'string' ? screen.id.trim() : '';
@@ -83,6 +162,7 @@ const normalizeScreen = (screen) => {
     prompt: typeof screen.prompt === 'string' ? screen.prompt : '',
     imageUrl: typeof screen.imageUrl === 'string' ? screen.imageUrl.trim() : '',
     image_prompt: typeof screen.image_prompt === 'string' ? screen.image_prompt : '',
+    referenceImagePrompt: typeof screen.referenceImagePrompt === 'string' ? screen.referenceImagePrompt : '',
     screenType: screen.screenType === 'generated' ? 'generated' : 'authored',
     parentScreenId: typeof screen.parentScreenId === 'string' ? screen.parentScreenId.trim() : '',
     anchorScreenId: typeof screen.anchorScreenId === 'string' ? screen.anchorScreenId.trim() : '',
@@ -91,6 +171,9 @@ const normalizeScreen = (screen) => {
     generatedFromPrompt: typeof screen.generatedFromPrompt === 'string' ? screen.generatedFromPrompt : '',
     generatedByPlayerId: typeof screen.generatedByPlayerId === 'string' ? screen.generatedByPlayerId.trim() : '',
     generatedAt: typeof screen.generatedAt === 'string' ? screen.generatedAt : '',
+    promptGuidance: typeof screen.promptGuidance === 'string' ? screen.promptGuidance : '',
+    sceneEndCondition: typeof screen.sceneEndCondition === 'string' ? screen.sceneEndCondition : '',
+    promptRoutes: Array.isArray(screen.promptRoutes) ? screen.promptRoutes : [],
     stageLayout: typeof screen.stageLayout === 'string' ? screen.stageLayout : '',
     stageModules: Array.isArray(screen.stageModules) ? screen.stageModules : [],
     textPromptPlaceholder:
@@ -120,6 +203,8 @@ const normalizeConfig = (payload) => {
           ? source.questId.trim()
           : DEFAULT_QUEST_ID,
       startScreenId: '',
+      phaseGuidance: typeof source.phaseGuidance === 'string' ? source.phaseGuidance : '',
+      promptRoutes: Array.isArray(source.promptRoutes) ? source.promptRoutes.map(normalizePromptRoute).filter(Boolean) : [],
       screens: [],
       updatedAt: ''
     };
@@ -143,6 +228,8 @@ const normalizeConfig = (payload) => {
         ? source.questId.trim()
         : DEFAULT_QUEST_ID,
     startScreenId: screenIds.has(requestedStartScreenId) ? requestedStartScreenId : filteredScreens[0].id,
+    phaseGuidance: typeof source.phaseGuidance === 'string' ? source.phaseGuidance : '',
+    promptRoutes: Array.isArray(source.promptRoutes) ? source.promptRoutes.map(normalizePromptRoute).filter(Boolean) : [],
     screens: filteredScreens,
     updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : ''
   };
@@ -166,6 +253,39 @@ const formatDate = (timestamp) => {
   return new Date(parsed).toLocaleString();
 };
 
+const getScreenLabel = (screen) => {
+  if (!screen || typeof screen !== 'object') return '';
+  return typeof screen.title === 'string' && screen.title.trim() ? screen.title.trim() : screen.id || '';
+};
+
+const getTextModelOptions = (models, currentModel, provider = 'openai') => {
+  const normalizedProvider = provider === 'anthropic' ? 'anthropic' : 'openai';
+  const providerPayload = models?.providers?.[normalizedProvider];
+  const sourceModels = Array.isArray(providerPayload?.textModels)
+    ? providerPayload.textModels
+    : normalizedProvider === 'openai'
+      ? models?.textModels
+      : [];
+  const modelIds = (Array.isArray(sourceModels) ? sourceModels : [])
+    .map((entry) => (typeof entry?.id === 'string' ? entry.id.trim() : ''))
+    .filter(Boolean);
+  if (normalizedProvider === 'anthropic') {
+    modelIds.unshift(...FALLBACK_ANTHROPIC_TEXT_MODELS);
+  }
+  if (currentModel && !modelIds.includes(currentModel)) {
+    modelIds.unshift(currentModel);
+  }
+  return Array.from(new Set(modelIds));
+};
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+    reader.onerror = () => reject(new Error('Unable to read image file.'));
+    reader.readAsDataURL(file);
+  });
+
 const QuestAdminPage = ({
   initialApiBaseUrl = getInitialApiBaseUrl(),
   initialAdminKey = getInitialAdminKey(),
@@ -183,10 +303,36 @@ const QuestAdminPage = ({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [aiSettings, setAiSettings] = useState(null);
+  const [models, setModels] = useState(EMPTY_MODELS_PAYLOAD);
+  const [questPromptEntry, setQuestPromptEntry] = useState(null);
+  const [questPromptDraft, setQuestPromptDraft] = useState('');
+  const [runtimeLoading, setRuntimeLoading] = useState(false);
+  const [runtimeSaving, setRuntimeSaving] = useState(false);
+  const [promptSaving, setPromptSaving] = useState(false);
+  const [uploadingSceneImage, setUploadingSceneImage] = useState(false);
+  const [runtimeStatus, setRuntimeStatus] = useState('');
+  const [runtimeError, setRuntimeError] = useState('');
+  const [sceneImageStatus, setSceneImageStatus] = useState('');
+  const [sceneImageError, setSceneImageError] = useState('');
 
   const selectedScreen = useMemo(
     () => config?.screens?.find((screen) => screen.id === selectedScreenId) || null,
     [config, selectedScreenId]
+  );
+  const selectedScreenPromptRoutes = useMemo(() => {
+    if (!config || !selectedScreenId) return [];
+    return (Array.isArray(config.promptRoutes) ? config.promptRoutes : [])
+      .map((route, index) => ({ route, index }))
+      .filter(({ route }) => promptRouteAppliesToScreen(route, selectedScreenId));
+  }, [config, selectedScreenId]);
+  const questGenerationSettings = useMemo(
+    () => aiSettings?.pipelines?.[QUEST_GENERATION_PIPELINE_KEY] || null,
+    [aiSettings]
+  );
+  const questGenerationModelOptions = useMemo(
+    () => getTextModelOptions(models, questGenerationSettings?.model || '', questGenerationSettings?.provider || 'openai'),
+    [models, questGenerationSettings]
   );
 
   useEffect(() => {
@@ -250,16 +396,71 @@ const QuestAdminPage = ({
     setScreenIdDraft(selectedScreen?.id || '');
   }, [selectedScreen]);
 
-  const updateSelectedScreen = (updater) => {
-    if (!selectedScreenId) return;
+  useEffect(() => {
+    setSceneImageStatus('');
+    setSceneImageError('');
+  }, [selectedScreenId]);
+
+  useEffect(() => {
+    let active = true;
+
+    const run = async () => {
+      setRuntimeLoading(true);
+      setRuntimeError('');
+      try {
+        const trimmedAdminKey = adminKey.trim() ? adminKey.trim() : undefined;
+        const [settingsPayload, modelsPayload, promptsPayload] = await Promise.all([
+          loadTypewriterAiSettings(apiBaseUrl, { adminKey: trimmedAdminKey }),
+          loadOpenAiModels(apiBaseUrl, { adminKey: trimmedAdminKey }),
+          loadTypewriterPrompts(apiBaseUrl, { adminKey: trimmedAdminKey })
+        ]);
+        if (!active) return;
+        setAiSettings(settingsPayload || { pipelines: {} });
+        setModels(modelsPayload || EMPTY_MODELS_PAYLOAD);
+        const promptEntry = promptsPayload?.pipelines?.[QUEST_GENERATION_PIPELINE_KEY] || null;
+        setQuestPromptEntry(promptEntry);
+        setQuestPromptDraft(promptEntry?.promptTemplate || '');
+      } catch (err) {
+        if (active) {
+          setRuntimeError(err.message || 'Unable to load quest generator settings.');
+        }
+      } finally {
+        if (active) {
+          setRuntimeLoading(false);
+        }
+      }
+    };
+
+    run();
+    return () => {
+      active = false;
+    };
+  }, [apiBaseUrl, adminKey]);
+
+  const updateScreenById = (screenId, updater) => {
+    if (!screenId) return;
     setConfig((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
         screens: prev.screens.map((screen) => {
-          if (screen.id !== selectedScreenId) return screen;
+          if (screen.id !== screenId) return screen;
           return updater(screen);
         })
+      };
+    });
+  };
+
+  const updateSelectedScreen = (updater) => {
+    updateScreenById(selectedScreenId, updater);
+  };
+
+  const updatePromptRoutes = (updater) => {
+    setConfig((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        promptRoutes: updater(Array.isArray(prev.promptRoutes) ? prev.promptRoutes : [])
       };
     });
   };
@@ -274,6 +475,7 @@ const QuestAdminPage = ({
         prompt: '',
         imageUrl: '',
         image_prompt: 'Cinematic fantasy quest scene, ruined rose-court setting, weathered stone architecture, dusk atmosphere.',
+        referenceImagePrompt: '',
         screenType: 'authored',
         parentScreenId: '',
         anchorScreenId: '',
@@ -282,6 +484,9 @@ const QuestAdminPage = ({
         generatedFromPrompt: '',
         generatedByPlayerId: '',
         generatedAt: '',
+        promptGuidance: '',
+        sceneEndCondition: '',
+        promptRoutes: [],
         stageLayout: '',
         stageModules: [],
         textPromptPlaceholder: 'What do you do?',
@@ -321,6 +526,14 @@ const QuestAdminPage = ({
     setConfig({
       ...config,
       startScreenId: nextStartScreenId,
+      promptRoutes: (Array.isArray(config.promptRoutes) ? config.promptRoutes : [])
+        .filter((route) => route?.targetScreenId !== removedId)
+        .map((route) => ({
+          ...route,
+          fromScreenIds: Array.isArray(route?.fromScreenIds)
+            ? route.fromScreenIds.filter((screenId) => screenId !== removedId)
+            : []
+        })),
       screens: remainingScreens
     });
     setSelectedScreenId(remainingScreens[0].id);
@@ -365,6 +578,13 @@ const QuestAdminPage = ({
     setConfig({
       ...config,
       startScreenId: config.startScreenId === oldId ? nextId : config.startScreenId,
+      promptRoutes: (Array.isArray(config.promptRoutes) ? config.promptRoutes : []).map((route) => ({
+        ...route,
+        targetScreenId: route?.targetScreenId === oldId ? nextId : route?.targetScreenId,
+        fromScreenIds: Array.isArray(route?.fromScreenIds)
+          ? route.fromScreenIds.map((screenId) => (screenId === oldId ? nextId : screenId))
+          : []
+      })),
       screens: renamedScreens
     });
     setSelectedScreenId(nextId);
@@ -417,6 +637,98 @@ const QuestAdminPage = ({
     }));
   };
 
+  const handleAddPromptRoute = () => {
+    if (!selectedScreenId) return;
+    updatePromptRoutes((routes) => [
+      ...routes,
+      {
+        id: '',
+        description: '',
+        fromScreenIds: [selectedScreenId],
+        matchMode: 'any',
+        patterns: [],
+        targetScreenId: ''
+      }
+    ]);
+    setStatus('Free-text route added.');
+    setError('');
+  };
+
+  const updatePromptRouteAtIndex = (routeIndex, updater) => {
+    updatePromptRoutes((routes) =>
+      routes.map((route, index) => {
+        if (index !== routeIndex) return route;
+        return serializePromptRoute(updater(route));
+      })
+    );
+  };
+
+  const handlePromptRouteFieldChange = (routeIndex, field, value) => {
+    updatePromptRouteAtIndex(routeIndex, (route) => ({
+      ...route,
+      [field]: value
+    }));
+  };
+
+  const handlePromptRoutePatternsChange = (routeIndex, value) => {
+    const patterns = String(value || '')
+      .split('\n')
+      .map((pattern) => pattern.trim())
+      .filter(Boolean);
+    updatePromptRouteAtIndex(routeIndex, (route) => ({
+      ...route,
+      patterns
+    }));
+  };
+
+  const handlePromptRouteScopeChange = (routeIndex, scope) => {
+    updatePromptRouteAtIndex(routeIndex, (route) => {
+      if (scope === 'all') {
+        return {
+          ...route,
+          fromScreenIds: []
+        };
+      }
+      if (scope === 'custom') {
+        const baseIds = Array.isArray(route.fromScreenIds) && route.fromScreenIds.length
+          ? route.fromScreenIds
+          : selectedScreenId
+            ? [selectedScreenId]
+            : [];
+        return {
+          ...route,
+          fromScreenIds: baseIds
+        };
+      }
+      return {
+        ...route,
+        fromScreenIds: selectedScreenId ? [selectedScreenId] : []
+      };
+    });
+  };
+
+  const handlePromptRouteSourceScreenToggle = (routeIndex, screenId, checked) => {
+    updatePromptRouteAtIndex(routeIndex, (route) => {
+      const currentIds = Array.isArray(route.fromScreenIds) ? route.fromScreenIds : [];
+      const toggledIds = checked
+        ? [...new Set([...currentIds, screenId])]
+        : currentIds.filter((id) => id !== screenId);
+      const nextIds = toggledIds.length === 0 && selectedScreenId
+        ? [selectedScreenId]
+        : toggledIds;
+      return {
+        ...route,
+        fromScreenIds: nextIds
+      };
+    });
+  };
+
+  const handlePromptRouteRemove = (routeIndex) => {
+    updatePromptRoutes((routes) => routes.filter((_, index) => index !== routeIndex));
+    setStatus('Free-text route removed.');
+    setError('');
+  };
+
   const handleSave = async () => {
     if (!config) return;
 
@@ -429,6 +741,8 @@ const QuestAdminPage = ({
         sessionId,
         questId,
         startScreenId: config.startScreenId,
+        phaseGuidance: config.phaseGuidance,
+        promptRoutes: (Array.isArray(config.promptRoutes) ? config.promptRoutes : []).map(serializePromptRoute),
         screens: config.screens
       };
       const saved = await saveQuestScreens(apiBaseUrl, payload, {
@@ -474,6 +788,134 @@ const QuestAdminPage = ({
     }
   };
 
+  const updateQuestGenerationSettings = (patch) => {
+    setAiSettings((prev) => {
+      const current = prev?.pipelines?.[QUEST_GENERATION_PIPELINE_KEY] || {
+        provider: 'openai',
+        model: '',
+        useMock: false
+      };
+      return {
+        ...(prev || {}),
+        pipelines: {
+          ...(prev?.pipelines || {}),
+          [QUEST_GENERATION_PIPELINE_KEY]: {
+            ...current,
+            ...patch
+          }
+        }
+      };
+    });
+  };
+
+  const handleSaveQuestRuntime = async () => {
+    if (!questGenerationSettings) return;
+
+    setRuntimeSaving(true);
+    setRuntimeError('');
+    setRuntimeStatus('');
+
+    try {
+      const payload = await saveTypewriterAiSettings(
+        apiBaseUrl,
+        {
+          pipelines: {
+            [QUEST_GENERATION_PIPELINE_KEY]: {
+              provider: questGenerationSettings.provider || 'openai',
+              model: questGenerationSettings.model || '',
+              useMock: Boolean(questGenerationSettings.useMock)
+            }
+          }
+        },
+        {
+          adminKey: adminKey.trim() ? adminKey.trim() : undefined,
+          updatedBy: 'quest-admin-ui'
+        }
+      );
+      setAiSettings(payload || { pipelines: {} });
+      setRuntimeStatus('Saved quest generator runtime.');
+    } catch (err) {
+      setRuntimeError(err.message || 'Unable to save quest generator runtime.');
+    } finally {
+      setRuntimeSaving(false);
+    }
+  };
+
+  const handleSaveQuestPrompt = async () => {
+    if (!questPromptDraft.trim()) {
+      setRuntimeError('Quest generator prompt cannot be empty.');
+      setRuntimeStatus('');
+      return;
+    }
+
+    setPromptSaving(true);
+    setRuntimeError('');
+    setRuntimeStatus('');
+
+    try {
+      const trimmedAdminKey = adminKey.trim() ? adminKey.trim() : undefined;
+      await saveTypewriterPrompt(apiBaseUrl, QUEST_GENERATION_PIPELINE_KEY, questPromptDraft, {
+        adminKey: trimmedAdminKey,
+        updatedBy: 'quest-admin-ui',
+        markLatest: true
+      });
+      const promptsPayload = await loadTypewriterPrompts(apiBaseUrl, { adminKey: trimmedAdminKey });
+      const promptEntry = promptsPayload?.pipelines?.[QUEST_GENERATION_PIPELINE_KEY] || null;
+      setQuestPromptEntry(promptEntry);
+      setQuestPromptDraft(promptEntry?.promptTemplate || questPromptDraft);
+      setRuntimeStatus('Saved quest generator prompt to the prompt store.');
+    } catch (err) {
+      setRuntimeError(err.message || 'Unable to save quest generator prompt.');
+    } finally {
+      setPromptSaving(false);
+    }
+  };
+
+  const handleSceneImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !selectedScreen) return;
+
+    setUploadingSceneImage(true);
+    setSceneImageError('');
+    setSceneImageStatus('');
+
+    const activeScreenId = selectedScreen.id;
+    const activeScreenTitle = selectedScreen.title || selectedScreen.id;
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const uploadPayload = await uploadQuestSceneImage(
+        apiBaseUrl,
+        {
+          sessionId,
+          questId,
+          screenId: activeScreenId,
+          filename: file.name,
+          dataUrl
+        },
+        {
+          adminKey: adminKey.trim() ? adminKey.trim() : undefined
+        }
+      );
+      updateScreenById(activeScreenId, (screen) => ({
+        ...screen,
+        imageUrl: uploadPayload.imageUrl || screen.imageUrl
+      }));
+      setSceneImageStatus(`Uploaded a new image for ${activeScreenTitle}. Save Scene to persist it.`);
+    } catch (err) {
+      setSceneImageError(err.message || 'Unable to upload scene image.');
+    } finally {
+      setUploadingSceneImage(false);
+    }
+  };
+
+  const promptSourceLabel = questPromptEntry?.meta?.fallbackFromCode
+    ? `Code default (${questPromptEntry?.meta?.source || 'backend'})`
+    : questPromptEntry?.version
+      ? `Database version ${questPromptEntry.version}`
+      : 'Not loaded';
+
   return (
     <div className="questAdminRoot">
       <div className="questAdminBackdrop" />
@@ -481,9 +923,10 @@ const QuestAdminPage = ({
         <header className="questAdminHeader">
           <div>
             <p className="questAdminEyebrow">Quest Admin</p>
-            <h1>Screen Graph Builder</h1>
+            <h1>Quest Scene Editor</h1>
             <p>
-              Build each scene, assign image + prompt, and wire directional exits.
+              Write one GM guide for the whole scene, then edit each screen with optional local guidance,
+              an optional image, and the built-in choices that lead out of it.
             </p>
           </div>
           <div className="questAdminMeta">
@@ -530,7 +973,7 @@ const QuestAdminPage = ({
             />
           </label>
           <button type="button" onClick={handleSave} disabled={saving || loading || !config}>
-            {saving ? 'Saving…' : 'Save Config'}
+            {saving ? 'Saving…' : 'Save Scene'}
           </button>
           <button type="button" className="ghost" onClick={handleReset} disabled={saving || loading}>
             Reset Defaults
@@ -564,250 +1007,715 @@ const QuestAdminPage = ({
                   setError('');
                 }}
               >
-                <strong>{screen.title || screen.id}</strong>
+                <strong>{getScreenLabel(screen)}</strong>
+                <span className="screenListMeta">
+                  {config?.startScreenId === screen.id ? <em className="screenListBadge">Start</em> : null}
+                  <span>{screen.directions.length} built-in choice{screen.directions.length === 1 ? '' : 's'}</span>
+                </span>
                 <span>{screen.id}</span>
               </button>
             ))}
           </aside>
 
           <section className="questAdminEditor">
+            <section className="editorSection">
+              <div className="editorSectionHeader">
+                <div>
+                  <h3>How To Edit This Scene</h3>
+                  <p>The main authoring flow is intentionally short.</p>
+                </div>
+              </div>
+              <div className="editorPrimerGrid">
+                <article className="editorPrimerCard">
+                  <strong>1. GM Scene Guide</strong>
+                  <p>Write the one global guideline prompt the GM should follow across all screens in this scene.</p>
+                </article>
+                <article className="editorPrimerCard">
+                  <strong>2. Screen Details</strong>
+                  <p>For any screen, optionally add extra guidance and an image that only belong to that screen.</p>
+                </article>
+                <article className="editorPrimerCard">
+                  <strong>3. Built-In Choices</strong>
+                  <p>Define every fixed choice from the screen and exactly which screen each one leads to.</p>
+                </article>
+                <article className="editorPrimerCard">
+                  <strong>4. Free-Text Routes</strong>
+                  <p>Map typed actions like “listen for the signal” to an existing screen instead of generating a new one.</p>
+                </article>
+              </div>
+            </section>
+
+            <section className="editorSection">
+              <div className="editorSectionHeader">
+                <div>
+                  <h3>GM Scene Guide</h3>
+                  <p>This single guideline is sent to the GM for the whole scene.</p>
+                </div>
+              </div>
+              <label>
+                Global GM Guidance
+                <textarea
+                  rows={4}
+                  value={config?.phaseGuidance || ''}
+                  onChange={(event) =>
+                    setConfig((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            phaseGuidance: event.target.value
+                          }
+                        : prev
+                    )
+                  }
+                  placeholder="What is possible in this phase, what must stay fixed, and what should be deferred."
+                />
+              </label>
+            </section>
+
             {!selectedScreen && (
               <p className="editorMessage">Choose a screen from the list.</p>
             )}
 
             {selectedScreen && (
               <>
-                <div className="editorTopRow">
-                  <label>
-                    Start Screen
-                    <select
-                      value={config?.startScreenId || ''}
-                      onChange={(event) =>
-                        setConfig((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                startScreenId: event.target.value
-                              }
-                            : prev
-                        )
-                      }
-                    >
-                      {config?.screens?.map((screen) => (
-                        <option key={`start-${screen.id}`} value={screen.id}>
-                          {screen.title || screen.id}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button type="button" className="danger" onClick={handleRemoveSelectedScreen}>
-                    Remove Screen
-                  </button>
-                </div>
-
-                <label>
-                  Screen ID
-                  <input
-                    type="text"
-                    value={screenIdDraft}
-                    onChange={(event) => setScreenIdDraft(event.target.value)}
-                    onBlur={handleCommitScreenId}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault();
-                        handleCommitScreenId();
-                      }
-                    }}
-                  />
-                </label>
-
-                <label>
-                  Screen Title
-                  <input
-                    type="text"
-                    value={selectedScreen.title}
-                    onChange={(event) =>
-                      updateSelectedScreen((screen) => ({
-                        ...screen,
-                        title: event.target.value
-                      }))
-                    }
-                  />
-                </label>
-
-                <label>
-                  Expectation Summary
-                  <textarea
-                    rows={2}
-                    value={selectedScreen.expectationSummary || ''}
-                    onChange={(event) =>
-                      updateSelectedScreen((screen) => ({
-                        ...screen,
-                        expectationSummary: event.target.value
-                      }))
-                    }
-                    placeholder="What should the player expect to find or feel here?"
-                  />
-                </label>
-
-                <label>
-                  Continuity Summary
-                  <textarea
-                    rows={2}
-                    value={selectedScreen.continuitySummary || ''}
-                    onChange={(event) =>
-                      updateSelectedScreen((screen) => ({
-                        ...screen,
-                        continuitySummary: event.target.value
-                      }))
-                    }
-                    placeholder="How this screen connects to the previous one"
-                  />
-                </label>
-
-                <label>
-                  Prompt
-                  <textarea
-                    rows={3}
-                    value={selectedScreen.prompt}
-                    onChange={(event) =>
-                      updateSelectedScreen((screen) => ({
-                        ...screen,
-                        prompt: event.target.value
-                      }))
-                    }
-                  />
-                </label>
-
-                <label>
-                  Image URL
-                  <input
-                    type="text"
-                    value={selectedScreen.imageUrl}
-                    onChange={(event) =>
-                      updateSelectedScreen((screen) => ({
-                        ...screen,
-                        imageUrl: event.target.value
-                      }))
-                    }
-                    placeholder="/ruin_south_a.png or https://..."
-                  />
-                </label>
-
-                <label>
-                  Image Prompt
-                  <textarea
-                    rows={3}
-                    value={selectedScreen.image_prompt}
-                    onChange={(event) =>
-                      updateSelectedScreen((screen) => ({
-                        ...screen,
-                        image_prompt: event.target.value
-                      }))
-                    }
-                    placeholder="Prompt used to generate this scene image"
-                  />
-                </label>
-
-                <label>
-                  Text Prompt Placeholder
-                  <input
-                    type="text"
-                    value={selectedScreen.textPromptPlaceholder}
-                    onChange={(event) =>
-                      updateSelectedScreen((screen) => ({
-                        ...screen,
-                        textPromptPlaceholder: event.target.value
-                      }))
-                    }
-                  />
-                </label>
-
-                <section className="directionEditor">
-                  <div className="directionEditorHeader">
-                    <h3>Directions</h3>
-                    <button type="button" onClick={handleAddDirection}>+ Add Direction</button>
+                <section className="editorSection">
+                  <div className="editorSectionHeader">
+                    <div>
+                      <h3>Selected Screen</h3>
+                      <p>Edit the text the player sees and the basic identity of this screen.</p>
+                    </div>
                   </div>
 
-                  {selectedScreen.directions.length === 0 && (
-                    <p className="editorMessage">No directions yet for this screen.</p>
-                  )}
-
-                  {selectedScreen.directions.map((direction, index) => (
-                    <div key={`${direction.direction}-${index}`} className="directionRow">
+                  <div className="editorTopRow">
+                    <label>
+                      Start Screen
                       <select
-                        value={direction.direction}
+                        value={config?.startScreenId || ''}
                         onChange={(event) =>
-                          handleDirectionFieldChange(index, 'direction', event.target.value)
-                        }
-                      >
-                        {DIRECTION_OPTIONS.map((option) => (
-                          <option key={`${selectedScreen.id}-dir-${option}`} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="text"
-                        value={direction.label}
-                        onChange={(event) =>
-                          handleDirectionFieldChange(index, 'label', event.target.value)
-                        }
-                        placeholder="Button label"
-                      />
-                      <select
-                        value={direction.targetScreenId}
-                        onChange={(event) =>
-                          handleDirectionFieldChange(index, 'targetScreenId', event.target.value)
+                          setConfig((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  startScreenId: event.target.value
+                                }
+                              : prev
+                          )
                         }
                       >
                         {config?.screens?.map((screen) => (
-                          <option key={`${selectedScreen.id}-target-${screen.id}-${index}`} value={screen.id}>
-                            {screen.title || screen.id}
+                          <option key={`start-${screen.id}`} value={screen.id}>
+                            {getScreenLabel(screen)}
                           </option>
                         ))}
                       </select>
-                      <button
-                        type="button"
-                        className="removeDirection"
-                        onClick={() => handleDirectionRemove(index)}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
+                    </label>
+                    <button type="button" className="danger" onClick={handleRemoveSelectedScreen}>
+                      Remove Screen
+                    </button>
+                  </div>
+
+                  <label>
+                    Internal Screen ID
+                    <input
+                      type="text"
+                      value={screenIdDraft}
+                      onChange={(event) => setScreenIdDraft(event.target.value)}
+                      onBlur={handleCommitScreenId}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          handleCommitScreenId();
+                        }
+                      }}
+                    />
+                  </label>
+
+                  <label>
+                    Screen Title
+                    <input
+                      type="text"
+                      value={selectedScreen.title}
+                      onChange={(event) =>
+                        updateSelectedScreen((screen) => ({
+                          ...screen,
+                          title: event.target.value
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    What The Player Sees On This Screen
+                    <textarea
+                      rows={4}
+                      value={selectedScreen.prompt}
+                      onChange={(event) =>
+                        updateSelectedScreen((screen) => ({
+                          ...screen,
+                          prompt: event.target.value
+                        }))
+                      }
+                      placeholder="Opening text for this screen."
+                    />
+                  </label>
                 </section>
 
-                <section className="directionEditor">
-                  <div className="directionEditorHeader">
-                    <h3>Metadata</h3>
+                <section className="editorSection">
+                  <div className="editorSectionHeader">
+                    <div>
+                      <h3>Optional Screen Guidance</h3>
+                      <p>Add extra GM notes only for this screen. Leave blank if the global GM guide is enough.</p>
+                    </div>
                   </div>
-                  <p className="editorMessage">
-                    Type: <strong>{selectedScreen.screenType || 'authored'}</strong>
-                    {selectedScreen.parentScreenId ? ` | Parent: ${selectedScreen.parentScreenId}` : ''}
-                    {selectedScreen.anchorScreenId ? ` | Anchor: ${selectedScreen.anchorScreenId}` : ''}
-                  </p>
-                  {selectedScreen.generatedFromPrompt ? (
-                    <p className="editorMessage">Generated from prompt: {selectedScreen.generatedFromPrompt}</p>
-                  ) : null}
-                  {selectedScreen.generatedByPlayerId ? (
-                    <p className="editorMessage">Generated by player: {selectedScreen.generatedByPlayerId}</p>
-                  ) : null}
-                  {selectedScreen.generatedAt ? (
-                    <p className="editorMessage">Generated at: {formatDate(selectedScreen.generatedAt)}</p>
-                  ) : null}
-                  {selectedScreen.stageModules?.length ? (
-                    <p className="editorMessage">
-                      Stage modules: {selectedScreen.stageModules.length} ({selectedScreen.stageLayout || 'focus-left'})
-                    </p>
-                  ) : null}
+
+                  <label>
+                    Extra GM Guidance For This Screen
+                    <textarea
+                      rows={4}
+                      value={selectedScreen.promptGuidance || ''}
+                      onChange={(event) =>
+                        updateSelectedScreen((screen) => ({
+                          ...screen,
+                          promptGuidance: event.target.value
+                        }))
+                      }
+                      placeholder="Optional local guidance for this screen only."
+                    />
+                  </label>
+
+                  <label>
+                    This Screen Ends When
+                    <textarea
+                      rows={3}
+                      value={selectedScreen.sceneEndCondition || ''}
+                      onChange={(event) =>
+                        updateSelectedScreen((screen) => ({
+                          ...screen,
+                          sceneEndCondition: event.target.value
+                        }))
+                      }
+                      placeholder="Optional condition that tells the GM when this screen is complete."
+                    />
+                  </label>
                 </section>
+
+                <section className="editorSection">
+                  <div className="editorSectionHeader">
+                    <div>
+                      <h3>Optional Screen Image</h3>
+                      <p>Each screen can keep its current image, upload a different one, and keep a separate reference prompt for art generation.</p>
+                    </div>
+                  </div>
+
+                  {(sceneImageStatus || sceneImageError) && (
+                    <div className={`questAdminInlineNotice ${sceneImageError ? 'error' : 'ok'}`}>
+                      {sceneImageError || sceneImageStatus}
+                    </div>
+                  )}
+
+                  <div
+                    className="sceneImagePreview"
+                    style={{
+                      backgroundImage: `linear-gradient(160deg, rgba(18, 12, 10, 0.45), rgba(14, 8, 7, 0.82)), url(${selectedScreen.imageUrl || '/ruin_south_a.png'})`
+                    }}
+                  />
+
+                  <label>
+                    Image URL
+                    <input
+                      type="text"
+                      value={selectedScreen.imageUrl}
+                      onChange={(event) =>
+                        updateSelectedScreen((screen) => ({
+                          ...screen,
+                          imageUrl: event.target.value
+                        }))
+                      }
+                      placeholder="/assets/quest_scene_uploads/... or https://..."
+                    />
+                  </label>
+
+                  <label className="sceneUploadField">
+                    Upload A New Screen Image
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={handleSceneImageUpload}
+                      disabled={uploadingSceneImage}
+                    />
+                  </label>
+
+                  <p className="editorMessage">
+                    Uploading updates the image URL automatically. Save Scene to persist it.
+                  </p>
+
+                  <label>
+                    Reference Text-to-Image Prompt
+                    <textarea
+                      rows={5}
+                      value={selectedScreen.referenceImagePrompt || ''}
+                      onChange={(event) =>
+                        updateSelectedScreen((screen) => ({
+                          ...screen,
+                          referenceImagePrompt: event.target.value
+                        }))
+                      }
+                      placeholder="A richer visual brief for generating or commissioning art for this screen."
+                    />
+                  </label>
+                </section>
+
+                <section className="editorSection directionEditor">
+                  <div className="directionEditorHeader">
+                    <div>
+                      <h3>Built-In Choices From This Screen</h3>
+                      <p>Each row is a fixed option and the screen it leads to.</p>
+                    </div>
+                    <button type="button" onClick={handleAddDirection}>+ Add Choice</button>
+                  </div>
+
+                  <div className="directionLegend">
+                    <span>Choice key</span>
+                    <span>What the player sees</span>
+                    <span>Leads to screen</span>
+                    <span />
+                  </div>
+
+                  {selectedScreen.directions.length === 0 && (
+                    <p className="editorMessage">No built-in choices yet for this screen.</p>
+                  )}
+
+                  {selectedScreen.directions.map((direction, index) => {
+                    const datalistId = `${selectedScreen.id}-direction-options-${index}`;
+                    return (
+                      <div key={`${direction.direction}-${index}`} className="directionRow">
+                        <label className="directionField">
+                          <span className="directionFieldLabel">Choice key</span>
+                          <input
+                            list={datalistId}
+                            value={direction.direction}
+                            onChange={(event) =>
+                              handleDirectionFieldChange(index, 'direction', event.target.value)
+                            }
+                            placeholder="north, inspect_mural, open_phone..."
+                          />
+                          <datalist id={datalistId}>
+                            {DIRECTION_OPTIONS.map((option) => (
+                              <option key={`${selectedScreen.id}-dir-${option}`} value={option} />
+                            ))}
+                          </datalist>
+                        </label>
+                        <label className="directionField">
+                          <span className="directionFieldLabel">What the player sees</span>
+                          <input
+                            type="text"
+                            value={direction.label}
+                            onChange={(event) =>
+                              handleDirectionFieldChange(index, 'label', event.target.value)
+                            }
+                            placeholder="Examine the center mural"
+                          />
+                        </label>
+                        <label className="directionField">
+                          <span className="directionFieldLabel">Leads to screen</span>
+                          <select
+                            value={direction.targetScreenId}
+                            onChange={(event) =>
+                              handleDirectionFieldChange(index, 'targetScreenId', event.target.value)
+                            }
+                          >
+                            {config?.screens?.map((screen) => (
+                              <option key={`${selectedScreen.id}-target-${screen.id}-${index}`} value={screen.id}>
+                                {getScreenLabel(screen)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          className="removeDirection"
+                          onClick={() => handleDirectionRemove(index)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  })}
+                </section>
+
+                <section className="editorSection promptRouteEditor">
+                  <div className="directionEditorHeader">
+                    <div>
+                      <h3>Free-Text Routes From This Screen</h3>
+                      <p>Use this when typed input should land on an existing authored screen instead of generating a new branch.</p>
+                    </div>
+                    <button type="button" onClick={handleAddPromptRoute}>+ Add Route</button>
+                  </div>
+
+                  {selectedScreenPromptRoutes.length === 0 && (
+                    <p className="editorMessage">No free-text routes currently apply to this screen.</p>
+                  )}
+
+                  <div className="promptRouteList">
+                    {selectedScreenPromptRoutes.map(({ route, index }) => {
+                      const routeScope = getPromptRouteScope(route, selectedScreenId);
+                      return (
+                        <article key={`prompt-route-${index}`} className="promptRouteCard">
+                          <div className="promptRouteHeader">
+                            <div>
+                              <strong>{route.description?.trim() || route.id || 'New free-text route'}</strong>
+                              <span>
+                                {routeScope === 'all'
+                                  ? 'Applies to all screens'
+                                  : routeScope === 'custom'
+                                    ? `Applies to ${route.fromScreenIds.length} screens`
+                                    : 'Applies only to this screen'}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className="removeDirection"
+                              onClick={() => handlePromptRouteRemove(index)}
+                            >
+                              Remove
+                            </button>
+                          </div>
+
+                          <div className="promptRouteGrid">
+                            <label>
+                              Route ID
+                              <input
+                                type="text"
+                                value={route.id}
+                                onChange={(event) =>
+                                  handlePromptRouteFieldChange(index, 'id', slugify(event.target.value))
+                                }
+                                placeholder="optional_route_id"
+                              />
+                            </label>
+
+                            <label>
+                              Match Rule
+                              <select
+                                value={route.matchMode}
+                                onChange={(event) =>
+                                  handlePromptRouteFieldChange(index, 'matchMode', event.target.value)
+                                }
+                              >
+                                <option value="any">Any pattern matches</option>
+                                <option value="all">All patterns must match</option>
+                              </select>
+                            </label>
+
+                            <label>
+                              Target Screen
+                              <select
+                                value={route.targetScreenId}
+                                onChange={(event) =>
+                                  handlePromptRouteFieldChange(index, 'targetScreenId', event.target.value)
+                                }
+                              >
+                                <option value="">Select target screen</option>
+                                {config?.screens?.map((screen) => (
+                                  <option key={`prompt-route-target-${screen.id}-${index}`} value={screen.id}>
+                                    {getScreenLabel(screen)}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+
+                          <label>
+                            What This Route Does
+                            <input
+                              type="text"
+                              value={route.description}
+                              onChange={(event) =>
+                                handlePromptRouteFieldChange(index, 'description', event.target.value)
+                              }
+                              placeholder="Describe when this route should win."
+                            />
+                          </label>
+
+                          <label>
+                            Trigger Patterns
+                            <textarea
+                              rows={4}
+                              value={Array.isArray(route.patterns) ? route.patterns.join('\n') : ''}
+                              onChange={(event) =>
+                                handlePromptRoutePatternsChange(index, event.target.value)
+                              }
+                              placeholder={'One pattern per line.\nExample: listen.*signal\nExample: where .*coming from'}
+                            />
+                          </label>
+
+                          <div className="promptRouteScope">
+                            <label>
+                              Route Scope
+                              <select
+                                value={routeScope}
+                                onChange={(event) =>
+                                  handlePromptRouteScopeChange(index, event.target.value)
+                                }
+                              >
+                                <option value="current">Only this screen</option>
+                                <option value="all">All screens</option>
+                                <option value="custom">Choose screens</option>
+                              </select>
+                            </label>
+
+                            {routeScope === 'custom' && (
+                              <div className="promptRouteScopeScreens">
+                                <span className="directionFieldLabel">Available from</span>
+                                <div className="promptRouteScreenChecklist">
+                                  {config?.screens?.map((screen) => {
+                                    const checked = Array.isArray(route.fromScreenIds)
+                                      ? route.fromScreenIds.includes(screen.id)
+                                      : false;
+                                    return (
+                                      <label key={`route-scope-${index}-${screen.id}`} className="routeScreenOption">
+                                        <input
+                                          type="checkbox"
+                                          checked={checked}
+                                          onChange={(event) =>
+                                            handlePromptRouteSourceScreenToggle(index, screen.id, event.target.checked)
+                                          }
+                                        />
+                                        <span>{getScreenLabel(screen)}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <details className="editorDetails">
+                  <summary>Advanced Screen Fields</summary>
+                  <div className="editorDetailsBody">
+                    <section className="editorSection editorSectionNested">
+                      <div className="editorSectionHeader">
+                        <div>
+                          <h3>Advanced Screen Fields</h3>
+                          <p>Only touch these when you need extra generator control or debugging context.</p>
+                        </div>
+                      </div>
+
+                      <label>
+                        Expectation Summary
+                        <textarea
+                          rows={2}
+                          value={selectedScreen.expectationSummary || ''}
+                          onChange={(event) =>
+                            updateSelectedScreen((screen) => ({
+                              ...screen,
+                              expectationSummary: event.target.value
+                            }))
+                          }
+                          placeholder="What should the player expect to find or feel here?"
+                        />
+                      </label>
+
+                      <label>
+                        Continuity Summary
+                        <textarea
+                          rows={2}
+                          value={selectedScreen.continuitySummary || ''}
+                          onChange={(event) =>
+                            updateSelectedScreen((screen) => ({
+                              ...screen,
+                              continuitySummary: event.target.value
+                            }))
+                          }
+                          placeholder="How this screen connects to the previous one."
+                        />
+                      </label>
+
+                      <label>
+                        Text Prompt Placeholder
+                        <input
+                          type="text"
+                          value={selectedScreen.textPromptPlaceholder}
+                          onChange={(event) =>
+                            updateSelectedScreen((screen) => ({
+                              ...screen,
+                              textPromptPlaceholder: event.target.value
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label>
+                        Generator Image Prompt
+                        <textarea
+                          rows={3}
+                          value={selectedScreen.image_prompt}
+                          onChange={(event) =>
+                            updateSelectedScreen((screen) => ({
+                              ...screen,
+                              image_prompt: event.target.value
+                            }))
+                          }
+                          placeholder="Prompt used to generate this scene image"
+                        />
+                      </label>
+
+                      <div className="metadataBlock">
+                        <p className="editorMessage">
+                          Type: <strong>{selectedScreen.screenType || 'authored'}</strong>
+                          {selectedScreen.parentScreenId ? ` | Parent: ${selectedScreen.parentScreenId}` : ''}
+                          {selectedScreen.anchorScreenId ? ` | Anchor: ${selectedScreen.anchorScreenId}` : ''}
+                        </p>
+                        {selectedScreen.generatedFromPrompt ? (
+                          <p className="editorMessage">Generated from prompt: {selectedScreen.generatedFromPrompt}</p>
+                        ) : null}
+                        {selectedScreen.generatedByPlayerId ? (
+                          <p className="editorMessage">Generated by player: {selectedScreen.generatedByPlayerId}</p>
+                        ) : null}
+                        {selectedScreen.generatedAt ? (
+                          <p className="editorMessage">Generated at: {formatDate(selectedScreen.generatedAt)}</p>
+                        ) : null}
+                        {selectedScreen.stageModules?.length ? (
+                          <p className="editorMessage">
+                            Stage modules: {selectedScreen.stageModules.length} ({selectedScreen.stageLayout || 'focus-left'})
+                          </p>
+                        ) : null}
+                      </div>
+                    </section>
+                  </div>
+                </details>
+
+                <details className="editorDetails">
+                  <summary>Advanced Generator Settings</summary>
+                  <div className="editorDetailsBody">
+                    <section className="editorSection editorSectionNested">
+                      <div className="editorSectionHeader">
+                        <div>
+                          <h3>Quest Generator</h3>
+                          <p>Provider, model, and saved prompt template for the `quest_generation` pipeline.</p>
+                        </div>
+                      </div>
+                      {(runtimeStatus || runtimeError) && (
+                        <div className={`questAdminInlineNotice ${runtimeError ? 'error' : 'ok'}`}>
+                          {runtimeError || runtimeStatus}
+                        </div>
+                      )}
+                      {runtimeLoading && <p className="editorMessage">Loading quest generator settings…</p>}
+                      {!runtimeLoading && !questGenerationSettings && (
+                        <p className="editorMessage">Quest generator settings are unavailable.</p>
+                      )}
+                      {!runtimeLoading && questGenerationSettings && (
+                        <>
+                          <div className="questRuntimeGrid">
+                            <label>
+                              Provider
+                              <select
+                                value={questGenerationSettings.provider || 'openai'}
+                                onChange={(event) =>
+                                  updateQuestGenerationSettings({
+                                    provider: event.target.value
+                                  })
+                                }
+                              >
+                                <option value="openai">OpenAI</option>
+                                <option value="anthropic">Anthropic</option>
+                              </select>
+                            </label>
+
+                            <label>
+                              Model
+                              <select
+                                value={questGenerationSettings.model || ''}
+                                onChange={(event) =>
+                                  updateQuestGenerationSettings({
+                                    model: event.target.value
+                                  })
+                                }
+                              >
+                                {questGenerationModelOptions.length === 0 && (
+                                  <option value="">Select model</option>
+                                )}
+                                {questGenerationModelOptions.map((modelId) => (
+                                  <option key={modelId} value={modelId}>
+                                    {modelId}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label className="toggleField">
+                              <span>Mock Runtime</span>
+                              <input
+                                type="checkbox"
+                                checked={Boolean(questGenerationSettings.useMock)}
+                                onChange={(event) =>
+                                  updateQuestGenerationSettings({
+                                    useMock: event.target.checked
+                                  })
+                                }
+                              />
+                            </label>
+                          </div>
+
+                          <div className="sceneEditorActions">
+                            <button
+                              type="button"
+                              onClick={handleSaveQuestRuntime}
+                              disabled={runtimeSaving || runtimeLoading}
+                            >
+                              {runtimeSaving ? 'Saving Runtime…' : 'Save Runtime'}
+                            </button>
+                          </div>
+
+                          <label>
+                            Saved Prompt Template
+                            <textarea
+                              rows={10}
+                              value={questPromptDraft}
+                              onChange={(event) => setQuestPromptDraft(event.target.value)}
+                              placeholder="Latest prompt template for quest scene generation"
+                            />
+                          </label>
+
+                          <p className="editorMessage">
+                            Source: {promptSourceLabel}
+                            {questPromptEntry?.updatedAt ? ` | Updated: ${formatDate(questPromptEntry.updatedAt)}` : ''}
+                          </p>
+
+                          <div className="sceneEditorActions">
+                            <button
+                              type="button"
+                              onClick={handleSaveQuestPrompt}
+                              disabled={promptSaving || runtimeLoading}
+                            >
+                              {promptSaving ? 'Saving Prompt…' : 'Save Prompt to DB'}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </section>
+                  </div>
+                </details>
+
+                <QuestAdminDebugPanel
+                  apiBaseUrl={apiBaseUrl}
+                  adminKey={adminKey}
+                  sessionId={sessionId}
+                  questId={questId}
+                  selectedScreen={selectedScreen}
+                  formatDate={formatDate}
+                />
               </>
             )}
           </section>
 
           <aside className="questAdminPreview">
-            <h2>Preview</h2>
+            <h2>Selected Screen Preview</h2>
             {selectedScreen ? (
               <article className="previewCard">
                 <div
@@ -823,15 +1731,27 @@ const QuestAdminPage = ({
                   <p>{selectedScreen.prompt || 'No prompt yet.'}</p>
                 </div>
                 <div className="previewDirections">
-                  <span>Image prompt: {selectedScreen.image_prompt || 'not set'}</span>
-                  <span>Expectation: {selectedScreen.expectationSummary || 'not set'}</span>
-                  {selectedScreen.continuitySummary ? (
-                    <span>Continuity: {selectedScreen.continuitySummary}</span>
+                  {config?.phaseGuidance ? (
+                    <span>GM scene guide: {config.phaseGuidance}</span>
                   ) : null}
-                  {selectedScreen.directions.length === 0 && <span>No exits yet.</span>}
+                  {selectedScreen.promptGuidance ? (
+                    <span>Screen-only guidance: {selectedScreen.promptGuidance}</span>
+                  ) : null}
+                  {selectedScreen.sceneEndCondition ? (
+                    <span>Ends when: {selectedScreen.sceneEndCondition}</span>
+                  ) : null}
+                  {selectedScreen.imageUrl ? (
+                    <span>Image: {selectedScreen.imageUrl}</span>
+                  ) : (
+                    <span>No custom image set for this screen.</span>
+                  )}
+                  {selectedScreen.referenceImagePrompt ? (
+                    <span>Reference image prompt: {selectedScreen.referenceImagePrompt}</span>
+                  ) : null}
+                  {selectedScreen.directions.length === 0 && <span>No built-in choices yet.</span>}
                   {selectedScreen.directions.map((direction, index) => (
                     <span key={`${selectedScreen.id}-preview-${index}`}>
-                      {direction.label} → {direction.targetScreenId}
+                      {direction.label} → {getScreenLabel(config?.screens?.find((screen) => screen.id === direction.targetScreenId)) || direction.targetScreenId}
                     </span>
                   ))}
                 </div>

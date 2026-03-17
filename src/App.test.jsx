@@ -34,6 +34,10 @@ vi.mock('./pages/QuestAdventurePage', () => ({
   default: () => <div data-testid="quest-page">Quest page</div>
 }));
 
+vi.mock('./pages/RoseCourtProloguePage', () => ({
+  default: () => <div data-testid="rose-court-page">Rose Court</div>
+}));
+
 vi.mock('./pages/QuestAdminPage', () => ({
   default: () => <div data-testid="quest-admin-page">Quest admin</div>
 }));

@@ -347,6 +347,12 @@
   font-size: 0.82rem;
 }
 
+.questGuidanceCopy--accent {
+  color: #ffd79c;
+  border-left: 2px solid rgba(243, 179, 91, 0.5);
+  padding-left: 0.7rem;
+}
+
 .questStageDeck {
   min-height: 0;
 }
@@ -420,6 +426,14 @@
 
 .questMessage {
   color: #f1d5a9;
+}
+
+.questMessageWell {
+  border: 1px solid rgba(245, 204, 139, 0.24);
+  border-radius: 10px;
+  background: rgba(6, 5, 5, 0.34);
+  padding: 0.75rem 0.8rem;
+  line-height: 1.45;
 }
 
 @media (max-width: 1020px) {

@@ -129,9 +129,24 @@ const MessageCard = ({ message }) => {
   );
 };
 
-const Messanger = ({ start = true, onCurtainDropComplete }) => {
+const Messanger = ({
+  start = true,
+  onCurtainDropComplete,
+  onConversationStateChange,
+  sceneId = DEFAULT_SCENE_ID,
+  sessionId: controlledSessionId = '',
+  lockSessionId = false,
+  showDebugControls = true,
+  introCaption = 'Tap to receive transmission',
+  threadTitle = 'Storyteller Society',
+  threadEyebrow = 'Encrypted thread · carrier weak',
+  openThreadLabel = 'Waiting for your note',
+  sealedThreadLabel = 'Thread sealed',
+  placeholderText = 'Describe the room, the window, the weather, and where the typewriter could vanish if required.'
+}) => {
+  const effectiveSceneId = sceneId || DEFAULT_SCENE_ID;
   const apiBaseUrl = useMemo(getInitialApiBaseUrl, []);
-  const [sessionId, setSessionId] = useState(getInitialSessionId);
+  const [sessionId, setSessionId] = useState(() => controlledSessionId || getInitialSessionId());
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [forceMock, setForceMock] = useState(getInitialForceMock);
@@ -153,6 +168,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   const introAudioTimerRef = useRef(null);
   const lastIntroPlaybackKeyRef = useRef('');
   const sessionIdRef = useRef(sessionId);
+  const conversationStateChangeRef = useRef(onConversationStateChange);
   const typingTimerRef = useRef(null);
   const previousMessageIdsRef = useRef([]);
   const interferenceTriggerTimerRef = useRef(null);
@@ -238,15 +254,28 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   };
 
   useEffect(() => {
+    if (!controlledSessionId || controlledSessionId === sessionIdRef.current) {
+      return;
+    }
+    resetMessengerViewState();
+    sessionIdRef.current = controlledSessionId;
+    setSessionId(controlledSessionId);
+  }, [controlledSessionId]);
+
+  useEffect(() => {
+    conversationStateChangeRef.current = onConversationStateChange;
+  }, [onConversationStateChange]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(MOCK_STORAGE_KEY, forceMock ? 'true' : 'false');
   }, [forceMock]);
 
   useEffect(() => {
     sessionIdRef.current = sessionId;
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || lockSessionId || controlledSessionId) return;
     window.localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
-  }, [sessionId]);
+  }, [controlledSessionId, lockSessionId, sessionId]);
 
   useEffect(() => {
     threadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -318,11 +347,12 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
       try {
         const payload = await loadMessengerConversation(apiBaseUrl, {
           sessionId,
-          sceneId: DEFAULT_SCENE_ID
+          sceneId: effectiveSceneId
         });
         if (!active) return;
         setMessages(normalizeMessages(payload?.messages));
         setChatEnded(Boolean(payload?.hasChatEnded));
+        conversationStateChangeRef.current?.(payload);
       } catch (err) {
         if (!active) return;
         setError(err.message || 'Unable to load messenger conversation.');
@@ -335,7 +365,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
     return () => {
       active = false;
     };
-  }, [apiBaseUrl, sessionId, start]);
+  }, [apiBaseUrl, effectiveSceneId, sessionId, start]);
 
   useEffect(() => {
     if (!start || !hasOpenedMessenger || typeof window === 'undefined' || typeof Audio !== 'function') {
@@ -355,7 +385,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
       return undefined;
     }
 
-    const playbackKey = `${sessionId}:${DEFAULT_SCENE_ID}:${firstMessage.id || 'initial'}`;
+    const playbackKey = `${sessionId}:${effectiveSceneId}:${firstMessage.id || 'initial'}`;
     if (lastIntroPlaybackKeyRef.current === playbackKey) {
       return undefined;
     }
@@ -380,7 +410,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
         introAudioTimerRef.current = null;
       }
     };
-  }, [hasOpenedMessenger, messages, sessionId, start]);
+  }, [effectiveSceneId, hasOpenedMessenger, messages, sessionId, start]);
 
   useEffect(() => {
     const previousIds = new Set(previousMessageIdsRef.current);
@@ -495,7 +525,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
     try {
       const payload = await sendMessengerMessage(apiBaseUrl, {
         sessionId,
-        sceneId: DEFAULT_SCENE_ID,
+        sceneId: effectiveSceneId,
         message: draft,
         mocked_api_calls: forceMock ? true : undefined
       });
@@ -505,6 +535,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
       setMessages(normalizeMessages(payload?.messages));
       setRuntime(payload?.runtime || null);
       setChatEnded(Boolean(payload?.has_chat_ended));
+      conversationStateChangeRef.current?.(payload);
     } catch (err) {
       if (sessionIdRef.current !== requestSessionId) {
         return;
@@ -528,7 +559,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
       return '11:47';
     }
   }, []);
-  const threadStateLabel = chatEnded ? 'Thread sealed' : 'Waiting for your note';
+  const threadStateLabel = chatEnded ? sealedThreadLabel : openThreadLabel;
   const transmissionModeLabel = runtime?.mocked || forceMock ? 'Mock transmission' : 'Live transmission';
 
   const handleOpenMessenger = () => {
@@ -550,6 +581,9 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
   };
 
   const handleRestartDebug = () => {
+    if (lockSessionId || controlledSessionId) {
+      return;
+    }
     const nextSessionId = createSessionId();
     sessionIdRef.current = nextSessionId;
     if (typeof window !== 'undefined') {
@@ -566,29 +600,33 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
 
       <div className="messangerFrame">
         <div className="messangerPhoneWrap">
-          <div className="messangerUtilityBar">
-            <button
-              type="button"
-              className="messangerDebugButton"
-              onClick={handleRestartDebug}
-            >
-              <RotateCcw size={14} />
-              <span>Restart debug</span>
-            </button>
-            <label className="messangerModeSwitch">
-              <input
-                type="checkbox"
-                checked={forceMock}
-                onChange={(event) => setForceMock(event.target.checked)}
-              />
-              <span className="messangerModeSwitch__track" aria-hidden="true">
-                <span className="messangerModeSwitch__thumb" />
-              </span>
-              <span className="messangerModeSwitch__label">
-                {forceMock ? 'Mock' : 'Live'}
-              </span>
-            </label>
-          </div>
+          {showDebugControls ? (
+            <div className="messangerUtilityBar">
+              {!lockSessionId && !controlledSessionId ? (
+                <button
+                  type="button"
+                  className="messangerDebugButton"
+                  onClick={handleRestartDebug}
+                >
+                  <RotateCcw size={14} />
+                  <span>Restart debug</span>
+                </button>
+              ) : null}
+              <label className="messangerModeSwitch">
+                <input
+                  type="checkbox"
+                  checked={forceMock}
+                  onChange={(event) => setForceMock(event.target.checked)}
+                />
+                <span className="messangerModeSwitch__track" aria-hidden="true">
+                  <span className="messangerModeSwitch__thumb" />
+                </span>
+                <span className="messangerModeSwitch__label">
+                  {forceMock ? 'Mock' : 'Live'}
+                </span>
+              </label>
+            </div>
+          ) : null}
 
           <div className="messangerPhone">
             <div className="messangerPhone__hardware" aria-hidden="true">
@@ -619,7 +657,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
                   <span className="messangerIntroFace__frame" aria-hidden="true" />
                   <img src={INTRO_COVER_SRC} alt="Storyteller Society transmission cover" className="messangerIntroFace__image" />
                   <span className="messangerIntroFace__caption">
-                    Tap to receive transmission
+                    {introCaption}
                   </span>
                 </button>
 
@@ -645,8 +683,8 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
                           <span>SS</span>
                         </div>
                         <div className="messangerConsole__titles">
-                          <span className="messangerConsole__eyebrow">Encrypted thread · carrier weak</span>
-                          <h2>Storyteller Society</h2>
+                          <span className="messangerConsole__eyebrow">{threadEyebrow}</span>
+                          <h2>{threadTitle}</h2>
                           <p>{threadStateLabel}</p>
                         </div>
                       </div>
@@ -673,7 +711,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
                       </div>
 
                       <div className="messangerThread__datePill">
-                        Dispatch line · {DEFAULT_SCENE_ID}
+                        Dispatch line · {effectiveSceneId}
                       </div>
 
                       {loading && (
@@ -715,7 +753,7 @@ const Messanger = ({ start = true, onCurtainDropComplete }) => {
                           placeholder={
                             sending
                               ? 'Awaiting the Society...'
-                              : 'Describe the room, the window, the weather, and where the typewriter could vanish if required.'
+                              : placeholderText
                           }
                           disabled={sending}
                           onKeyDown={(event) => {

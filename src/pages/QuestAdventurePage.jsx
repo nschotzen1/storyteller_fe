@@ -3,10 +3,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   DEFAULT_API_BASE_URL,
   advanceQuest,
+  logQuestTraversal,
   loadQuestScreens,
   loadQuestTraversal
 } from '../api/questScreens';
 import ImmersiveRpgStageModules from '../components/immersive-rpg/ImmersiveRpgStageModules';
+import RoseCourtWellScene from '../components/well/RoseCourtWellScene';
 import './ImmersiveRpgPage.css';
 import './QuestAdventurePage.css';
 
@@ -18,6 +20,17 @@ const QUEST_PLAYER_ID_STORAGE_KEY = 'questPlayerId';
 const DEFAULT_QUEST_SESSION_ID = 'rose-court-demo';
 const DEFAULT_QUEST_ID = 'ruined_rose_court';
 const DEFAULT_PLAYER_ID = 'wanderer-01';
+const WELL_SCREEN_IDS = new Set(['periphery_well_rim', 'inner_court_well']);
+const DEFAULT_WELL_SCENE_STATE = {
+  phase: 'observing',
+  latestFragment: '',
+  readyForWriting: false,
+  draftLine: '',
+  submittedLine: '',
+  wordCount: 0,
+  wordsRemaining: 10,
+  fragmentCount: 0
+};
 
 const getStoredValue = (key, fallback) => {
   if (typeof window === 'undefined') return fallback;
@@ -68,6 +81,7 @@ const QuestAdventurePage = ({
   const [traversalCount, setTraversalCount] = useState(0);
   const [lastAdvanceRuntime, setLastAdvanceRuntime] = useState(null);
   const [lastMockedData, setLastMockedData] = useState(null);
+  const [wellSceneState, setWellSceneState] = useState(DEFAULT_WELL_SCENE_STATE);
 
   const screenMap = useMemo(() => toScreenMap(config), [config]);
 
@@ -227,15 +241,73 @@ const QuestAdventurePage = ({
     }
   };
 
+  const handleWellComplete = async (submittedLine) => {
+    if (!activeScreen || !isWellScreen || advancing) return;
+
+    const completionDirection = directions.find((direction) => (
+      ['inside', 'forward', 'end', 'center', 'down'].includes((direction?.direction || '').trim().toLowerCase())
+      && direction?.targetScreenId
+      && screenMap.has(direction.targetScreenId)
+    )) || null;
+
+    try {
+      setAdvancing(true);
+      setError('');
+
+      try {
+        const traversalPayload = await logQuestTraversal(apiBaseUrl, {
+          sessionId,
+          questId,
+          playerId,
+          fromScreenId: activeScreen.id,
+          toScreenId: activeScreen.id,
+          direction: 'parchment',
+          promptText: submittedLine
+        });
+        if (traversalPayload?.event) {
+          setTraversalEvents((prev) => [...prev, traversalPayload.event].slice(-400));
+        }
+      } catch {
+        // Keep parchment logging best-effort so the scene can still resolve.
+      }
+
+      if (!completionDirection) {
+        return;
+      }
+
+      const response = await advanceQuest(apiBaseUrl, {
+        sessionId,
+        questId,
+        playerId,
+        currentScreenId: activeScreen.id,
+        actionType: 'direction',
+        direction: completionDirection.direction || '',
+        targetScreenId: completionDirection.targetScreenId || ''
+      });
+      applyAdvancePayload(response);
+    } catch (err) {
+      setError(err.message || 'Unable to continue from the well.');
+    } finally {
+      setAdvancing(false);
+    }
+  };
+
   const visibleHistory = traversalEvents
     .filter((entry) => typeof entry?.promptText === 'string' && entry.promptText.trim())
     .slice()
     .reverse()
     .slice(0, 4);
   const directions = Array.isArray(activeScreen?.directions) ? activeScreen.directions : [];
+  const isWellScreen = WELL_SCREEN_IDS.has(activeScreen?.id || '');
   const backgroundUrl = activeScreen?.imageUrl || '/ruin_south_a.png';
   const stageLayout = activeScreen?.stageLayout || 'focus-left';
   const stageModules = Array.isArray(activeScreen?.stageModules) ? activeScreen.stageModules : [];
+
+  useEffect(() => {
+    if (!isWellScreen) {
+      setWellSceneState(DEFAULT_WELL_SCENE_STATE);
+    }
+  }, [isWellScreen]);
 
   useEffect(() => {
     if (!backgroundUrl) {
@@ -305,7 +377,17 @@ const QuestAdventurePage = ({
           title: module.title,
           hasImage: Boolean(module.imageUrl)
         }))
-      }
+      },
+      well: isWellScreen
+        ? {
+            active: true,
+            phase: wellSceneState.phase,
+            latestFragment: wellSceneState.latestFragment,
+            readyForWriting: wellSceneState.readyForWriting,
+            submittedLine: wellSceneState.submittedLine,
+            wordsRemaining: wellSceneState.wordsRemaining
+          }
+        : { active: false }
     });
 
     window.advanceTime = () => {};
@@ -327,7 +409,9 @@ const QuestAdventurePage = ({
     lastAdvanceRuntime,
     lastMockedData,
     traversalCount,
-    visibleHistory
+    visibleHistory,
+    isWellScreen,
+    wellSceneState
   ]);
 
   return (
@@ -341,27 +425,38 @@ const QuestAdventurePage = ({
             <div className="questCurtain questCurtainRight" />
 
             <div className="questCinemaScreen">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeScreen?.id || 'loading-screen'}
-                  className="questCinemaImage"
-                  style={{ backgroundImage: `url(${backgroundUrl})` }}
-                  initial={{ opacity: 0, scale: 1.02 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.99 }}
-                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+              {isWellScreen ? (
+                <RoseCourtWellScene
+                  backgroundSrc={activeScreen?.imageUrl || '/well/well_background.png'}
+                  isCompleting={advancing}
+                  onComplete={handleWellComplete}
+                  onStateChange={setWellSceneState}
                 />
-              </AnimatePresence>
-              <div className="questCinemaDust" />
-              <div className="questCinemaScanlines" />
-              <div className="questLetterboxTop" />
-              <div className="questLetterboxBottom" />
+              ) : (
+                <>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeScreen?.id || 'loading-screen'}
+                      className="questCinemaImage"
+                      style={{ backgroundImage: `url(${backgroundUrl})` }}
+                      initial={{ opacity: 0, scale: 1.02 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.99 }}
+                      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                    />
+                  </AnimatePresence>
+                  <div className="questCinemaDust" />
+                  <div className="questCinemaScanlines" />
+                  <div className="questLetterboxTop" />
+                  <div className="questLetterboxBottom" />
 
-              <div className="questCinemaCaption">
-                <p className="questEyebrow">Quest Mode</p>
-                <h1>{activeScreen?.title || 'Loading Scene'}</h1>
-                <p className="questPromptText">{activeScreen?.prompt || 'Summoning scene details…'}</p>
-              </div>
+                  <div className="questCinemaCaption">
+                    <p className="questEyebrow">Quest Mode</p>
+                    <h1>{activeScreen?.title || 'Loading Scene'}</h1>
+                    <p className="questPromptText">{activeScreen?.prompt || 'Summoning scene details…'}</p>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="questProscenium" aria-hidden="true">
@@ -486,6 +581,15 @@ const QuestAdventurePage = ({
               {activeScreen?.continuitySummary && (
                 <p className="questGuidanceCopy questGuidanceCopy--subtle">{activeScreen.continuitySummary}</p>
               )}
+              {isWellScreen ? (
+                <p className="questGuidanceCopy questGuidanceCopy--accent">
+                  {wellSceneState.submittedLine
+                    ? `Parchment offered: "${wellSceneState.submittedLine}"`
+                    : wellSceneState.readyForWriting
+                      ? `The parchment is active in the scene above. ${wellSceneState.wordsRemaining} words remain.`
+                      : 'Fragments are surfacing in the scene above. Wait for the parchment prompt.'}
+                </p>
+              ) : null}
               <div className="immersiveRpgStageDeck questStageDeck">
                 <div className="immersiveRpgStageDeck__header">
                   <span className="immersiveRpgSceneCard__label">GM Surface</span>
@@ -501,17 +605,23 @@ const QuestAdventurePage = ({
 
             <section className="questPrompt" aria-label="Text prompt">
               <h2>Text Prompt</h2>
-              <form onSubmit={handleSubmitPrompt}>
-                <textarea
-                  value={playerPrompt}
-                  onChange={(event) => setPlayerPrompt(event.target.value)}
-                  placeholder={activeScreen?.textPromptPlaceholder || 'What do you do?'}
-                  rows={4}
-                />
-                <button type="submit" disabled={!canSubmitPrompt || !activeScreen}>
-                  {advancing ? 'Advancing…' : 'Send Prompt'}
-                </button>
-              </form>
+              {isWellScreen ? (
+                <div className="questMessage questMessageWell">
+                  The well is using the interactive scene above. Write on the parchment there instead of sending a quest prompt here.
+                </div>
+              ) : (
+                <form onSubmit={handleSubmitPrompt}>
+                  <textarea
+                    value={playerPrompt}
+                    onChange={(event) => setPlayerPrompt(event.target.value)}
+                    placeholder={activeScreen?.textPromptPlaceholder || 'What do you do?'}
+                    rows={4}
+                  />
+                  <button type="submit" disabled={!canSubmitPrompt || !activeScreen}>
+                    {advancing ? 'Advancing…' : 'Send Prompt'}
+                  </button>
+                </form>
+              )}
               <div className="questPromptHistory">
                 {visibleHistory.length === 0 && (
                   <p className="questMessage">Prompt log is empty for this run.</p>
