@@ -1806,6 +1806,50 @@
   }
 }
 
+.worldEchoRow {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(196, 181, 253, 0.24);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(30, 18, 48, 0.52);
+}
+
+.worldEchoHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.worldEchoHeader span {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(216, 180, 254, 0.95);
+}
+
+.worldEchoHeader em {
+  font-style: normal;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: rgba(226, 214, 191, 0.65);
+}
+
+.worldEchoRow p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(226, 214, 191, 0.82);
+}
+
+.worldEchoInput {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .turnActionRow {
   display: grid;
   gap: 8px;

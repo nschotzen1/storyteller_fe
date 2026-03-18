@@ -226,7 +226,7 @@ export const resetLlmRouteConfig = async (
 
 export const startOrSeedTypewriterSession = async (
   baseUrl = DEFAULT_API_BASE_URL,
-  { sessionId, fragment } = {}
+  { sessionId, fragment, setInitialFragment } = {}
 ) => {
   const safeBaseUrl = normalizeBaseUrl(baseUrl);
   const payload = {};
@@ -235,6 +235,9 @@ export const startOrSeedTypewriterSession = async (
   }
   if (typeof fragment === 'string') {
     payload.fragment = fragment;
+  }
+  if (setInitialFragment === true) {
+    payload.setInitialFragment = true;
   }
   return requestJson(`${safeBaseUrl}/api/typewriter/session/start`, {
     method: 'POST',

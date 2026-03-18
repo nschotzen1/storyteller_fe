@@ -964,7 +964,11 @@ const TypewriterFramework = (props) => {
         setSessionId(nextSessionId);
       }
 
-      if (error || typeof data?.fragment !== 'string') {
+      const restoredFragment = typeof data?.fragment === 'string'
+        ? data.fragment
+        : (typeof data?.initialFragment === 'string' ? data.initialFragment : null);
+
+      if (error || typeof restoredFragment !== 'string') {
         setIsSessionReady(true);
         return;
       }
@@ -976,13 +980,13 @@ const TypewriterFramework = (props) => {
         return [
           {
             ...prev[0],
-            text: data.fragment
+            text: restoredFragment
           }
         ];
       });
       dispatchGhostwriter({
         type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH,
-        payload: data.fragment.length
+        payload: restoredFragment.length
       });
       if (Array.isArray(data?.entityKeys)) {
         setStoryEntityKeys(mergeStoryEntityKeys([], data.entityKeys));

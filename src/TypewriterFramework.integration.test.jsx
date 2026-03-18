@@ -188,6 +188,42 @@ describe('TypewriterFramework integration', () => {
     });
   });
 
+  test('restores the initial fragment saved for the session on boot', async () => {
+    startTypewriterSession.mockResolvedValueOnce({
+      data: {
+        sessionId: 'test-session-id-123',
+        fragment: 'one two three four five'
+      },
+      error: null
+    });
+
+    const { container } = render(<TypewriterFramework />);
+
+    await waitFor(() => {
+      const lines = container.querySelectorAll('.typewriter-line .last-line-content');
+      expect(lines.length).toBeGreaterThan(0);
+      expect(lines[0].textContent).toContain('one two three four five');
+    });
+  });
+
+  test('falls back to initialFragment when the session payload omits fragment', async () => {
+    startTypewriterSession.mockResolvedValueOnce({
+      data: {
+        sessionId: 'test-session-id-123',
+        initialFragment: 'ink from the well remains'
+      },
+      error: null
+    });
+
+    const { container } = render(<TypewriterFramework />);
+
+    await waitFor(() => {
+      const lines = container.querySelectorAll('.typewriter-line .last-line-content');
+      expect(lines.length).toBeGreaterThan(0);
+      expect(lines[0].textContent).toContain('ink from the well remains');
+    });
+  });
+
   test('line-limit Enter does not auto-turn page before lever is enabled', async () => {
     fetchNextFilmImage.mockResolvedValue({ data: { image_url: 'new_page_specific.png' }, error: null });
     fetchShouldGenerateContinuation.mockResolvedValue({ shouldGenerate: false });

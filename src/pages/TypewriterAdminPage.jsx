@@ -17,6 +17,7 @@ import {
   saveTypewriterAiSettings,
   startOrSeedTypewriterSession
 } from '../api/typewriterAdmin';
+import WellAdminWorkspace from '../components/well/WellAdminWorkspace';
 import { STORY_ADMIN_CONTROL_COMPONENTS } from './storyAdminControlCenterRegistry';
 import './TypewriterAdminPage.css';
 
@@ -723,7 +724,7 @@ const TypewriterAdminPage = () => {
           };
         })
         .filter(Boolean);
-      if (!routes.length) return null;
+      if (!routes.length && !component.customPanelKey) return null;
       return {
         ...component,
         routes
@@ -800,6 +801,11 @@ const TypewriterAdminPage = () => {
 
   const visibleControlRouteIds = useMemo(
     () => visibleControlComponents.flatMap((component) => component.routes.map((route) => route.routeId)),
+    [visibleControlComponents]
+  );
+
+  const visibleControlCustomEditorCount = useMemo(
+    () => visibleControlComponents.filter((component) => component.customPanelKey).length,
     [visibleControlComponents]
   );
 
@@ -1285,7 +1291,10 @@ const TypewriterAdminPage = () => {
     setError('');
     setStatus('');
     try {
-      const payload = await startOrSeedTypewriterSession(apiBaseUrl, { fragment });
+      const payload = await startOrSeedTypewriterSession(apiBaseUrl, {
+        fragment,
+        setInitialFragment: true
+      });
       const nextSessionId = typeof payload?.sessionId === 'string' ? payload.sessionId.trim() : '';
       if (!nextSessionId) {
         throw new Error('Session creation did not return a sessionId.');
@@ -1317,7 +1326,8 @@ const TypewriterAdminPage = () => {
     try {
       await startOrSeedTypewriterSession(apiBaseUrl, {
         sessionId: currentSessionId,
-        fragment
+        fragment,
+        setInitialFragment: true
       });
       setStatus(`Saved fragment into session ${currentSessionId}.`);
     } catch (err) {
@@ -1494,8 +1504,11 @@ const TypewriterAdminPage = () => {
             ))}
           </div>
           <span className="typewriterAdminListCount">
-            Showing {visibleControlRouteIds.length} routes across {visibleControlComponents.length} component
-            {visibleControlComponents.length === 1 ? '' : 's'}
+            Showing {visibleControlRouteIds.length} route{visibleControlRouteIds.length === 1 ? '' : 's'}
+            {visibleControlCustomEditorCount
+              ? ` and ${visibleControlCustomEditorCount} custom editor${visibleControlCustomEditorCount === 1 ? '' : 's'}`
+              : ''}
+            {' '}across {visibleControlComponents.length} component{visibleControlComponents.length === 1 ? '' : 's'}
           </span>
         </div>
 
@@ -1507,11 +1520,23 @@ const TypewriterAdminPage = () => {
                   <h3>{component.label}</h3>
                   <p>{component.description}</p>
                 </div>
-                <span className="typewriterControlComponentCount">{component.routes.length} routes</span>
+                <span className="typewriterControlComponentCount">
+                  {[
+                    component.routes.length
+                      ? `${component.routes.length} route${component.routes.length === 1 ? '' : 's'}`
+                      : null,
+                    component.customPanelKey ? 'custom editor' : null
+                  ].filter(Boolean).join(' + ')}
+                </span>
               </header>
 
-              <div className="typewriterControlRouteList">
-                {component.routes.map((route) => {
+              {component.customPanelKey === 'well_scene_config' ? (
+                <WellAdminWorkspace apiBaseUrl={apiBaseUrl} adminKey={adminKey} />
+              ) : null}
+
+              {component.routes.length ? (
+                <div className="typewriterControlRouteList">
+                  {component.routes.map((route) => {
                   const isExpanded = expandedControlRouteId === route.routeId;
                   const isSavingRoute = savingControlRouteId === route.routeId;
                   const routeSummary = route.runtimeRows.length
@@ -1799,9 +1824,10 @@ const TypewriterAdminPage = () => {
                       </>
                       ) : null}
                     </article>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : null}
             </section>
           ))}
         </div>

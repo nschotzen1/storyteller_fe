@@ -483,6 +483,33 @@
   background-position: center;
 }
 
+.sceneImageActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.65rem;
+}
+
+.sceneImageActions label {
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+
+.sceneImageActions button {
+  border-radius: 999px;
+  border: 1px solid rgba(252, 213, 152, 0.45);
+  color: #251106;
+  background: linear-gradient(120deg, #efc175, #c17f2f);
+  font-weight: 700;
+  padding: 0.58rem 0.95rem;
+  cursor: pointer;
+}
+
+.sceneImageActions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .editorDetails {
   border-radius: 12px;
   border: 1px solid rgba(238, 196, 143, 0.22);

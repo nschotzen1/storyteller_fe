@@ -213,6 +213,13 @@ const SESSION_STATE_DEFAULT = {
     streak: 0,
     at: ''
   },
+  worldEcho: {
+    cue: '',
+    source: '',
+    harvestedByKey: '',
+    invokedByKey: '',
+    invokedAt: ''
+  },
   canonProposal: {
     text: '',
     proposedByKey: '',
@@ -846,6 +853,15 @@ const StorytellerArenaConsole = ({
   const resonanceCallerLabel = getPlayerLabelByKey(resonanceCallerKey, 'Unassigned');
   const resonanceAnswerLabel = getPlayerLabelByKey(resonanceAnswerKey, 'Unassigned');
   const resonanceStreak = Math.max(0, Number(resonance.streak) || 0);
+  const worldEcho =
+    sessionState.worldEcho && typeof sessionState.worldEcho === 'object'
+      ? sessionState.worldEcho
+      : SESSION_STATE_DEFAULT.worldEcho;
+  const worldEchoCue = typeof worldEcho.cue === 'string' ? worldEcho.cue.trim() : '';
+  const worldEchoSource = typeof worldEcho.source === 'string' ? worldEcho.source.trim() : '';
+  const worldEchoInvoked = Boolean(worldEcho.invokedAt);
+  const worldEchoByLabel = getPlayerLabelByKey(worldEcho.harvestedByKey || '', 'Table');
+  const worldEchoInvokedByLabel = getPlayerLabelByKey(worldEcho.invokedByKey || '', 'Table');
   const expedition =
     sessionState.expedition && typeof sessionState.expedition === 'object'
       ? sessionState.expedition
@@ -964,6 +980,20 @@ const StorytellerArenaConsole = ({
         actionId: 'anchors'
       },
       {
+        id: 'world-echo',
+        label: 'World Echo',
+        detail: ritualActive
+          ? worldEchoCue
+            ? worldEchoInvoked
+              ? 'Echo invoked'
+              : 'Echo ready to invoke'
+            : 'Harvest from anchors/ledger'
+          : 'Arms during ritual',
+        ready: !ritualActive || Boolean(worldEchoCue),
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      },
+      {
         id: 'presence',
         label: 'Table Ready',
         detail: readyReady ? 'All seats ready' : `Ready ${readyCount}/${playersCount}`,
@@ -976,6 +1006,9 @@ const StorytellerArenaConsole = ({
     anchors.length,
     hasWorldCharter,
     hasWorldAtlas,
+    ritualActive,
+    worldEchoCue,
+    worldEchoInvoked,
     playersCount,
     readyCount,
     sceneGoal,
@@ -1088,6 +1121,22 @@ const StorytellerArenaConsole = ({
         actionId: 'presence'
       };
     }
+    if (!worldEchoCue) {
+      return {
+        title: 'Harvest World Echo',
+        detail: 'Pull one cue from anchors or recent canon before the next ritual push.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (worldEchoCue && !worldEchoInvoked) {
+      return {
+        title: 'Invoke World Echo',
+        detail: 'Use the current echo to reinforce immersion and steady pressure.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
     if (!canonProposalText) {
       return {
         title: 'Draft Canon Proposal',
@@ -1124,6 +1173,8 @@ const StorytellerArenaConsole = ({
     relayTouchedCount,
     expeditionRoute.length,
     resonancePending,
+    worldEchoCue,
+    worldEchoInvoked,
     scenePromiseText,
     scenePromiseAffirmed,
     scenePromiseRequired,
@@ -1312,6 +1363,13 @@ const StorytellerArenaConsole = ({
             answeredBy: resonanceAnswerLabel,
             streak: resonanceStreak
           },
+          worldEcho: {
+            cue: worldEchoCue,
+            source: worldEchoSource,
+            by: worldEchoByLabel,
+            invoked: worldEchoInvoked,
+            invokedBy: worldEchoInvokedByLabel
+          },
           expedition: {
             route: expeditionRoute,
             currentStop: expeditionCurrentStop,
@@ -1405,6 +1463,11 @@ const StorytellerArenaConsole = ({
     resonanceCallerLabel,
     resonanceAnswerLabel,
     resonanceStreak,
+    worldEchoCue,
+    worldEchoSource,
+    worldEchoByLabel,
+    worldEchoInvoked,
+    worldEchoInvokedByLabel,
     expeditionRoute,
     expeditionCurrentStop,
     expeditionNextStop,
@@ -2379,6 +2442,112 @@ const StorytellerArenaConsole = ({
     setNotice('Beat sync votes cleared.');
   };
 
+  const handleHarvestWorldEcho = () => {
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const harvesterKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    const harvesterLabel = getPlayerLabelByKey(harvesterKey, 'Table');
+    const anchorSeed = anchors.length
+      ? anchors[(ledgerEntries.length + anchors.length - 1) % anchors.length]
+      : '';
+    const ledgerSeed = ledgerEntries
+      .slice()
+      .reverse()
+      .find((entry) => ['canon', 'mystery', 'location', 'oath'].includes(entry?.type))
+      ?.text;
+    const fallbackSeed = worldProfile.truth?.trim() || '';
+    const seed = (anchorSeed || ledgerSeed || fallbackSeed || '').trim();
+    if (!seed) {
+      setNotice('Add anchors or canon entries before harvesting an echo.');
+      return;
+    }
+    const cue = seed.length > 140 ? `${seed.slice(0, 137)}...` : seed;
+    const source = anchorSeed ? 'anchor' : ledgerSeed ? 'ledger' : 'truth';
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const entry = createLedgerEntry({
+        type: 'oath',
+        text: `${harvesterLabel} harvests world echo: "${cue}"`,
+        by: harvesterLabel
+      });
+      return {
+        ...prev,
+        worldEcho: {
+          cue,
+          source,
+          harvestedByKey: harvesterKey,
+          invokedByKey: '',
+          invokedAt: ''
+        },
+        pulse: {
+          ...nextPulse,
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setNotice('World echo harvested and ready.');
+  };
+
+  const handleInvokeWorldEcho = () => {
+    if (!ritualActive) {
+      setNotice('Open ritual mode before invoking world echo.');
+      return;
+    }
+    if (!worldEchoCue) {
+      setNotice('Harvest a world echo first.');
+      return;
+    }
+    if (worldEchoInvoked) {
+      setNotice('Harvest a fresh echo before invoking again.');
+      return;
+    }
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const actorKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    const actorLabel = getPlayerLabelByKey(actorKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const previousClockRaw = Number(prev.sceneClock);
+      const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
+      const effect = applyVowModifiers(
+        { momentum: 0, clarity: 1, sceneClock: -1 },
+        prev.vows,
+        { ritualActive: Boolean(prev.ritualActive) }
+      );
+      const entry = createLedgerEntry({
+        type: 'canon',
+        text: `${actorLabel} invokes world echo: "${worldEchoCue}"`,
+        by: actorLabel
+      });
+      const existingEcho =
+        prev.worldEcho && typeof prev.worldEcho === 'object'
+          ? prev.worldEcho
+          : SESSION_STATE_DEFAULT.worldEcho;
+      return {
+        ...prev,
+        worldEcho: {
+          ...existingEcho,
+          invokedByKey: actorKey,
+          invokedAt: new Date().toISOString()
+        },
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity)
+        },
+        sceneClock: clampSceneClockValue(previousClock + effect.sceneClock),
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setNotice('World echo invoked in-scene.');
+  };
+
+  const handleClearWorldEcho = () => {
+    setSessionState((prev) => ({
+      ...prev,
+      worldEcho: { ...SESSION_STATE_DEFAULT.worldEcho }
+    }));
+    setNotice('World echo cleared.');
+  };
+
   const handleDraftCanonProposal = () => {
     const text = canonProposalInput.trim();
     if (!text) {
@@ -2670,6 +2839,7 @@ const StorytellerArenaConsole = ({
         actionBank: createActionBank(nextOrder),
         beatVotes: {},
         lastBeatSync: null,
+        worldEcho: { ...SESSION_STATE_DEFAULT.worldEcho },
         relay: {
           round: 1,
           touched: firstKey ? { [firstKey]: true } : {},
@@ -2700,6 +2870,7 @@ const StorytellerArenaConsole = ({
         actionBank: {},
         beatVotes: {},
         lastBeatSync: null,
+        worldEcho: { ...SESSION_STATE_DEFAULT.worldEcho },
         relay: { ...SESSION_STATE_DEFAULT.relay },
         scenePromise: { ...SESSION_STATE_DEFAULT.scenePromise },
         ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), ritualEntry].slice(-24)
@@ -5044,6 +5215,40 @@ const StorytellerArenaConsole = ({
                   </button>
                 </div>
               </div>
+              <div className="worldEchoRow">
+                <div className="worldEchoHeader">
+                  <span>World Echo</span>
+                  <em>{worldEchoCue ? (worldEchoInvoked ? 'Invoked' : 'Ready') : 'Unset'}</em>
+                </div>
+                <p>
+                  {worldEchoCue
+                    ? `"${worldEchoCue}" · from ${worldEchoSource || 'canon'} · harvested by ${worldEchoByLabel}${
+                        worldEchoInvoked ? ` · invoked by ${worldEchoInvokedByLabel}` : ''
+                      }`
+                    : 'Harvest one cue from anchors or recent canon, then invoke it during ritual.'}
+                </p>
+                <div className="worldEchoInput">
+                  <button type="button" className="ghost subtle" onClick={handleHarvestWorldEcho}>
+                    Harvest
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleInvokeWorldEcho}
+                    disabled={!ritualActive || !worldEchoCue || worldEchoInvoked}
+                  >
+                    Invoke
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleClearWorldEcho}
+                    disabled={!worldEchoCue && !worldEchoInvoked}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
               <div className="vowStatusRow">
                 <span>Ritual Vows</span>
                 <div className="vowStatusChips">
@@ -5246,6 +5451,11 @@ const StorytellerArenaConsole = ({
                 {canonProposalText
                   ? `Canon ${canonProposalVotes}/${canonProposalRequired || 0}`
                   : 'Canon Draft Empty'}
+              </span>
+              <span>
+                {worldEchoCue
+                  ? `Echo ${worldEchoInvoked ? 'Invoked' : 'Ready'}`
+                  : 'Echo Unset'}
               </span>
               <span>{resonancePending ? `Resonance Open: ${resonanceCallerLabel}` : `Resonance Streak ${resonanceStreak}`}</span>
               <span>{activeVows.length ? `Vows ${activeVows.map((vow) => vow.label).join('/')}` : 'Vows None'}</span>

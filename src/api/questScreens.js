@@ -92,6 +92,19 @@ export const uploadQuestSceneImage = async (
   });
 };
 
+export const generateQuestSceneImage = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  payload = {},
+  { adminKey } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/admin/quest/scene-image/generate`, {
+    method: 'POST',
+    headers: buildAdminHeaders(adminKey),
+    body: JSON.stringify(payload)
+  });
+};
+
 export const inspectQuestDebugContext = async (
   baseUrl = DEFAULT_API_BASE_URL,
   payload = {},

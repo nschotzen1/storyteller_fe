@@ -35,6 +35,14 @@ describe('RoseCourtWellScene', () => {
     const input = screen.getByPlaceholderText('A single line for the court...');
     fireEvent.change(input, {
       target: {
+        value: 'one '
+      }
+    });
+
+    expect(input).toHaveValue('one ');
+
+    fireEvent.change(input, {
+      target: {
         value: 'one two three four five six seven eight nine ten eleven twelve'
       }
     });

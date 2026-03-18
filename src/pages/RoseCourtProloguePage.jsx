@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import Messanger from '../Messanger';
 import {
   DEFAULT_API_BASE_URL,
@@ -12,6 +11,9 @@ import {
 import { loadMessengerConversation } from '../api/messenger';
 import ImmersiveRpgStageModules from '../components/immersive-rpg/ImmersiveRpgStageModules';
 import RoseCourtWellScene from '../components/well/RoseCourtWellScene';
+import useWellSceneConfig from '../components/well/useWellSceneConfig';
+import { buildRoseCourtWellSceneProps } from '../components/well/wellSceneConfig';
+import { seedTypewriterSessionFromWell } from '../components/well/wellTypewriterSessionBridge';
 import './RoseCourtProloguePage.css';
 
 const API_BASE_STORAGE_KEY = 'roseCourtPrologueApiBaseUrl';
@@ -168,6 +170,7 @@ function RoseCourtProloguePage({
   const [messengerError, setMessengerError] = useState('');
   const [imageStatus, setImageStatus] = useState('idle');
   const [wellSceneState, setWellSceneState] = useState(DEFAULT_WELL_SCENE_STATE);
+  const { config: wellConfig } = useWellSceneConfig(apiBaseUrl);
   const [messengerStateByScene, setMessengerStateByScene] = useState({
     [LOCATION_CLERK_SCENE_ID]: EMPTY_MESSENGER_SCENE_STATE,
     [TRANSPORT_CLERK_SCENE_ID]: EMPTY_MESSENGER_SCENE_STATE
@@ -462,6 +465,8 @@ function RoseCourtProloguePage({
       setAdvancing(true);
       setError('');
 
+      await seedTypewriterSessionFromWell(apiBaseUrl, sessionId, submittedLine);
+
       try {
         const traversalPayload = await logQuestTraversal(apiBaseUrl, {
           sessionId,
@@ -593,214 +598,200 @@ function RoseCourtProloguePage({
 
   return (
     <div className="taleRoot">
-      {/* ── Scene illustration ── */}
-      <section className={`taleScene ${isWellScreen ? 'taleScene--well' : ''}`} aria-label="Rose Court scene">
-        {isWellScreen ? (
-          <RoseCourtWellScene
-            backgroundSrc={activeScreen?.imageUrl || '/well/well_background.png'}
-            isCompleting={advancing}
-            onComplete={handleWellComplete}
-            onStateChange={setWellSceneState}
-          />
-        ) : (
-          <>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeScreen?.id || 'loading'}
-                className="taleSceneImage"
-                style={{ backgroundImage: `url(${backgroundUrl})` }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.5 }}
+      <div className="talePage">
+        <article className="taleSheet">
+          <section className={`taleScene ${isWellScreen ? 'taleScene--well' : ''}`} aria-label="Rose Court scene">
+            {isWellScreen ? (
+              <RoseCourtWellScene
+                {...buildRoseCourtWellSceneProps(wellConfig, {
+                  backgroundSrc: activeScreen?.imageUrl || undefined
+                })}
+                isCompleting={advancing}
+                onComplete={handleWellComplete}
+                onStateChange={setWellSceneState}
               />
-            </AnimatePresence>
-            <div className="taleSceneVignette" />
+            ) : (
+              <>
+                <img
+                  key={activeScreen?.id || 'loading'}
+                  className="taleSceneImage"
+                  src={backgroundUrl}
+                  alt={activeScreen?.title || 'Rose Court illustration'}
+                />
+                <div className="taleSceneWash" aria-hidden="true" />
+                <div className="taleSceneVignette" />
 
-            {activeScreen?.title ? (
-              <div className="taleSceneCaption">
-                <span>{activeScreen.title}</span>
+                {activeScreen?.title ? (
+                  <div className="taleSceneCaption">
+                    <span>{activeScreen.title}</span>
+                  </div>
+                ) : null}
+
+                {activeScreenId === 'location_mural_gallery' && variantScreens.length > 0 ? (
+                  <div className="taleVariantOverlay">
+                    {variantScreens.map((screen) => (
+                      <button
+                        key={screen.id}
+                        type="button"
+                        className="taleVariantCard"
+                        onClick={() => handleDirectionClick(
+                          directions.find((d) => d.targetScreenId === screen.id) || {}
+                        )}
+                      >
+                        <span className="taleVariantCard__label">Second Wall</span>
+                        <strong>{screen.title}</strong>
+                        <p>{screen.expectationSummary || screen.prompt}</p>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            )}
+          </section>
+
+          <div className="taleChapterBar">
+            <span className="taleChapterBar__beat">{stageBeat}</span>
+            <span className="taleChapterBar__sep">·</span>
+            {stageCues.map((cue) => (
+              <span key={cue} className="taleChapterBar__cue">{cue}</span>
+            ))}
+          </div>
+
+          <section className="taleTextPanel" ref={textPanelRef}>
+            <div className="taleTextPanel__narrative">
+              <p>{activeScreen?.prompt || 'Summoning the wall…'}</p>
+              {activeScreen?.expectationSummary ? (
+                <p className="taleTextPanel__note">{activeScreen.expectationSummary}</p>
+              ) : null}
+              {activeScreen?.continuitySummary ? (
+                <p className="taleTextPanel__note">{activeScreen.continuitySummary}</p>
+              ) : null}
+              {isWellScreen && wellSceneState.latestFragment ? (
+                <p className="taleTextPanel__note">
+                  Resurfacing fragment: "{wellSceneState.latestFragment}"
+                </p>
+              ) : null}
+              {locationMessengerState.sceneBrief?.placeName ? (
+                <p className="taleTextPanel__ledger">
+                  Earthly destination: {locationMessengerState.sceneBrief.placeName}
+                </p>
+              ) : null}
+              {locationMessengerState.sceneBrief?.placeSummary ? (
+                <p className="taleTextPanel__ledger">{locationMessengerState.sceneBrief.placeSummary}</p>
+              ) : null}
+              {transportMessengerState.hasChatEnded ? (
+                <p className="taleTextPanel__ledger">
+                  Transport logged: {getTransportSummaryLabel(transportMessengerState.sceneBrief)}
+                </p>
+              ) : null}
+              <p className="taleTextPanel__transmission">{transmissionStatus}</p>
+            </div>
+
+            {error ? <p className="taleNotice is-error">{error}</p> : null}
+            {messengerError ? <p className="taleNotice is-error">{messengerError}</p> : null}
+            {materializing ? <p className="taleNotice">Materializing the second wall of murals…</p> : null}
+            {loading ? <p className="taleNotice">Loading the outer wall…</p> : null}
+
+            {activeScreen?.stageModules?.length ? (
+              <div className="taleModules">
+                <ImmersiveRpgStageModules
+                  apiBaseUrl={apiBaseUrl}
+                  stageLayout={activeScreen.stageLayout || 'focus-left'}
+                  stageModules={activeScreen.stageModules}
+                />
               </div>
             ) : null}
 
-            {activeScreenId === 'location_mural_gallery' && variantScreens.length > 0 ? (
-              <div className="taleVariantOverlay">
-                {variantScreens.map((screen) => (
+            {isWellScreen ? (
+              <div className="taleDirections">
+                <p className="taleMuted">The parchment waits in the scene above.</p>
+              </div>
+            ) : (
+              <div className="taleDirections">
+                {activeScreenId === 'phone_found' ? (
                   <button
-                    key={screen.id}
                     type="button"
-                    className="taleVariantCard"
-                    onClick={() => handleDirectionClick(
-                      directions.find((d) => d.targetScreenId === screen.id) || {}
-                    )}
+                    className="taleCmd"
+                    onClick={() => {
+                      setActiveMessengerSceneId(LOCATION_CLERK_SCENE_ID);
+                      setMessengerOpen(true);
+                    }}
                   >
-                    <span className="taleVariantCard__label">Second Wall</span>
-                    <strong>{screen.title}</strong>
-                    <p>{screen.expectationSummary || screen.prompt}</p>
+                    Answer the handset near the wall
                   </button>
+                ) : null}
+                {isWellApproachScreen && !transportMessengerState.hasChatEnded ? (
+                  <button
+                    type="button"
+                    className="taleCmd"
+                    onClick={() => {
+                      setActiveMessengerSceneId(TRANSPORT_CLERK_SCENE_ID);
+                      setMessengerOpen(true);
+                    }}
+                  >
+                    Answer the returning transmission
+                  </button>
+                ) : null}
+
+                {visibleDirections.length > 0 ? (
+                  visibleDirections.map((direction) => (
+                    <button
+                      key={`${direction.direction}-${direction.targetScreenId}`}
+                      type="button"
+                      className="taleCmd"
+                      onClick={() => handleDirectionClick(direction)}
+                      disabled={advancing}
+                    >
+                      {direction.label || direction.direction}
+                    </button>
+                  ))
+                ) : (
+                  <p className="taleMuted">No path opens from this moment yet.</p>
+                )}
+              </div>
+            )}
+
+            {visibleHistory.length > 0 ? (
+              <div className="taleHistory">
+                {visibleHistory.map((entry) => (
+                  <p
+                    key={`${entry.createdAt || 'p'}-${entry.toScreenId || entry.fromScreenId || ''}`}
+                    className="taleHistory__line"
+                  >
+                    <span className="taleHistory__from">[{entry.fromScreenId || activeScreen?.id || 'scene'}]</span>
+                    {' '}{entry.promptText}
+                    {entry.createdAt ? <time className="taleHistory__time">{formatTime(entry.createdAt)}</time> : null}
+                  </p>
                 ))}
               </div>
             ) : null}
-          </>
-        )}
-      </section>
 
-      {/* ── Chapter header ── */}
-      <div className="taleChapterBar">
-        <span className="taleChapterBar__beat">{stageBeat}</span>
-        <span className="taleChapterBar__sep">·</span>
-        {stageCues.map((cue) => (
-          <span key={cue} className="taleChapterBar__cue">{cue}</span>
-        ))}
-        <span className="taleChapterBar__sep">·</span>
-        <span className={`taleChapterBar__chip ${imageStatus === 'error' ? 'is-error' : ''}`}>
-          Scene {imageStatus === 'loaded' ? '✓' : imageStatus}
-        </span>
-        <span className={`taleChapterBar__chip ${locationMessengerState.hasChatEnded ? 'is-ready' : ''}`}>
-          Clerk {locationMessengerState.hasChatEnded ? '✓' : '…'}
-        </span>
-        <span className={`taleChapterBar__chip ${transportMessengerState.hasChatEnded ? 'is-ready' : ''}`}>
-          Relay {transportMessengerState.hasChatEnded ? '✓' : '–'}
-        </span>
-        <span className={`taleChapterBar__chip ${locationVariantsReady ? 'is-ready' : ''}`}>
-          Murals {locationVariantsReady ? '✓' : '–'}
-        </span>
-      </div>
-
-      {/* ── Parchment text panel ── */}
-      <section className="taleTextPanel" ref={textPanelRef}>
-        {/* Narrative text */}
-        <div className="taleTextPanel__narrative">
-          <p>{activeScreen?.prompt || 'Summoning the wall…'}</p>
-          {activeScreen?.expectationSummary ? (
-            <p className="taleTextPanel__note">{activeScreen.expectationSummary}</p>
-          ) : null}
-          {activeScreen?.continuitySummary ? (
-            <p className="taleTextPanel__note">{activeScreen.continuitySummary}</p>
-          ) : null}
-          {isWellScreen && wellSceneState.latestFragment ? (
-            <p className="taleTextPanel__note">
-              Resurfacing fragment: "{wellSceneState.latestFragment}"
-            </p>
-          ) : null}
-          {locationMessengerState.sceneBrief?.placeName ? (
-            <p className="taleTextPanel__ledger">
-              Earthly destination: {locationMessengerState.sceneBrief.placeName}
-            </p>
-          ) : null}
-          {locationMessengerState.sceneBrief?.placeSummary ? (
-            <p className="taleTextPanel__ledger">{locationMessengerState.sceneBrief.placeSummary}</p>
-          ) : null}
-          {transportMessengerState.hasChatEnded ? (
-            <p className="taleTextPanel__ledger">
-              Transport logged: {getTransportSummaryLabel(transportMessengerState.sceneBrief)}
-            </p>
-          ) : null}
-          <p className="taleTextPanel__transmission">{transmissionStatus}</p>
-        </div>
-
-        {/* Notices */}
-        {error ? <p className="taleNotice is-error">{error}</p> : null}
-        {messengerError ? <p className="taleNotice is-error">{messengerError}</p> : null}
-        {materializing ? <p className="taleNotice">Materializing the second wall of murals…</p> : null}
-        {loading ? <p className="taleNotice">Loading the outer wall…</p> : null}
-
-        {/* Stage modules */}
-        {activeScreen?.stageModules?.length ? (
-          <div className="taleModules">
-            <ImmersiveRpgStageModules
-              apiBaseUrl={apiBaseUrl}
-              stageLayout={activeScreen.stageLayout || 'focus-left'}
-              stageModules={activeScreen.stageModules}
-            />
-          </div>
-        ) : null}
-
-        {/* Direction choices */}
-        {isWellScreen ? (
-          <div className="taleDirections">
-            <p className="taleMuted">The parchment waits in the scene above.</p>
-          </div>
-        ) : (
-          <div className="taleDirections">
-            {activeScreenId === 'phone_found' ? (
-              <button
-                type="button"
-                className="taleCmd"
-                onClick={() => {
-                  setActiveMessengerSceneId(LOCATION_CLERK_SCENE_ID);
-                  setMessengerOpen(true);
-                }}
-              >
-                ❧ {locationMessengerState.hasChatEnded ? 'Location logged' : 'Answer the handset'}
-              </button>
-            ) : null}
-            {isWellApproachScreen && !transportMessengerState.hasChatEnded ? (
-              <button
-                type="button"
-                className="taleCmd"
-                onClick={() => {
-                  setActiveMessengerSceneId(TRANSPORT_CLERK_SCENE_ID);
-                  setMessengerOpen(true);
-                }}
-              >
-                ❧ Answer the returning transmission
-              </button>
-            ) : null}
-
-            {visibleDirections.length > 0 ? (
-              visibleDirections.map((direction) => (
-                <button
-                  key={`${direction.direction}-${direction.targetScreenId}`}
-                  type="button"
-                  className="taleCmd"
-                  onClick={() => handleDirectionClick(direction)}
+            {isWellScreen ? null : (
+              <form onSubmit={handlePromptSubmit} className="talePrompt">
+                <label className="talePrompt__label" htmlFor="rose-court-prompt">
+                  What do you do?
+                  <span>✒</span>
+                </label>
+                <div className="talePrompt__row">
+                  <span className="talePrompt__ornament">❧</span>
+                  <input
+                    id="rose-court-prompt"
+                    type="text"
+                    className="talePrompt__input"
+                  value={playerPrompt}
+                  onChange={(event) => setPlayerPrompt(event.target.value)}
+                  onKeyDown={handlePromptKeyDown}
+                  placeholder={activeScreen?.textPromptPlaceholder || 'What do you do?'}
                   disabled={advancing}
-                >
-                  ❧ {direction.label || direction.direction}
-                </button>
-              ))
-            ) : (
-              <p className="taleMuted">No path opens from this moment yet.</p>
+                />
+                  <span className="talePrompt__cursor">✎</span>
+                  {advancing ? <span className="talePrompt__loading">…</span> : null}
+                </div>
+              </form>
             )}
-          </div>
-        )}
-
-        {/* Prompt history */}
-        {visibleHistory.length > 0 ? (
-          <div className="taleHistory">
-            {visibleHistory.map((entry) => (
-              <p
-                key={`${entry.createdAt || 'p'}-${entry.toScreenId || entry.fromScreenId || ''}`}
-                className="taleHistory__line"
-              >
-                <span className="taleHistory__from">[{entry.fromScreenId || activeScreen?.id || 'scene'}]</span>
-                {' '}{entry.promptText}
-                {entry.createdAt ? <time className="taleHistory__time">{formatTime(entry.createdAt)}</time> : null}
-              </p>
-            ))}
-          </div>
-        ) : null}
-
-        {/* Quill prompt input */}
-        {isWellScreen ? null : (
-          <form onSubmit={handlePromptSubmit} className="talePrompt">
-            <span className="talePrompt__ornament">❧</span>
-            <input
-              type="text"
-              className="talePrompt__input"
-              value={playerPrompt}
-              onChange={(event) => setPlayerPrompt(event.target.value)}
-              onKeyDown={handlePromptKeyDown}
-              placeholder={activeScreen?.textPromptPlaceholder || 'What do you do?'}
-              disabled={advancing}
-              autoFocus
-            />
-            <span className="talePrompt__cursor">✎</span>
-            {advancing ? <span className="talePrompt__loading">…</span> : null}
-          </form>
-        )}
-      </section>
+          </section>
+        </article>
+      </div>
 
       {/* ── Messenger modal ── */}
       {messengerOpen ? (

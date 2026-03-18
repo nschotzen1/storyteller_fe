@@ -9,6 +9,9 @@ import {
 } from '../api/questScreens';
 import ImmersiveRpgStageModules from '../components/immersive-rpg/ImmersiveRpgStageModules';
 import RoseCourtWellScene from '../components/well/RoseCourtWellScene';
+import useWellSceneConfig from '../components/well/useWellSceneConfig';
+import { buildRoseCourtWellSceneProps } from '../components/well/wellSceneConfig';
+import { seedTypewriterSessionFromWell } from '../components/well/wellTypewriterSessionBridge';
 import './ImmersiveRpgPage.css';
 import './QuestAdventurePage.css';
 
@@ -82,6 +85,7 @@ const QuestAdventurePage = ({
   const [lastAdvanceRuntime, setLastAdvanceRuntime] = useState(null);
   const [lastMockedData, setLastMockedData] = useState(null);
   const [wellSceneState, setWellSceneState] = useState(DEFAULT_WELL_SCENE_STATE);
+  const { config: wellConfig } = useWellSceneConfig(apiBaseUrl);
 
   const screenMap = useMemo(() => toScreenMap(config), [config]);
 
@@ -253,6 +257,8 @@ const QuestAdventurePage = ({
     try {
       setAdvancing(true);
       setError('');
+
+      await seedTypewriterSessionFromWell(apiBaseUrl, sessionId, submittedLine);
 
       try {
         const traversalPayload = await logQuestTraversal(apiBaseUrl, {
@@ -427,7 +433,9 @@ const QuestAdventurePage = ({
             <div className="questCinemaScreen">
               {isWellScreen ? (
                 <RoseCourtWellScene
-                  backgroundSrc={activeScreen?.imageUrl || '/well/well_background.png'}
+                  {...buildRoseCourtWellSceneProps(wellConfig, {
+                    backgroundSrc: activeScreen?.imageUrl || undefined
+                  })}
                   isCompleting={advancing}
                   onComplete={handleWellComplete}
                   onStateChange={setWellSceneState}

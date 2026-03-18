@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_API_BASE_URL,
+  generateQuestSceneImage,
   loadQuestScreens,
   resetQuestScreens,
   saveQuestScreens,
@@ -295,6 +296,22 @@ const getTextModelOptions = (models, currentModel, provider = 'openai') => {
   return Array.from(new Set(modelIds));
 };
 
+const getImageModelOptions = (models, currentModel) => {
+  const providerPayload = models?.providers?.openai;
+  const sourceModels = Array.isArray(providerPayload?.imageModels)
+    ? providerPayload.imageModels
+    : Array.isArray(models?.imageModels)
+      ? models.imageModels
+      : [];
+  const modelIds = sourceModels
+    .map((entry) => (typeof entry?.id === 'string' ? entry.id.trim() : ''))
+    .filter(Boolean);
+  if (currentModel && !modelIds.includes(currentModel)) {
+    modelIds.unshift(currentModel);
+  }
+  return Array.from(new Set(modelIds));
+};
+
 const readFileAsDataUrl = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -330,6 +347,8 @@ const QuestAdminPage = ({
   const [runtimeSaving, setRuntimeSaving] = useState(false);
   const [promptSaving, setPromptSaving] = useState(false);
   const [uploadingSceneImage, setUploadingSceneImage] = useState(false);
+  const [generatingSceneImage, setGeneratingSceneImage] = useState(false);
+  const [sceneImageModel, setSceneImageModel] = useState('');
   const [runtimeStatus, setRuntimeStatus] = useState('');
   const [runtimeError, setRuntimeError] = useState('');
   const [sceneImageStatus, setSceneImageStatus] = useState('');
@@ -364,6 +383,10 @@ const QuestAdminPage = ({
       questSceneAuthoringSettings?.provider || 'openai'
     ),
     [models, questSceneAuthoringSettings]
+  );
+  const sceneImageModelOptions = useMemo(
+    () => getImageModelOptions(models, sceneImageModel),
+    [models, sceneImageModel]
   );
   const selectedScreenVisualContext = useMemo(
     () => buildQuestScreenVisualContext(config, selectedScreenId),
@@ -435,6 +458,12 @@ const QuestAdminPage = ({
     setSceneImageStatus('');
     setSceneImageError('');
   }, [selectedScreenId]);
+
+  useEffect(() => {
+    if (!sceneImageModelOptions.length) return;
+    if (sceneImageModel && sceneImageModelOptions.includes(sceneImageModel)) return;
+    setSceneImageModel(sceneImageModelOptions[0]);
+  }, [sceneImageModelOptions, sceneImageModel]);
 
   useEffect(() => {
     let active = true;
@@ -985,6 +1014,45 @@ const QuestAdminPage = ({
     }
   };
 
+  const handleGenerateSceneImage = async () => {
+    if (!selectedScreen) return;
+
+    setGeneratingSceneImage(true);
+    setSceneImageError('');
+    setSceneImageStatus('');
+
+    const activeScreenId = selectedScreen.id;
+    const activeScreenTitle = selectedScreen.title || selectedScreen.id;
+
+    try {
+      const payload = await generateQuestSceneImage(
+        apiBaseUrl,
+        {
+          sessionId,
+          questId,
+          screenId: activeScreenId,
+          screenTitle: activeScreenTitle,
+          referenceImagePrompt: selectedScreen.referenceImagePrompt || '',
+          image_prompt: selectedScreen.image_prompt || '',
+          imageModel: sceneImageModel || ''
+        },
+        {
+          adminKey: adminKey.trim() ? adminKey.trim() : undefined
+        }
+      );
+      updateScreenById(activeScreenId, (screen) => ({
+        ...screen,
+        imageUrl: payload.imageUrl || screen.imageUrl
+      }));
+      const modelLabel = payload.model ? ` with ${payload.model}` : '';
+      setSceneImageStatus(`Generated a new image for ${activeScreenTitle}${modelLabel}. Save Scene to persist it.`);
+    } catch (err) {
+      setSceneImageError(err.message || 'Unable to generate scene image.');
+    } finally {
+      setGeneratingSceneImage(false);
+    }
+  };
+
   const handleApplyAuthoringDraft = (changes, selectedChangeIds) => {
     if (!config) return;
     const result = applyQuestAuthoringChanges(config, changes, selectedChangeIds);
@@ -1381,7 +1449,7 @@ const QuestAdminPage = ({
                   <div className="editorSectionHeader">
                     <div>
                       <h3>Optional Screen Image</h3>
-                      <p>Each screen can keep its current image, upload a different one, and keep a separate reference prompt for art generation.</p>
+                      <p>Each screen can keep its current image, upload a different one, or generate one directly from the current prompt fields.</p>
                     </div>
                   </div>
 
@@ -1397,6 +1465,38 @@ const QuestAdminPage = ({
                       backgroundImage: `linear-gradient(160deg, rgba(18, 12, 10, 0.45), rgba(14, 8, 7, 0.82)), url(${selectedScreen.imageUrl || '/ruin_south_a.png'})`
                     }}
                   />
+
+                  <div className="sceneImageActions">
+                    <label>
+                      Image Model
+                      <select
+                        value={sceneImageModel}
+                        onChange={(event) => setSceneImageModel(event.target.value)}
+                      >
+                        {sceneImageModelOptions.length === 0 && (
+                          <option value="">Select model</option>
+                        )}
+                        {sceneImageModelOptions.map((modelId) => (
+                          <option key={modelId} value={modelId}>
+                            {modelId}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={handleGenerateSceneImage}
+                      disabled={generatingSceneImage || uploadingSceneImage || !selectedScreen}
+                    >
+                      {generatingSceneImage ? 'Generating…' : 'Generate Image From Prompt'}
+                    </button>
+                  </div>
+
+                  <p className="editorMessage">
+                    Generation uses `Reference Text-to-Image Prompt` first, then `Generator Image Prompt`. The new image URL is only persisted after `Save Scene`.
+                  </p>
 
                   <label>
                     Image URL

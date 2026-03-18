@@ -176,6 +176,14 @@ export const STORY_ADMIN_CONTROL_COMPONENTS = [
     ]
   },
   {
+    key: 'well',
+    label: 'Well',
+    description: 'Shared config editor for the resurfacing parchment scene used by the quest well and Rose Court prologue.',
+    searchTerms: ['well', 'fragments', 'parchment', 'falcon', 'rose court'],
+    customPanelKey: 'well_scene_config',
+    routes: []
+  },
+  {
     key: 'storyteller_arena',
     label: 'Storyteller Arena',
     description: 'Mission generation and supporting storyteller routes used in the arena console.',
