@@ -133,6 +133,14 @@ const SETTING_PIPELINES = [
     defaultProvider: 'openai'
   },
   {
+    key: 'typewriter_key_verification',
+    label: 'Typewriter key verification',
+    description: '/api/typewriter/keys/shouldAllow',
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
+  },
+  {
     key: 'storyteller_mission',
     label: 'Storyteller mission',
     description: '/api/sendStorytellerToEntity',
@@ -240,6 +248,12 @@ const PROMPT_PIPELINES = [
     settingsKey: 'storyteller_intervention'
   },
   {
+    key: 'typewriter_key_verification',
+    label: 'Typewriter key verification',
+    description: '/api/typewriter/keys/shouldAllow textual key insertion judge',
+    settingsKey: 'typewriter_key_verification'
+  },
+  {
     key: 'storyteller_mission',
     label: 'Storyteller mission',
     description: '/api/sendStorytellerToEntity mission evaluation',
@@ -271,6 +285,37 @@ const ADMIN_SECTIONS = [
   { key: 'session', label: 'Session' },
   { key: 'prompts', label: 'Prompt Templates' },
   { key: 'contracts', label: 'Schemas' }
+];
+
+const TYPEWRITER_ASSET_FLOW = [
+  {
+    title: 'Session hydration',
+    route: '/api/typewriter/session/start',
+    asset: 'Current fragment plus saved textual keys',
+    storage: 'NarrativeFragment + TypewriterKey',
+    note: 'Bootstraps the page and returns the keyboard-facing textual key objects.'
+  },
+  {
+    title: 'Storyteller slot generation',
+    route: '/api/shouldCreateStorytellerKey',
+    asset: 'Storyteller persona JSON and storyteller key PNG',
+    storage: 'Storyteller',
+    note: 'Unlocks one blank storyteller slot, fills it with a generated persona, and returns the current slot state.'
+  },
+  {
+    title: 'Storyteller intervention',
+    route: '/api/send_storyteller_typewriter_text',
+    asset: 'Continuation text, NarrativeEntity, and TypewriterKey',
+    storage: 'NarrativeEntity + TypewriterKey + Storyteller',
+    note: 'Creates the storyteller entrance text and persists the new pressable textual key tied to the introduced entity.'
+  },
+  {
+    title: 'Textual key verification',
+    route: '/api/typewriter/keys/shouldAllow',
+    asset: 'LLM verdict plus appendedText',
+    storage: 'TypewriterKey usage state',
+    note: 'Checks whether any textual key such as Xerofag or a storyteller-created key may append itself to the live narrative.'
+  }
 ];
 
 const getInitialApiBaseUrl = () => {
@@ -491,7 +536,9 @@ const TypewriterAdminPage = () => {
   const [selectedControlComponentKey, setSelectedControlComponentKey] = useState('all');
   const [promptFilter, setPromptFilter] = useState('');
   const [contractFilter, setContractFilter] = useState('');
-  const [expandedControlRouteId, setExpandedControlRouteId] = useState('typewriter:story_continuation_route');
+  const [selectedControlRoutesByComponent, setSelectedControlRoutesByComponent] = useState({
+    typewriter: 'typewriter:story_continuation_route'
+  });
   const [savingControlRouteId, setSavingControlRouteId] = useState('');
   const [expandedPromptKey, setExpandedPromptKey] = useState('story_continuation');
   const [expandedContractKey, setExpandedContractKey] = useState('');
@@ -809,6 +856,26 @@ const TypewriterAdminPage = () => {
     [visibleControlComponents]
   );
 
+  const controlRuntimeUsageMap = useMemo(() => {
+    const usageMap = {};
+    controlComponents.forEach((component) => {
+      component.routes.forEach((route) => {
+        route.runtimeRows.forEach((runtimeRow) => {
+          if (!usageMap[runtimeRow.key]) {
+            usageMap[runtimeRow.key] = [];
+          }
+          usageMap[runtimeRow.key].push({
+            componentKey: component.key,
+            componentLabel: component.label,
+            routeId: route.routeId,
+            routeLabel: route.label
+          });
+        });
+      });
+    });
+    return usageMap;
+  }, [controlComponents]);
+
   useEffect(() => {
     if (!visiblePromptDefinitions.length) return;
     if (!visiblePromptDefinitions.some((pipeline) => pipeline.key === expandedPromptKey)) {
@@ -824,11 +891,30 @@ const TypewriterAdminPage = () => {
   }, [expandedContractKey, visibleLlmRouteRows]);
 
   useEffect(() => {
-    if (!visibleControlRouteIds.length) return;
-    if (!visibleControlRouteIds.includes(expandedControlRouteId)) {
-      setExpandedControlRouteId(visibleControlRouteIds[0]);
-    }
-  }, [expandedControlRouteId, visibleControlRouteIds]);
+    if (!controlComponents.length) return;
+    setSelectedControlRoutesByComponent((prev) => {
+      let changed = false;
+      const next = { ...prev };
+
+      controlComponents.forEach((component) => {
+        const routeIds = component.routes.map((route) => route.routeId);
+        if (!routeIds.length) return;
+        if (!routeIds.includes(next[component.key])) {
+          next[component.key] = routeIds[0];
+          changed = true;
+        }
+      });
+
+      Object.keys(next).forEach((componentKey) => {
+        if (!controlComponents.some((component) => component.key === componentKey)) {
+          delete next[componentKey];
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
+    });
+  }, [controlComponents]);
 
   useEffect(() => {
     if (selectedControlComponentKey === 'all') return;
@@ -1480,11 +1566,39 @@ const TypewriterAdminPage = () => {
         <div className="typewriterPromptEditorHeader">
           <div>
             <h2>Component Control Center</h2>
-            <p>Choose a component and edit the runtime settings, runtime prompt, and schema that actually power that flow.</p>
+            <p>Pick a component, follow its routes in flow order, change mock/model settings on the selected route, then edit prompts and schemas in a separate workspace.</p>
           </div>
         </div>
 
         {sessionToolsSection}
+
+        {selectedControlComponentKey === 'typewriter' ? (
+          <section className="typewriterControlComponentCard">
+            <header className="typewriterControlComponentHeader">
+              <div>
+                <h3>Typewriter Asset Flow</h3>
+                <p>The typewriter now produces both visual storyteller keys and saved textual keys. These are the main assets and where they come from.</p>
+              </div>
+              <span className="typewriterControlComponentCount">{TYPEWRITER_ASSET_FLOW.length} stages</span>
+            </header>
+            <div className="typewriterControlRouteList">
+              {TYPEWRITER_ASSET_FLOW.map((item) => (
+                <article key={item.title} className="typewriterControlRouteCard">
+                  <div className="typewriterControlRouteSummary">
+                    <strong>{item.title}</strong>
+                    <br />
+                    <span>{item.note}</span>
+                  </div>
+                  <div className="typewriterControlMetaRow">
+                    <span className="typewriterControlChip">{item.route}</span>
+                    <span className="typewriterControlChip">{item.asset}</span>
+                    <span className="typewriterControlChip">{item.storage}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <div className="typewriterAdminListToolbar">
           <div className="typewriterControlSelector" role="tablist" aria-label="Story Admin components">
@@ -1513,361 +1627,441 @@ const TypewriterAdminPage = () => {
         </div>
 
         <div className="typewriterControlComponentList">
-          {visibleControlComponents.map((component) => (
-            <section key={component.key} className="typewriterControlComponentCard">
-              <header className="typewriterControlComponentHeader">
-                <div>
-                  <h3>{component.label}</h3>
-                  <p>{component.description}</p>
-                </div>
-                <span className="typewriterControlComponentCount">
-                  {[
-                    component.routes.length
-                      ? `${component.routes.length} route${component.routes.length === 1 ? '' : 's'}`
-                      : null,
-                    component.customPanelKey ? 'custom editor' : null
-                  ].filter(Boolean).join(' + ')}
-                </span>
-              </header>
+          {visibleControlComponents.map((component) => {
+            const selectedRouteId = selectedControlRoutesByComponent[component.key];
+            const selectedRoute = component.routes.find((route) => route.routeId === selectedRouteId) || component.routes[0] || null;
+            const isSavingSelectedRoute = selectedRoute ? savingControlRouteId === selectedRoute.routeId : false;
+            const selectedRouteSummary = selectedRoute?.runtimeRows?.length
+              ? selectedRoute.runtimeRows
+                .map((runtimeRow) =>
+                  runtimeRow.useMock
+                    ? `${runtimeRow.label}: mock`
+                    : `${runtimeRow.label}: ${runtimeRow.provider || 'openai'} / ${runtimeRow.model || 'unset'}`
+                )
+                .join(' | ')
+              : 'No shared runtime pipeline attached.';
 
-              {component.customPanelKey === 'well_scene_config' ? (
-                <WellAdminWorkspace apiBaseUrl={apiBaseUrl} adminKey={adminKey} />
-              ) : null}
+            return (
+              <section key={component.key} className="typewriterControlComponentCard">
+                <header className="typewriterControlComponentHeader">
+                  <div>
+                    <h3>{component.label}</h3>
+                    <p>{component.flowDescription || component.description}</p>
+                  </div>
+                  <span className="typewriterControlComponentCount">
+                    {[
+                      component.routes.length
+                        ? `${component.routes.length} route${component.routes.length === 1 ? '' : 's'}`
+                        : null,
+                      component.customPanelKey ? 'custom editor' : null
+                    ].filter(Boolean).join(' + ')}
+                  </span>
+                </header>
 
-              {component.routes.length ? (
-                <div className="typewriterControlRouteList">
-                  {component.routes.map((route) => {
-                  const isExpanded = expandedControlRouteId === route.routeId;
-                  const isSavingRoute = savingControlRouteId === route.routeId;
-                  const routeSummary = route.runtimeRows.length
-                    ? route.runtimeRows
-                      .map((runtimeRow) =>
-                        runtimeRow.useMock
-                          ? `${runtimeRow.label}: mock`
-                          : `${runtimeRow.label}: ${runtimeRow.provider || 'openai'} / ${runtimeRow.model || 'unset'}`
-                      )
-                      .join(' | ')
-                    : 'No shared runtime pipeline attached.';
+                {component.customPanelKey === 'well_scene_config' ? (
+                  <WellAdminWorkspace apiBaseUrl={apiBaseUrl} adminKey={adminKey} />
+                ) : null}
 
-                  return (
-                    <article key={route.routeId} className="typewriterControlRouteCard">
-                      <button
-                        type="button"
-                        className="typewriterControlRouteToggle"
-                        onClick={() => setExpandedControlRouteId((prev) => (prev === route.routeId ? '' : route.routeId))}
-                      >
-                        <span>
-                          <strong>{route.label}</strong>
-                          <small>{route.method} {route.path}</small>
-                        </span>
-                        <span>{isExpanded ? 'Hide' : 'Open'}</span>
-                      </button>
-
-                      <p className="typewriterControlRouteSummary">{route.summary}</p>
-
-                      <div className="typewriterControlMetaRow">
-                        <span className="typewriterControlChip">{route.runtimeRows.length} runtime settings</span>
-                        <span className="typewriterControlChip">{route.contractEntries.length} schemas</span>
-                        <span className="typewriterControlChip">{route.directPromptEntries.length} direct prompts</span>
+                {component.routes.length ? (
+                  <div className="typewriterControlWorkspace">
+                    <section className="typewriterControlFlowPanel">
+                      <div className="typewriterControlPanelHeader">
+                        <div>
+                          <h4>Route Flow</h4>
+                          <p>Routes stay in runtime order here so the component reads like a sequence instead of a flat list.</p>
+                        </div>
                       </div>
 
-                      <p className="typewriterPromptMeta">{routeSummary}</p>
+                      <div className="typewriterControlFlowList">
+                        {component.routes.map((route, index) => {
+                          const previousRoute = component.routes[index - 1];
+                          const showGroupLabel = route.flowGroup && route.flowGroup !== previousRoute?.flowGroup;
+                          const isSelected = selectedRoute?.routeId === route.routeId;
+                          const routeRuntimeModeLabel = !route.runtimeRows.length
+                            ? 'No runtime controls'
+                            : route.runtimeRows.every((runtimeRow) => runtimeRow.useMock)
+                              ? 'Mock'
+                              : route.runtimeRows.every((runtimeRow) => !runtimeRow.useMock)
+                                ? 'Live'
+                                : 'Mixed';
+                          const routeSummary = route.runtimeRows.length
+                            ? route.runtimeRows
+                              .map((runtimeRow) =>
+                                runtimeRow.useMock
+                                  ? `${runtimeRow.label}: mock`
+                                  : `${runtimeRow.label}: ${runtimeRow.provider || 'openai'} / ${runtimeRow.model || 'unset'}`
+                              )
+                              .join(' | ')
+                            : 'No shared runtime pipeline attached.';
 
-                      {isExpanded ? (
-                        <>
-                          {route.runtimeRows.length ? (
-                            <section className="typewriterControlSection">
-                              <div className="typewriterControlSectionHeader">
-                                <div>
-                                  <h4>Runtime toggles</h4>
-                                  <p>Flip live/mock and save this route without scrolling into prompt and schema editors.</p>
+                          return (
+                            <React.Fragment key={route.routeId}>
+                              {showGroupLabel ? (
+                                <div className="typewriterControlFlowGroup">
+                                  <span>{route.flowGroup}</span>
                                 </div>
-                                <div className="typewriterPromptButtons typewriterPromptButtons-inline">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSaveControlRoute(route)}
-                                    disabled={loading || isSavingRoute || saving || savingPrompts || savingLlmConfigs}
-                                  >
-                                    {isSavingRoute ? 'Saving route...' : `Save ${route.label}`}
-                                  </button>
+                              ) : null}
+                              <button
+                                type="button"
+                                className={
+                                  isSelected
+                                    ? 'typewriterControlFlowCard isSelected'
+                                    : 'typewriterControlFlowCard'
+                                }
+                                onClick={() =>
+                                  setSelectedControlRoutesByComponent((prev) => ({
+                                    ...prev,
+                                    [component.key]: route.routeId
+                                  }))
+                                }
+                              >
+                                <div className="typewriterControlFlowCardHeader">
+                                  <span className="typewriterControlFlowStepNumber">{index + 1}</span>
+                                  <div className="typewriterControlFlowCardTitle">
+                                    <strong>{route.label}</strong>
+                                    <small>{route.method} {route.path}</small>
+                                  </div>
+                                  <span className="typewriterControlFlowMode">{routeRuntimeModeLabel}</span>
                                 </div>
+                                <p className="typewriterControlRouteSummary">{route.flowSummary || route.summary}</p>
+                                <div className="typewriterControlMetaRow">
+                                  <span className="typewriterControlChip">{route.runtimeRows.length} runtime settings</span>
+                                  <span className="typewriterControlChip">{route.contractEntries.length} schemas</span>
+                                  <span className="typewriterControlChip">{route.directPromptEntries.length} direct prompts</span>
+                                </div>
+                                <p className="typewriterPromptMeta">{routeSummary}</p>
+                              </button>
+                              {index < component.routes.length - 1 ? (
+                                <div className="typewriterControlFlowConnector" aria-hidden="true" />
+                              ) : null}
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
+                    </section>
+
+                    {selectedRoute ? (
+                      <section className="typewriterControlEditorPanel">
+                        <div className="typewriterControlPanelHeader">
+                          <div>
+                            <h4>{selectedRoute.label}</h4>
+                            <p>{selectedRoute.flowSummary || selectedRoute.summary}</p>
+                          </div>
+                          <div className="typewriterPromptButtons typewriterPromptButtons-inline">
+                            <button
+                              type="button"
+                              onClick={() => handleSaveControlRoute(selectedRoute)}
+                              disabled={loading || isSavingSelectedRoute || saving || savingPrompts || savingLlmConfigs}
+                            >
+                              {isSavingSelectedRoute ? 'Saving route...' : `Save ${selectedRoute.label}`}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="typewriterControlMetaRow">
+                          <span className="typewriterControlChip">{selectedRoute.method} {selectedRoute.path}</span>
+                          <span className="typewriterControlChip">{selectedRoute.runtimeRows.length} runtime settings</span>
+                          <span className="typewriterControlChip">{selectedRoute.contractEntries.length} schemas</span>
+                          <span className="typewriterControlChip">{selectedRoute.directPromptEntries.length} direct prompts</span>
+                        </div>
+
+                        <p className="typewriterPromptMeta">{selectedRouteSummary}</p>
+
+                        {selectedRoute.runtimeRows.length ? (
+                          <section className="typewriterControlSection">
+                            <div className="typewriterControlSectionHeader">
+                              <div>
+                                <h4>Runtime mode and models</h4>
+                                <p>Change mock/live behavior and the active model for this route before touching prompts.</p>
                               </div>
+                            </div>
 
-                              <div className="typewriterControlRuntimeGrid">
-                                {route.runtimeRows.map((runtimeRow) => {
-                                  const options = getModelOptions(runtimeRow.modelKind, runtimeRow.model, runtimeRow.provider);
-                                  return (
-                                    <div key={runtimeRow.key} className="typewriterControlRuntimeCard">
-                                      <div className="typewriterPipelineCell">
-                                        <strong>{runtimeRow.label}</strong>
-                                        <span>{runtimeRow.description}</span>
-                                      </div>
-                                      <label className="typewriterMockToggle">
-                                        <input
-                                          type="checkbox"
-                                          checked={runtimeRow.useMock}
-                                          onChange={(event) => updatePipeline(runtimeRow.key, { useMock: event.target.checked })}
-                                        />
-                                        <span>{runtimeRow.useMock ? 'Mock' : 'Live'}</span>
-                                      </label>
-                                      {runtimeRow.supportedProviders?.length > 1 ? (
-                                        <label className="typewriterNumericSetting">
-                                          <span>Provider</span>
-                                          <select
-                                            value={runtimeRow.provider}
-                                            onChange={(event) => {
-                                              const nextProvider = event.target.value;
-                                              const nextOptions = getModelOptions(runtimeRow.modelKind, '', nextProvider);
-                                              updatePipeline(runtimeRow.key, {
-                                                provider: nextProvider,
-                                                model: nextOptions[0] || runtimeRow.model
-                                              });
-                                            }}
-                                          >
-                                            {runtimeRow.supportedProviders.map((providerId) => (
-                                              <option key={providerId} value={providerId}>
-                                                {providerId}
-                                              </option>
-                                            ))}
-                                          </select>
-                                        </label>
-                                      ) : null}
+                            <div className="typewriterControlRuntimeGrid">
+                              {selectedRoute.runtimeRows.map((runtimeRow) => {
+                                const options = getModelOptions(runtimeRow.modelKind, runtimeRow.model, runtimeRow.provider);
+                                const sharedUsageEntries = (controlRuntimeUsageMap[runtimeRow.key] || [])
+                                  .filter((entry) => entry.routeId !== selectedRoute.routeId);
+                                const sharedUsageLabel = sharedUsageEntries.length
+                                  ? sharedUsageEntries
+                                    .map((entry) =>
+                                      entry.componentKey === component.key
+                                        ? entry.routeLabel
+                                        : `${entry.componentLabel}: ${entry.routeLabel}`
+                                    )
+                                    .join(', ')
+                                  : '';
+
+                                return (
+                                  <div key={runtimeRow.key} className="typewriterControlRuntimeCard">
+                                    <div className="typewriterPipelineCell">
+                                      <strong>{runtimeRow.label}</strong>
+                                      <span>{runtimeRow.description}</span>
+                                    </div>
+                                    <label className="typewriterMockToggle">
+                                      <input
+                                        type="checkbox"
+                                        checked={runtimeRow.useMock}
+                                        onChange={(event) => updatePipeline(runtimeRow.key, { useMock: event.target.checked })}
+                                      />
+                                      <span>{runtimeRow.useMock ? 'Mock' : 'Live'}</span>
+                                    </label>
+                                    {runtimeRow.supportedProviders?.length > 1 ? (
                                       <label className="typewriterNumericSetting">
-                                        <span>Model</span>
+                                        <span>Provider</span>
                                         <select
-                                          value={runtimeRow.model}
-                                          onChange={(event) => updatePipeline(runtimeRow.key, { model: event.target.value })}
+                                          value={runtimeRow.provider}
+                                          onChange={(event) => {
+                                            const nextProvider = event.target.value;
+                                            const nextOptions = getModelOptions(runtimeRow.modelKind, '', nextProvider);
+                                            updatePipeline(runtimeRow.key, {
+                                              provider: nextProvider,
+                                              model: nextOptions[0] || runtimeRow.model
+                                            });
+                                          }}
                                         >
-                                          {options.map((optionId) => (
-                                            <option key={optionId} value={optionId}>
-                                              {optionId}
+                                          {runtimeRow.supportedProviders.map((providerId) => (
+                                            <option key={providerId} value={providerId}>
+                                              {providerId}
                                             </option>
                                           ))}
                                         </select>
                                       </label>
-                                      {runtimeRow.supportsCount ? (
-                                        <label className="typewriterNumericSetting">
-                                          <span>{runtimeRow.countLabel}</span>
-                                          <input
-                                            type="number"
-                                            min={runtimeRow.minCount}
-                                            max={runtimeRow.maxCount}
-                                            value={runtimeRow.countValue}
-                                            onChange={(event) =>
-                                              updatePipeline(runtimeRow.key, {
-                                                [runtimeRow.countProperty]: normalizeCountDraft(
-                                                  event.target.value,
-                                                  runtimeRow.countValue,
-                                                  runtimeRow.minCount,
-                                                  runtimeRow.maxCount
-                                                )
-                                              })
-                                            }
-                                          />
-                                        </label>
-                                      ) : null}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </section>
-                          ) : null}
-
-                          {route.contractEntries.length ? (
-                            <details className="typewriterControlDisclosure">
-                              <summary className="typewriterControlDisclosureSummary">
-                                <span>Schemas and generated prompts</span>
-                                <small>{route.contractEntries.length} editor{route.contractEntries.length === 1 ? '' : 's'}</small>
-                              </summary>
-                              <div className="typewriterControlDisclosureBody">
-                                {route.contractEntries.map((binding) => {
-                                  const draft = llmRouteConfigDrafts?.[binding.routeKey] || binding.draft || buildLlmConfigDraft(binding.config || {});
-                                  let previewText = '';
-                                  let previewError = '';
-                                  try {
-                                    previewText = buildStructuredPromptPreview(draft);
-                                  } catch (err) {
-                                    previewError = err.message || 'Preview unavailable.';
-                                  }
-
-                                  return (
-                                    <section key={binding.routeKey} className="typewriterControlBlock">
-                                      <div className="typewriterControlBlockHeader">
-                                        <div>
-                                          <h4>{binding.label}</h4>
-                                          <p>{binding.method} {binding.routePath}</p>
-                                        </div>
-                                        <div className="typewriterControlBlockMeta">
-                                          <span>Schema key: {binding.routeKey}</span>
-                                          <span>Live prompt target: {binding.promptKey || 'none'}</span>
-                                          <span>Prompt source: {getPromptSourceLabel(draft.promptMode)}</span>
-                                          <span>Version: {binding.config?.version || 'default'}</span>
-                                        </div>
-                                      </div>
-
-                                      <div className="typewriterStructuredModeRow">
-                                        <label>
-                                          Prompt source
-                                          <select
-                                            value={draft.promptMode}
-                                            onChange={(event) =>
-                                              updateLlmRouteConfigDraft(binding.routeKey, { promptMode: event.target.value })
-                                            }
-                                          >
-                                            <option value="manual">Direct prompt text</option>
-                                            <option value="contract">Generated from schema</option>
-                                          </select>
-                                        </label>
-                                      </div>
-
-                                      {draft.promptMode === 'manual' ? (
-                                        <label className="typewriterStructuredField">
-                                          Direct runtime prompt
-                                          <textarea
-                                            value={draft.promptTemplate}
-                                            onChange={(event) =>
-                                              updateLlmRouteConfigDraft(binding.routeKey, { promptTemplate: event.target.value })
-                                            }
-                                            rows={8}
-                                            placeholder="Enter the full prompt template used by this route."
-                                          />
-                                        </label>
-                                      ) : (
-                                        <label className="typewriterStructuredField">
-                                          Creative instructions
-                                          <textarea
-                                            value={draft.promptCore}
-                                            onChange={(event) =>
-                                              updateLlmRouteConfigDraft(binding.routeKey, { promptCore: event.target.value })
-                                            }
-                                            rows={8}
-                                            placeholder="Narrative instructions. The JSON contract block is generated below."
-                                          />
-                                        </label>
-                                      )}
-
-                                      <div className="typewriterStructuredGrid">
-                                        <label className="typewriterStructuredField">
-                                          Response schema (JSON)
-                                          <textarea
-                                            value={draft.responseSchemaText}
-                                            onChange={(event) =>
-                                              updateLlmRouteConfigDraft(binding.routeKey, { responseSchemaText: event.target.value })
-                                            }
-                                            rows={14}
-                                            spellCheck={false}
-                                            placeholder='{"type":"object","properties":{}}'
-                                          />
-                                        </label>
-                                        <label className="typewriterStructuredField">
-                                          Field docs (JSON map)
-                                          <textarea
-                                            value={draft.fieldDocsText}
-                                            onChange={(event) =>
-                                              updateLlmRouteConfigDraft(binding.routeKey, { fieldDocsText: event.target.value })
-                                            }
-                                            rows={14}
-                                            spellCheck={false}
-                                            placeholder='{"short_title":"2-6 words","miseenscene":"first-person sensory"}'
-                                          />
-                                        </label>
-                                      </div>
-
-                                      <div className="typewriterStructuredGrid">
-                                        <label className="typewriterStructuredField">
-                                          Example valid JSON
-                                          <textarea
-                                            value={draft.examplePayloadText}
-                                            onChange={(event) =>
-                                              updateLlmRouteConfigDraft(binding.routeKey, { examplePayloadText: event.target.value })
-                                            }
-                                            rows={12}
-                                            spellCheck={false}
-                                            placeholder='{"example":"Optional sample response"}'
-                                          />
-                                        </label>
-                                        <label className="typewriterStructuredField">
-                                          Output rules (one per line)
-                                          <textarea
-                                            value={draft.outputRulesText}
-                                            onChange={(event) =>
-                                              updateLlmRouteConfigDraft(binding.routeKey, { outputRulesText: event.target.value })
-                                            }
-                                            rows={12}
-                                            placeholder="short_title should fit the card UI"
-                                          />
-                                        </label>
-                                      </div>
-
-                                      <label className="typewriterStructuredField">
-                                        Runtime prompt preview synced into {binding.promptKey || 'this route only'} on save
-                                        <textarea
-                                          value={previewError || previewText}
-                                          readOnly
-                                          rows={14}
-                                          className="typewriterStructuredPreview"
+                                    ) : null}
+                                    <label className="typewriterNumericSetting">
+                                      <span>Model</span>
+                                      <select
+                                        value={runtimeRow.model}
+                                        onChange={(event) => updatePipeline(runtimeRow.key, { model: event.target.value })}
+                                      >
+                                        {options.map((optionId) => (
+                                          <option key={optionId} value={optionId}>
+                                            {optionId}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </label>
+                                    {runtimeRow.supportsCount ? (
+                                      <label className="typewriterNumericSetting">
+                                        <span>{runtimeRow.countLabel}</span>
+                                        <input
+                                          type="number"
+                                          min={runtimeRow.minCount}
+                                          max={runtimeRow.maxCount}
+                                          value={runtimeRow.countValue}
+                                          onChange={(event) =>
+                                            updatePipeline(runtimeRow.key, {
+                                              [runtimeRow.countProperty]: normalizeCountDraft(
+                                                event.target.value,
+                                                runtimeRow.countValue,
+                                                runtimeRow.minCount,
+                                                runtimeRow.maxCount
+                                              )
+                                            })
+                                          }
                                         />
                                       </label>
-                                    </section>
-                                  );
-                                })}
-                              </div>
-                            </details>
-                          ) : null}
+                                    ) : null}
+                                    {sharedUsageLabel ? (
+                                      <p className="typewriterControlRuntimeNote">
+                                        Shared pipeline. Changes also affect {sharedUsageLabel}.
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </section>
+                        ) : null}
 
-                          {route.directPromptEntries.length ? (
-                            <details className="typewriterControlDisclosure">
-                              <summary className="typewriterControlDisclosureSummary">
-                                <span>Direct prompts</span>
-                                <small>{route.directPromptEntries.length} template{route.directPromptEntries.length === 1 ? '' : 's'}</small>
-                              </summary>
-                              <div className="typewriterControlDisclosureBody">
-                                {route.directPromptEntries.map((promptEntry) => (
-                                  <section key={promptEntry.key} className="typewriterControlBlock">
-                                    <div className="typewriterControlBlockHeader">
-                                      <div>
-                                        <h4>{promptEntry.label}</h4>
-                                        <p>{promptEntry.description}</p>
-                                      </div>
-                                      <div className="typewriterControlBlockMeta">
-                                        <span>Prompt key: {promptEntry.key}</span>
-                                        <span>Version: {promptEntry.latestPrompt?.version || 'default'}</span>
-                                        <span>Updated: {formatDate(promptEntry.latestPrompt?.updatedAt)}</span>
-                                      </div>
+                        {selectedRoute.directPromptEntries.length ? (
+                          <section className="typewriterControlSection">
+                            <div className="typewriterControlSectionHeader">
+                              <div>
+                                <h4>Direct prompt templates</h4>
+                                <p>These prompts are edited separately from runtime model selection so the route workflow stays easier to scan.</p>
+                              </div>
+                            </div>
+                            {selectedRoute.directPromptEntries.map((promptEntry) => (
+                              <section key={promptEntry.key} className="typewriterControlBlock">
+                                <div className="typewriterControlBlockHeader">
+                                  <div>
+                                    <h4>{promptEntry.label}</h4>
+                                    <p>{promptEntry.description}</p>
+                                  </div>
+                                  <div className="typewriterControlBlockMeta">
+                                    <span>Prompt key: {promptEntry.key}</span>
+                                    <span>Version: {promptEntry.latestPrompt?.version || 'default'}</span>
+                                    <span>Updated: {formatDate(promptEntry.latestPrompt?.updatedAt)}</span>
+                                  </div>
+                                </div>
+                                <label className="typewriterStructuredField">
+                                  Prompt template
+                                  <textarea
+                                    value={promptDrafts[promptEntry.key] || ''}
+                                    onChange={(event) => updatePromptDraft(promptEntry.key, event.target.value)}
+                                    rows={10}
+                                    placeholder={`Enter prompt template for ${promptEntry.label}.`}
+                                  />
+                                </label>
+                              </section>
+                            ))}
+                          </section>
+                        ) : null}
+
+                        {selectedRoute.contractEntries.length ? (
+                          <section className="typewriterControlSection">
+                            <div className="typewriterControlSectionHeader">
+                              <div>
+                                <h4>Schemas and generated prompts</h4>
+                                <p>Schema-backed routes keep the contract editor here, separate from the route-flow and model controls.</p>
+                              </div>
+                            </div>
+                            {selectedRoute.contractEntries.map((binding) => {
+                              const draft = llmRouteConfigDrafts?.[binding.routeKey] || binding.draft || buildLlmConfigDraft(binding.config || {});
+                              let previewText = '';
+                              let previewError = '';
+                              try {
+                                previewText = buildStructuredPromptPreview(draft);
+                              } catch (err) {
+                                previewError = err.message || 'Preview unavailable.';
+                              }
+
+                              return (
+                                <section key={binding.routeKey} className="typewriterControlBlock">
+                                  <div className="typewriterControlBlockHeader">
+                                    <div>
+                                      <h4>{binding.label}</h4>
+                                      <p>{binding.method} {binding.routePath}</p>
                                     </div>
+                                    <div className="typewriterControlBlockMeta">
+                                      <span>Schema key: {binding.routeKey}</span>
+                                      <span>Live prompt target: {binding.promptKey || 'none'}</span>
+                                      <span>Prompt source: {getPromptSourceLabel(draft.promptMode)}</span>
+                                      <span>Version: {binding.config?.version || 'default'}</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="typewriterStructuredModeRow">
+                                    <label>
+                                      Prompt source
+                                      <select
+                                        value={draft.promptMode}
+                                        onChange={(event) =>
+                                          updateLlmRouteConfigDraft(binding.routeKey, { promptMode: event.target.value })
+                                        }
+                                      >
+                                        <option value="manual">Direct prompt text</option>
+                                        <option value="contract">Generated from schema</option>
+                                      </select>
+                                    </label>
+                                  </div>
+
+                                  {draft.promptMode === 'manual' ? (
                                     <label className="typewriterStructuredField">
-                                      Prompt template
+                                      Direct runtime prompt
                                       <textarea
-                                        value={promptDrafts[promptEntry.key] || ''}
-                                        onChange={(event) => updatePromptDraft(promptEntry.key, event.target.value)}
-                                        rows={10}
-                                        placeholder={`Enter prompt template for ${promptEntry.label}.`}
+                                        value={draft.promptTemplate}
+                                        onChange={(event) =>
+                                          updateLlmRouteConfigDraft(binding.routeKey, { promptTemplate: event.target.value })
+                                        }
+                                        rows={8}
+                                        placeholder="Enter the full prompt template used by this route."
                                       />
                                     </label>
-                                  </section>
-                                ))}
-                              </div>
-                            </details>
-                          ) : null}
+                                  ) : (
+                                    <label className="typewriterStructuredField">
+                                      Creative instructions
+                                      <textarea
+                                        value={draft.promptCore}
+                                        onChange={(event) =>
+                                          updateLlmRouteConfigDraft(binding.routeKey, { promptCore: event.target.value })
+                                        }
+                                        rows={8}
+                                        placeholder="Narrative instructions. The JSON contract block is generated below."
+                                      />
+                                    </label>
+                                  )}
 
-                          <div className="typewriterPromptButtons">
-                            <button
-                              type="button"
-                              onClick={() => handleSaveControlRoute(route)}
-                              disabled={loading || isSavingRoute || saving || savingPrompts || savingLlmConfigs}
-                            >
-                              {isSavingRoute ? 'Saving route...' : `Save ${route.label}`}
-                            </button>
-                          </div>
-                        </>
-                      ) : null}
-                    </article>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </section>
-          ))}
+                                  <div className="typewriterStructuredGrid">
+                                    <label className="typewriterStructuredField">
+                                      Response schema (JSON)
+                                      <textarea
+                                        value={draft.responseSchemaText}
+                                        onChange={(event) =>
+                                          updateLlmRouteConfigDraft(binding.routeKey, { responseSchemaText: event.target.value })
+                                        }
+                                        rows={14}
+                                        spellCheck={false}
+                                        placeholder='{"type":"object","properties":{}}'
+                                      />
+                                    </label>
+                                    <label className="typewriterStructuredField">
+                                      Field docs (JSON map)
+                                      <textarea
+                                        value={draft.fieldDocsText}
+                                        onChange={(event) =>
+                                          updateLlmRouteConfigDraft(binding.routeKey, { fieldDocsText: event.target.value })
+                                        }
+                                        rows={14}
+                                        spellCheck={false}
+                                        placeholder='{"short_title":"2-6 words","miseenscene":"first-person sensory"}'
+                                      />
+                                    </label>
+                                  </div>
+
+                                  <div className="typewriterStructuredGrid">
+                                    <label className="typewriterStructuredField">
+                                      Example valid JSON
+                                      <textarea
+                                        value={draft.examplePayloadText}
+                                        onChange={(event) =>
+                                          updateLlmRouteConfigDraft(binding.routeKey, { examplePayloadText: event.target.value })
+                                        }
+                                        rows={12}
+                                        spellCheck={false}
+                                        placeholder='{"example":"Optional sample response"}'
+                                      />
+                                    </label>
+                                    <label className="typewriterStructuredField">
+                                      Output rules (one per line)
+                                      <textarea
+                                        value={draft.outputRulesText}
+                                        onChange={(event) =>
+                                          updateLlmRouteConfigDraft(binding.routeKey, { outputRulesText: event.target.value })
+                                        }
+                                        rows={12}
+                                        placeholder="short_title should fit the card UI"
+                                      />
+                                    </label>
+                                  </div>
+
+                                  <label className="typewriterStructuredField">
+                                    Runtime prompt preview synced into {binding.promptKey || 'this route only'} on save
+                                    <textarea
+                                      value={previewError || previewText}
+                                      readOnly
+                                      rows={14}
+                                      className="typewriterStructuredPreview"
+                                    />
+                                  </label>
+                                </section>
+                              );
+                            })}
+                          </section>
+                        ) : null}
+
+                        {!selectedRoute.runtimeRows.length
+                          && !selectedRoute.directPromptEntries.length
+                          && !selectedRoute.contractEntries.length ? (
+                          <p className="typewriterPromptMeta">This route does not expose editable runtime, prompt, or schema settings yet.</p>
+                        ) : null}
+                      </section>
+                    ) : null}
+                  </div>
+                ) : null}
+              </section>
+            );
+          })}
         </div>
         {!visibleControlComponents.length ? (
           <p className="typewriterPromptMeta">No component is available for the current selection.</p>

@@ -234,6 +234,158 @@
   overflow: hidden;
 }
 
+.typewriterControlWorkspace {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.35fr);
+  gap: 0;
+  border-top: 1px solid rgba(94, 75, 59, 0.8);
+}
+
+.typewriterControlFlowPanel,
+.typewriterControlEditorPanel {
+  padding: 1rem;
+}
+
+.typewriterControlFlowPanel {
+  border-right: 1px solid rgba(94, 75, 59, 0.8);
+  background:
+    linear-gradient(180deg, rgba(23, 17, 13, 0.94), rgba(16, 12, 10, 0.88)),
+    radial-gradient(circle at top left, rgba(159, 118, 77, 0.08), transparent 42%);
+}
+
+.typewriterControlEditorPanel {
+  background:
+    linear-gradient(180deg, rgba(17, 12, 10, 0.92), rgba(12, 9, 8, 0.9)),
+    radial-gradient(circle at top right, rgba(159, 118, 77, 0.08), transparent 42%);
+}
+
+.typewriterControlPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.typewriterControlPanelHeader h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.typewriterControlPanelHeader p {
+  margin: 0.28rem 0 0;
+  color: #c3b39d;
+  font-size: 0.84rem;
+}
+
+.typewriterControlFlowList {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.typewriterControlFlowGroup {
+  margin-top: 0.35rem;
+  padding: 0.25rem 0;
+}
+
+.typewriterControlFlowGroup span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(139, 110, 82, 0.75);
+  background: rgba(53, 39, 29, 0.86);
+  color: #eddcc8;
+  font-size: 0.73rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.typewriterControlFlowCard {
+  width: 100%;
+  border: 1px solid rgba(112, 86, 62, 0.72);
+  border-radius: 12px;
+  background: rgba(18, 13, 10, 0.78);
+  color: inherit;
+  padding: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.typewriterControlFlowCard:hover {
+  border-color: #b78e67;
+  transform: translateY(-1px);
+}
+
+.typewriterControlFlowCard.isSelected {
+  border-color: #d0a178;
+  background:
+    linear-gradient(145deg, rgba(56, 39, 27, 0.92), rgba(25, 18, 14, 0.92)),
+    radial-gradient(circle at top right, rgba(190, 145, 98, 0.14), transparent 38%);
+  box-shadow: inset 0 0 0 1px rgba(208, 161, 120, 0.18);
+}
+
+.typewriterControlFlowCardHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.typewriterControlFlowStepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 999px;
+  border: 1px solid #8c6e55;
+  background: rgba(52, 37, 27, 0.86);
+  color: #f7ead7;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.typewriterControlFlowCardTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.typewriterControlFlowCardTitle strong {
+  display: block;
+}
+
+.typewriterControlFlowCardTitle small {
+  color: #bcae98;
+  font-size: 0.76rem;
+  word-break: break-word;
+}
+
+.typewriterControlFlowMode {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(134, 104, 77, 0.82);
+  background: rgba(45, 33, 25, 0.82);
+  color: #e7d9c6;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.typewriterControlFlowConnector {
+  width: 2px;
+  height: 0.95rem;
+  margin: 0.1rem 0 0.25rem 0.9rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(172, 132, 92, 0.7), rgba(95, 71, 50, 0.18));
+}
+
 .typewriterControlComponentHeader {
   display: flex;
   justify-content: space-between;
@@ -271,6 +423,13 @@
   padding: 0.9rem;
   display: grid;
   gap: 0.85rem;
+}
+
+.typewriterControlRuntimeNote {
+  margin: 0.7rem 0 0;
+  color: #bea992;
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .typewriterControlRouteCard {
@@ -808,12 +967,30 @@
   .typewriterControlBlockHeader,
   .typewriterControlRouteToggle,
   .typewriterControlSectionHeader,
-  .typewriterControlDisclosureSummary {
+  .typewriterControlDisclosureSummary,
+  .typewriterControlPanelHeader {
     flex-direction: column;
+  }
+
+  .typewriterControlFlowCardHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .typewriterControlFlowMode {
+    justify-self: start;
   }
 
   .typewriterControlBlockMeta {
     text-align: left;
+  }
+
+  .typewriterControlWorkspace {
+    grid-template-columns: 1fr;
+  }
+
+  .typewriterControlFlowPanel {
+    border-right: none;
+    border-bottom: 1px solid rgba(94, 75, 59, 0.8);
   }
 
   .typewriterControlRuntimeGrid {

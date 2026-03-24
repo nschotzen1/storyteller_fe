@@ -1,42 +1,40 @@
 import React from 'react';
 
-// Constants that might be needed by Keyboard if not passed (e.g. for styling or layout if specific)
-// For now, assuming all necessary data like SPECIAL_KEY_TEXT comes via props or is handled in callbacks
+const DEFAULT_TEXT_KEY_TEXTURE = '/textures/keys/blank_rect_horizontal_1.png';
 
 const Keyboard = ({
-  keys, // Full array of key strings: ['Q', ..., 'THE XEROFAG']
-  keyTextures, // Array of texture URLs corresponding to `keys`
+  keys,
+  keyTextures,
   storytellerSlots = [],
+  textualTypewriterKeys = [],
   lastPressedKey,
   pressedStorytellerKey,
-  ghostPressedKey, // New prop for ghost typing
+  ghostPressedKey,
   typingAllowed,
-  onKeyPress, // (keyText: string) => void
-  onStorytellerPress, // (slot) => void
-  onXerofagPress, // () => void
-  onSpacebarPress, // () => void
-  playEndOfPageSound, // () => void;
-  // playKeySound and playXerofagHowl are used within the onKeyPress, onXerofagPress handlers
-  // passed from TypewriterFramework, so they don't need to be props for Keyboard itself,
-  // unless Keyboard calls them directly under some new condition.
-  // Based on the prompt, the functions like onKeyPress will call playKeySound.
-  // Let's assume playEndOfPageSound is for when typing is not allowed.
-  // playKeySound and playXerofagHowl will be invoked by the callback props.
-
-  // Constants from TypewriterFramework that define key layout
-  // These could be passed as props or defined here if static
-  // For now, assuming keys prop contains all keys in order.
-  // The slicing for rows will be done here.
+  onKeyPress,
+  onStorytellerPress,
+  onTextKeyPress,
+  onSpacebarPress,
+  playEndOfPageSound,
   KEY_TILT_RANDOM_MAX,
   KEY_TILT_RANDOM_MIN,
   KEY_OFFSET_Y_RANDOM_MAX,
   KEY_OFFSET_Y_RANDOM_MIN,
-  SPECIAL_KEY_TEXT,
 }) => {
   const getStorytellerSlotForKey = (key) =>
     storytellerSlots.find((slot) => slot.slotKey === key) || null;
 
-  const getKeyAltText = (key, storytellerSlot) => {
+  const getRandomizedWrapperStyle = () => {
+    const offsetYMax = KEY_OFFSET_Y_RANDOM_MAX !== undefined ? KEY_OFFSET_Y_RANDOM_MAX : 1;
+    const offsetYMin = KEY_OFFSET_Y_RANDOM_MIN !== undefined ? KEY_OFFSET_Y_RANDOM_MIN : -1;
+    const tiltMax = KEY_TILT_RANDOM_MAX !== undefined ? KEY_TILT_RANDOM_MAX : 0.7;
+    const tiltMin = KEY_TILT_RANDOM_MIN !== undefined ? KEY_TILT_RANDOM_MIN : -0.7;
+    const offset = Math.floor(Math.random() * (offsetYMax - offsetYMin + 1)) + offsetYMin;
+    const tilt = (Math.random() * (tiltMax - tiltMin) + tiltMin).toFixed(2);
+    return { '--offset-y': `${offset}px`, '--tilt': `${tilt}deg` };
+  };
+
+  const getStorytellerAltText = (key, storytellerSlot) => {
     if (!storytellerSlot) {
       return `Key ${key}`;
     }
@@ -46,30 +44,20 @@ const Keyboard = ({
     return `Blank storyteller slot ${storytellerSlot.slotIndex + 1}`;
   };
 
-  const generateRow = (rowKeys) => (
+  const renderStandardRow = (rowKeys) => (
     <div className="key-row">
-      {rowKeys.map((key) => { // Removed idx from map as globalIdx can be found by key string
-        const globalIdx = keys.findIndex(k => k === key);
+      {rowKeys.map((key) => {
+        const globalIdx = keys.findIndex((entry) => entry === key);
         const texture = keyTextures[globalIdx];
         const storytellerSlot = getStorytellerSlotForKey(key);
-        // Ensure random calculations are done if these props are passed, otherwise use defaults or simplify
-        const offsetYMax = KEY_OFFSET_Y_RANDOM_MAX !== undefined ? KEY_OFFSET_Y_RANDOM_MAX : 1; // Default to 1 if not provided
-        const offsetYMin = KEY_OFFSET_Y_RANDOM_MIN !== undefined ? KEY_OFFSET_Y_RANDOM_MIN : -1; // Default to -1 if not provided
-        const tiltMax = KEY_TILT_RANDOM_MAX !== undefined ? KEY_TILT_RANDOM_MAX : 0.7; // Default to 0.7 if not provided
-        const tiltMin = KEY_TILT_RANDOM_MIN !== undefined ? KEY_TILT_RANDOM_MIN : -0.7; // Default to -0.7 if not provided
-
-        const offset = Math.floor(Math.random() * (offsetYMax - offsetYMin + 1)) + offsetYMin;
-        const tilt = (Math.random() * (tiltMax - tiltMin) + tiltMin).toFixed(2);
-
-        const isSpecialKey = key === SPECIAL_KEY_TEXT;
-        const altText = getKeyAltText(key, storytellerSlot);
+        const altText = getStorytellerAltText(key, storytellerSlot);
         const isStorytellerPressed = storytellerSlot?.slotKey === pressedStorytellerKey;
 
         return (
           <div
             key={storytellerSlot?.slotKey || key}
             className={`typewriter-key-wrapper ${storytellerSlot ? 'storyteller-slot-key' : ''} ${storytellerSlot?.filled ? 'storyteller-slot-filled' : ''} ${storytellerSlot?.filled ? 'storyteller-slot-pressable' : ''} ${lastPressedKey === key || isStorytellerPressed ? 'key-pressed' : ''} ${isStorytellerPressed ? 'storyteller-key-held' : ''} ${ghostPressedKey === key ? 'ghost-key-glow' : ''} ${!typingAllowed && !storytellerSlot ? 'key-disabled' : ''}`}
-            style={{ '--offset-y': `${offset}px`, '--tilt': `${tilt}deg` }}
+            style={getRandomizedWrapperStyle()}
             title={storytellerSlot?.storytellerName || ''}
             onClick={() => {
               if (storytellerSlot) {
@@ -83,42 +71,69 @@ const Keyboard = ({
                 onStorytellerPress(storytellerSlot);
                 return;
               }
+
               if (!typingAllowed) {
-                playEndOfPageSound(); // This prop is used here
+                playEndOfPageSound();
                 return;
               }
-              if (isSpecialKey) {
-                onXerofagPress();
-              } else {
-                onKeyPress(key);
-              }
+
+              onKeyPress(key);
             }}
           >
-            {texture && (
+            {texture ? (
               <img
                 src={texture}
                 alt={altText}
                 className={`typewriter-key-img ${!typingAllowed && !storytellerSlot ? 'key-disabled-img' : ''}`}
               />
-            )}
+            ) : null}
           </div>
         );
       })}
     </div>
   );
 
-  // Determine row slices based on the keys array structure from TypewriterFramework
-  // Layout includes one storyteller slot appended to each row.
-  // This needs to be robust if `keys` structure changes.
+  const renderTextualKeyRow = () => {
+    if (!textualTypewriterKeys.length) return null;
+
+    return (
+      <div className="key-row typewriter-text-key-row" aria-label="Textual typewriter keys">
+        {textualTypewriterKeys.map((typewriterKey, index) => (
+          <div
+            key={typewriterKey.id || `${typewriterKey.keyText}-${index}`}
+            className={`typewriter-key-wrapper typewriter-text-key-wrapper ${lastPressedKey === typewriterKey.keyText ? 'key-pressed' : ''} ${!typingAllowed ? 'key-disabled' : ''}`}
+            style={getRandomizedWrapperStyle()}
+            title={typewriterKey.description || typewriterKey.entityName || typewriterKey.keyText}
+            onClick={() => {
+              if (!typingAllowed) {
+                playEndOfPageSound();
+                return;
+              }
+              onTextKeyPress?.(typewriterKey);
+            }}
+          >
+            <img
+              src={typewriterKey.textureUrl || DEFAULT_TEXT_KEY_TEXTURE}
+              alt={`Key ${typewriterKey.keyText}`}
+              className={`typewriter-key-img ${!typingAllowed ? 'key-disabled-img' : ''}`}
+            />
+            <span className="typewriter-text-key-label">{typewriterKey.keyText}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const row1Keys = keys.slice(0, 11);
   const row2Keys = keys.slice(11, 21);
-  const row3Keys = keys.slice(21); // Contains storyteller slot and THE XEROFAG
+  const row3Keys = keys.slice(21);
 
   return (
     <div className="keyboard-plate">
-      {generateRow(row1Keys)}
-      {generateRow(row2Keys)}
-      {generateRow(row3Keys)}
+      {renderStandardRow(row1Keys)}
+      {renderStandardRow(row2Keys)}
+      {renderStandardRow(row3Keys)}
+      {renderTextualKeyRow()}
       <div className="key-row spacebar-row">
         <div
           className={`spacebar-wrapper ${lastPressedKey === ' ' ? 'key-pressed' : ''} ${ghostPressedKey === ' ' ? 'ghost-key-glow' : ''} ${!typingAllowed ? 'key-disabled' : ''}`}
@@ -131,7 +146,7 @@ const Keyboard = ({
           }}
         >
           <img
-            src="/textures/keys/spacebar.png" // Consider making this texture path a prop if it can vary
+            src="/textures/keys/spacebar.png"
             alt="Spacebar"
             className={`spacebar-img ${!typingAllowed ? 'key-disabled-img' : ''}`}
           />

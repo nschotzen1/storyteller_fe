@@ -116,6 +116,50 @@ export const fetchShouldAllowXerofag = async (sessionId, currentNarrative, candi
   }
 };
 
+export const fetchShouldAllowTypewriterKey = async (sessionId, currentNarrative, options = {}) => {
+  if (!sessionId || typeof currentNarrative !== 'string') {
+    return { allowed: false, error: { message: 'Missing sessionId or currentNarrative' } };
+  }
+  const payload = { sessionId, currentNarrative };
+  if (typeof options?.keyId === 'string' && options.keyId.trim()) {
+    payload.keyId = options.keyId.trim();
+  }
+  if (typeof options?.keyText === 'string' && options.keyText.trim()) {
+    payload.keyText = options.keyText.trim();
+  }
+  if (typeof options?.candidateNarrative === 'string' && options.candidateNarrative.trim()) {
+    payload.candidateNarrative = options.candidateNarrative;
+  }
+  if (options?.playerId) {
+    payload.playerId = options.playerId;
+  }
+  if (options?.mocked_api_calls !== undefined) {
+    payload.mocked_api_calls = options.mocked_api_calls;
+  }
+
+  try {
+    const response = await fetch(`${SERVER}/api/typewriter/keys/shouldAllow`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      console.error(`API error in fetchShouldAllowTypewriterKey: ${response.status} ${response.statusText}`);
+      return {
+        allowed: false,
+        error: { message: `API error: ${response.status} ${response.statusText}`, status: response.status }
+      };
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Network error fetching shouldAllowTypewriterKey:', error);
+    return {
+      allowed: false,
+      error: { message: error.message }
+    };
+  }
+};
+
 // Use axios or fetch—here’s a fetch version for clarity:
 export async function fetchShouldGenerateContinuation(currentText, latestAddition, latestPauseSeconds, lastGhostwriterWordCount) {
   if (!latestAddition) {

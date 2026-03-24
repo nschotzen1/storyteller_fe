@@ -13,7 +13,7 @@ import '@testing-library/jest-dom';
 
 vi.mock('./apiService', () => ({
   fetchNextFilmImage: vi.fn(),
-  fetchShouldAllowXerofag: vi.fn().mockResolvedValue({ allowed: true }),
+  fetchShouldAllowTypewriterKey: vi.fn().mockResolvedValue({ allowed: true, appendedText: 'The Xerofag' }),
   fetchShouldCreateStorytellerKey: vi.fn(),
   fetchStorytellerTypewriterReply: vi.fn(),
   fetchTypewriterReply: vi.fn().mockResolvedValue({ data: { content: 'mock AI reply' }, error: null }),
@@ -36,7 +36,7 @@ vi.mock('./utils', async () => {
 
 import {
   fetchNextFilmImage,
-  fetchShouldAllowXerofag,
+  fetchShouldAllowTypewriterKey,
   fetchShouldCreateStorytellerKey,
   fetchStorytellerTypewriterReply,
   fetchTypewriterReply,
@@ -134,9 +134,9 @@ describe('TypewriterFramework integration', () => {
     localStorageMock.clear();
     localStorageMock.setItem('sessionId', 'test-session-id-123');
     fetchNextFilmImage.mockResolvedValue({ data: { image_url: 'default_mock_image.png' }, error: null });
-    fetchShouldAllowXerofag.mockResolvedValue({ allowed: true });
+    fetchShouldAllowTypewriterKey.mockResolvedValue({ allowed: true, appendedText: 'The Xerofag' });
     fetchShouldCreateStorytellerKey.mockResolvedValue({
-      data: { slots: buildStorytellerSlotPayload(), entityKeys: [] },
+      data: { slots: buildStorytellerSlotPayload(), typewriterKeys: [] },
       error: null
     });
     fetchStorytellerTypewriterReply.mockResolvedValue({ data: { sequence: [] }, error: null });
@@ -300,10 +300,12 @@ describe('TypewriterFramework integration', () => {
     fireEvent.click(screen.getByAltText('Key THE XEROFAG').closest('.typewriter-key-wrapper'));
 
     await waitFor(() => {
-      expect(fetchShouldAllowXerofag).toHaveBeenCalledWith(
+      expect(fetchShouldAllowTypewriterKey).toHaveBeenCalledWith(
         'test-session-id-123',
         'H ',
-        'H The Xerofag'
+        expect.objectContaining({
+          keyText: 'THE XEROFAG'
+        })
       );
     });
 
@@ -316,7 +318,7 @@ describe('TypewriterFramework integration', () => {
   });
 
   test('xerofag key does nothing when the backend rejects the term', async () => {
-    fetchShouldAllowXerofag.mockResolvedValueOnce({ allowed: false });
+    fetchShouldAllowTypewriterKey.mockResolvedValueOnce({ allowed: false });
     const { container } = render(<TypewriterFramework />);
 
     clickKey('H');
@@ -327,7 +329,7 @@ describe('TypewriterFramework integration', () => {
     fireEvent.click(screen.getByAltText('Key THE XEROFAG').closest('.typewriter-key-wrapper'));
 
     await waitFor(() => {
-      expect(fetchShouldAllowXerofag).toHaveBeenCalled();
+      expect(fetchShouldAllowTypewriterKey).toHaveBeenCalled();
     });
 
     act(() => {
@@ -353,7 +355,7 @@ describe('TypewriterFramework integration', () => {
             description: 'Weathered brass and smoky enamel.',
           },
         }),
-        entityKeys: [],
+        typewriterKeys: [],
       },
       error: null
     });
@@ -398,7 +400,7 @@ describe('TypewriterFramework integration', () => {
             description: 'Weathered brass and smoky enamel.',
           },
         }),
-        entityKeys: [],
+        typewriterKeys: [],
       },
       error: null
     });
@@ -414,22 +416,28 @@ describe('TypewriterFramework integration', () => {
           { action: 'pause', delay: 10 },
           { action: 'fade', to_text: '', phase: 1, delay: 10, start_delay: 0 },
         ],
-        entityKey: {
-          id: 'entity-1',
+        typewriterKey: {
+          id: 'key-1',
+          entityId: 'entity-1',
           entityName: 'Buraha Light-Wake',
           keyText: 'Buraha Light',
-          summary: 'A slow intelligence hiding inside the sea-lights.',
+          insertText: 'Buraha Light',
+          description: 'A slow intelligence hiding inside the sea-lights.',
           storytellerId: 'storyteller-1',
           storytellerName: 'Aster Vell',
+          textureUrl: '/textures/keys/blank_rect_horizontal_1.png',
         },
-        entityKeys: [
+        typewriterKeys: [
           {
-            id: 'entity-1',
+            id: 'key-1',
+            entityId: 'entity-1',
             entityName: 'Buraha Light-Wake',
             keyText: 'Buraha Light',
-            summary: 'A slow intelligence hiding inside the sea-lights.',
+            insertText: 'Buraha Light',
+            description: 'A slow intelligence hiding inside the sea-lights.',
             storytellerId: 'storyteller-1',
             storytellerName: 'Aster Vell',
+            textureUrl: '/textures/keys/blank_rect_horizontal_1.png',
           },
         ],
       },
@@ -459,8 +467,7 @@ describe('TypewriterFramework integration', () => {
     expect(storytellerKey).toHaveClass('storyteller-key-held');
 
     await waitFor(() => {
-      expect(screen.getByText('Buraha Light')).toBeInTheDocument();
-      expect(screen.getByText('Buraha Light-Wake')).toBeInTheDocument();
+      expect(screen.getByAltText('Key Buraha Light')).toBeInTheDocument();
     });
 
     const storytellerReleased = await advanceUntil(

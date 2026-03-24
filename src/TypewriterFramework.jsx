@@ -8,7 +8,7 @@ import OrreryComponent from './OrreryComponent.jsx';
 import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines, playGhostWriterSound, ambientSoundManager, playPreGhostSound, fetchAndPlayElevenLabsTTS, playStorytellerKeyPressSound } from './utils.js';
 import {
   fetchNextFilmImage,
-  fetchShouldAllowXerofag,
+  fetchShouldAllowTypewriterKey,
   fetchShouldCreateStorytellerKey,
   fetchShouldGenerateContinuation,
   fetchStorytellerTypewriterReply,
@@ -175,46 +175,89 @@ const createInitialStorytellerSlots = () =>
     description: ''
   }));
 
-const normalizeStoryEntityKey = (entityKey) => {
-  if (!entityKey || typeof entityKey !== 'object') return null;
-  const entityName = typeof entityKey.entityName === 'string'
-    ? entityKey.entityName.trim()
-    : typeof entityKey.name === 'string'
-      ? entityKey.name.trim()
+const BUILTIN_XEROFAG_TYPEWRITER_KEY = {
+  id: 'builtin:xerofag',
+  entityId: '',
+  entityName: 'The Xerofag',
+  keyText: SPECIAL_KEY_TEXT,
+  insertText: SPECIAL_KEY_INSERT_TEXT.trim(),
+  description: 'The Xerofag are a group of undead canines.',
+  summary: 'The Xerofag are a group of undead canines.',
+  sourceType: 'builtin',
+  storytellerId: '',
+  storytellerName: '',
+  textureUrl: '/textures/keys/blank_rect_horizontal_1.png',
+  verificationKind: 'typewriter_key_verification',
+  sortOrder: 0,
+};
+
+const createInitialTypewriterTextKeys = () => ([{ ...BUILTIN_XEROFAG_TYPEWRITER_KEY }]);
+
+const normalizeTypewriterTextKey = (typewriterKey) => {
+  if (!typewriterKey || typeof typewriterKey !== 'object') return null;
+  const entityName = typeof typewriterKey.entityName === 'string'
+    ? typewriterKey.entityName.trim()
+    : typeof typewriterKey.name === 'string'
+      ? typewriterKey.name.trim()
       : '';
-  const keyText = typeof entityKey.keyText === 'string'
-    ? entityKey.keyText.trim()
-    : typeof entityKey.typewriterKeyText === 'string'
-      ? entityKey.typewriterKeyText.trim()
+  const keyText = typeof typewriterKey.keyText === 'string'
+    ? typewriterKey.keyText.trim()
+    : typeof typewriterKey.typewriterKeyText === 'string'
+      ? typewriterKey.typewriterKeyText.trim()
       : '';
-  const id = typeof entityKey.id === 'string'
-    ? entityKey.id.trim()
-    : typeof entityKey._id === 'string'
-      ? entityKey._id.trim()
+  const id = typeof typewriterKey.id === 'string'
+    ? typewriterKey.id.trim()
+    : typeof typewriterKey._id === 'string'
+      ? typewriterKey._id.trim()
       : '';
   if (!entityName && !keyText && !id) return null;
+  const description = typeof typewriterKey.description === 'string'
+    ? typewriterKey.description.trim()
+    : typeof typewriterKey.summary === 'string'
+      ? typewriterKey.summary.trim()
+      : '';
   return {
     id,
+    entityId: typeof typewriterKey.entityId === 'string' ? typewriterKey.entityId.trim() : '',
     entityName: entityName || keyText || 'Unnamed entity',
     keyText: keyText || entityName || 'Hidden Omen',
-    summary: typeof entityKey.summary === 'string' ? entityKey.summary.trim() : '',
-    storytellerId: typeof entityKey.storytellerId === 'string' ? entityKey.storytellerId.trim() : '',
-    storytellerName: typeof entityKey.storytellerName === 'string' ? entityKey.storytellerName.trim() : '',
+    insertText: typeof typewriterKey.insertText === 'string' && typewriterKey.insertText.trim()
+      ? typewriterKey.insertText.trim()
+      : keyText || entityName || 'Hidden Omen',
+    description,
+    summary: description,
+    sourceType: typeof typewriterKey.sourceType === 'string' ? typewriterKey.sourceType.trim() : '',
+    storytellerId: typeof typewriterKey.storytellerId === 'string' ? typewriterKey.storytellerId.trim() : '',
+    storytellerName: typeof typewriterKey.storytellerName === 'string' ? typewriterKey.storytellerName.trim() : '',
+    textureUrl: typeof typewriterKey.textureUrl === 'string' && typewriterKey.textureUrl.trim()
+      ? typewriterKey.textureUrl.trim()
+      : '/textures/keys/blank_rect_horizontal_1.png',
+    verificationKind: typeof typewriterKey.verificationKind === 'string' && typewriterKey.verificationKind.trim()
+      ? typewriterKey.verificationKind.trim()
+      : 'typewriter_key_verification',
+    sortOrder: Number.isFinite(Number(typewriterKey.sortOrder)) ? Number(typewriterKey.sortOrder) : 100,
   };
 };
 
-const mergeStoryEntityKeys = (currentKeys = [], incomingKeys = []) => {
+const mergeTypewriterTextKeys = (currentKeys = [], incomingKeys = []) => {
   const merged = [];
   const seen = new Set();
   [...incomingKeys, ...currentKeys].forEach((candidate) => {
-    const normalized = normalizeStoryEntityKey(candidate);
+    const normalized = normalizeTypewriterTextKey(candidate);
     if (!normalized) return;
-    const identity = normalized.id || `${normalized.keyText}::${normalized.entityName}`;
+    const identity = normalized.keyText.toLowerCase();
     if (seen.has(identity)) return;
     seen.add(identity);
     merged.push(normalized);
   });
-  return merged.slice(0, 6);
+  return merged
+    .sort((left, right) => {
+      if (left.sortOrder !== right.sortOrder) {
+        return left.sortOrder - right.sortOrder;
+      }
+      return left.keyText.localeCompare(right.keyText);
+    })
+    .slice(0, 8);
 };
 
 const countWordsInNarrative = (text = '') => {
@@ -900,7 +943,7 @@ const formatTimingWithMs = (value) => {
 const keys = [
   'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', STORYTELLER_SLOT_HORIZONTAL_KEY,
   'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', STORYTELLER_SLOT_VERTICAL_KEY,
-  'Z', 'X', 'C', 'V', 'B', 'N', 'M', STORYTELLER_SLOT_RECT_HORIZONTAL_KEY, 'THE XEROFAG'
+  'Z', 'X', 'C', 'V', 'B', 'N', 'M', STORYTELLER_SLOT_RECT_HORIZONTAL_KEY
 ];
 
 const TypewriterFramework = (props) => {
@@ -952,11 +995,11 @@ const TypewriterFramework = (props) => {
   // --- Other State ---
   const [keyTextures, setKeyTextures] = useState(() => keys.map(getInitialKeyTexture));
   const [storytellerSlots, setStorytellerSlots] = useState(() => createInitialStorytellerSlots());
-  const [storyEntityKeys, setStoryEntityKeys] = useState([]);
+  const [typewriterTextKeys, setTypewriterTextKeys] = useState(() => createInitialTypewriterTextKeys());
   const [activeStorytellerPress, setActiveStorytellerPress] = useState(null);
   const [ghostPressedKey, setGhostPressedKey] = useState(null);
   const [preGhostAtmosphere, setPreGhostAtmosphere] = useState(false);
-  const [isXerofagInspectionPending, setIsXerofagInspectionPending] = useState(false);
+  const [isTextKeyVerificationPending, setIsTextKeyVerificationPending] = useState(false);
   // lastUserInputTime, responseQueued, lastGeneratedLength are now in ghostwriterState
   // Level: 0 = empty, 3 = full (ready for page turn)
   const [leverLevel, setLeverLevel] = useState(0);
@@ -1017,6 +1060,12 @@ const TypewriterFramework = (props) => {
       const restoredFragment = typeof data?.fragment === 'string'
         ? data.fragment
         : (typeof data?.initialFragment === 'string' ? data.initialFragment : null);
+      const returnedTypewriterKeys = Array.isArray(data?.typewriterKeys)
+        ? data.typewriterKeys
+        : Array.isArray(data?.entityKeys)
+          ? data.entityKeys
+          : [];
+      setTypewriterTextKeys((prev) => mergeTypewriterTextKeys(prev, returnedTypewriterKeys));
 
       if (error || typeof restoredFragment !== 'string') {
         setIsSessionReady(true);
@@ -1038,9 +1087,6 @@ const TypewriterFramework = (props) => {
         type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH,
         payload: restoredFragment.length
       });
-      if (Array.isArray(data?.entityKeys)) {
-        setStoryEntityKeys(mergeStoryEntityKeys([], data.entityKeys));
-      }
       setIsSessionReady(true);
     };
 
@@ -1067,7 +1113,7 @@ const TypewriterFramework = (props) => {
   // --- Derived ---
   const { text: pageText, filmBgUrl: pageBg } = pages[currentPage] || {};
   const visibleGhostText = `${typingState.currentGhostText || ''}${typingState.sequenceUserText || ''}`;
-  const typingInteractionAllowed = typingAllowed && !isXerofagInspectionPending;
+  const typingInteractionAllowed = typingAllowed && !isTextKeyVerificationPending;
   const displayedKeyTextures = keys.map((key, index) => {
     const storytellerSlot = storytellerSlots.find((slot) => slot.slotKey === key);
     if (storytellerSlot) {
@@ -1083,22 +1129,6 @@ const TypewriterFramework = (props) => {
     && !pageChangeInProgress
     && typingInteractionAllowed;
 
-  const buildXerofagCandidateNarrative = useCallback((currentNarrative = '') => {
-    const baseText = typeof currentNarrative === 'string' ? currentNarrative : '';
-    const candidateTerm = SPECIAL_KEY_INSERT_TEXT.trim();
-    if (!baseText) return candidateTerm;
-    return /\s$/.test(baseText)
-      ? `${baseText}${candidateTerm}`
-      : `${baseText} ${candidateTerm}`;
-  }, []);
-
-  const buildXerofagInsertText = useCallback((currentNarrative = '') => {
-    const baseText = typeof currentNarrative === 'string' ? currentNarrative : '';
-    const candidateNarrative = buildXerofagCandidateNarrative(baseText);
-    const appendedText = candidateNarrative.slice(baseText.length);
-    return `${appendedText} `;
-  }, [buildXerofagCandidateNarrative]);
-
   const getCurrentNarrativeSnapshot = useCallback(() => (
     `${pageText || ''}${visibleGhostText || ''}${typingState.inputBuffer || ''}`
   ), [
@@ -1113,7 +1143,7 @@ const TypewriterFramework = (props) => {
     storytellerCheckInFlightRef.current = false;
     lastStorytellerCheckIntervalRef.current = -1;
     setStorytellerSlots(createInitialStorytellerSlots());
-    setStoryEntityKeys([]);
+    setTypewriterTextKeys(createInitialTypewriterTextKeys());
     setActiveStorytellerPress(null);
     setKeyTextures(keys.map(getInitialKeyTexture));
   }, [sessionId]);
@@ -1139,8 +1169,13 @@ const TypewriterFramework = (props) => {
           return nextSlot ? { ...slot, ...nextSlot } : slot;
         })
       );
-      if (Array.isArray(data.entityKeys)) {
-        setStoryEntityKeys((prev) => mergeStoryEntityKeys(prev, data.entityKeys));
+      const returnedTypewriterKeys = Array.isArray(data.typewriterKeys)
+        ? data.typewriterKeys
+        : Array.isArray(data.entityKeys)
+          ? data.entityKeys
+          : [];
+      if (returnedTypewriterKeys.length) {
+        setTypewriterTextKeys((prev) => mergeTypewriterTextKeys(prev, returnedTypewriterKeys));
       }
       lastStorytellerCheckIntervalRef.current = Math.max(
         lastStorytellerCheckIntervalRef.current,
@@ -1834,11 +1869,13 @@ const TypewriterFramework = (props) => {
       ) {
         dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: true });
         dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
-        fetchShouldGenerateContinuation(
-          fullText,
-          addition,
-          pauseSeconds,
-          ghostwriterState.lastGhostwriterWordCount // <-- pass this to the API
+        Promise.resolve(
+          fetchShouldGenerateContinuation(
+            fullText,
+            addition,
+            pauseSeconds,
+            ghostwriterState.lastGhostwriterWordCount
+          )
         )
           .then(shouldGenerateData => {
             // On server, shouldGenerateData.shouldGenerate (no .data)
@@ -1969,8 +2006,9 @@ const TypewriterFramework = (props) => {
     playKeySound();
   };
 
-  const handleXerofagKeyPress = async () => {
+  const handleTypewriterTextKeyPress = async (typewriterKey) => {
     if (!typingInteractionAllowed || !sessionId) return;
+    if (!typewriterKey?.keyText) return;
     ensureAmbientStarted();
     const currentNarrative = getCurrentNarrativeSnapshot();
     if (!currentNarrative.trim()) return;
@@ -1979,22 +2017,31 @@ const TypewriterFramework = (props) => {
     } else if (typingState.currentGhostText) {
       commitGhostText();
     }
-    const candidateNarrative = buildXerofagCandidateNarrative(currentNarrative);
-    const insertText = buildXerofagInsertText(currentNarrative);
 
-    setIsXerofagInspectionPending(true);
+    setIsTextKeyVerificationPending(true);
     try {
-      const verdict = await fetchShouldAllowXerofag(sessionId, currentNarrative, candidateNarrative);
+      const verdict = await fetchShouldAllowTypewriterKey(sessionId, currentNarrative, {
+        keyId: typewriterKey.id,
+        keyText: typewriterKey.keyText
+      });
       if (!verdict?.allowed) return;
-      dispatchTyping({ type: typingActionTypes.ADD_TO_INPUT_BUFFER, payload: insertText });
-      dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: SPECIAL_KEY_TEXT.toUpperCase() });
+      const appendedText = typeof verdict?.appendedText === 'string'
+        ? verdict.appendedText
+        : '';
+      if (!appendedText) return;
+      dispatchTyping({ type: typingActionTypes.ADD_TO_INPUT_BUFFER, payload: appendedText });
+      dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: typewriterKey.keyText });
       dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
-      playXerofagHowl();
+      if (typewriterKey.keyText === SPECIAL_KEY_TEXT) {
+        playXerofagHowl();
+      } else {
+        playKeySound();
+      }
     } catch (error) {
-      console.error('Error triggering Xerofag inspection:', error);
+      console.error('Error triggering typewriter text key verification:', error);
     } finally {
-      setIsXerofagInspectionPending(false);
+      setIsTextKeyVerificationPending(false);
     }
   };
 
@@ -2037,10 +2084,15 @@ const TypewriterFramework = (props) => {
         return;
       }
 
-      if (Array.isArray(response.data.entityKeys)) {
-        setStoryEntityKeys((prev) => mergeStoryEntityKeys(prev, response.data.entityKeys));
-      } else if (response.data.entityKey) {
-        setStoryEntityKeys((prev) => mergeStoryEntityKeys(prev, [response.data.entityKey]));
+      const returnedTypewriterKeys = Array.isArray(response.data.typewriterKeys)
+        ? response.data.typewriterKeys
+        : Array.isArray(response.data.entityKeys)
+          ? response.data.entityKeys
+          : response.data.typewriterKey || response.data.entityKey
+            ? [response.data.typewriterKey || response.data.entityKey]
+            : [];
+      if (returnedTypewriterKeys.length) {
+        setTypewriterTextKeys((prev) => mergeTypewriterTextKeys(prev, returnedTypewriterKeys));
       }
 
       const sequenceStarted = applyTypewriterReply(response.data, pageText, {
@@ -2291,7 +2343,7 @@ const TypewriterFramework = (props) => {
         scrollAreaHeight={scrollAreaHeight}
         neededHeight={neededHeight}
         SLIDE_DURATION_MS={SLIDE_DURATION_MS}
-        SPECIAL_KEY_TEXT={SPECIAL_KEY_TEXT}
+        SPECIAL_KEY_TEXT={SPECIAL_KEY_INSERT_TEXT.trim()}
         // Pass all necessary animation/style constants used by PaperDisplay and its renderSlideWrapper
         FILM_SLIDE_WRAPPER_WIDTH={FILM_SLIDE_WRAPPER_WIDTH}
         FILM_SLIDE_WRAPPER_Z_INDEX={FILM_SLIDE_WRAPPER_Z_INDEX}
@@ -2322,32 +2374,18 @@ const TypewriterFramework = (props) => {
         />
       </div>
 
-      {storyEntityKeys.length > 0 ? (
-        <div className="story-entity-key-rail" aria-label="Story entities">
-          {storyEntityKeys.map((entityKey, index) => (
-            <div
-              key={entityKey.id || `${entityKey.keyText}-${index}`}
-              className="story-entity-key-chip"
-              title={entityKey.summary || entityKey.entityName}
-            >
-              <span className="story-entity-key-label">{entityKey.keyText}</span>
-              <span className="story-entity-key-name">{entityKey.entityName}</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
       <Keyboard
         keys={keys}
         keyTextures={displayedKeyTextures}
         storytellerSlots={storytellerSlots}
+        textualTypewriterKeys={typewriterTextKeys}
         lastPressedKey={lastPressedKey}
         pressedStorytellerKey={activeStorytellerPress?.slotKey || null}
         ghostPressedKey={ghostPressedKey}
         typingAllowed={typingInteractionAllowed}
         onKeyPress={handleRegularKeyPress}
         onStorytellerPress={handleStorytellerPress}
-        onXerofagPress={handleXerofagKeyPress}
+        onTextKeyPress={handleTypewriterTextKeyPress}
         onSpacebarPress={handleSpacebarPress}
         playEndOfPageSound={playEndOfPageSound} // Pass the function directly
         // playKeySound and playXerofagHowl are called within the handlers above
@@ -2356,7 +2394,6 @@ const TypewriterFramework = (props) => {
         KEY_TILT_RANDOM_MIN={KEY_TILT_RANDOM_MIN}
         KEY_OFFSET_Y_RANDOM_MAX={KEY_OFFSET_Y_RANDOM_MAX}
         KEY_OFFSET_Y_RANDOM_MIN={KEY_OFFSET_Y_RANDOM_MIN}
-        SPECIAL_KEY_TEXT={SPECIAL_KEY_TEXT}
       />
 
       <div
