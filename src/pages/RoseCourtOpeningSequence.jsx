@@ -63,6 +63,15 @@ const MONTAGE_BEATS = Object.freeze([
   }
 ]);
 
+const OPENING_SEQUENCE_PHASES = new Set([
+  'device',
+  'society-message',
+  'link-bridge',
+  'riddle',
+  'riddle-success',
+  'montage'
+]);
+
 const normalizeAnswer = (value = '') => (
   value
     .toLowerCase()
@@ -70,6 +79,17 @@ const normalizeAnswer = (value = '') => (
     .replace(/\s+/g, ' ')
     .trim()
 );
+
+const normalizeInitialPhase = (value = '') => {
+  const normalized = String(value || '').trim().toLowerCase();
+  return OPENING_SEQUENCE_PHASES.has(normalized) ? normalized : 'device';
+};
+
+const normalizeInitialMontageIndex = (value = 0) => {
+  const normalized = Number.parseInt(value, 10);
+  if (!Number.isFinite(normalized)) return 0;
+  return Math.max(0, Math.min(MONTAGE_BEATS.length - 1, normalized));
+};
 
 const getSequenceLabel = (phase, montageIndex) => {
   if (phase === 'device') return 'Act I: Weak Carrier';
@@ -105,15 +125,21 @@ const getDirectionHint = (phase, montageBeat, triesRemaining) => {
 
 function RoseCourtOpeningSequence({
   onComplete,
-  onStateChange
+  onStateChange,
+  initialPhase = 'device',
+  initialMontageIndex = 0
 }) {
-  const [phase, setPhase] = useState('device');
+  const [phase, setPhase] = useState(() => normalizeInitialPhase(initialPhase));
   const [deviceTurning, setDeviceTurning] = useState(false);
   const [riddleAnswer, setRiddleAnswer] = useState('');
   const [attemptsUsed, setAttemptsUsed] = useState(0);
   const [riddleFlipped, setRiddleFlipped] = useState(false);
   const [riddleFeedback, setRiddleFeedback] = useState('');
-  const [montageIndex, setMontageIndex] = useState(0);
+  const [montageIndex, setMontageIndex] = useState(() => (
+    normalizeInitialPhase(initialPhase) === 'montage'
+      ? normalizeInitialMontageIndex(initialMontageIndex)
+      : 0
+  ));
   const timeoutIdsRef = useRef([]);
   const riddleInputRef = useRef(null);
 

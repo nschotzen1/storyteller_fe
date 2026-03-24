@@ -34,6 +34,10 @@ vi.mock('./pages/RoseCourtProloguePage', () => ({
   default: () => <div data-testid="rose-court-page">Rose Court</div>
 }));
 
+vi.mock('./pages/RoseCourtMontagePage', () => ({
+  default: () => <div data-testid="rose-court-montage-page">Montage</div>
+}));
+
 vi.mock('./pages/WellDemoPage', () => ({
   default: () => <div data-testid="well-page">Well</div>
 }));
@@ -111,5 +115,13 @@ describe('App curtain view orchestration', () => {
     renderAppAt('?view=well');
 
     expect(screen.getByTestId('well-page')).toBeInTheDocument();
+  });
+
+  it('shows the montage view from the startup selector', () => {
+    renderAppAt();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Montage' }));
+
+    expect(screen.getByTestId('rose-court-montage-page')).toBeInTheDocument();
   });
 });

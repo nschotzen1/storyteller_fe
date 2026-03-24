@@ -11,6 +11,7 @@ import QuestAdminPage from './pages/QuestAdminPage';
 import MemorySpreadPage from './pages/MemorySpreadPage';
 import ImmersiveRpgPage from './pages/ImmersiveRpgPage';
 import RoseCourtProloguePage from './pages/RoseCourtProloguePage';
+import RoseCourtMontagePage from './pages/RoseCourtMontagePage';
 import WellDemoPage from './pages/WellDemoPage';
 import TypewriterAdminPage from './pages/TypewriterAdminPage';
 import TypewriterFramework from './TypewriterFramework';
@@ -25,6 +26,7 @@ const VIEW = {
   MESSANGER: 'messanger',
   IMMERSIVE_RPG: 'immersive-rpg',
   ROSE_COURT_PROLOGUE: 'rose-court-prologue',
+  MONTAGE: 'montage',
   WELL: 'well'
 };
 
@@ -34,6 +36,7 @@ const VIEW_OPTIONS = [
   { id: VIEW.STORY_ADMIN, label: 'Story Admin' },
   { id: VIEW.MESSANGER, label: 'Messanger' },
   { id: VIEW.ROSE_COURT_PROLOGUE, label: 'Rose Court' },
+  { id: VIEW.MONTAGE, label: 'Montage' },
   { id: VIEW.WELL, label: 'Well' },
   { id: VIEW.QUEST_ADMIN, label: 'Quest Admin' },
   { id: VIEW.MEMORY_SPREAD, label: 'Memory Spread' },
@@ -154,6 +157,7 @@ function App() {
         )}
         {view === VIEW.STORY_ADMIN && <TypewriterAdminPage />}
         {view === VIEW.ROSE_COURT_PROLOGUE && <RoseCourtProloguePage />}
+        {view === VIEW.MONTAGE && <RoseCourtMontagePage />}
         {view === VIEW.WELL && <WellDemoPage />}
         {view === VIEW.QUEST_ADMIN && <QuestAdminPage />}
         {view === VIEW.MEMORY_SPREAD && <MemorySpreadPage />}
