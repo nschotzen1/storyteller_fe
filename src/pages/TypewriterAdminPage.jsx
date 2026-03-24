@@ -200,13 +200,13 @@ const PROMPT_PIPELINES = [
   {
     key: 'memory_card_front',
     label: 'Memory card front',
-    description: '/api/fragmentToMemories front image generation',
+    description: '/api/memories/:memoryId/textToImage/front',
     settingsKey: 'texture_creation'
   },
   {
     key: 'memory_card_back',
     label: 'Memory card back',
-    description: '/api/fragmentToMemories back image generation',
+    description: '/api/memories/:memoryId/textToImage/back',
     settingsKey: 'texture_creation'
   },
   {
@@ -1574,254 +1574,292 @@ const TypewriterAdminPage = () => {
                       <p className="typewriterPromptMeta">{routeSummary}</p>
 
                       {isExpanded ? (
-                      <>
-                      {route.runtimeRows.length ? (
-                        <div className="typewriterControlRuntimeGrid">
-                          {route.runtimeRows.map((runtimeRow) => {
-                            const options = getModelOptions(runtimeRow.modelKind, runtimeRow.model, runtimeRow.provider);
-                            return (
-                              <div key={runtimeRow.key} className="typewriterControlRuntimeCard">
-                                <div className="typewriterPipelineCell">
-                                  <strong>{runtimeRow.label}</strong>
-                                  <span>{runtimeRow.description}</span>
+                        <>
+                          {route.runtimeRows.length ? (
+                            <section className="typewriterControlSection">
+                              <div className="typewriterControlSectionHeader">
+                                <div>
+                                  <h4>Runtime toggles</h4>
+                                  <p>Flip live/mock and save this route without scrolling into prompt and schema editors.</p>
                                 </div>
-                                <label className="typewriterMockToggle">
-                                  <input
-                                    type="checkbox"
-                                    checked={runtimeRow.useMock}
-                                    onChange={(event) => updatePipeline(runtimeRow.key, { useMock: event.target.checked })}
-                                  />
-                                  <span>{runtimeRow.useMock ? 'Mock' : 'Live'}</span>
-                                </label>
-                                {runtimeRow.supportedProviders?.length > 1 ? (
-                                  <label className="typewriterNumericSetting">
-                                    <span>Provider</span>
-                                    <select
-                                      value={runtimeRow.provider}
-                                      onChange={(event) => {
-                                        const nextProvider = event.target.value;
-                                        const nextOptions = getModelOptions(runtimeRow.modelKind, '', nextProvider);
-                                        updatePipeline(runtimeRow.key, {
-                                          provider: nextProvider,
-                                          model: nextOptions[0] || runtimeRow.model
-                                        });
-                                      }}
-                                    >
-                                      {runtimeRow.supportedProviders.map((providerId) => (
-                                        <option key={providerId} value={providerId}>
-                                          {providerId}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </label>
-                                ) : null}
-                                <label className="typewriterNumericSetting">
-                                  <span>Model</span>
-                                  <select
-                                    value={runtimeRow.model}
-                                    onChange={(event) => updatePipeline(runtimeRow.key, { model: event.target.value })}
+                                <div className="typewriterPromptButtons typewriterPromptButtons-inline">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveControlRoute(route)}
+                                    disabled={loading || isSavingRoute || saving || savingPrompts || savingLlmConfigs}
                                   >
-                                    {options.map((optionId) => (
-                                      <option key={optionId} value={optionId}>
-                                        {optionId}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
-                                {runtimeRow.supportsCount ? (
-                                  <label className="typewriterNumericSetting">
-                                    <span>{runtimeRow.countLabel}</span>
-                                    <input
-                                      type="number"
-                                      min={runtimeRow.minCount}
-                                      max={runtimeRow.maxCount}
-                                      value={runtimeRow.countValue}
-                                      onChange={(event) =>
-                                        updatePipeline(runtimeRow.key, {
-                                          [runtimeRow.countProperty]: normalizeCountDraft(
-                                            event.target.value,
-                                            runtimeRow.countValue,
-                                            runtimeRow.minCount,
-                                            runtimeRow.maxCount
-                                          )
-                                        })
-                                      }
-                                    />
-                                  </label>
-                                ) : null}
+                                    {isSavingRoute ? 'Saving route...' : `Save ${route.label}`}
+                                  </button>
+                                </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      ) : null}
 
-                      {route.contractEntries.map((binding) => {
-                        const draft = llmRouteConfigDrafts?.[binding.routeKey] || binding.draft || buildLlmConfigDraft(binding.config || {});
-                        let previewText = '';
-                        let previewError = '';
-                        try {
-                          previewText = buildStructuredPromptPreview(draft);
-                        } catch (err) {
-                          previewError = err.message || 'Preview unavailable.';
-                        }
-
-                        return (
-                          <section key={binding.routeKey} className="typewriterControlBlock">
-                            <div className="typewriterControlBlockHeader">
-                              <div>
-                                <h4>{binding.label}</h4>
-                                <p>{binding.method} {binding.routePath}</p>
+                              <div className="typewriterControlRuntimeGrid">
+                                {route.runtimeRows.map((runtimeRow) => {
+                                  const options = getModelOptions(runtimeRow.modelKind, runtimeRow.model, runtimeRow.provider);
+                                  return (
+                                    <div key={runtimeRow.key} className="typewriterControlRuntimeCard">
+                                      <div className="typewriterPipelineCell">
+                                        <strong>{runtimeRow.label}</strong>
+                                        <span>{runtimeRow.description}</span>
+                                      </div>
+                                      <label className="typewriterMockToggle">
+                                        <input
+                                          type="checkbox"
+                                          checked={runtimeRow.useMock}
+                                          onChange={(event) => updatePipeline(runtimeRow.key, { useMock: event.target.checked })}
+                                        />
+                                        <span>{runtimeRow.useMock ? 'Mock' : 'Live'}</span>
+                                      </label>
+                                      {runtimeRow.supportedProviders?.length > 1 ? (
+                                        <label className="typewriterNumericSetting">
+                                          <span>Provider</span>
+                                          <select
+                                            value={runtimeRow.provider}
+                                            onChange={(event) => {
+                                              const nextProvider = event.target.value;
+                                              const nextOptions = getModelOptions(runtimeRow.modelKind, '', nextProvider);
+                                              updatePipeline(runtimeRow.key, {
+                                                provider: nextProvider,
+                                                model: nextOptions[0] || runtimeRow.model
+                                              });
+                                            }}
+                                          >
+                                            {runtimeRow.supportedProviders.map((providerId) => (
+                                              <option key={providerId} value={providerId}>
+                                                {providerId}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        </label>
+                                      ) : null}
+                                      <label className="typewriterNumericSetting">
+                                        <span>Model</span>
+                                        <select
+                                          value={runtimeRow.model}
+                                          onChange={(event) => updatePipeline(runtimeRow.key, { model: event.target.value })}
+                                        >
+                                          {options.map((optionId) => (
+                                            <option key={optionId} value={optionId}>
+                                              {optionId}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </label>
+                                      {runtimeRow.supportsCount ? (
+                                        <label className="typewriterNumericSetting">
+                                          <span>{runtimeRow.countLabel}</span>
+                                          <input
+                                            type="number"
+                                            min={runtimeRow.minCount}
+                                            max={runtimeRow.maxCount}
+                                            value={runtimeRow.countValue}
+                                            onChange={(event) =>
+                                              updatePipeline(runtimeRow.key, {
+                                                [runtimeRow.countProperty]: normalizeCountDraft(
+                                                  event.target.value,
+                                                  runtimeRow.countValue,
+                                                  runtimeRow.minCount,
+                                                  runtimeRow.maxCount
+                                                )
+                                              })
+                                            }
+                                          />
+                                        </label>
+                                      ) : null}
+                                    </div>
+                                  );
+                                })}
                               </div>
-                              <div className="typewriterControlBlockMeta">
-                                <span>Schema key: {binding.routeKey}</span>
-                                <span>Live prompt target: {binding.promptKey || 'none'}</span>
-                                <span>Prompt source: {getPromptSourceLabel(draft.promptMode)}</span>
-                                <span>Version: {binding.config?.version || 'default'}</span>
+                            </section>
+                          ) : null}
+
+                          {route.contractEntries.length ? (
+                            <details className="typewriterControlDisclosure">
+                              <summary className="typewriterControlDisclosureSummary">
+                                <span>Schemas and generated prompts</span>
+                                <small>{route.contractEntries.length} editor{route.contractEntries.length === 1 ? '' : 's'}</small>
+                              </summary>
+                              <div className="typewriterControlDisclosureBody">
+                                {route.contractEntries.map((binding) => {
+                                  const draft = llmRouteConfigDrafts?.[binding.routeKey] || binding.draft || buildLlmConfigDraft(binding.config || {});
+                                  let previewText = '';
+                                  let previewError = '';
+                                  try {
+                                    previewText = buildStructuredPromptPreview(draft);
+                                  } catch (err) {
+                                    previewError = err.message || 'Preview unavailable.';
+                                  }
+
+                                  return (
+                                    <section key={binding.routeKey} className="typewriterControlBlock">
+                                      <div className="typewriterControlBlockHeader">
+                                        <div>
+                                          <h4>{binding.label}</h4>
+                                          <p>{binding.method} {binding.routePath}</p>
+                                        </div>
+                                        <div className="typewriterControlBlockMeta">
+                                          <span>Schema key: {binding.routeKey}</span>
+                                          <span>Live prompt target: {binding.promptKey || 'none'}</span>
+                                          <span>Prompt source: {getPromptSourceLabel(draft.promptMode)}</span>
+                                          <span>Version: {binding.config?.version || 'default'}</span>
+                                        </div>
+                                      </div>
+
+                                      <div className="typewriterStructuredModeRow">
+                                        <label>
+                                          Prompt source
+                                          <select
+                                            value={draft.promptMode}
+                                            onChange={(event) =>
+                                              updateLlmRouteConfigDraft(binding.routeKey, { promptMode: event.target.value })
+                                            }
+                                          >
+                                            <option value="manual">Direct prompt text</option>
+                                            <option value="contract">Generated from schema</option>
+                                          </select>
+                                        </label>
+                                      </div>
+
+                                      {draft.promptMode === 'manual' ? (
+                                        <label className="typewriterStructuredField">
+                                          Direct runtime prompt
+                                          <textarea
+                                            value={draft.promptTemplate}
+                                            onChange={(event) =>
+                                              updateLlmRouteConfigDraft(binding.routeKey, { promptTemplate: event.target.value })
+                                            }
+                                            rows={8}
+                                            placeholder="Enter the full prompt template used by this route."
+                                          />
+                                        </label>
+                                      ) : (
+                                        <label className="typewriterStructuredField">
+                                          Creative instructions
+                                          <textarea
+                                            value={draft.promptCore}
+                                            onChange={(event) =>
+                                              updateLlmRouteConfigDraft(binding.routeKey, { promptCore: event.target.value })
+                                            }
+                                            rows={8}
+                                            placeholder="Narrative instructions. The JSON contract block is generated below."
+                                          />
+                                        </label>
+                                      )}
+
+                                      <div className="typewriterStructuredGrid">
+                                        <label className="typewriterStructuredField">
+                                          Response schema (JSON)
+                                          <textarea
+                                            value={draft.responseSchemaText}
+                                            onChange={(event) =>
+                                              updateLlmRouteConfigDraft(binding.routeKey, { responseSchemaText: event.target.value })
+                                            }
+                                            rows={14}
+                                            spellCheck={false}
+                                            placeholder='{"type":"object","properties":{}}'
+                                          />
+                                        </label>
+                                        <label className="typewriterStructuredField">
+                                          Field docs (JSON map)
+                                          <textarea
+                                            value={draft.fieldDocsText}
+                                            onChange={(event) =>
+                                              updateLlmRouteConfigDraft(binding.routeKey, { fieldDocsText: event.target.value })
+                                            }
+                                            rows={14}
+                                            spellCheck={false}
+                                            placeholder='{"short_title":"2-6 words","miseenscene":"first-person sensory"}'
+                                          />
+                                        </label>
+                                      </div>
+
+                                      <div className="typewriterStructuredGrid">
+                                        <label className="typewriterStructuredField">
+                                          Example valid JSON
+                                          <textarea
+                                            value={draft.examplePayloadText}
+                                            onChange={(event) =>
+                                              updateLlmRouteConfigDraft(binding.routeKey, { examplePayloadText: event.target.value })
+                                            }
+                                            rows={12}
+                                            spellCheck={false}
+                                            placeholder='{"example":"Optional sample response"}'
+                                          />
+                                        </label>
+                                        <label className="typewriterStructuredField">
+                                          Output rules (one per line)
+                                          <textarea
+                                            value={draft.outputRulesText}
+                                            onChange={(event) =>
+                                              updateLlmRouteConfigDraft(binding.routeKey, { outputRulesText: event.target.value })
+                                            }
+                                            rows={12}
+                                            placeholder="short_title should fit the card UI"
+                                          />
+                                        </label>
+                                      </div>
+
+                                      <label className="typewriterStructuredField">
+                                        Runtime prompt preview synced into {binding.promptKey || 'this route only'} on save
+                                        <textarea
+                                          value={previewError || previewText}
+                                          readOnly
+                                          rows={14}
+                                          className="typewriterStructuredPreview"
+                                        />
+                                      </label>
+                                    </section>
+                                  );
+                                })}
                               </div>
-                            </div>
+                            </details>
+                          ) : null}
 
-                            <div className="typewriterStructuredModeRow">
-                              <label>
-                                Prompt source
-                                <select
-                                  value={draft.promptMode}
-                                  onChange={(event) =>
-                                    updateLlmRouteConfigDraft(binding.routeKey, { promptMode: event.target.value })
-                                  }
-                                >
-                                  <option value="manual">Direct prompt text</option>
-                                  <option value="contract">Generated from schema</option>
-                                </select>
-                              </label>
-                            </div>
+                          {route.directPromptEntries.length ? (
+                            <details className="typewriterControlDisclosure">
+                              <summary className="typewriterControlDisclosureSummary">
+                                <span>Direct prompts</span>
+                                <small>{route.directPromptEntries.length} template{route.directPromptEntries.length === 1 ? '' : 's'}</small>
+                              </summary>
+                              <div className="typewriterControlDisclosureBody">
+                                {route.directPromptEntries.map((promptEntry) => (
+                                  <section key={promptEntry.key} className="typewriterControlBlock">
+                                    <div className="typewriterControlBlockHeader">
+                                      <div>
+                                        <h4>{promptEntry.label}</h4>
+                                        <p>{promptEntry.description}</p>
+                                      </div>
+                                      <div className="typewriterControlBlockMeta">
+                                        <span>Prompt key: {promptEntry.key}</span>
+                                        <span>Version: {promptEntry.latestPrompt?.version || 'default'}</span>
+                                        <span>Updated: {formatDate(promptEntry.latestPrompt?.updatedAt)}</span>
+                                      </div>
+                                    </div>
+                                    <label className="typewriterStructuredField">
+                                      Prompt template
+                                      <textarea
+                                        value={promptDrafts[promptEntry.key] || ''}
+                                        onChange={(event) => updatePromptDraft(promptEntry.key, event.target.value)}
+                                        rows={10}
+                                        placeholder={`Enter prompt template for ${promptEntry.label}.`}
+                                      />
+                                    </label>
+                                  </section>
+                                ))}
+                              </div>
+                            </details>
+                          ) : null}
 
-                            {draft.promptMode === 'manual' ? (
-                              <label className="typewriterStructuredField">
-                                Direct runtime prompt
-                                <textarea
-                                  value={draft.promptTemplate}
-                                  onChange={(event) =>
-                                    updateLlmRouteConfigDraft(binding.routeKey, { promptTemplate: event.target.value })
-                                  }
-                                  rows={8}
-                                  placeholder="Enter the full prompt template used by this route."
-                                />
-                              </label>
-                            ) : (
-                              <label className="typewriterStructuredField">
-                                Creative instructions
-                                <textarea
-                                  value={draft.promptCore}
-                                  onChange={(event) =>
-                                    updateLlmRouteConfigDraft(binding.routeKey, { promptCore: event.target.value })
-                                  }
-                                  rows={8}
-                                  placeholder="Narrative instructions. The JSON contract block is generated below."
-                                />
-                              </label>
-                            )}
-
-                            <div className="typewriterStructuredGrid">
-                              <label className="typewriterStructuredField">
-                                Response schema (JSON)
-                                <textarea
-                                  value={draft.responseSchemaText}
-                                  onChange={(event) =>
-                                    updateLlmRouteConfigDraft(binding.routeKey, { responseSchemaText: event.target.value })
-                                  }
-                                  rows={14}
-                                  spellCheck={false}
-                                  placeholder='{"type":"object","properties":{}}'
-                                />
-                              </label>
-                              <label className="typewriterStructuredField">
-                                Field docs (JSON map)
-                                <textarea
-                                  value={draft.fieldDocsText}
-                                  onChange={(event) =>
-                                    updateLlmRouteConfigDraft(binding.routeKey, { fieldDocsText: event.target.value })
-                                  }
-                                  rows={14}
-                                  spellCheck={false}
-                                  placeholder='{"short_title":"2-6 words","miseenscene":"first-person sensory"}'
-                                />
-                              </label>
-                            </div>
-
-                            <div className="typewriterStructuredGrid">
-                              <label className="typewriterStructuredField">
-                                Example valid JSON
-                                <textarea
-                                  value={draft.examplePayloadText}
-                                  onChange={(event) =>
-                                    updateLlmRouteConfigDraft(binding.routeKey, { examplePayloadText: event.target.value })
-                                  }
-                                  rows={12}
-                                  spellCheck={false}
-                                  placeholder='{"example":"Optional sample response"}'
-                                />
-                              </label>
-                              <label className="typewriterStructuredField">
-                                Output rules (one per line)
-                                <textarea
-                                  value={draft.outputRulesText}
-                                  onChange={(event) =>
-                                    updateLlmRouteConfigDraft(binding.routeKey, { outputRulesText: event.target.value })
-                                  }
-                                  rows={12}
-                                  placeholder="short_title should fit the card UI"
-                                />
-                              </label>
-                            </div>
-
-                            <label className="typewriterStructuredField">
-                              Runtime prompt preview synced into {binding.promptKey || 'this route only'} on save
-                              <textarea
-                                value={previewError || previewText}
-                                readOnly
-                                rows={14}
-                                className="typewriterStructuredPreview"
-                              />
-                            </label>
-                          </section>
-                        );
-                      })}
-
-                      {route.directPromptEntries.map((promptEntry) => (
-                        <section key={promptEntry.key} className="typewriterControlBlock">
-                          <div className="typewriterControlBlockHeader">
-                            <div>
-                              <h4>{promptEntry.label}</h4>
-                              <p>{promptEntry.description}</p>
-                            </div>
-                            <div className="typewriterControlBlockMeta">
-                              <span>Prompt key: {promptEntry.key}</span>
-                              <span>Version: {promptEntry.latestPrompt?.version || 'default'}</span>
-                              <span>Updated: {formatDate(promptEntry.latestPrompt?.updatedAt)}</span>
-                            </div>
+                          <div className="typewriterPromptButtons">
+                            <button
+                              type="button"
+                              onClick={() => handleSaveControlRoute(route)}
+                              disabled={loading || isSavingRoute || saving || savingPrompts || savingLlmConfigs}
+                            >
+                              {isSavingRoute ? 'Saving route...' : `Save ${route.label}`}
+                            </button>
                           </div>
-                          <label className="typewriterStructuredField">
-                            Prompt template
-                            <textarea
-                              value={promptDrafts[promptEntry.key] || ''}
-                              onChange={(event) => updatePromptDraft(promptEntry.key, event.target.value)}
-                              rows={10}
-                              placeholder={`Enter prompt template for ${promptEntry.label}.`}
-                            />
-                          </label>
-                        </section>
-                      ))}
-
-                      <div className="typewriterPromptButtons">
-                        <button
-                          type="button"
-                          onClick={() => handleSaveControlRoute(route)}
-                          disabled={loading || isSavingRoute || saving || savingPrompts || savingLlmConfigs}
-                        >
-                          {isSavingRoute ? 'Saving route...' : `Save ${route.label}`}
-                        </button>
-                      </div>
-                      </>
+                        </>
                       ) : null}
                     </article>
                     );

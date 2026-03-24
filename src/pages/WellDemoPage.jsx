@@ -14,7 +14,9 @@ function WellDemoPage() {
     if (typeof window === 'undefined') return undefined;
 
     window.render_game_to_text = () => JSON.stringify(debugPayload);
-    window.advanceTime = () => {};
+    window.advanceTime = (ms = 16) => new Promise((resolve) => {
+      window.setTimeout(resolve, Math.max(0, Number(ms) || 0));
+    });
 
     return () => {
       delete window.render_game_to_text;

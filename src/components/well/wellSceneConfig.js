@@ -11,27 +11,51 @@ export const DEFAULT_FRAGMENT_LINES = [
   'The sea withdrew only long enough to listen'
 ];
 
+const clone = (value) => JSON.parse(JSON.stringify(value));
+
+const buildDefaultTextualBank = () => DEFAULT_FRAGMENT_LINES.map((text, index) => ({
+  id: `txt_${index + 1}`,
+  text,
+  weight: 1,
+  tags: []
+}));
+
 export const DEFAULT_WELL_SCENE_CONFIG = {
   component: {
     backgroundSrc: '/well/well_background.png',
     wordLimit: 10,
     promptDelayMs: 5200,
-    fragmentSpawnMs: 1700,
-    fragmentLifetimeMs: 5200,
+    fragmentSpawnMs: 2200,
+    fragmentLifetimeMs: 7600,
     departureDurationMs: 3600,
     promptDock: 'side'
   },
   copy: {
     sceneEyebrow: 'Direct Debug View',
     sceneTitle: 'Well of Fragments',
-    promptLabel: 'The falcon offers a parchment.',
-    promptHint: 'Write one line. The ink will hold ten words at most.',
-    promptPlaceholder: 'A single line for the court...',
-    departureStatus: 'The falcon folds the line into its satchel and rises toward the dovecot.',
-    footerWaiting: 'Waiting for the fragments to surface and the parchment to appear.',
-    footerReadyPrefix: 'Parchment ready.',
+    promptLabel: 'What words do you remember?',
+    promptHint: 'Jot down what you caught before the well swallows it again.',
+    promptPlaceholder: 'A remembered line, name, or place...',
+    departureStatus: 'The falcon folds the gathered bundle into its satchel and rises toward the dovecot.',
+    footerWaiting: 'The well waits for the next line to surface.',
+    footerReadyPrefix: 'Gathered so far:',
     footerLatestPrefix: 'Latest fragment:',
-    footerLastSubmittedPrefix: 'Last submitted line:'
+    footerLastSubmittedPrefix: 'Latest jot:',
+    handoffLabel: 'Hand the bundle to the falcon',
+    impatienceStatus: 'The falcon grows impatient. It wants the gathered bundle now.',
+    observingHint: 'A scrap hangs in the water. Catch it before it slips your memory.',
+    jotActionLabel: 'Jot this scrap'
+  },
+  completion: {
+    required: {
+      textual: 3
+    }
+  },
+  runtime: {
+    sourceMode: 'bank'
+  },
+  banks: {
+    textual: buildDefaultTextualBank()
   },
   fragments: DEFAULT_FRAGMENT_LINES,
   updatedAt: '',
@@ -48,11 +72,6 @@ export const DEFAULT_WELL_ROUTE_META = {
     {
       label: 'Standalone editor',
       route: '/?view=well'
-    },
-    {
-      label: 'Quest well',
-      questId: 'ruined_rose_court',
-      screenId: 'periphery_well_rim'
     },
     {
       label: 'Rose Court prologue',
@@ -78,15 +97,67 @@ const normalizeCopyString = (value, fallback = '') => {
   return value.length ? value : fallback;
 };
 
+const normalizeTags = (value = []) => (
+  Array.isArray(value)
+    ? value.map((entry) => (typeof entry === 'string' ? entry.trim() : '')).filter(Boolean)
+    : []
+);
+
+export const normalizeTextualBankEntry = (value, index = 0) => {
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) return null;
+    return {
+      id: `txt_${index + 1}`,
+      text,
+      weight: 1,
+      tags: []
+    };
+  }
+
+  if (!value || typeof value !== 'object') return null;
+
+  const text = typeof value.text === 'string' ? value.text.trim() : '';
+  if (!text) return null;
+
+  return {
+    id: normalizeString(value.id, `txt_${index + 1}`),
+    text,
+    weight: clampNumber(value.weight, 1, 1, 10),
+    tags: normalizeTags(value.tags)
+  };
+};
+
+export const normalizeTextualBank = (value = [], fallbackBank = buildDefaultTextualBank()) => {
+  const source = Array.isArray(value) ? value : [];
+  const normalized = source
+    .map((entry, index) => normalizeTextualBankEntry(entry, index))
+    .filter(Boolean);
+  return normalized.length ? normalized : clone(fallbackBank);
+};
+
+export const getTextualLinesFromConfig = (config = {}) => {
+  const source = config && typeof config === 'object' ? config : {};
+  const bank = normalizeTextualBank(source?.banks?.textual, buildDefaultTextualBank());
+  return bank.map((entry) => entry.text);
+};
+
 export const normalizeWellSceneConfig = (value = {}) => {
   const source = value && typeof value === 'object' ? value : {};
   const component = source.component && typeof source.component === 'object' ? source.component : {};
   const copy = source.copy && typeof source.copy === 'object' ? source.copy : {};
-  const fragments = Array.isArray(source.fragments)
+  const completion = source.completion && typeof source.completion === 'object' ? source.completion : {};
+  const required = completion.required && typeof completion.required === 'object' ? completion.required : {};
+  const runtime = source.runtime && typeof source.runtime === 'object' ? source.runtime : {};
+  const banks = source.banks && typeof source.banks === 'object' ? source.banks : {};
+  const legacyFragments = Array.isArray(source.fragments)
     ? source.fragments
-      .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
-      .filter(Boolean)
     : [];
+  const fallbackBank = legacyFragments.length
+    ? legacyFragments.map((entry, index) => normalizeTextualBankEntry(entry, index)).filter(Boolean)
+    : buildDefaultTextualBank();
+  const textualBank = normalizeTextualBank(banks.textual, fallbackBank);
+  const textualLines = textualBank.map((entry) => entry.text);
 
   return {
     component: {
@@ -166,9 +237,41 @@ export const normalizeWellSceneConfig = (value = {}) => {
       footerLastSubmittedPrefix: normalizeCopyString(
         copy.footerLastSubmittedPrefix,
         DEFAULT_WELL_SCENE_CONFIG.copy.footerLastSubmittedPrefix
+      ),
+      handoffLabel: normalizeCopyString(
+        copy.handoffLabel,
+        DEFAULT_WELL_SCENE_CONFIG.copy.handoffLabel
+      ),
+      impatienceStatus: normalizeCopyString(
+        copy.impatienceStatus,
+        DEFAULT_WELL_SCENE_CONFIG.copy.impatienceStatus
+      ),
+      observingHint: normalizeCopyString(
+        copy.observingHint,
+        DEFAULT_WELL_SCENE_CONFIG.copy.observingHint
+      ),
+      jotActionLabel: normalizeCopyString(
+        copy.jotActionLabel,
+        DEFAULT_WELL_SCENE_CONFIG.copy.jotActionLabel
       )
     },
-    fragments: fragments.length ? fragments : DEFAULT_FRAGMENT_LINES,
+    completion: {
+      required: {
+        textual: clampNumber(
+          required.textual,
+          DEFAULT_WELL_SCENE_CONFIG.completion.required.textual,
+          1,
+          12
+        )
+      }
+    },
+    runtime: {
+      sourceMode: runtime.sourceMode === 'hybrid' ? 'hybrid' : DEFAULT_WELL_SCENE_CONFIG.runtime.sourceMode
+    },
+    banks: {
+      textual: textualBank
+    },
+    fragments: textualLines,
     updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : '',
     updatedBy: typeof source.updatedBy === 'string' ? source.updatedBy : ''
   };
@@ -178,7 +281,9 @@ export const buildRoseCourtWellSceneProps = (config, overrides = {}) => {
   const normalized = normalizeWellSceneConfig(config);
   return {
     backgroundSrc: overrides.backgroundSrc || normalized.component.backgroundSrc,
+    textualFragments: normalized.banks.textual,
     fragmentLines: normalized.fragments,
+    requiredTextualJots: normalized.completion.required.textual,
     wordLimit: normalized.component.wordLimit,
     promptDelayMs: normalized.component.promptDelayMs,
     fragmentSpawnMs: normalized.component.fragmentSpawnMs,
@@ -188,16 +293,26 @@ export const buildRoseCourtWellSceneProps = (config, overrides = {}) => {
     promptLabel: normalized.copy.promptLabel,
     promptHint: normalized.copy.promptHint,
     promptPlaceholder: normalized.copy.promptPlaceholder,
+    handoffLabel: normalized.copy.handoffLabel,
+    impatienceStatusText: normalized.copy.impatienceStatus,
+    observingHint: normalized.copy.observingHint,
+    jotActionLabel: normalized.copy.jotActionLabel,
     departureStatusText: normalized.copy.departureStatus,
     ...overrides
   };
 };
 
-export const serializeFragmentsDraft = (fragments = []) => fragments.join('\n');
+export const serializeTextualBankDraft = (entries = []) => entries
+  .map((entry) => (typeof entry === 'string' ? entry : entry?.text || ''))
+  .filter(Boolean)
+  .join('\n');
 
-export const parseFragmentsDraft = (value = '') => (
+export const parseTextualBankDraft = (value = '') => (
   String(value || '')
     .split('\n')
-    .map((entry) => entry.trim())
+    .map((entry, index) => normalizeTextualBankEntry(entry, index))
     .filter(Boolean)
 );
+
+export const serializeFragmentsDraft = serializeTextualBankDraft;
+export const parseFragmentsDraft = parseTextualBankDraft;

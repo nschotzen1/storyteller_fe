@@ -10,6 +10,8 @@ import {
 } from './wellSceneConfig';
 import './WellAdminWorkspace.css';
 
+const createPreviewSessionId = () => `well-preview-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+
 const DEFAULT_WELL_STATE = {
   phase: 'observing',
   latestFragment: '',
@@ -18,7 +20,17 @@ const DEFAULT_WELL_STATE = {
   submittedLine: '',
   wordCount: 0,
   wordsRemaining: 10,
-  fragmentCount: 0
+  fragmentCount: 0,
+  bundle: [],
+  captured: {
+    textual: 0
+  },
+  required: {
+    textual: 3
+  },
+  readyForHandoff: false,
+  runtimeNotice: '',
+  sceneError: ''
 };
 
 function WellAdminWorkspace({
@@ -36,18 +48,20 @@ function WellAdminWorkspace({
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [fragmentDraft, setFragmentDraft] = useState('');
+  const [previewSessionId, setPreviewSessionId] = useState(() => createPreviewSessionId());
 
   const normalizedConfig = useMemo(() => normalizeWellSceneConfig(config), [config]);
   const sceneProps = useMemo(() => buildRoseCourtWellSceneProps(normalizedConfig), [normalizedConfig]);
   const resolvedApiBaseUrl = `${apiBaseUrl || ''}`.trim() || DEFAULT_API_BASE_URL;
 
   useEffect(() => {
-    setFragmentDraft(serializeFragmentsDraft(config.fragments));
-  }, [config.fragments]);
+    setFragmentDraft(serializeFragmentsDraft(normalizedConfig.banks?.textual || normalizedConfig.fragments));
+  }, [normalizedConfig]);
 
   const resetScene = (configSource = normalizedConfig) => {
     const wordLimit = normalizeWellSceneConfig(configSource).component.wordLimit;
     setSceneKey((value) => value + 1);
+    setPreviewSessionId(createPreviewSessionId());
     setWellState({
       ...DEFAULT_WELL_STATE,
       wordsRemaining: wordLimit
@@ -75,11 +89,29 @@ function WellAdminWorkspace({
     }));
   };
 
-  const handleFragmentsChange = (value) => {
-    setFragmentDraft(value);
+  const updateCompletion = (key, value) => {
     setConfig((current) => ({
       ...current,
-      fragments: parseFragmentsDraft(value)
+      completion: {
+        ...current.completion,
+        required: {
+          ...current.completion?.required,
+          [key]: value
+        }
+      }
+    }));
+  };
+
+  const handleFragmentsChange = (value) => {
+    setFragmentDraft(value);
+    const textualEntries = parseFragmentsDraft(value);
+    setConfig((current) => ({
+      ...current,
+      banks: {
+        ...current.banks,
+        textual: textualEntries
+      },
+      fragments: textualEntries.map((entry) => entry.text)
     }));
   };
 
@@ -130,9 +162,11 @@ function WellAdminWorkspace({
 
   const footerText = lastLine
     ? `${normalizedConfig.copy.footerLastSubmittedPrefix} "${lastLine}"`
-    : wellState.readyForWriting
-      ? `${normalizedConfig.copy.footerReadyPrefix} ${wellState.wordsRemaining} words remain.`
-      : normalizedConfig.copy.footerWaiting;
+    : wellState.readyForHandoff
+      ? normalizedConfig.copy.impatienceStatus
+      : wellState.captured?.textual
+        ? `${normalizedConfig.copy.footerReadyPrefix} ${wellState.captured.textual}/${wellState.required?.textual || normalizedConfig.completion.required.textual}`
+        : normalizedConfig.copy.footerWaiting;
 
   useEffect(() => {
     if (!onDebugStateChange) return;
@@ -184,6 +218,8 @@ function WellAdminWorkspace({
             <RoseCourtWellScene
               key={sceneKey}
               {...sceneProps}
+              apiBaseUrl={apiBaseUrl}
+              sessionId={previewSessionId}
               onStateChange={setWellState}
               onComplete={setLastLine}
             />
@@ -331,6 +367,16 @@ function WellAdminWorkspace({
                     onChange={(event) => updateComponent('departureDurationMs', event.target.value)}
                   />
                 </label>
+                <label className="wellAdminWorkspace__field">
+                  <span>Required textual jots</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    value={normalizedConfig.completion.required.textual}
+                    onChange={(event) => updateCompletion('textual', event.target.value)}
+                  />
+                </label>
               </div>
             </section>
 
@@ -391,13 +437,43 @@ function WellAdminWorkspace({
                   onChange={(event) => updateCopy('departureStatus', event.target.value)}
                 />
               </label>
+              <label className="wellAdminWorkspace__field">
+                <span>Observing hint</span>
+                <textarea
+                  value={normalizedConfig.copy.observingHint}
+                  onChange={(event) => updateCopy('observingHint', event.target.value)}
+                />
+              </label>
+              <label className="wellAdminWorkspace__field">
+                <span>Jot action label</span>
+                <input
+                  type="text"
+                  value={normalizedConfig.copy.jotActionLabel}
+                  onChange={(event) => updateCopy('jotActionLabel', event.target.value)}
+                />
+              </label>
+              <label className="wellAdminWorkspace__field">
+                <span>Impatience status</span>
+                <textarea
+                  value={normalizedConfig.copy.impatienceStatus}
+                  onChange={(event) => updateCopy('impatienceStatus', event.target.value)}
+                />
+              </label>
+              <label className="wellAdminWorkspace__field">
+                <span>Handoff label</span>
+                <input
+                  type="text"
+                  value={normalizedConfig.copy.handoffLabel}
+                  onChange={(event) => updateCopy('handoffLabel', event.target.value)}
+                />
+              </label>
             </section>
 
             <section className="wellAdminWorkspace__card">
               <div className="wellAdminWorkspace__cardHeader">
                 <div>
-                  <h3>Fragment Bank</h3>
-                  <p>One fragment per line. The well cycles through this shortlist repeatedly.</p>
+                  <h3>Textual Bank</h3>
+                  <p>One surfaced text scrap per line. Phase 1 only uses the textual bank.</p>
                 </div>
               </div>
 

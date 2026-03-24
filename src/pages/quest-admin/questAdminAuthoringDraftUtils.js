@@ -1,3 +1,10 @@
+import {
+  BASIC_SCENE_TEMPLATE,
+  normalizeSceneComponents,
+  normalizeSceneTemplate,
+  normalizeScreenComponentBindings
+} from '../../scene-runtime/sceneComponentRegistry';
+
 export const VISUAL_TRANSITION_OPTIONS = [
   { value: 'inherit', label: 'Keep same visual language' },
   { value: 'drift', label: 'Shift gradually' },
@@ -7,6 +14,9 @@ export const VISUAL_TRANSITION_OPTIONS = [
 const EMPTY_CONFIG = {
   sessionId: '',
   questId: '',
+  sceneName: '',
+  sceneTemplate: BASIC_SCENE_TEMPLATE,
+  sceneComponents: [],
   startScreenId: '',
   authoringBrief: '',
   phaseGuidance: '',
@@ -90,6 +100,7 @@ function normalizeScreen(screen = {}) {
     stageLayout: typeof source.stageLayout === 'string' ? source.stageLayout : '',
     stageModules: Array.isArray(source.stageModules) ? source.stageModules : [],
     textPromptPlaceholder: asTrimmedString(source.textPromptPlaceholder) || 'What do you do?',
+    componentBindings: normalizeScreenComponentBindings(source.componentBindings),
     directions: Array.isArray(source.directions) ? source.directions.map(normalizeDirection).filter(Boolean) : []
   };
 }
@@ -103,6 +114,9 @@ export function normalizeQuestConfigDraft(config = {}) {
   return {
     ...EMPTY_CONFIG,
     ...source,
+    sceneName: typeof source.sceneName === 'string' ? source.sceneName : '',
+    sceneTemplate: normalizeSceneTemplate(source.sceneTemplate),
+    sceneComponents: normalizeSceneComponents(source.sceneComponents),
     authoringBrief: typeof source.authoringBrief === 'string' ? source.authoringBrief : '',
     phaseGuidance: typeof source.phaseGuidance === 'string' ? source.phaseGuidance : '',
     visualStyleGuide: typeof source.visualStyleGuide === 'string' ? source.visualStyleGuide : '',
@@ -155,9 +169,18 @@ export function applyQuestAuthoringChanges(config = {}, changes = [], selectedCh
   activeChanges.forEach((change) => {
     if (!change || typeof change !== 'object') return;
     if (change.action === 'set_scene_field' && typeof change.field === 'string') {
+      const normalizedSceneValue = (() => {
+        if (change.field === 'sceneTemplate') {
+          return normalizeSceneTemplate(change.proposedValue);
+        }
+        if (change.field === 'sceneComponents') {
+          return normalizeSceneComponents(change.proposedValue);
+        }
+        return typeof change.proposedValue === 'string' ? change.proposedValue : nextConfig[change.field];
+      })();
       nextConfig = {
         ...nextConfig,
-        [change.field]: typeof change.proposedValue === 'string' ? change.proposedValue : nextConfig[change.field]
+        [change.field]: normalizedSceneValue
       };
       return;
     }
@@ -268,4 +291,3 @@ export function buildQuestScreenVisualContext(config = {}, selectedScreenId = ''
 
   return { incoming, outgoing };
 }
-

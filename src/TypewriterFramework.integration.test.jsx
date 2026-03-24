@@ -404,8 +404,13 @@ describe('TypewriterFramework integration', () => {
     });
     fetchStorytellerTypewriterReply.mockResolvedValue({
       data: {
+        fragment: 'It was then that I, Aster Vell, noticed the seam in the light and named the Buraha Light-Wake before withdrawing.',
         sequence: [
-          { action: 'type', text: 'OK', delay: 0 },
+          {
+            action: 'type',
+            text: 'It was then that I, Aster Vell, noticed the seam in the light and named the Buraha Light-Wake before withdrawing.',
+            delay: 0
+          },
           { action: 'pause', delay: 10 },
           { action: 'fade', to_text: '', phase: 1, delay: 10, start_delay: 0 },
         ],
@@ -458,13 +463,17 @@ describe('TypewriterFramework integration', () => {
       expect(screen.getByText('Buraha Light-Wake')).toBeInTheDocument();
     });
 
-    act(() => {
-      vi.advanceTimersByTime(5200);
-    });
+    const storytellerReleased = await advanceUntil(
+      () => !screen.getByAltText('Storyteller key Aster Vell').closest('.typewriter-key-wrapper').classList.contains('storyteller-key-held'),
+      20000,
+      250
+    );
 
-    await waitFor(() => {
-      expect(screen.getByAltText('Storyteller key Aster Vell').closest('.typewriter-key-wrapper')).not.toHaveClass('storyteller-key-held');
-    });
+    expect(storytellerReleased).toBe(true);
+    expect(
+      screen.getByText(/It was then that I, Aster Vell, noticed the seam in the light/i)
+    ).toBeInTheDocument();
+    expect(document.querySelector('.fade-ghost-container')).not.toBeInTheDocument();
   });
 
   test('normalizes mock and non-mock reply schemas into a single sequence', () => {

@@ -7,7 +7,6 @@ import CurtainIntro from './CurtainIntro';
 import CurtainOutro from './CurtainOutro';
 import StorytellerArenaConsole from './components/storyteller/StorytellerArenaConsole';
 import PlayerLogin from './pages/PlayerLogin';
-import QuestAdventurePage from './pages/QuestAdventurePage';
 import QuestAdminPage from './pages/QuestAdminPage';
 import MemorySpreadPage from './pages/MemorySpreadPage';
 import ImmersiveRpgPage from './pages/ImmersiveRpgPage';
@@ -21,7 +20,6 @@ const VIEW = {
   ARENA: 'arena',
   TYPEWRITER: 'typewriter',
   STORY_ADMIN: 'story-admin',
-  QUEST: 'quest',
   QUEST_ADMIN: 'quest-admin',
   MEMORY_SPREAD: 'memory-spread',
   MESSANGER: 'messanger',
@@ -35,7 +33,6 @@ const VIEW_OPTIONS = [
   { id: VIEW.TYPEWRITER, label: 'Typewriter' },
   { id: VIEW.STORY_ADMIN, label: 'Story Admin' },
   { id: VIEW.MESSANGER, label: 'Messanger' },
-  { id: VIEW.QUEST, label: 'Quest' },
   { id: VIEW.ROSE_COURT_PROLOGUE, label: 'Rose Court' },
   { id: VIEW.WELL, label: 'Well' },
   { id: VIEW.QUEST_ADMIN, label: 'Quest Admin' },
@@ -156,7 +153,6 @@ function App() {
           </div>
         )}
         {view === VIEW.STORY_ADMIN && <TypewriterAdminPage />}
-        {view === VIEW.QUEST && <QuestAdventurePage />}
         {view === VIEW.ROSE_COURT_PROLOGUE && <RoseCourtProloguePage />}
         {view === VIEW.WELL && <WellDemoPage />}
         {view === VIEW.QUEST_ADMIN && <QuestAdminPage />}

@@ -105,6 +105,32 @@ export const generateQuestSceneImage = async (
   });
 };
 
+export const composeQuestSceneImagePrompt = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  payload = {},
+  { adminKey } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/admin/quest/scene-image/compose-prompt`, {
+    method: 'POST',
+    headers: buildAdminHeaders(adminKey),
+    body: JSON.stringify(payload)
+  });
+};
+
+export const resolveQuestSceneImagePath = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  payload = {},
+  { adminKey } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/admin/quest/scene-image/resolve-path`, {
+    method: 'POST',
+    headers: buildAdminHeaders(adminKey),
+    body: JSON.stringify(payload)
+  });
+};
+
 export const inspectQuestDebugContext = async (
   baseUrl = DEFAULT_API_BASE_URL,
   payload = {},

@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { generateQuestAuthoringDraft } from '../../api/questScreens';
 
 const FIELD_LABELS = {
+  sceneName: 'Scene Name',
+  sceneTemplate: 'Base Scene Template',
+  sceneComponents: 'Attached Components',
   authoringBrief: 'Master Scene Brief',
   phaseGuidance: 'GM Scene Guide',
   visualStyleGuide: 'Scene Visual Guide',
@@ -396,4 +399,3 @@ const QuestAdminAiDraftPanel = ({
 };
 
 export default QuestAdminAiDraftPanel;
-

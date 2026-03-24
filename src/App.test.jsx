@@ -30,10 +30,6 @@ vi.mock('./components/storyteller/StorytellerArenaConsole', () => ({
   default: () => <div data-testid="arena-console">Arena console</div>
 }));
 
-vi.mock('./pages/QuestAdventurePage', () => ({
-  default: () => <div data-testid="quest-page">Quest page</div>
-}));
-
 vi.mock('./pages/RoseCourtProloguePage', () => ({
   default: () => <div data-testid="rose-court-page">Rose Court</div>
 }));

@@ -162,6 +162,11 @@ const VOW_DEFINITIONS = [
     detail: 'Adds +1 momentum while ritual mode is active.'
   }
 ];
+const RITUAL_PROMPT_TEMPLATES = [
+  'Show how "%SEED%" changes what the table believes right now.',
+  'Name one risk that appears if "%SEED%" is ignored.',
+  'Describe what a witness sees when "%SEED%" becomes undeniable.'
+];
 const WORLD_PROFILE_DEFAULT = {
   worldName: '',
   mood: '',
@@ -220,6 +225,21 @@ const SESSION_STATE_DEFAULT = {
     invokedByKey: '',
     invokedAt: ''
   },
+  sensoryHook: {
+    cue: '',
+    source: '',
+    draftedByKey: '',
+    echoedByKey: '',
+    echoedAt: ''
+  },
+  sceneHandshake: {
+    cue: '',
+    source: '',
+    beatId: '',
+    draftedByKey: '',
+    echoedByKey: '',
+    echoedAt: ''
+  },
   canonProposal: {
     text: '',
     proposedByKey: '',
@@ -228,10 +248,26 @@ const SESSION_STATE_DEFAULT = {
   },
   scenePromise: {
     text: '',
+    beatId: '',
     proposedByKey: '',
     affirmedBy: {},
     fulfilledByKey: '',
     fulfilledAt: ''
+  },
+  diveScene: {
+    text: '',
+    beatId: '',
+    proposedByKey: '',
+    affirmedBy: {},
+    lockedByKey: '',
+    lockedAt: ''
+  },
+  ritualPrompt: {
+    text: '',
+    source: '',
+    drawnByKey: '',
+    answeredByKey: '',
+    answeredAt: ''
   },
   vows: {
     hush: false,
@@ -248,6 +284,13 @@ const SESSION_STATE_DEFAULT = {
     touched: {},
     streak: 0,
     lastPass: null
+  },
+  ritualCycle: {
+    beatId: 'arrival',
+    prime: false,
+    perform: false,
+    seal: false,
+    completedAt: ''
   }
 };
 
@@ -258,6 +301,7 @@ const getSessionStateKey = (sessionId) =>
 const STORY_ADMIN_API_BASE_STORAGE_KEY = 'typewriterAdminApiBaseUrl';
 const clampPulseValue = (value) => Math.min(5, Math.max(0, value));
 const clampSceneClockValue = (value) => Math.min(SCENE_CLOCK_MAX, Math.max(SCENE_CLOCK_MIN, value));
+const trimPromptSeed = (value) => (typeof value === 'string' ? value.trim() : '');
 const createActionBank = (keys, value = TURN_ACTIONS_PER_TURN) =>
   Object.fromEntries((Array.isArray(keys) ? keys : []).map((key) => [key, value]));
 const describeSceneClock = (value) => {
@@ -265,6 +309,45 @@ const describeSceneClock = (value) => {
   if (value <= 3) return 'Tense';
   if (value <= 5) return 'Critical';
   return 'Breaking';
+};
+const ensureRitualCycle = (cycle, beatId = 'arrival') => {
+  const source = cycle && typeof cycle === 'object' ? cycle : SESSION_STATE_DEFAULT.ritualCycle;
+  const safeBeatId = typeof beatId === 'string' && beatId.trim() ? beatId.trim() : 'arrival';
+  if (source.beatId !== safeBeatId) {
+    return {
+      beatId: safeBeatId,
+      prime: false,
+      perform: false,
+      seal: false,
+      completedAt: ''
+    };
+  }
+  return {
+    beatId: safeBeatId,
+    prime: Boolean(source.prime),
+    perform: Boolean(source.perform),
+    seal: Boolean(source.seal),
+    completedAt: typeof source.completedAt === 'string' ? source.completedAt : ''
+  };
+};
+const markRitualCycleStep = (prevState, step) => {
+  if (!prevState?.ritualActive) {
+    return {
+      ritualCycle: ensureRitualCycle(prevState?.ritualCycle, prevState?.beatId || 'arrival'),
+      justCompleted: false
+    };
+  }
+  const base = ensureRitualCycle(prevState?.ritualCycle, prevState?.beatId || 'arrival');
+  if (!['prime', 'perform', 'seal'].includes(step) || base[step]) {
+    return { ritualCycle: base, justCompleted: false };
+  }
+  const next = { ...base, [step]: true };
+  const complete = next.prime && next.perform && next.seal;
+  if (complete && !next.completedAt) {
+    next.completedAt = new Date().toISOString();
+    return { ritualCycle: next, justCompleted: true };
+  }
+  return { ritualCycle: next, justCompleted: false };
 };
 const applyVowModifiers = (effects, vows, options = {}) => {
   const ritualActive = Boolean(options.ritualActive);
@@ -283,6 +366,126 @@ const applyVowModifiers = (effects, vows, options = {}) => {
     next.momentum += 1;
   }
   return next;
+};
+const buildRitualPromptDraft = ({
+  anchors,
+  ledgerEntries,
+  worldProfile,
+  sceneGoal,
+  sceneRisk,
+  activeBeatLabel,
+  expeditionCurrentStop
+}) => {
+  const anchorSeed = Array.isArray(anchors) ? anchors.find((item) => trimPromptSeed(item)) || '' : '';
+  const recentCanonSeed = Array.isArray(ledgerEntries)
+    ? ledgerEntries
+        .slice()
+        .reverse()
+        .find((entry) => ['canon', 'mystery', 'location', 'oath'].includes(entry?.type))?.text || ''
+    : '';
+  const pool = [
+    { source: 'anchor', text: anchorSeed },
+    { source: 'goal', text: trimPromptSeed(sceneGoal) },
+    { source: 'stakes', text: trimPromptSeed(sceneRisk) },
+    { source: 'route', text: trimPromptSeed(expeditionCurrentStop) },
+    { source: 'truth', text: trimPromptSeed(worldProfile?.truth) },
+    { source: 'mood', text: trimPromptSeed(worldProfile?.mood) },
+    { source: 'ledger', text: trimPromptSeed(recentCanonSeed) },
+    { source: 'beat', text: trimPromptSeed(activeBeatLabel) }
+  ].filter((item) => item.text);
+  if (!pool.length) {
+    return { text: '', source: '' };
+  }
+  const picker = (Array.isArray(ledgerEntries) ? ledgerEntries.length : 0) + (Array.isArray(anchors) ? anchors.length : 0);
+  const selected = pool[picker % pool.length];
+  const template = RITUAL_PROMPT_TEMPLATES[picker % RITUAL_PROMPT_TEMPLATES.length];
+  return {
+    source: selected.source,
+    text: template.replace('%SEED%', selected.text.length > 96 ? `${selected.text.slice(0, 93)}...` : selected.text)
+  };
+};
+const buildSensoryHookDraft = ({ worldProfile, anchors, diveSceneText, activeBeatLabel }) => {
+  const sensoryParts = [worldProfile?.sound, worldProfile?.scent, worldProfile?.texture]
+    .map((value) => trimPromptSeed(value))
+    .filter(Boolean);
+  const wonder = trimPromptSeed(worldProfile?.wonder);
+  const anchor = Array.isArray(anchors) ? trimPromptSeed(anchors[0] || '') : '';
+  const dive = trimPromptSeed(diveSceneText);
+  const beat = trimPromptSeed(activeBeatLabel);
+  const sceneRef = dive || beat || 'this beat';
+  if (sensoryParts.length >= 2) {
+    const [a, b] = sensoryParts;
+    return {
+      cue: `In ${sceneRef}, ${a.toLowerCase()} and ${b.toLowerCase()} reveal what is about to change.`,
+      source: 'sensory'
+    };
+  }
+  if (sensoryParts.length === 1) {
+    return {
+      cue: `In ${sceneRef}, ${sensoryParts[0].toLowerCase()} is the first sign that the world is shifting.`,
+      source: 'sensory'
+    };
+  }
+  if (anchor) {
+    return {
+      cue: `In ${sceneRef}, remember this anchor: ${anchor}.`,
+      source: 'anchor'
+    };
+  }
+  if (wonder) {
+    return {
+      cue: `In ${sceneRef}, let this wonder lead the room: ${wonder}.`,
+      source: 'wonder'
+    };
+  }
+  return { cue: '', source: '' };
+};
+const buildSceneHandshakeDraft = ({
+  diveSceneText,
+  sceneGoal,
+  sceneRisk,
+  intent,
+  worldProfile,
+  activeBeatLabel
+}) => {
+  const dive = trimPromptSeed(diveSceneText);
+  const goal = trimPromptSeed(sceneGoal);
+  const stakes = trimPromptSeed(sceneRisk);
+  const tableIntent = trimPromptSeed(intent);
+  const truth = trimPromptSeed(worldProfile?.truth);
+  const mood = trimPromptSeed(worldProfile?.mood);
+  const beat = trimPromptSeed(activeBeatLabel) || 'this beat';
+  if (dive) {
+    return {
+      cue: `On ${beat}, we enter: ${dive}`,
+      source: 'dive-scene'
+    };
+  }
+  if (goal && stakes) {
+    return {
+      cue: `On ${beat}, pursue "${goal}" while risking ${stakes}.`,
+      source: 'lens'
+    };
+  }
+  if (goal) {
+    return {
+      cue: `On ${beat}, pursue "${goal}" with ${mood || 'full presence'}.`,
+      source: 'lens'
+    };
+  }
+  if (tableIntent) {
+    return {
+      cue: `On ${beat}, hold this table intent: ${tableIntent}.`,
+      source: 'intent'
+    };
+  }
+  if (truth) {
+    return {
+      cue: `On ${beat}, remember this world truth: ${truth}.`,
+      source: 'truth'
+    };
+  }
+  return { cue: '', source: '' };
 };
 
 const readWorldProfile = (sessionId) => {
@@ -475,6 +678,7 @@ const StorytellerArenaConsole = ({
   const [resonanceInput, setResonanceInput] = useState('');
   const [canonProposalInput, setCanonProposalInput] = useState('');
   const [scenePromiseInput, setScenePromiseInput] = useState('');
+  const [diveSceneInput, setDiveSceneInput] = useState('');
   const boardRef = useRef(null);
   const boardStageRef = useRef(null);
   const forgePanelRef = useRef(null);
@@ -825,9 +1029,12 @@ const StorytellerArenaConsole = ({
     sessionState.scenePromise && typeof sessionState.scenePromise === 'object'
       ? sessionState.scenePromise
       : SESSION_STATE_DEFAULT.scenePromise;
-  const scenePromiseText = typeof scenePromise.text === 'string' ? scenePromise.text.trim() : '';
+  const scenePromiseBeatId = typeof scenePromise.beatId === 'string' ? scenePromise.beatId.trim() : '';
+  const scenePromiseCurrent = !scenePromiseBeatId || scenePromiseBeatId === activeBeatId;
+  const scenePromiseText =
+    scenePromiseCurrent && typeof scenePromise.text === 'string' ? scenePromise.text.trim() : '';
   const scenePromiseAffirmedMap =
-    scenePromise.affirmedBy && typeof scenePromise.affirmedBy === 'object'
+    scenePromiseCurrent && scenePromise.affirmedBy && typeof scenePromise.affirmedBy === 'object'
       ? scenePromise.affirmedBy
       : {};
   const scenePromiseAffirmed = syncTargetKeys.filter((playerKey) => Boolean(scenePromiseAffirmedMap[playerKey])).length;
@@ -839,6 +1046,35 @@ const StorytellerArenaConsole = ({
   const scenePromiseFulfilled = Boolean(scenePromise.fulfilledAt);
   const scenePromiseByLabel = getPlayerLabelByKey(scenePromise.proposedByKey || '', 'Table');
   const scenePromiseFulfilledByLabel = getPlayerLabelByKey(scenePromise.fulfilledByKey || '', 'Table');
+  const diveScene =
+    sessionState.diveScene && typeof sessionState.diveScene === 'object'
+      ? sessionState.diveScene
+      : SESSION_STATE_DEFAULT.diveScene;
+  const diveSceneBeatId = typeof diveScene.beatId === 'string' ? diveScene.beatId.trim() : '';
+  const diveSceneCurrent = Boolean(diveSceneBeatId && diveSceneBeatId === activeBeatId);
+  const diveSceneText = diveSceneCurrent && typeof diveScene.text === 'string' ? diveScene.text.trim() : '';
+  const diveSceneAffirmedMap =
+    diveSceneCurrent && diveScene.affirmedBy && typeof diveScene.affirmedBy === 'object'
+      ? diveScene.affirmedBy
+      : {};
+  const diveSceneAffirmed = syncTargetKeys.filter((playerKey) => Boolean(diveSceneAffirmedMap[playerKey])).length;
+  const diveSceneRequired = syncTargetKeys.length;
+  const diveSceneReady =
+    Boolean(diveSceneText) &&
+    diveSceneRequired > 0 &&
+    diveSceneAffirmed >= diveSceneRequired;
+  const diveSceneLocked = diveSceneCurrent && Boolean(diveScene.lockedAt);
+  const diveSceneByLabel = getPlayerLabelByKey(diveScene.proposedByKey || '', 'Table');
+  const diveSceneLockedByLabel = getPlayerLabelByKey(diveScene.lockedByKey || '', 'Table');
+  const ritualPrompt =
+    sessionState.ritualPrompt && typeof sessionState.ritualPrompt === 'object'
+      ? sessionState.ritualPrompt
+      : SESSION_STATE_DEFAULT.ritualPrompt;
+  const ritualPromptText = typeof ritualPrompt.text === 'string' ? ritualPrompt.text.trim() : '';
+  const ritualPromptSource = typeof ritualPrompt.source === 'string' ? ritualPrompt.source.trim() : '';
+  const ritualPromptResolved = Boolean(ritualPrompt.answeredAt);
+  const ritualPromptDrawnByLabel = getPlayerLabelByKey(ritualPrompt.drawnByKey || '', 'Table');
+  const ritualPromptAnsweredByLabel = getPlayerLabelByKey(ritualPrompt.answeredByKey || '', 'Table');
   const vows =
     sessionState.vows && typeof sessionState.vows === 'object' ? sessionState.vows : SESSION_STATE_DEFAULT.vows;
   const activeVows = VOW_DEFINITIONS.filter((vow) => Boolean(vows[vow.id]));
@@ -862,6 +1098,33 @@ const StorytellerArenaConsole = ({
   const worldEchoInvoked = Boolean(worldEcho.invokedAt);
   const worldEchoByLabel = getPlayerLabelByKey(worldEcho.harvestedByKey || '', 'Table');
   const worldEchoInvokedByLabel = getPlayerLabelByKey(worldEcho.invokedByKey || '', 'Table');
+  const sensoryHook =
+    sessionState.sensoryHook && typeof sessionState.sensoryHook === 'object'
+      ? sessionState.sensoryHook
+      : SESSION_STATE_DEFAULT.sensoryHook;
+  const sensoryHookCue = typeof sensoryHook.cue === 'string' ? sensoryHook.cue.trim() : '';
+  const sensoryHookSource = typeof sensoryHook.source === 'string' ? sensoryHook.source.trim() : '';
+  const sensoryHookEchoed = Boolean(sensoryHook.echoedAt);
+  const sensoryHookByLabel = getPlayerLabelByKey(sensoryHook.draftedByKey || '', 'Table');
+  const sensoryHookEchoedByLabel = getPlayerLabelByKey(sensoryHook.echoedByKey || '', 'Table');
+  const sceneHandshake =
+    sessionState.sceneHandshake && typeof sessionState.sceneHandshake === 'object'
+      ? sessionState.sceneHandshake
+      : SESSION_STATE_DEFAULT.sceneHandshake;
+  const sceneHandshakeBeatId =
+    typeof sceneHandshake.beatId === 'string' ? sceneHandshake.beatId.trim() : '';
+  const sceneHandshakeCurrent = !sceneHandshakeBeatId || sceneHandshakeBeatId === activeBeatId;
+  const sceneHandshakeCue =
+    sceneHandshakeCurrent && typeof sceneHandshake.cue === 'string'
+      ? sceneHandshake.cue.trim()
+      : '';
+  const sceneHandshakeSource =
+    sceneHandshakeCurrent && typeof sceneHandshake.source === 'string'
+      ? sceneHandshake.source.trim()
+      : '';
+  const sceneHandshakeEchoed = sceneHandshakeCurrent && Boolean(sceneHandshake.echoedAt);
+  const sceneHandshakeByLabel = getPlayerLabelByKey(sceneHandshake.draftedByKey || '', 'Table');
+  const sceneHandshakeEchoedByLabel = getPlayerLabelByKey(sceneHandshake.echoedByKey || '', 'Table');
   const expedition =
     sessionState.expedition && typeof sessionState.expedition === 'object'
       ? sessionState.expedition
@@ -897,12 +1160,16 @@ const StorytellerArenaConsole = ({
     relay.lastPass && typeof relay.lastPass === 'object' ? relay.lastPass : null;
   const relayLastFromLabel = getPlayerLabelByKey(relayLastPass?.fromKey || '', 'Table');
   const relayLastToLabel = getPlayerLabelByKey(relayLastPass?.toKey || '', 'Table');
+  const ritualCycle = ensureRitualCycle(sessionState.ritualCycle, activeBeatId);
+  const ritualCycleProgress = [ritualCycle.prime, ritualCycle.perform, ritualCycle.seal].filter(Boolean).length;
+  const ritualCycleComplete = Boolean(ritualCycle.completedAt);
   const immersionGate = useMemo(
     () => ({
       charter: hasWorldCharter,
       anchors: anchors.length > 0,
       lens: Boolean(sceneGoal.trim() || sceneRisk.trim()),
       intent: Boolean((sessionState.intent || '').trim()),
+      diveScene: diveSceneLocked,
       ready: playersCount > 0 ? readyCount === playersCount : false,
       ritual: ritualActive
     }),
@@ -912,6 +1179,7 @@ const StorytellerArenaConsole = ({
       playersCount,
       readyCount,
       ritualActive,
+      diveSceneLocked,
       sceneGoal,
       sceneRisk,
       sessionState.intent
@@ -921,6 +1189,7 @@ const StorytellerArenaConsole = ({
     hasWorldCharter &&
     Boolean(sceneGoal.trim() || sceneRisk.trim()) &&
     Boolean((sessionState.intent || '').trim()) &&
+    diveSceneLocked &&
     (playersCount <= 1 || readyCount === playersCount);
   const actionBank =
     sessionState.actionBank && typeof sessionState.actionBank === 'object'
@@ -980,6 +1249,34 @@ const StorytellerArenaConsole = ({
         actionId: 'anchors'
       },
       {
+        id: 'dive-scene',
+        label: 'Dive Scene',
+        detail: diveSceneLocked
+          ? 'Scene lock complete'
+          : diveSceneText
+            ? `Affirm ${diveSceneAffirmed}/${diveSceneRequired || 0} then lock`
+            : 'Draft one scene target for this beat',
+        ready: diveSceneLocked,
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      },
+      {
+        id: 'scene-handshake',
+        label: 'Scene Handshake',
+        detail: ritualActive
+          ? sceneHandshakeCue
+            ? sceneHandshakeEchoed
+              ? 'Entry echoed in ritual'
+              : 'Cue ready to echo'
+            : 'Draft entry cue before next push'
+          : sceneHandshakeCue
+            ? 'Entry cue primed for ritual'
+            : 'Prime one cue from dive scene/lens',
+        ready: ritualActive ? sceneHandshakeEchoed : Boolean(sceneHandshakeCue),
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      },
+      {
         id: 'world-echo',
         label: 'World Echo',
         detail: ritualActive
@@ -990,6 +1287,46 @@ const StorytellerArenaConsole = ({
             : 'Harvest from anchors/ledger'
           : 'Arms during ritual',
         ready: !ritualActive || Boolean(worldEchoCue),
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      },
+      {
+        id: 'sensory-hook',
+        label: 'Sensory Hook',
+        detail: ritualActive
+          ? sensoryHookCue
+            ? sensoryHookEchoed
+              ? 'Hook echoed in ritual'
+              : 'Hook ready to echo'
+            : 'Draft from sensory world frame'
+          : 'Arms during ritual',
+        ready: !ritualActive || Boolean(sensoryHookCue),
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      },
+      {
+        id: 'ritual-prompt',
+        label: 'Ritual Prompt',
+        detail: ritualActive
+          ? ritualPromptText
+            ? ritualPromptResolved
+              ? 'Prompt answered'
+              : 'Prompt open for answer'
+            : 'Draw a prompt from canon'
+          : 'Arms during ritual',
+        ready: !ritualActive || Boolean(ritualPromptText),
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      },
+      {
+        id: 'ritual-cycle',
+        label: 'Ritual Cycle',
+        detail: ritualActive
+          ? ritualCycleComplete
+            ? 'Prime, Perform, Seal complete'
+            : `Progress ${ritualCycleProgress}/3 (Prime → Perform → Seal)`
+          : 'Arms during ritual',
+        ready: !ritualActive || ritualCycleComplete,
         actionLabel: 'Open Presence',
         actionId: 'presence'
       },
@@ -1007,8 +1344,20 @@ const StorytellerArenaConsole = ({
     hasWorldCharter,
     hasWorldAtlas,
     ritualActive,
+    diveSceneText,
+    diveSceneAffirmed,
+    diveSceneRequired,
+    diveSceneLocked,
+    sceneHandshakeCue,
+    sceneHandshakeEchoed,
+    ritualPromptText,
+    ritualPromptResolved,
+    ritualCycleComplete,
+    ritualCycleProgress,
     worldEchoCue,
     worldEchoInvoked,
+    sensoryHookCue,
+    sensoryHookEchoed,
     playersCount,
     readyCount,
     sceneGoal,
@@ -1057,6 +1406,38 @@ const StorytellerArenaConsole = ({
         actionId: 'anchors'
       };
     }
+    if (!diveSceneText) {
+      return {
+        title: 'Draft Dive Scene',
+        detail: 'Set one scene target so immersion has a concrete destination.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (!diveSceneReady) {
+      return {
+        title: 'Align Dive Scene',
+        detail: `Collect full table affirmation (${diveSceneAffirmed}/${diveSceneRequired}).`,
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (!diveSceneLocked) {
+      return {
+        title: 'Lock Dive Scene',
+        detail: 'Lock the beat scene so table actions stay anchored and immersive.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (!sceneHandshakeCue) {
+      return {
+        title: 'Draft Scene Handshake',
+        detail: 'Prime one entry cue from dive scene/lens so immersion opens with shared focus.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
     if (!immersionGate.ready) {
       return {
         title: 'Ready the Table',
@@ -1071,6 +1452,14 @@ const StorytellerArenaConsole = ({
         detail: 'Switch from setup into active immersion turns.',
         actionLabel: 'Start Ritual',
         actionId: 'start-ritual'
+      };
+    }
+    if (ritualActive && sceneHandshakeCue && !sceneHandshakeEchoed) {
+      return {
+        title: 'Echo Scene Handshake',
+        detail: 'Have a second seat echo the entry cue to lock full-table immersion.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
       };
     }
     if (relayRequired > 1 && !relayRoundComplete) {
@@ -1101,6 +1490,46 @@ const StorytellerArenaConsole = ({
       return {
         title: 'Fulfill Scene Promise',
         detail: 'Mark the promise fulfilled once the scene delivers it on-screen.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (ritualActive && !ritualPromptText) {
+      return {
+        title: 'Draw Ritual Prompt',
+        detail: 'Pull a focused prompt from atlas/canon so the next turn has clear texture.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (ritualActive && ritualPromptText && !ritualPromptResolved) {
+      return {
+        title: 'Answer Ritual Prompt',
+        detail: 'Have another seat answer the open prompt to deepen immersion.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (ritualActive && !ritualCycle.prime) {
+      return {
+        title: 'Prime Ritual Cycle',
+        detail: 'Draw a ritual prompt or harvest world echo to prime this beat.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (ritualActive && ritualCycle.prime && !ritualCycle.perform) {
+      return {
+        title: 'Perform Ritual Cycle',
+        detail: 'Answer a prompt, invoke echo, or answer resonance to push the scene.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (ritualActive && ritualCycle.perform && !ritualCycle.seal) {
+      return {
+        title: 'Seal Ritual Cycle',
+        detail: 'Ratify canon or fulfill the scene promise to lock this beat.',
         actionLabel: 'Open Presence',
         actionId: 'presence'
       };
@@ -1137,6 +1566,22 @@ const StorytellerArenaConsole = ({
         actionId: 'presence'
       };
     }
+    if (!sensoryHookCue) {
+      return {
+        title: 'Draft Sensory Hook',
+        detail: 'Draft one sensory cue from world frame so the next turn lands viscerally.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (ritualActive && sensoryHookCue && !sensoryHookEchoed) {
+      return {
+        title: 'Echo Sensory Hook',
+        detail: 'Let a second seat echo the hook in ritual to lock immersion at table level.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
     if (!canonProposalText) {
       return {
         title: 'Draft Canon Proposal',
@@ -1166,6 +1611,13 @@ const StorytellerArenaConsole = ({
     sceneRisk,
     sessionState.intent,
     anchors.length,
+    diveSceneText,
+    diveSceneReady,
+    diveSceneAffirmed,
+    diveSceneRequired,
+    diveSceneLocked,
+    sceneHandshakeCue,
+    sceneHandshakeEchoed,
     immersionGate.ready,
     ritualActive,
     relayRequired,
@@ -1175,11 +1627,16 @@ const StorytellerArenaConsole = ({
     resonancePending,
     worldEchoCue,
     worldEchoInvoked,
+    sensoryHookCue,
+    sensoryHookEchoed,
     scenePromiseText,
     scenePromiseAffirmed,
     scenePromiseRequired,
     scenePromiseReady,
     scenePromiseFulfilled,
+    ritualPromptText,
+    ritualPromptResolved,
+    ritualCycle,
     canonProposalText,
     canonProposalReady
   ]);
@@ -1290,6 +1747,7 @@ const StorytellerArenaConsole = ({
             anchors: immersionGate.anchors,
             lens: immersionGate.lens,
             intent: immersionGate.intent,
+            diveScene: immersionGate.diveScene,
             ready: immersionGate.ready,
             ritual: immersionGate.ritual
           },
@@ -1356,6 +1814,24 @@ const StorytellerArenaConsole = ({
             fulfilled: scenePromiseFulfilled,
             fulfilledBy: scenePromiseFulfilledByLabel
           },
+          diveScene: {
+            text: diveSceneText,
+            beat: activeBeat?.label || 'Arrival',
+            current: diveSceneCurrent,
+            proposedBy: diveSceneByLabel,
+            affirmed: diveSceneAffirmed,
+            required: diveSceneRequired,
+            ready: diveSceneReady,
+            locked: diveSceneLocked,
+            lockedBy: diveSceneLockedByLabel
+          },
+          ritualPrompt: {
+            text: ritualPromptText,
+            source: ritualPromptSource,
+            drawnBy: ritualPromptDrawnByLabel,
+            answered: ritualPromptResolved,
+            answeredBy: ritualPromptAnsweredByLabel
+          },
           resonance: {
             pending: resonancePending,
             cue: resonanceCue,
@@ -1369,6 +1845,21 @@ const StorytellerArenaConsole = ({
             by: worldEchoByLabel,
             invoked: worldEchoInvoked,
             invokedBy: worldEchoInvokedByLabel
+          },
+          sensoryHook: {
+            cue: sensoryHookCue,
+            source: sensoryHookSource,
+            by: sensoryHookByLabel,
+            echoed: sensoryHookEchoed,
+            echoedBy: sensoryHookEchoedByLabel
+          },
+          sceneHandshake: {
+            cue: sceneHandshakeCue,
+            source: sceneHandshakeSource,
+            beat: activeBeat?.label || 'Arrival',
+            by: sceneHandshakeByLabel,
+            echoed: sceneHandshakeEchoed,
+            echoedBy: sceneHandshakeEchoedByLabel
           },
           expedition: {
             route: expeditionRoute,
@@ -1391,6 +1882,15 @@ const StorytellerArenaConsole = ({
               to: relayLastToLabel,
               at: relayLastPass?.at || ''
             }
+          },
+          ritualCycle: {
+            beat: activeBeat?.label || 'Arrival',
+            progress: ritualCycleProgress,
+            required: 3,
+            prime: ritualCycle.prime,
+            perform: ritualCycle.perform,
+            seal: ritualCycle.seal,
+            complete: ritualCycleComplete
           }
         },
         roster: players.slice(0, playersCount).map((player, index) => ({
@@ -1451,6 +1951,19 @@ const StorytellerArenaConsole = ({
     scenePromiseReady,
     scenePromiseFulfilled,
     scenePromiseFulfilledByLabel,
+    diveSceneText,
+    diveSceneCurrent,
+    diveSceneByLabel,
+    diveSceneAffirmed,
+    diveSceneRequired,
+    diveSceneReady,
+    diveSceneLocked,
+    diveSceneLockedByLabel,
+    ritualPromptText,
+    ritualPromptSource,
+    ritualPromptDrawnByLabel,
+    ritualPromptResolved,
+    ritualPromptAnsweredByLabel,
     vows,
     activeVows,
     sceneGoal,
@@ -1468,6 +1981,16 @@ const StorytellerArenaConsole = ({
     worldEchoByLabel,
     worldEchoInvoked,
     worldEchoInvokedByLabel,
+    sensoryHookCue,
+    sensoryHookSource,
+    sensoryHookByLabel,
+    sensoryHookEchoed,
+    sensoryHookEchoedByLabel,
+    sceneHandshakeCue,
+    sceneHandshakeSource,
+    sceneHandshakeByLabel,
+    sceneHandshakeEchoed,
+    sceneHandshakeEchoedByLabel,
     expeditionRoute,
     expeditionCurrentStop,
     expeditionNextStop,
@@ -1480,6 +2003,9 @@ const StorytellerArenaConsole = ({
     relayLastFromLabel,
     relayLastToLabel,
     relayLastPass,
+    ritualCycle,
+    ritualCycleProgress,
+    ritualCycleComplete,
     immersionPrimer,
     spotlightLabel,
     spotlightTokens,
@@ -1776,11 +2302,15 @@ const StorytellerArenaConsole = ({
   const handleAdvanceBeat = () => {
     const currentIndex = sceneBeats.findIndex((beat) => beat.id === activeBeat?.id);
     const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % sceneBeats.length;
+    const nextBeatId = sceneBeats[nextIndex].id;
     setSessionState((prev) => ({
       ...prev,
-      beatId: sceneBeats[nextIndex].id,
+      beatId: nextBeatId,
       beatVotes: {},
-      lastBeatSync: null
+      lastBeatSync: null,
+      sceneHandshake: { ...SESSION_STATE_DEFAULT.sceneHandshake },
+      sensoryHook: { ...SESSION_STATE_DEFAULT.sensoryHook },
+      ritualCycle: ensureRitualCycle(SESSION_STATE_DEFAULT.ritualCycle, nextBeatId)
     }));
   };
 
@@ -2464,6 +2994,15 @@ const StorytellerArenaConsole = ({
     const source = anchorSeed ? 'anchor' : ledgerSeed ? 'ledger' : 'truth';
     setSessionState((prev) => {
       const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const cycleUpdate = markRitualCycleStep(prev, 'prime');
+      const cycleEntry = cycleUpdate.justCompleted
+        ? createLedgerEntry({
+            type: 'canon',
+            text: 'Ritual cycle complete: Prime → Perform → Seal.',
+            by: 'Table'
+          })
+        : null;
+      const cycleBonus = cycleUpdate.justCompleted ? 1 : 0;
       const entry = createLedgerEntry({
         type: 'oath',
         text: `${harvesterLabel} harvests world echo: "${cue}"`,
@@ -2480,9 +3019,13 @@ const StorytellerArenaConsole = ({
         },
         pulse: {
           ...nextPulse,
-          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + cycleBonus),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1 + cycleBonus)
         },
-        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+        ritualCycle: cycleUpdate.ritualCycle,
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry, cycleEntry]
+          .filter(Boolean)
+          .slice(-24)
       };
     });
     setNotice('World echo harvested and ready.');
@@ -2506,6 +3049,15 @@ const StorytellerArenaConsole = ({
     const actorLabel = getPlayerLabelByKey(actorKey, 'Table');
     setSessionState((prev) => {
       const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const cycleUpdate = markRitualCycleStep(prev, 'perform');
+      const cycleEntry = cycleUpdate.justCompleted
+        ? createLedgerEntry({
+            type: 'canon',
+            text: 'Ritual cycle complete: Prime → Perform → Seal.',
+            by: 'Table'
+          })
+        : null;
+      const cycleBonus = cycleUpdate.justCompleted ? 1 : 0;
       const previousClockRaw = Number(prev.sceneClock);
       const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
       const effect = applyVowModifiers(
@@ -2530,11 +3082,14 @@ const StorytellerArenaConsole = ({
           invokedAt: new Date().toISOString()
         },
         pulse: {
-          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum),
-          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity)
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum + cycleBonus),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity + cycleBonus)
         },
         sceneClock: clampSceneClockValue(previousClock + effect.sceneClock),
-        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+        ritualCycle: cycleUpdate.ritualCycle,
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry, cycleEntry]
+          .filter(Boolean)
+          .slice(-24)
       };
     });
     setNotice('World echo invoked in-scene.');
@@ -2546,6 +3101,270 @@ const StorytellerArenaConsole = ({
       worldEcho: { ...SESSION_STATE_DEFAULT.worldEcho }
     }));
     setNotice('World echo cleared.');
+  };
+
+  const handleDraftSensoryHook = () => {
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const drafterKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!drafterKey) {
+      setNotice('Set focus or turn holder before drafting a sensory hook.');
+      return;
+    }
+    const draft = buildSensoryHookDraft({
+      worldProfile,
+      anchors,
+      diveSceneText,
+      activeBeatLabel: activeBeat?.label || 'Arrival'
+    });
+    if (!draft.cue) {
+      setNotice('Add sensory world frame, anchors, or a dive scene before drafting a hook.');
+      return;
+    }
+    const drafterLabel = getPlayerLabelByKey(drafterKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const cycleUpdate = markRitualCycleStep(prev, 'prime');
+      const cycleEntry = cycleUpdate.justCompleted
+        ? createLedgerEntry({
+            type: 'canon',
+            text: 'Ritual cycle complete: Prime → Perform → Seal.',
+            by: 'Table'
+          })
+        : null;
+      const cycleBonus = cycleUpdate.justCompleted ? 1 : 0;
+      const entry = createLedgerEntry({
+        type: 'oath',
+        text: `${drafterLabel} drafts sensory hook: "${draft.cue}"`,
+        by: drafterLabel
+      });
+      return {
+        ...prev,
+        sensoryHook: {
+          cue: draft.cue,
+          source: draft.source,
+          draftedByKey: drafterKey,
+          echoedByKey: '',
+          echoedAt: ''
+        },
+        pulse: {
+          ...nextPulse,
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1 + cycleBonus)
+        },
+        ritualCycle: cycleUpdate.ritualCycle,
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry, cycleEntry]
+          .filter(Boolean)
+          .slice(-24)
+      };
+    });
+    setNotice('Sensory hook drafted and ready.');
+  };
+
+  const handleEchoSensoryHook = () => {
+    if (!ritualActive) {
+      setNotice('Open ritual mode before echoing sensory hooks.');
+      return;
+    }
+    if (!sensoryHookCue) {
+      setNotice('Draft a sensory hook first.');
+      return;
+    }
+    if (sensoryHookEchoed) {
+      setNotice('Draft a fresh sensory hook before echoing again.');
+      return;
+    }
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const actorKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!actorKey) {
+      setNotice('Set focus or turn holder before echoing sensory hook.');
+      return;
+    }
+    if (syncTargetKeys.length > 1 && actorKey === (sensoryHook.draftedByKey || '')) {
+      setNotice('A different seat should echo this hook for multiplayer immersion.');
+      return;
+    }
+    const actorLabel = getPlayerLabelByKey(actorKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const cycleUpdate = markRitualCycleStep(prev, 'perform');
+      const cycleEntry = cycleUpdate.justCompleted
+        ? createLedgerEntry({
+            type: 'canon',
+            text: 'Ritual cycle complete: Prime → Perform → Seal.',
+            by: 'Table'
+          })
+        : null;
+      const cycleBonus = cycleUpdate.justCompleted ? 1 : 0;
+      const previousClockRaw = Number(prev.sceneClock);
+      const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
+      const effect = applyVowModifiers(
+        { momentum: 1, clarity: 1, sceneClock: -1 },
+        prev.vows,
+        { ritualActive: Boolean(prev.ritualActive) }
+      );
+      const entry = createLedgerEntry({
+        type: 'canon',
+        text: `${actorLabel} echoes sensory hook: "${sensoryHookCue}"`,
+        by: actorLabel
+      });
+      const existingHook =
+        prev.sensoryHook && typeof prev.sensoryHook === 'object'
+          ? prev.sensoryHook
+          : SESSION_STATE_DEFAULT.sensoryHook;
+      return {
+        ...prev,
+        sensoryHook: {
+          ...existingHook,
+          echoedByKey: actorKey,
+          echoedAt: new Date().toISOString()
+        },
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum + cycleBonus),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity + cycleBonus)
+        },
+        sceneClock: clampSceneClockValue(previousClock + effect.sceneClock),
+        ritualCycle: cycleUpdate.ritualCycle,
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry, cycleEntry]
+          .filter(Boolean)
+          .slice(-24)
+      };
+    });
+    setNotice(`${actorLabel} echoes the sensory hook.`);
+  };
+
+  const handleClearSensoryHook = () => {
+    setSessionState((prev) => ({
+      ...prev,
+      sensoryHook: { ...SESSION_STATE_DEFAULT.sensoryHook }
+    }));
+    setNotice('Sensory hook cleared.');
+  };
+
+  const handleDraftSceneHandshake = () => {
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const drafterKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!drafterKey) {
+      setNotice('Set focus or turn holder before drafting scene handshake.');
+      return;
+    }
+    const draft = buildSceneHandshakeDraft({
+      diveSceneText,
+      sceneGoal,
+      sceneRisk,
+      intent: sessionState.intent,
+      worldProfile,
+      activeBeatLabel: activeBeat?.label || 'Arrival'
+    });
+    if (!draft.cue) {
+      setNotice('Draft dive scene, lens, intent, or world truth before scene handshake.');
+      return;
+    }
+    const drafterLabel = getPlayerLabelByKey(drafterKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const entry = createLedgerEntry({
+        type: 'oath',
+        text: `${drafterLabel} drafts scene handshake: "${draft.cue}"`,
+        by: drafterLabel
+      });
+      return {
+        ...prev,
+        sceneHandshake: {
+          cue: draft.cue,
+          source: draft.source,
+          beatId: activeBeatId,
+          draftedByKey: drafterKey,
+          echoedByKey: '',
+          echoedAt: ''
+        },
+        pulse: {
+          ...nextPulse,
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setNotice('Scene handshake cue drafted.');
+  };
+
+  const handleEchoSceneHandshake = () => {
+    if (!ritualActive) {
+      setNotice('Open ritual mode before echoing scene handshake.');
+      return;
+    }
+    if (!sceneHandshakeCue) {
+      setNotice('Draft a scene handshake cue first.');
+      return;
+    }
+    if (sceneHandshakeEchoed) {
+      setNotice('Draft a fresh scene handshake cue before echoing again.');
+      return;
+    }
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const actorKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!actorKey) {
+      setNotice('Set focus or turn holder before echoing scene handshake.');
+      return;
+    }
+    if (syncTargetKeys.length > 1 && actorKey === (sceneHandshake.draftedByKey || '')) {
+      setNotice('A different seat should echo this cue for multiplayer immersion.');
+      return;
+    }
+    const actorLabel = getPlayerLabelByKey(actorKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const cycleUpdate = markRitualCycleStep(prev, 'perform');
+      const cycleEntry = cycleUpdate.justCompleted
+        ? createLedgerEntry({
+            type: 'canon',
+            text: 'Ritual cycle complete: Prime → Perform → Seal.',
+            by: 'Table'
+          })
+        : null;
+      const cycleBonus = cycleUpdate.justCompleted ? 1 : 0;
+      const previousClockRaw = Number(prev.sceneClock);
+      const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
+      const effect = applyVowModifiers(
+        { momentum: 1, clarity: 1, sceneClock: -1 },
+        prev.vows,
+        { ritualActive: Boolean(prev.ritualActive) }
+      );
+      const existingHandshake =
+        prev.sceneHandshake && typeof prev.sceneHandshake === 'object'
+          ? prev.sceneHandshake
+          : SESSION_STATE_DEFAULT.sceneHandshake;
+      const entry = createLedgerEntry({
+        type: 'canon',
+        text: `${actorLabel} echoes scene handshake: "${existingHandshake.cue || sceneHandshakeCue}"`,
+        by: actorLabel
+      });
+      return {
+        ...prev,
+        sceneHandshake: {
+          ...existingHandshake,
+          beatId: existingHandshake.beatId || activeBeatId,
+          echoedByKey: actorKey,
+          echoedAt: new Date().toISOString()
+        },
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum + cycleBonus),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity + cycleBonus)
+        },
+        sceneClock: clampSceneClockValue(previousClock + effect.sceneClock),
+        ritualCycle: cycleUpdate.ritualCycle,
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry, cycleEntry]
+          .filter(Boolean)
+          .slice(-24)
+      };
+    });
+    setNotice(`${actorLabel} echoes the scene handshake cue.`);
+  };
+
+  const handleClearSceneHandshake = () => {
+    setSessionState((prev) => ({
+      ...prev,
+      sceneHandshake: { ...SESSION_STATE_DEFAULT.sceneHandshake }
+    }));
+    setNotice('Scene handshake cleared.');
   };
 
   const handleDraftCanonProposal = () => {
@@ -2628,6 +3447,15 @@ const StorytellerArenaConsole = ({
     const ratifierLabel = focusPlayerLabel || currentTurnLabel || 'Table';
     setSessionState((prev) => {
       const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const cycleUpdate = markRitualCycleStep(prev, 'seal');
+      const cycleEntry = cycleUpdate.justCompleted
+        ? createLedgerEntry({
+            type: 'canon',
+            text: 'Ritual cycle complete: Prime → Perform → Seal.',
+            by: 'Table'
+          })
+        : null;
+      const cycleBonus = cycleUpdate.justCompleted ? 1 : 0;
       const entry = createLedgerEntry({
         type: 'canon',
         text: `Canon ratified: ${canonProposalText}`,
@@ -2637,10 +3465,13 @@ const StorytellerArenaConsole = ({
         ...prev,
         canonProposal: { ...SESSION_STATE_DEFAULT.canonProposal },
         pulse: {
-          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + 1),
-          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + 1 + cycleBonus),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1 + cycleBonus)
         },
-        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+        ritualCycle: cycleUpdate.ritualCycle,
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry, cycleEntry]
+          .filter(Boolean)
+          .slice(-24)
       };
     });
     setCanonProposalInput('');
@@ -2654,6 +3485,129 @@ const StorytellerArenaConsole = ({
     }));
     setCanonProposalInput('');
     setNotice('Canon proposal cleared.');
+  };
+
+  const handleDraftDiveScene = () => {
+    const text = diveSceneInput.trim();
+    if (!text) {
+      setNotice('Write one concise dive scene target first.');
+      return;
+    }
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const proposerKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!proposerKey) {
+      setNotice('Set focus or turn holder before drafting a dive scene.');
+      return;
+    }
+    const proposerLabel = getPlayerLabelByKey(proposerKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const entry = createLedgerEntry({
+        type: 'oath',
+        text: `${proposerLabel} drafts dive scene: "${text}"`,
+        by: proposerLabel
+      });
+      return {
+        ...prev,
+        diveScene: {
+          text,
+          beatId: activeBeatId,
+          proposedByKey: proposerKey,
+          affirmedBy: { [proposerKey]: true },
+          lockedByKey: '',
+          lockedAt: ''
+        },
+        pulse: {
+          ...nextPulse,
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setDiveSceneInput('');
+    setNotice(`${proposerLabel} drafts a dive scene target.`);
+  };
+
+  const handleAffirmDiveScene = () => {
+    if (!diveSceneText) {
+      setNotice('Draft a dive scene first.');
+      return;
+    }
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const voterKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!voterKey) {
+      setNotice('Set focus or turn holder before affirming.');
+      return;
+    }
+    const voterLabel = getPlayerLabelByKey(voterKey, 'Table');
+    setSessionState((prev) => ({
+      ...prev,
+      diveScene: {
+        ...(prev.diveScene && typeof prev.diveScene === 'object'
+          ? prev.diveScene
+          : SESSION_STATE_DEFAULT.diveScene),
+        beatId: activeBeatId,
+        affirmedBy: {
+          ...((prev.diveScene && typeof prev.diveScene.affirmedBy === 'object'
+            ? prev.diveScene.affirmedBy
+            : {})),
+          [voterKey]: true
+        }
+      }
+    }));
+    setNotice(`${voterLabel} affirms the dive scene.`);
+  };
+
+  const handleLockDiveScene = () => {
+    if (!diveSceneText) {
+      setNotice('No dive scene to lock.');
+      return;
+    }
+    if (!diveSceneReady) {
+      setNotice(`Table affirmation required (${diveSceneAffirmed}/${diveSceneRequired}).`);
+      return;
+    }
+    if (diveSceneLocked) {
+      setNotice('This dive scene is already locked.');
+      return;
+    }
+    const actorKey = focusPlayerKey || currentTurnKey || getPlayerKey(activePlayer, activePlayerIndex);
+    const actorLabel = getPlayerLabelByKey(actorKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const entry = createLedgerEntry({
+        type: 'canon',
+        text: `Dive scene locked (${activeBeat?.label || 'Arrival'}): ${diveSceneText}`,
+        by: actorLabel
+      });
+      return {
+        ...prev,
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + 1),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+        },
+        diveScene: {
+          ...(prev.diveScene && typeof prev.diveScene === 'object'
+            ? prev.diveScene
+            : SESSION_STATE_DEFAULT.diveScene),
+          beatId: activeBeatId,
+          lockedByKey: actorKey,
+          lockedAt: new Date().toISOString()
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setNotice(`${actorLabel} locks the dive scene for this beat.`);
+  };
+
+  const handleClearDiveScene = () => {
+    setSessionState((prev) => ({
+      ...prev,
+      diveScene: { ...SESSION_STATE_DEFAULT.diveScene },
+      sceneHandshake: { ...SESSION_STATE_DEFAULT.sceneHandshake }
+    }));
+    setDiveSceneInput('');
+    setNotice('Dive scene reset.');
   };
 
   const handleDraftScenePromise = () => {
@@ -2679,6 +3633,7 @@ const StorytellerArenaConsole = ({
         ...prev,
         scenePromise: {
           text,
+          beatId: activeBeatId,
           proposedByKey: proposerKey,
           affirmedBy: { [proposerKey]: true },
           fulfilledByKey: '',
@@ -2709,6 +3664,7 @@ const StorytellerArenaConsole = ({
         ...(prev.scenePromise && typeof prev.scenePromise === 'object'
           ? prev.scenePromise
           : SESSION_STATE_DEFAULT.scenePromise),
+        beatId: activeBeatId,
         affirmedBy: {
           ...((prev.scenePromise && typeof prev.scenePromise.affirmedBy === 'object'
             ? prev.scenePromise.affirmedBy
@@ -2741,6 +3697,15 @@ const StorytellerArenaConsole = ({
     const actorLabel = getPlayerLabelByKey(actorKey, 'Table');
     setSessionState((prev) => {
       const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const cycleUpdate = markRitualCycleStep(prev, 'seal');
+      const cycleEntry = cycleUpdate.justCompleted
+        ? createLedgerEntry({
+            type: 'canon',
+            text: 'Ritual cycle complete: Prime → Perform → Seal.',
+            by: 'Table'
+          })
+        : null;
+      const cycleBonus = cycleUpdate.justCompleted ? 1 : 0;
       const previousClockRaw = Number(prev.sceneClock);
       const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
       const effect = applyVowModifiers(
@@ -2756,10 +3721,11 @@ const StorytellerArenaConsole = ({
       return {
         ...prev,
         pulse: {
-          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum),
-          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity)
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum + cycleBonus),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity + cycleBonus)
         },
         sceneClock: clampSceneClockValue(previousClock + effect.sceneClock),
+        ritualCycle: cycleUpdate.ritualCycle,
         scenePromise: {
           ...(prev.scenePromise && typeof prev.scenePromise === 'object'
             ? prev.scenePromise
@@ -2767,7 +3733,9 @@ const StorytellerArenaConsole = ({
           fulfilledByKey: actorKey,
           fulfilledAt: new Date().toISOString()
         },
-        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry, cycleEntry]
+          .filter(Boolean)
+          .slice(-24)
       };
     });
     setNotice(`${actorLabel} fulfills the scene promise.`);
@@ -2780,6 +3748,144 @@ const StorytellerArenaConsole = ({
     }));
     setScenePromiseInput('');
     setNotice('Scene promise cleared.');
+  };
+
+  const handleDrawRitualPrompt = () => {
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const drawerKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!drawerKey) {
+      setNotice('Set focus or turn holder before drawing a ritual prompt.');
+      return;
+    }
+    const draft = buildRitualPromptDraft({
+      anchors,
+      ledgerEntries,
+      worldProfile,
+      sceneGoal,
+      sceneRisk,
+      activeBeatLabel: activeBeat?.label || '',
+      expeditionCurrentStop
+    });
+    if (!draft.text) {
+      setNotice('Add charter, anchors, or ledger canon before drawing a ritual prompt.');
+      return;
+    }
+    const drawerLabel = getPlayerLabelByKey(drawerKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const cycleUpdate = markRitualCycleStep(prev, 'prime');
+      const cycleEntry = cycleUpdate.justCompleted
+        ? createLedgerEntry({
+            type: 'canon',
+            text: 'Ritual cycle complete: Prime → Perform → Seal.',
+            by: 'Table'
+          })
+        : null;
+      const cycleBonus = cycleUpdate.justCompleted ? 1 : 0;
+      const entry = createLedgerEntry({
+        type: 'oath',
+        text: `${drawerLabel} draws ritual prompt: "${draft.text}"`,
+        by: drawerLabel
+      });
+      return {
+        ...prev,
+        ritualPrompt: {
+          text: draft.text,
+          source: draft.source,
+          drawnByKey: drawerKey,
+          answeredByKey: '',
+          answeredAt: ''
+        },
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + cycleBonus),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1 + cycleBonus)
+        },
+        ritualCycle: cycleUpdate.ritualCycle,
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry, cycleEntry]
+          .filter(Boolean)
+          .slice(-24)
+      };
+    });
+    setNotice('Ritual prompt is live.');
+  };
+
+  const handleAnswerRitualPrompt = () => {
+    if (!ritualActive) {
+      setNotice('Open ritual mode before answering ritual prompts.');
+      return;
+    }
+    if (!ritualPromptText) {
+      setNotice('Draw a ritual prompt first.');
+      return;
+    }
+    if (ritualPromptResolved) {
+      setNotice('Draw a new ritual prompt before answering again.');
+      return;
+    }
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const responderKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!responderKey) {
+      setNotice('Set focus or turn holder before answering ritual prompts.');
+      return;
+    }
+    const activeSeats = syncTargetKeys.length;
+    if (activeSeats > 1 && responderKey === ritualPrompt.drawnByKey) {
+      setNotice('A different seat should answer this prompt for multiplayer flow.');
+      return;
+    }
+    const responderLabel = getPlayerLabelByKey(responderKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const cycleUpdate = markRitualCycleStep(prev, 'perform');
+      const cycleEntry = cycleUpdate.justCompleted
+        ? createLedgerEntry({
+            type: 'canon',
+            text: 'Ritual cycle complete: Prime → Perform → Seal.',
+            by: 'Table'
+          })
+        : null;
+      const cycleBonus = cycleUpdate.justCompleted ? 1 : 0;
+      const previousClockRaw = Number(prev.sceneClock);
+      const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
+      const effect = applyVowModifiers(
+        { momentum: 1, clarity: 0, sceneClock: -1 },
+        prev.vows,
+        { ritualActive: Boolean(prev.ritualActive) }
+      );
+      const entry = createLedgerEntry({
+        type: 'canon',
+        text: `${responderLabel} answers ritual prompt: "${ritualPromptText}"`,
+        by: responderLabel
+      });
+      return {
+        ...prev,
+        ritualPrompt: {
+          ...(prev.ritualPrompt && typeof prev.ritualPrompt === 'object'
+            ? prev.ritualPrompt
+            : SESSION_STATE_DEFAULT.ritualPrompt),
+          answeredByKey: responderKey,
+          answeredAt: new Date().toISOString()
+        },
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum + cycleBonus),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity + cycleBonus)
+        },
+        sceneClock: clampSceneClockValue(previousClock + effect.sceneClock),
+        ritualCycle: cycleUpdate.ritualCycle,
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry, cycleEntry]
+          .filter(Boolean)
+          .slice(-24)
+      };
+    });
+    setNotice(`${responderLabel} answers the ritual prompt.`);
+  };
+
+  const handleResetRitualPrompt = () => {
+    setSessionState((prev) => ({
+      ...prev,
+      ritualPrompt: { ...SESSION_STATE_DEFAULT.ritualPrompt }
+    }));
+    setNotice('Ritual prompt reset.');
   };
 
   const handleAdvanceTurn = () => {
@@ -2807,6 +3913,11 @@ const StorytellerArenaConsole = ({
     if (!flowSteps.find((step) => step.id === 'charter')?.done) {
       setNotice('Complete the World Charter before starting ritual mode.');
       scrollToFlowStep('charter');
+      return;
+    }
+    if (!diveSceneLocked) {
+      setNotice('Lock the dive scene before starting ritual mode.');
+      scrollToFlowTarget('presence');
       return;
     }
     const roster = players.slice(0, playersCount);
@@ -2840,6 +3951,9 @@ const StorytellerArenaConsole = ({
         beatVotes: {},
         lastBeatSync: null,
         worldEcho: { ...SESSION_STATE_DEFAULT.worldEcho },
+        sensoryHook: { ...SESSION_STATE_DEFAULT.sensoryHook },
+        ritualPrompt: { ...SESSION_STATE_DEFAULT.ritualPrompt },
+        ritualCycle: ensureRitualCycle(SESSION_STATE_DEFAULT.ritualCycle, prev.beatId || activeBeatId),
         relay: {
           round: 1,
           touched: firstKey ? { [firstKey]: true } : {},
@@ -2871,6 +3985,10 @@ const StorytellerArenaConsole = ({
         beatVotes: {},
         lastBeatSync: null,
         worldEcho: { ...SESSION_STATE_DEFAULT.worldEcho },
+        sensoryHook: { ...SESSION_STATE_DEFAULT.sensoryHook },
+        sceneHandshake: { ...SESSION_STATE_DEFAULT.sceneHandshake },
+        ritualPrompt: { ...SESSION_STATE_DEFAULT.ritualPrompt },
+        ritualCycle: ensureRitualCycle(SESSION_STATE_DEFAULT.ritualCycle, prev.beatId || activeBeatId),
         relay: { ...SESSION_STATE_DEFAULT.relay },
         scenePromise: { ...SESSION_STATE_DEFAULT.scenePromise },
         ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), ritualEntry].slice(-24)
@@ -3014,6 +4132,15 @@ const StorytellerArenaConsole = ({
     const responderLabel = getPlayerLabelByKey(responderKey, 'Table');
     setSessionState((prev) => {
       const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const cycleUpdate = markRitualCycleStep(prev, 'perform');
+      const cycleEntry = cycleUpdate.justCompleted
+        ? createLedgerEntry({
+            type: 'canon',
+            text: 'Ritual cycle complete: Prime → Perform → Seal.',
+            by: 'Table'
+          })
+        : null;
+      const cycleBonus = cycleUpdate.justCompleted ? 1 : 0;
       const previousClockRaw = Number(prev.sceneClock);
       const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
       const effect = applyVowModifiers(
@@ -3040,11 +4167,12 @@ const StorytellerArenaConsole = ({
       return {
         ...prev,
         pulse: {
-          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum),
-          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity)
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum + cycleBonus),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity + cycleBonus)
         },
         sceneClock: clampSceneClockValue(previousClock + effect.sceneClock),
         actionBank: nextActionBank,
+        ritualCycle: cycleUpdate.ritualCycle,
         resonance: {
           pending: false,
           cue: prev.resonance?.cue || resonanceCue,
@@ -3053,7 +4181,9 @@ const StorytellerArenaConsole = ({
           streak: nextStreak,
           at: new Date().toISOString()
         },
-        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry, cycleEntry]
+          .filter(Boolean)
+          .slice(-24)
       };
     });
     setNotice(`${responderLabel} answers the resonance call.`);
@@ -4112,6 +5242,7 @@ const StorytellerArenaConsole = ({
                 <span className={immersionGate.lens ? 'ready' : ''}>Lens</span>
                 <span className={immersionGate.intent ? 'ready' : ''}>Intent</span>
                 <span className={immersionGate.anchors ? 'ready' : ''}>Anchors</span>
+                <span className={immersionGate.diveScene ? 'ready' : ''}>Dive Scene</span>
                 <span className={immersionGate.ready ? 'ready' : ''}>
                   Ready {readyCount}/{playersCount}
                 </span>
@@ -4581,7 +5712,16 @@ const StorytellerArenaConsole = ({
                   key={beat.id}
                   type="button"
                   className={beat.id === activeBeat?.id ? 'active' : ''}
-                  onClick={() => setSessionState((prev) => ({ ...prev, beatId: beat.id }))}
+                  onClick={() =>
+                    setSessionState((prev) => ({
+                      ...prev,
+                      beatId: beat.id,
+                      beatVotes: {},
+                      lastBeatSync: null,
+                      sensoryHook: { ...SESSION_STATE_DEFAULT.sensoryHook },
+                      ritualCycle: ensureRitualCycle(SESSION_STATE_DEFAULT.ritualCycle, beat.id)
+                    }))
+                  }
                 >
                   <strong>{beat.label}</strong>
                   <span>{beat.detail}</span>
@@ -5033,6 +6173,23 @@ const StorytellerArenaConsole = ({
                   Press
                 </button>
               </div>
+              <div className="ritualCycleRow">
+                <div className="ritualCycleHeader">
+                  <span>Ritual Cycle</span>
+                  <em>
+                    {ritualCycleComplete
+                      ? 'Complete'
+                      : ritualActive
+                        ? `${ritualCycleProgress}/3`
+                        : 'Staging'}
+                  </em>
+                </div>
+                <div className="ritualCycleSteps" aria-label={`Ritual cycle ${ritualCycleProgress} of 3`}>
+                  <span className={ritualCycle.prime ? 'active' : ''}>Prime</span>
+                  <span className={ritualCycle.perform ? 'active' : ''}>Perform</span>
+                  <span className={ritualCycle.seal ? 'active' : ''}>Seal</span>
+                </div>
+              </div>
               <div className="expeditionRow">
                 <div className="expeditionHeader">
                   <span>Expedition Route</span>
@@ -5168,6 +6325,91 @@ const StorytellerArenaConsole = ({
                   </button>
                 </div>
               </div>
+              <div className="diveSceneRow">
+                <div className="diveSceneHeader">
+                  <span>Dive Scene</span>
+                  <em>
+                    {diveSceneLocked
+                      ? 'Locked'
+                      : `${diveSceneAffirmed}/${diveSceneRequired || 0} affirmed`}
+                  </em>
+                </div>
+                <p>
+                  {diveSceneText
+                    ? `"${diveSceneText}" · proposed by ${diveSceneByLabel}${
+                        diveSceneLocked ? ` · locked by ${diveSceneLockedByLabel}` : ''
+                      }`
+                    : 'Draft one concrete scene destination for this beat, affirm together, then lock before ritual.'}
+                </p>
+                <div className="diveSceneInput">
+                  <input
+                    value={diveSceneInput}
+                    placeholder="Example: Reach the flooded watchtower before the bells fall silent."
+                    onChange={(event) => setDiveSceneInput(event.target.value)}
+                  />
+                  <button type="button" className="ghost subtle" onClick={handleDraftDiveScene}>
+                    Draft
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleAffirmDiveScene}
+                    disabled={!diveSceneText || diveSceneLocked}
+                  >
+                    Affirm
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleLockDiveScene}
+                    disabled={!diveSceneReady || diveSceneLocked}
+                  >
+                    Lock
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleClearDiveScene}
+                    disabled={!diveSceneText && !Object.keys(diveSceneAffirmedMap).length && !diveSceneLocked}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+              <div className="sceneHandshakeRow">
+                <div className="sceneHandshakeHeader">
+                  <span>Scene Handshake</span>
+                  <em>{sceneHandshakeCue ? (sceneHandshakeEchoed ? 'Echoed' : 'Primed') : 'Unset'}</em>
+                </div>
+                <p>
+                  {sceneHandshakeCue
+                    ? `"${sceneHandshakeCue}" · source ${sceneHandshakeSource || 'world'} · drafted by ${sceneHandshakeByLabel}${
+                        sceneHandshakeEchoed ? ` · echoed by ${sceneHandshakeEchoedByLabel}` : ''
+                      }`
+                    : 'Draft one entry cue from dive scene/lens, then have another seat echo it in ritual.'}
+                </p>
+                <div className="sceneHandshakeActions">
+                  <button type="button" className="ghost subtle" onClick={handleDraftSceneHandshake}>
+                    Draft
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleEchoSceneHandshake}
+                    disabled={!ritualActive || !sceneHandshakeCue || sceneHandshakeEchoed}
+                  >
+                    Echo
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleClearSceneHandshake}
+                    disabled={!sceneHandshakeCue && !sceneHandshakeEchoed}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
               <div className="scenePromiseRow">
                 <div className="scenePromiseHeader">
                   <span>Scene Promise</span>
@@ -5244,6 +6486,74 @@ const StorytellerArenaConsole = ({
                     className="ghost subtle"
                     onClick={handleClearWorldEcho}
                     disabled={!worldEchoCue && !worldEchoInvoked}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+              <div className="sensoryHookRow">
+                <div className="sensoryHookHeader">
+                  <span>Sensory Hook</span>
+                  <em>{sensoryHookCue ? (sensoryHookEchoed ? 'Echoed' : 'Ready') : 'Unset'}</em>
+                </div>
+                <p>
+                  {sensoryHookCue
+                    ? `"${sensoryHookCue}" · from ${sensoryHookSource || 'world'} · drafted by ${sensoryHookByLabel}${
+                        sensoryHookEchoed ? ` · echoed by ${sensoryHookEchoedByLabel}` : ''
+                      }`
+                    : 'Draft one sensory cue from world frame/anchors, then have another seat echo it in ritual.'}
+                </p>
+                <div className="sensoryHookActions">
+                  <button type="button" className="ghost subtle" onClick={handleDraftSensoryHook}>
+                    Draft
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleEchoSensoryHook}
+                    disabled={!ritualActive || !sensoryHookCue || sensoryHookEchoed}
+                  >
+                    Echo
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleClearSensoryHook}
+                    disabled={!sensoryHookCue && !sensoryHookEchoed}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+              <div className="ritualPromptRow">
+                <div className="ritualPromptHeader">
+                  <span>Ritual Prompt</span>
+                  <em>{ritualPromptText ? (ritualPromptResolved ? 'Answered' : 'Open') : 'Unset'}</em>
+                </div>
+                <p>
+                  {ritualPromptText
+                    ? `"${ritualPromptText}" · source ${ritualPromptSource || 'canon'} · drawn by ${ritualPromptDrawnByLabel}${
+                        ritualPromptResolved ? ` · answered by ${ritualPromptAnsweredByLabel}` : ''
+                      }`
+                    : 'Draw a short multiplayer prompt from canon, then have another seat answer it in ritual.'}
+                </p>
+                <div className="ritualPromptActions">
+                  <button type="button" className="ghost subtle" onClick={handleDrawRitualPrompt}>
+                    Draw
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleAnswerRitualPrompt}
+                    disabled={!ritualActive || !ritualPromptText || ritualPromptResolved}
+                  >
+                    Answer
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleResetRitualPrompt}
+                    disabled={!ritualPromptText && !ritualPromptResolved}
                   >
                     Reset
                   </button>
@@ -5441,6 +6751,11 @@ const StorytellerArenaConsole = ({
               <span>{`Beat Sync ${beatSyncVotes}/${beatSyncRequired || 0}`}</span>
               <span>{`Relay ${relayTouchedCount}/${relayRequired || 0}`}</span>
               <span>
+                {diveSceneText
+                  ? `Dive ${diveSceneAffirmed}/${diveSceneRequired || 0}${diveSceneLocked ? ' Locked' : ''}`
+                  : 'Dive Unset'}
+              </span>
+              <span>
                 {scenePromiseText
                   ? `Promise ${scenePromiseAffirmed}/${scenePromiseRequired || 0}${
                       scenePromiseFulfilled ? ' Fulfilled' : ''
@@ -5457,6 +6772,17 @@ const StorytellerArenaConsole = ({
                   ? `Echo ${worldEchoInvoked ? 'Invoked' : 'Ready'}`
                   : 'Echo Unset'}
               </span>
+              <span>
+                {sensoryHookCue
+                  ? `Hook ${sensoryHookEchoed ? 'Echoed' : 'Ready'}`
+                  : 'Hook Unset'}
+              </span>
+              <span>
+                {ritualPromptText
+                  ? `Prompt ${ritualPromptResolved ? 'Answered' : 'Open'}`
+                  : 'Prompt Unset'}
+              </span>
+              <span>{`Cycle ${ritualCycleProgress}/3${ritualCycleComplete ? ' Complete' : ''}`}</span>
               <span>{resonancePending ? `Resonance Open: ${resonanceCallerLabel}` : `Resonance Streak ${resonanceStreak}`}</span>
               <span>{activeVows.length ? `Vows ${activeVows.map((vow) => vow.label).join('/')}` : 'Vows None'}</span>
               {currentTurnKey && <span>{`Actions ${currentTurnActions}/${TURN_ACTIONS_PER_TURN}`}</span>}

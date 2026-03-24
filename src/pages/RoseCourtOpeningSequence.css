@@ -1,0 +1,831 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Cormorant+SC:wght@500;600&family=Courier+Prime:wght@400;700&family=Forum&family=Petit+Formal+Script&display=swap');
+
+.roseIntro {
+  --rose-intro-bg: #0d0b11;
+  --rose-intro-panel: rgba(20, 15, 21, 0.8);
+  --rose-intro-panel-strong: rgba(18, 13, 19, 0.92);
+  --rose-intro-ink: #f4ead8;
+  --rose-intro-ink-soft: rgba(244, 234, 216, 0.76);
+  --rose-intro-gold: #d1b07a;
+  --rose-intro-gold-soft: rgba(209, 176, 122, 0.24);
+  --rose-intro-bronze: #7f5934;
+  --rose-intro-link: #a7defc;
+  --rose-intro-blue: #103f96;
+  --rose-intro-blue-soft: rgba(16, 63, 150, 0.88);
+  --rose-intro-shadow: 0 34px 82px rgba(0, 0, 0, 0.46);
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 3vw, 2rem);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: var(--rose-intro-ink);
+  font-family: 'Cormorant Garamond', 'Georgia', serif;
+  background:
+    radial-gradient(circle at top, rgba(140, 92, 51, 0.2), transparent 28%),
+    radial-gradient(circle at bottom, rgba(155, 117, 70, 0.1), transparent 24%),
+    linear-gradient(180deg, #151018 0%, #09070a 70%, #040405 100%);
+  box-shadow:
+    inset 0 2.8rem 0 rgba(2, 2, 3, 0.42),
+    inset 0 -2.8rem 0 rgba(2, 2, 3, 0.48);
+}
+
+.roseIntro::before,
+.roseIntro::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.roseIntro::before {
+  background:
+    radial-gradient(circle at center, transparent 46%, rgba(4, 3, 5, 0.62) 100%),
+    url('/textures/grainy2.png') center / 340px 340px repeat;
+  opacity: 0.24;
+  z-index: -2;
+}
+
+.roseIntro::after {
+  inset: 1.2rem;
+  border: 1px solid rgba(212, 176, 112, 0.12);
+  border-radius: 1.8rem;
+  z-index: -1;
+}
+
+.roseIntro--device {
+  background:
+    radial-gradient(circle at 16% 20%, rgba(236, 188, 122, 0.11), transparent 24%),
+    radial-gradient(circle at 85% 80%, rgba(92, 60, 32, 0.22), transparent 26%),
+    linear-gradient(180deg, #140f17 0%, #09070a 68%, #040405 100%);
+}
+
+.roseIntro--parchment {
+  background:
+    radial-gradient(circle at top, rgba(255, 237, 204, 0.24), transparent 24%),
+    linear-gradient(180deg, #1a120d 0%, #0f0a08 100%);
+}
+
+.roseIntro--terminal,
+.roseIntro--question {
+  background:
+    radial-gradient(circle at top, rgba(116, 163, 255, 0.18), transparent 28%),
+    radial-gradient(circle at bottom, rgba(16, 62, 146, 0.16), transparent 24%),
+    linear-gradient(180deg, #164ea8 0%, #0e2c68 62%, #071126 100%);
+}
+
+.roseIntro--montage {
+  background:
+    radial-gradient(circle at top, rgba(219, 180, 118, 0.08), transparent 22%),
+    linear-gradient(180deg, #181116 0%, #09070a 100%);
+}
+
+.roseIntro__deviceStage,
+.roseIntro__montageCard {
+  width: min(1160px, 100%);
+  position: relative;
+  z-index: 1;
+}
+
+.roseIntro__deviceStage {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) minmax(340px, 1fr);
+  gap: clamp(1.6rem, 3vw, 3rem);
+  align-items: center;
+}
+
+.roseIntro__deviceCard,
+.roseIntro__sheet,
+.roseIntro__terminal,
+.roseIntro__riddleShell,
+.roseIntro__montageCard {
+  position: relative;
+  box-shadow: var(--rose-intro-shadow);
+}
+
+.roseIntro__deviceCard {
+  justify-self: center;
+  width: min(100%, 420px);
+  perspective: 1600px;
+}
+
+.roseIntro__imageHalo {
+  position: absolute;
+  inset: -1.6rem;
+  border-radius: 2.2rem;
+  background:
+    radial-gradient(circle at center, rgba(232, 188, 112, 0.14), transparent 52%),
+    radial-gradient(circle at center, rgba(255, 245, 223, 0.08), transparent 68%);
+  filter: blur(20px);
+  z-index: 0;
+}
+
+.roseIntro__deviceImage {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  border-radius: 2rem;
+  border: 1px solid rgba(235, 205, 145, 0.24);
+  transform-origin: center right;
+  transition: transform 920ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 920ms ease, opacity 920ms ease;
+}
+
+.roseIntro__deviceCard--turning .roseIntro__deviceImage {
+  transform: rotateY(-96deg) scale(0.96);
+  filter: blur(5px) brightness(0.8);
+  opacity: 0.08;
+}
+
+.roseIntro__captionBlock,
+.roseIntro__montageCopy {
+  padding: clamp(1.5rem, 3vw, 2.6rem);
+  border-radius: 1.9rem;
+  background:
+    linear-gradient(180deg, rgba(255, 249, 240, 0.05), rgba(255, 249, 240, 0.015)),
+    var(--rose-intro-panel);
+  border: 1px solid rgba(214, 176, 112, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.roseIntro__captionBlock--device {
+  max-width: 44rem;
+}
+
+.roseIntro__captionBlock h1,
+.roseIntro__montageCopy h2,
+.roseIntro__question {
+  margin: 0;
+  font-family: 'Forum', 'Georgia', serif;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.02;
+}
+
+.roseIntro__captionBlock h1 {
+  font-size: clamp(2.3rem, 5.1vw, 5rem);
+}
+
+.roseIntro__montageCopy h2 {
+  font-size: clamp(2rem, 3.8vw, 3.7rem);
+}
+
+.roseIntro__question {
+  margin-bottom: 1rem;
+  font-size: clamp(2.35rem, 5vw, 4.2rem);
+  color: #eff5ff;
+}
+
+.roseIntro__captionBlock p,
+.roseIntro__montageCopy p {
+  font-size: clamp(1.15rem, 1.9vw, 1.4rem);
+  line-height: 1.48;
+  color: var(--rose-intro-ink-soft);
+}
+
+.roseIntro__lead {
+  max-width: 35rem;
+}
+
+.roseIntro__sceneMark {
+  margin: 0 0 0.85rem;
+  font-family: 'Courier Prime', 'Courier New', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(240, 218, 182, 0.58);
+}
+
+.roseIntro__sceneMark--ink {
+  color: rgba(96, 59, 31, 0.62);
+}
+
+.roseIntro__sceneMark--blue {
+  color: rgba(203, 223, 255, 0.66);
+}
+
+.roseIntro__sceneMark--montage {
+  color: rgba(233, 214, 176, 0.54);
+}
+
+.roseIntro__eyebrow {
+  margin: 0 0 0.8rem;
+  font-size: 0.9rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(227, 193, 136, 0.82);
+}
+
+.roseIntro__chapterTitle {
+  margin: 0 0 0.9rem;
+  font-family: 'Cormorant SC', 'Times New Roman', serif;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(226, 197, 145, 0.88);
+}
+
+.roseIntro__chapterTitle--ink {
+  color: rgba(88, 54, 29, 0.82);
+}
+
+.roseIntro__chapterTitle--blue {
+  color: rgba(221, 234, 255, 0.88);
+}
+
+.roseIntro__chapterTitle--montage {
+  color: rgba(225, 196, 145, 0.76);
+}
+
+.roseIntro__directorNote {
+  margin: 1.1rem 0 0;
+  padding-left: 1rem;
+  border-left: 1px solid rgba(214, 176, 112, 0.28);
+  font-size: 1.08rem;
+  font-style: italic;
+  color: rgba(243, 230, 205, 0.84);
+}
+
+.roseIntro__directorNote--blue {
+  border-left-color: rgba(171, 204, 255, 0.3);
+  color: rgba(229, 239, 255, 0.82);
+}
+
+.roseIntro__directorNote--montage {
+  color: rgba(238, 220, 192, 0.82);
+}
+
+.roseIntro__cueBar {
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.roseIntro__cue {
+  font-family: 'Courier Prime', 'Courier New', monospace;
+  font-size: 0.84rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(226, 194, 141, 0.72);
+  animation: roseIntroCuePulse 2.7s ease-in-out infinite;
+}
+
+.roseIntro__cta,
+.roseIntro__fishyLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.35rem;
+  padding: 0.82rem 1.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(224, 189, 127, 0.36);
+  background:
+    linear-gradient(180deg, rgba(210, 169, 108, 0.2), rgba(122, 87, 54, 0.28));
+  color: var(--rose-intro-ink);
+  font-family: 'Cormorant Garamond', 'Georgia', serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, opacity 160ms ease;
+}
+
+.roseIntro__cta:hover,
+.roseIntro__fishyLink:hover {
+  transform: translateY(-1px);
+  border-color: rgba(224, 189, 127, 0.48);
+  background:
+    linear-gradient(180deg, rgba(210, 169, 108, 0.3), rgba(122, 87, 54, 0.38));
+}
+
+.roseIntro__cta:disabled {
+  opacity: 0.58;
+  cursor: default;
+  transform: none;
+}
+
+.roseIntro__sheet {
+  width: min(900px, 100%);
+  padding: clamp(1.6rem, 4vw, 3.2rem);
+  border-radius: 2rem;
+  background:
+    radial-gradient(circle at top, rgba(255, 252, 246, 0.86), rgba(244, 229, 200, 0.95) 60%, rgba(228, 205, 167, 0.97)),
+    url('/parchment_bg.png') center / cover no-repeat;
+  color: #372214;
+  border: 1px solid rgba(118, 79, 43, 0.28);
+}
+
+.roseIntro__sheetHeader {
+  margin-bottom: 1.2rem;
+}
+
+.roseIntro__seal {
+  width: 4.6rem;
+  aspect-ratio: 1;
+  margin-bottom: 1.2rem;
+}
+
+.roseIntro__seal img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.72;
+}
+
+.roseIntro__scriptPanel {
+  margin: 1.25rem 0 1.6rem;
+  padding: 1.8rem 1.5rem 1.5rem;
+  border-radius: 1.55rem;
+  background:
+    linear-gradient(180deg, rgba(255, 251, 245, 0.6), rgba(248, 239, 225, 0.42)),
+    rgba(255, 251, 245, 0.48);
+  box-shadow:
+    inset 0 0 0 1px rgba(124, 83, 49, 0.1),
+    0 18px 44px rgba(100, 67, 36, 0.12);
+}
+
+.roseIntro__scriptText {
+  margin: 0;
+  font-family: 'Petit Formal Script', 'Brush Script MT', cursive;
+  font-size: clamp(1.7rem, 3vw, 2.95rem);
+  line-height: 1.5;
+  color: #3b2414;
+}
+
+.roseIntro__scriptSignature {
+  margin: 1rem 0 0;
+  font-family: 'Cormorant Garamond', 'Georgia', serif;
+  font-size: 1.02rem;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  color: rgba(88, 54, 29, 0.72);
+}
+
+.roseIntro__sheetAside,
+.roseIntro__linkInstruction {
+  margin: 0.9rem 0 0;
+  font-family: 'Courier Prime', 'Courier New', monospace;
+  font-size: 0.86rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(87, 53, 28, 0.72);
+}
+
+.roseIntro__fishyLink {
+  width: 100%;
+  justify-content: flex-start;
+  border-radius: 1.2rem;
+  background: rgba(31, 23, 17, 0.94);
+  color: var(--rose-intro-link);
+  text-decoration: underline wavy rgba(159, 224, 255, 0.42);
+  word-break: break-word;
+  text-align: left;
+}
+
+.roseIntro__terminalCurtain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.14;
+  pointer-events: none;
+}
+
+.roseIntro__terminalCurtain img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.roseIntro__terminalFrame {
+  width: min(820px, 100%);
+  position: relative;
+  z-index: 1;
+  padding: 1.15rem;
+  border-radius: 1.95rem;
+  background: rgba(7, 19, 50, 0.24);
+  border: 1px solid rgba(161, 203, 255, 0.18);
+  box-shadow: var(--rose-intro-shadow);
+}
+
+.roseIntro__terminalHud {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 0.75rem;
+  font-family: 'Courier Prime', 'Courier New', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(197, 220, 255, 0.72);
+}
+
+.roseIntro__carrierMeter {
+  display: flex;
+  gap: 0.55rem;
+  margin: 0 0 0.9rem;
+}
+
+.roseIntro__carrierBar {
+  flex: 1;
+  height: 0.35rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(156, 198, 255, 0.38), rgba(234, 244, 255, 0.82));
+  box-shadow: 0 0 14px rgba(159, 224, 255, 0.18);
+}
+
+.roseIntro__terminal {
+  padding: clamp(1.7rem, 3vw, 2.5rem);
+  border-radius: 1.8rem;
+  background:
+    linear-gradient(180deg, rgba(6, 18, 49, 0.95), rgba(8, 26, 72, 0.97)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+  border: 1px solid rgba(147, 197, 253, 0.34);
+}
+
+.roseIntro__terminalLine {
+  margin: 0;
+  font-family: 'Courier Prime', 'Courier New', monospace;
+  font-size: clamp(1rem, 1.85vw, 1.26rem);
+  line-height: 1.8;
+  text-transform: lowercase;
+  color: rgba(221, 236, 255, 0.84);
+}
+
+.roseIntro__terminalLine::before {
+  content: '> ';
+  color: rgba(159, 224, 255, 0.88);
+}
+
+.roseIntro__terminalLine--accent {
+  color: #f6d799;
+}
+
+.roseIntro__terminalPrompt {
+  margin: 0.95rem 0 0;
+  font-family: 'Courier Prime', 'Courier New', monospace;
+  font-size: 0.86rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(194, 220, 255, 0.68);
+}
+
+.roseIntro__terminalCurtain--question {
+  opacity: 0.1;
+}
+
+.roseIntro__riddleShell {
+  width: min(820px, 100%);
+  min-height: 31rem;
+  transform-style: preserve-3d;
+  transition: transform 620ms cubic-bezier(0.2, 0.75, 0.22, 1);
+}
+
+.roseIntro__riddleShell--flipped {
+  transform: rotateY(180deg);
+}
+
+.roseIntro__riddleFace {
+  position: absolute;
+  inset: 0;
+  padding: clamp(1.6rem, 3vw, 2.7rem);
+  border-radius: 1.85rem;
+  backface-visibility: hidden;
+  background:
+    linear-gradient(180deg, rgba(8, 17, 42, 0.92), rgba(7, 13, 32, 0.97)),
+    rgba(5, 11, 28, 0.92);
+  border: 1px solid rgba(156, 198, 255, 0.28);
+}
+
+.roseIntro__riddleFace--back {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  transform: rotateY(180deg);
+}
+
+.roseIntro__riddleForm {
+  display: grid;
+  gap: 1rem;
+}
+
+.roseIntro__attemptTrack {
+  display: flex;
+  gap: 0.55rem;
+  margin: 0.45rem 0 1.15rem;
+}
+
+.roseIntro__attemptPip {
+  width: 1.7rem;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: rgba(177, 208, 255, 0.42);
+  box-shadow: 0 0 12px rgba(159, 224, 255, 0.14);
+}
+
+.roseIntro__attemptPip--spent {
+  background: rgba(115, 134, 163, 0.28);
+  box-shadow: none;
+}
+
+.roseIntro__directionLine {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  color: rgba(235, 243, 255, 0.82);
+}
+
+.roseIntro__directionLine--question,
+.roseIntro__directionLine--montage {
+  color: rgba(225, 233, 248, 0.78);
+}
+
+.roseIntro__fieldLabel {
+  font-size: 0.98rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(215, 230, 255, 0.74);
+}
+
+.roseIntro__field {
+  width: 100%;
+  min-height: 3.95rem;
+  padding: 0.95rem 1.15rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(156, 198, 255, 0.34);
+  background: rgba(5, 12, 28, 0.62);
+  color: #f5f8ff;
+  font-family: 'Courier Prime', 'Courier New', monospace;
+  font-size: 1.28rem;
+  letter-spacing: 0.04em;
+}
+
+.roseIntro__field:focus {
+  outline: 2px solid rgba(159, 224, 255, 0.35);
+  outline-offset: 2px;
+}
+
+.roseIntro__field:disabled {
+  opacity: 0.55;
+}
+
+.roseIntro__riddleActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.roseIntro__riddleMeta,
+.roseIntro__riddleStatus {
+  font-size: 1.08rem;
+  color: rgba(223, 235, 255, 0.74);
+}
+
+.roseIntro__riddleStatus {
+  margin: 0;
+}
+
+.roseIntro__riddleStatus--success {
+  margin-bottom: 1.25rem;
+  color: #f5d998;
+}
+
+.roseIntro__flipMessage {
+  margin: 0;
+  max-width: 28rem;
+  font-size: clamp(1.7rem, 3vw, 2.45rem);
+  line-height: 1.35;
+  color: #eef5ff;
+}
+
+.roseIntro__montageCard {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(360px, 1.1fr);
+  overflow: hidden;
+  border-radius: 2rem;
+  border: 1px solid rgba(221, 191, 135, 0.16);
+  background:
+    linear-gradient(180deg, rgba(20, 15, 21, 0.97), rgba(10, 8, 11, 0.98));
+  animation: roseIntroFadeUp 560ms ease both;
+}
+
+.roseIntro__montageCopy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.roseIntro__montageFigure,
+.roseIntro__memoryVeil {
+  min-height: 32rem;
+  margin: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.roseIntro__montageFigure::after,
+.roseIntro__memoryVeil::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(8, 6, 8, 0.12), transparent 18%, transparent 70%, rgba(8, 6, 8, 0.58)),
+    linear-gradient(90deg, rgba(8, 6, 8, 0.22), transparent 18%, transparent 82%, rgba(8, 6, 8, 0.32));
+  pointer-events: none;
+}
+
+.roseIntro__montageFigure img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: roseIntroSlowDrift 11s ease-in-out infinite alternate;
+}
+
+.roseIntro__montagePlate {
+  position: absolute;
+  left: 1.1rem;
+  right: 1.1rem;
+  bottom: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  border-radius: 1.2rem;
+  background: rgba(10, 9, 12, 0.7);
+  border: 1px solid rgba(221, 191, 135, 0.16);
+  font-family: 'Courier Prime', 'Courier New', monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(243, 231, 207, 0.82);
+}
+
+.roseIntro__montagePlateLabel {
+  color: rgba(228, 193, 133, 0.84);
+}
+
+.roseIntro__memoryVeil {
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at center, rgba(237, 201, 138, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(18, 14, 19, 0.96), rgba(8, 7, 10, 0.98));
+}
+
+.roseIntro__intertitle {
+  width: min(72%, 26rem);
+  padding: 1.8rem 1.5rem;
+  border-radius: 1.35rem;
+  border: 1px solid rgba(221, 191, 135, 0.14);
+  background: rgba(19, 15, 20, 0.64);
+  text-align: center;
+}
+
+.roseIntro__intertitle p {
+  margin: 0.7rem 0 0;
+  font-family: 'Forum', 'Georgia', serif;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  line-height: 1.14;
+  color: rgba(245, 234, 214, 0.92);
+}
+
+.roseIntro__intertitleMark {
+  font-family: 'Courier Prime', 'Courier New', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(223, 195, 143, 0.62);
+}
+
+.roseIntro__reveal {
+  opacity: 0;
+  animation: roseIntroFadeUp 560ms ease forwards;
+}
+
+.roseIntro__reveal--1 { animation-delay: 70ms; }
+.roseIntro__reveal--2 { animation-delay: 190ms; }
+.roseIntro__reveal--3 { animation-delay: 330ms; }
+.roseIntro__reveal--4 { animation-delay: 500ms; }
+.roseIntro__reveal--5 { animation-delay: 680ms; }
+.roseIntro__reveal--6 { animation-delay: 860ms; }
+.roseIntro__reveal--7 { animation-delay: 1060ms; }
+.roseIntro__reveal--8 { animation-delay: 1260ms; }
+
+@keyframes roseIntroFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes roseIntroCuePulse {
+  0%,
+  100% {
+    opacity: 0.56;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes roseIntroSlowDrift {
+  from {
+    transform: scale(1.01) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.06) translate3d(-1%, -0.8%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roseIntro__reveal,
+  .roseIntro__cue,
+  .roseIntro__montageFigure img {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .roseIntro__deviceImage,
+  .roseIntro__riddleShell {
+    transition: none;
+  }
+}
+
+@media (max-width: 920px) {
+  .roseIntro__deviceStage,
+  .roseIntro__montageCard {
+    grid-template-columns: 1fr;
+  }
+
+  .roseIntro__deviceCard {
+    width: min(100%, 360px);
+  }
+
+  .roseIntro__terminalHud,
+  .roseIntro__cueBar,
+  .roseIntro__montagePlate {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .roseIntro__terminalFrame {
+    padding: 0.9rem;
+  }
+
+  .roseIntro__montageFigure,
+  .roseIntro__memoryVeil {
+    min-height: 24rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .roseIntro {
+    padding: 1rem;
+    box-shadow:
+      inset 0 1.8rem 0 rgba(2, 2, 3, 0.38),
+      inset 0 -1.8rem 0 rgba(2, 2, 3, 0.42);
+  }
+
+  .roseIntro::after {
+    inset: 0.6rem;
+  }
+
+  .roseIntro__captionBlock,
+  .roseIntro__montageCopy,
+  .roseIntro__riddleFace,
+  .roseIntro__terminal,
+  .roseIntro__sheet {
+    padding: 1.35rem;
+  }
+
+  .roseIntro__riddleShell {
+    min-height: 33rem;
+  }
+
+  .roseIntro__riddleActions {
+    align-items: stretch;
+  }
+
+  .roseIntro__cta,
+  .roseIntro__fishyLink {
+    width: 100%;
+  }
+
+  .roseIntro__intertitle {
+    width: min(88%, 24rem);
+  }
+}

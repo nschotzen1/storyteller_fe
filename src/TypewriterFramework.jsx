@@ -749,6 +749,36 @@ export const normalizeTypewriterReply = (reply) => {
   return { sequence, metadata };
 };
 
+const filterOutFadeActions = (actions = []) => (
+  Array.isArray(actions)
+    ? actions.filter((action) => {
+        const type = action?.action || action?.type;
+        return type && type !== 'fade';
+      })
+    : []
+);
+
+const stripFadeActionsFromTypewriterReply = (reply) => {
+  if (!reply || typeof reply !== 'object') {
+    return reply;
+  }
+
+  const normalizedWritingSequence = filterOutFadeActions(reply.writing_sequence);
+  const normalizedSequenceSource = Array.isArray(reply.sequence)
+    ? reply.sequence
+    : [
+        ...normalizedWritingSequence,
+        ...(Array.isArray(reply.fade_sequence) ? reply.fade_sequence : [])
+      ];
+
+  return {
+    ...reply,
+    writing_sequence: normalizedWritingSequence,
+    fade_sequence: [],
+    sequence: filterOutFadeActions(normalizedSequenceSource)
+  };
+};
+
 const toFiniteNumber = (value) => {
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : null;
@@ -874,6 +904,13 @@ const keys = [
 ];
 
 const TypewriterFramework = (props) => {
+  const {
+    sessionIdOverride = '',
+    initialFragment = '',
+    persistSessionToStorage = true,
+    persistDebugSettingsToStorage = true,
+    embedded = false
+  } = props || {};
   // --- Reducers ---
   const [pageTransitionState, dispatchPageTransition] = useReducer(pageTransitionReducer, initialPageTransitionState);
   const {
@@ -926,7 +963,11 @@ const TypewriterFramework = (props) => {
   const [currentFontStyles, setCurrentFontStyles] = useState(null);
   const [lastContinuationInsights, setLastContinuationInsights] = useState(null);
   const [lastContinuationTiming, setLastContinuationTiming] = useState(null);
-  const [debugSettings, setDebugSettings] = useState(() => readStoredTypewriterDebugSettings());
+  const [debugSettings, setDebugSettings] = useState(() => (
+    persistDebugSettingsToStorage
+      ? readStoredTypewriterDebugSettings()
+      : { ...DEFAULT_TYPEWRITER_DEBUG_SETTINGS }
+  ));
 
 
 
@@ -943,6 +984,8 @@ const TypewriterFramework = (props) => {
   const storytellerInitialSyncSessionRef = useRef('');
   const lastStorytellerCheckIntervalRef = useRef(-1);
   const wasProcessingSequenceRef = useRef(false);
+  const sequencePersistenceRef = useRef({ persistToPage: false });
+  const currentGhostTextRef = useRef('');
 
   const [sessionId, setSessionId] = useState(() => readStoredSessionId());
   const [isFreshSession, setIsFreshSession] = useState(false);
@@ -952,15 +995,22 @@ const TypewriterFramework = (props) => {
     let cancelled = false;
 
     const initializeSession = async () => {
-      const requestedSessionId = readStoredSessionId();
+      const requestedSessionId = typeof sessionIdOverride === 'string' && sessionIdOverride.trim()
+        ? sessionIdOverride.trim()
+        : readStoredSessionId();
       const fallbackSessionId = requestedSessionId || Math.random().toString(36).substring(2, 15);
-      const { data, error } = await startTypewriterSession(requestedSessionId);
+      const seededFragment = typeof initialFragment === 'string' && initialFragment.trim()
+        ? initialFragment
+        : undefined;
+      const { data, error } = await startTypewriterSession(requestedSessionId, seededFragment);
       if (cancelled) return;
 
       const nextSessionId = data?.sessionId || fallbackSessionId;
       setIsFreshSession(!requestedSessionId && Boolean(nextSessionId));
-      if (nextSessionId) {
+      if (nextSessionId && persistSessionToStorage) {
         localStorage.setItem(SESSION_ID_STORAGE_KEY, nextSessionId);
+      }
+      if (nextSessionId) {
         setSessionId(nextSessionId);
       }
 
@@ -1003,12 +1053,16 @@ const TypewriterFramework = (props) => {
     return () => {
       cancelled = true;
     };
-  }, [dispatchGhostwriter]);
+  }, [dispatchGhostwriter, initialFragment, persistSessionToStorage, sessionIdOverride]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    currentGhostTextRef.current = String(typingState.currentGhostText || '');
+  }, [typingState.currentGhostText]);
+
+  useEffect(() => {
+    if (!persistDebugSettingsToStorage || typeof window === 'undefined') return;
     localStorage.setItem(TYPEWRITER_DEBUG_STORAGE_KEY, JSON.stringify(debugSettings));
-  }, [debugSettings]);
+  }, [debugSettings, persistDebugSettingsToStorage]);
 
   // --- Derived ---
   const { text: pageText, filmBgUrl: pageBg } = pages[currentPage] || {};
@@ -1145,15 +1199,24 @@ const TypewriterFramework = (props) => {
 
   const applyTypewriterReply = useCallback((reply, fullText, options = {}) => {
     if (isProcessingSequenceRef.current) {
+      sequencePersistenceRef.current = { persistToPage: false };
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
       return false;
     }
 
-    const { sequence, metadata } = normalizeTypewriterReply(reply);
+    const replyToApply = options.disableFadeActions
+      ? stripFadeActionsFromTypewriterReply(reply)
+      : reply;
+    const { sequence, metadata } = normalizeTypewriterReply(replyToApply);
     if (!sequence.length) {
+      sequencePersistenceRef.current = { persistToPage: false };
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
       return false;
     }
+
+    sequencePersistenceRef.current = {
+      persistToPage: Boolean(options.persistToPage)
+    };
 
     const resolvedSequenceStyle = getFirstSequenceStyle(sequence);
     const resolvedStyle = mergeFontMetadata(metadata, resolvedSequenceStyle);
@@ -1545,25 +1608,34 @@ const TypewriterFramework = (props) => {
     }
 
     if (typingState.currentActionIndex >= typingState.actionSequence.length) {
+      const shouldPersistSequenceText = Boolean(sequencePersistenceRef.current?.persistToPage);
+      const persistedGhostText = currentGhostTextRef.current;
       const userSuffix = String(typingState.sequenceUserText || '');
-      if (userSuffix) {
+      if (shouldPersistSequenceText || userSuffix) {
         setPages(prev => {
           const updatedPages = [...prev];
           const existingPage = updatedPages[currentPage] || { text: '', filmBgUrl: DEFAULT_FILM_BG_URL };
+          const committedSequenceText = shouldPersistSequenceText
+            ? `${existingPage.text || ''}${persistedGhostText}`
+            : (existingPage.text || '');
           updatedPages[currentPage] = {
             ...existingPage,
-            text: `${existingPage.text || ''}${userSuffix}`
+            text: `${committedSequenceText}${userSuffix}`
           };
           return updatedPages;
         });
       }
+      sequencePersistenceRef.current = { persistToPage: false };
       if (activeStorytellerPress) {
         setActiveStorytellerPress(null);
       }
       dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
-      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: pageText.length + userSuffix.length });
+      dispatchGhostwriter({
+        type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH,
+        payload: pageText.length + persistedGhostText.length + userSuffix.length
+      });
       dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_AWAITING_USER_INPUT_AFTER_SEQUENCE, payload: true });
       return () => clearTimeout(timeoutId);
@@ -1842,6 +1914,7 @@ const TypewriterFramework = (props) => {
     }
 
     dispatchTyping({ type: typingActionTypes.CANCEL_SEQUENCE });
+    sequencePersistenceRef.current = { persistToPage: false };
     setActiveStorytellerPress(null);
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
@@ -1970,7 +2043,10 @@ const TypewriterFramework = (props) => {
         setStoryEntityKeys((prev) => mergeStoryEntityKeys(prev, [response.data.entityKey]));
       }
 
-      const sequenceStarted = applyTypewriterReply(response.data, pageText);
+      const sequenceStarted = applyTypewriterReply(response.data, pageText, {
+        disableFadeActions: true,
+        persistToPage: true
+      });
 
       if (!sequenceStarted) {
         setActiveStorytellerPress(null);
@@ -1991,7 +2067,7 @@ const TypewriterFramework = (props) => {
   // --- RENDER ---
   return (
     <div
-      className="typewriter-container"
+      className={`typewriter-container ${embedded ? 'typewriter-container--embedded' : ''}`.trim()}
       tabIndex="0"
       onKeyDown={handleKeyDown}
       ref={containerRef}
@@ -2019,23 +2095,27 @@ const TypewriterFramework = (props) => {
         className="typewriter-overlay"
       />
 
-      <div className="typewriter-session-badge" aria-live="polite">
-        <span className="typewriter-session-label">
-          {isFreshSession ? 'New session' : 'Session'}
-        </span>
-        <strong>{sessionId || 'assigning...'}</strong>
-      </div>
+      {!embedded ? (
+        <div className="typewriter-session-badge" aria-live="polite">
+          <span className="typewriter-session-label">
+            {isFreshSession ? 'New session' : 'Session'}
+          </span>
+          <strong>{sessionId || 'assigning...'}</strong>
+        </div>
+      ) : null}
 
-      <button
-        type="button"
-        className="typewriter-debug-toggle"
-        onClick={() => setDebugSettings((prev) => ({ ...prev, panelOpen: !prev.panelOpen }))}
-        aria-expanded={debugSettings.panelOpen}
-      >
-        Debug
-      </button>
+      {!embedded ? (
+        <button
+          type="button"
+          className="typewriter-debug-toggle"
+          onClick={() => setDebugSettings((prev) => ({ ...prev, panelOpen: !prev.panelOpen }))}
+          aria-expanded={debugSettings.panelOpen}
+        >
+          Debug
+        </button>
+      ) : null}
 
-      {debugSettings.panelOpen ? (
+      {!embedded && debugSettings.panelOpen ? (
         <div className="typewriter-debug-panel" aria-live="polite">
           <div className="typewriter-debug-panel-title">Typewriter Debug</div>
           <label className="typewriter-debug-option">

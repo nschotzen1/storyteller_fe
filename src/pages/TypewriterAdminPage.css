@@ -337,6 +337,28 @@
   gap: 0.85rem;
 }
 
+.typewriterControlSection {
+  margin-top: 0.85rem;
+}
+
+.typewriterControlSectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.typewriterControlSectionHeader h4 {
+  margin: 0;
+  font-size: 0.96rem;
+}
+
+.typewriterControlSectionHeader p {
+  margin: 0.28rem 0 0;
+  color: #bea992;
+  font-size: 0.82rem;
+}
+
 .typewriterControlRuntimeCard,
 .typewriterControlBlock {
   border: 1px solid rgba(112, 86, 62, 0.7);
@@ -347,6 +369,55 @@
 
 .typewriterControlBlock {
   margin-top: 0.85rem;
+}
+
+.typewriterControlDisclosure {
+  margin-top: 0.85rem;
+  border: 1px solid rgba(112, 86, 62, 0.7);
+  border-radius: 10px;
+  background: rgba(20, 14, 11, 0.7);
+  overflow: hidden;
+}
+
+.typewriterControlDisclosureSummary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  list-style: none;
+  cursor: pointer;
+  padding: 0.9rem;
+  color: #efe4d5;
+}
+
+.typewriterControlDisclosureSummary::-webkit-details-marker {
+  display: none;
+}
+
+.typewriterControlDisclosureSummary span {
+  font-weight: 600;
+}
+
+.typewriterControlDisclosureSummary small {
+  color: #bea992;
+  font-size: 0.8rem;
+}
+
+.typewriterControlDisclosureSummary::after {
+  content: 'Open';
+  color: #bea992;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.typewriterControlDisclosure[open] .typewriterControlDisclosureSummary::after {
+  content: 'Hide';
+}
+
+.typewriterControlDisclosureBody {
+  padding: 0 0.9rem 0.9rem;
+  border-top: 1px solid rgba(112, 86, 62, 0.5);
 }
 
 .typewriterControlBlockHeader {
@@ -638,6 +709,11 @@
   flex-wrap: wrap;
 }
 
+.typewriterPromptButtons-inline {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
 .typewriterPromptButtons button {
   height: 34px;
   padding: 0 0.8rem;
@@ -730,7 +806,9 @@
 @media (max-width: 820px) {
   .typewriterControlComponentHeader,
   .typewriterControlBlockHeader,
-  .typewriterControlRouteToggle {
+  .typewriterControlRouteToggle,
+  .typewriterControlSectionHeader,
+  .typewriterControlDisclosureSummary {
     flex-direction: column;
   }
 

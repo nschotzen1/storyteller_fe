@@ -290,6 +290,33 @@
   font-size: 0.78rem;
 }
 
+.sceneComponentSection {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.sceneComponentChecklist {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.screenComponentBindingList {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.screenComponentBindingCard {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.screenComponentBindingFields {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
 .questAdminEditor input,
 .questAdminEditor textarea,
 .questAdminEditor select,
@@ -506,6 +533,79 @@
 }
 
 .sceneImageActions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sceneImagePromptHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 0.7rem;
+}
+
+.sceneImagePromptHeader h4 {
+  margin: 0;
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-size: 0.98rem;
+  color: #f6debb;
+}
+
+.sceneImagePromptHeader p {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: #e9cfaa;
+}
+
+.sceneImagePromptHeader button {
+  border-radius: 999px;
+  border: 1px solid rgba(252, 213, 152, 0.45);
+  color: #fbe8cd;
+  background: rgba(34, 22, 16, 0.76);
+  font-weight: 700;
+  padding: 0.52rem 0.9rem;
+  cursor: pointer;
+}
+
+.sceneImagePromptHeader button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sceneImagePathHeader h4 {
+  margin: 0;
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-size: 0.98rem;
+  color: #f6debb;
+}
+
+.sceneImagePathHeader p {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: #e9cfaa;
+}
+
+.sceneImagePathRow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.sceneImagePathRow input {
+  flex: 1 1 auto;
+}
+
+.sceneImagePathRow button {
+  border-radius: 999px;
+  border: 1px solid rgba(252, 213, 152, 0.45);
+  color: #fbe8cd;
+  background: rgba(34, 22, 16, 0.76);
+  font-weight: 700;
+  padding: 0.52rem 0.9rem;
+  cursor: pointer;
+}
+
+.sceneImagePathRow button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -813,6 +913,27 @@
   border: 1px solid rgba(238, 196, 143, 0.16);
   background: rgba(0, 0, 0, 0.18);
   padding: 0.48rem 0.58rem;
+}
+
+.sceneComponentOption {
+  align-items: flex-start;
+}
+
+.sceneComponentOption span {
+  display: grid;
+  gap: 0.16rem;
+}
+
+.sceneComponentOption strong {
+  color: #f5e3ca;
+  font-size: 0.82rem;
+}
+
+.sceneComponentOption em {
+  font-style: normal;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: #ddc29a;
 }
 
 .routeScreenOption input {

@@ -1567,6 +1567,62 @@
   flex-wrap: wrap;
 }
 
+.ritualCycleRow {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(94, 234, 212, 0.2);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(7, 22, 24, 0.45);
+}
+
+.ritualCycleHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.ritualCycleHeader > span {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(153, 246, 228, 0.92);
+}
+
+.ritualCycleHeader em {
+  font-style: normal;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: rgba(226, 214, 191, 0.72);
+}
+
+.ritualCycleSteps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.ritualCycleSteps span {
+  text-align: center;
+  border-radius: 999px;
+  border: 1px solid rgba(226, 214, 191, 0.18);
+  padding: 4px 8px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(226, 214, 191, 0.62);
+  background: rgba(12, 14, 20, 0.62);
+}
+
+.ritualCycleSteps span.active {
+  border-color: rgba(94, 234, 212, 0.48);
+  color: rgba(153, 246, 228, 0.95);
+  box-shadow: 0 0 12px rgba(94, 234, 212, 0.16);
+}
+
 .expeditionRow {
   display: grid;
   gap: 8px;
@@ -1806,6 +1862,56 @@
   }
 }
 
+.diveSceneRow {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(45, 212, 191, 0.24);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(6, 32, 32, 0.56);
+}
+
+.diveSceneHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.diveSceneHeader span {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(94, 234, 212, 0.95);
+}
+
+.diveSceneHeader em {
+  font-style: normal;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: rgba(226, 214, 191, 0.65);
+}
+
+.diveSceneRow p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(226, 214, 191, 0.82);
+}
+
+.diveSceneInput {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  gap: 6px;
+}
+
+@media (max-width: 760px) {
+  .diveSceneInput {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .worldEchoRow {
   display: grid;
   gap: 8px;
@@ -1845,6 +1951,138 @@
 }
 
 .worldEchoInput {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sensoryHookRow {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(16, 185, 129, 0.26);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(8, 34, 28, 0.56);
+}
+
+.sensoryHookHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.sensoryHookHeader span {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(110, 231, 183, 0.95);
+}
+
+.sensoryHookHeader em {
+  font-style: normal;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: rgba(226, 214, 191, 0.65);
+}
+
+.sensoryHookRow p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(226, 214, 191, 0.82);
+}
+
+.sensoryHookActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sceneHandshakeRow {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(56, 189, 248, 0.26);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(8, 24, 40, 0.56);
+}
+
+.sceneHandshakeHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.sceneHandshakeHeader span {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(125, 211, 252, 0.95);
+}
+
+.sceneHandshakeHeader em {
+  font-style: normal;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: rgba(226, 214, 191, 0.65);
+}
+
+.sceneHandshakeRow p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(226, 214, 191, 0.82);
+}
+
+.sceneHandshakeActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ritualPromptRow {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(217, 119, 6, 0.26);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(36, 22, 6, 0.54);
+}
+
+.ritualPromptHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.ritualPromptHeader span {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(252, 211, 77, 0.94);
+}
+
+.ritualPromptHeader em {
+  font-style: normal;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: rgba(226, 214, 191, 0.65);
+}
+
+.ritualPromptRow p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(226, 214, 191, 0.82);
+}
+
+.ritualPromptActions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;

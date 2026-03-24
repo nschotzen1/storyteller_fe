@@ -40,6 +40,113 @@ def base_mask_from_alpha(path: Path) -> Image.Image:
     return ImageOps.autocontrast(image.getchannel("A"))
 
 
+def build_irregular_strip_mask(
+    size: tuple[int, int],
+    seed: int,
+    width_range: tuple[float, float],
+    height_range: tuple[float, float],
+    waviness: float = 0.12,
+    notch_count: int = 2,
+    hole_count: int = 0,
+    taper: float = 0.0,
+    corner_bite: bool = False,
+) -> Image.Image:
+    width, height = size
+    randomizer = random.Random(seed)
+    fragment_width = round(width * randomizer.uniform(*width_range))
+    fragment_height = round(height * randomizer.uniform(*height_range))
+    center_x = round(width * randomizer.uniform(0.44, 0.56))
+    center_y = round(height * randomizer.uniform(0.45, 0.6))
+    left = center_x - (fragment_width // 2)
+    right = left + fragment_width
+    top = center_y - (fragment_height // 2)
+    bottom = top + fragment_height
+
+    point_count = 34
+    points = []
+    top_limit = fragment_height * waviness
+    bottom_limit = fragment_height * waviness * 1.15
+    top_offset = randomizer.uniform(-top_limit * 0.4, top_limit * 0.4)
+    bottom_offset = randomizer.uniform(-bottom_limit * 0.4, bottom_limit * 0.4)
+
+    for index in range(point_count + 1):
+        amount = index / point_count
+        x = round(left + (fragment_width * amount))
+        top_offset += randomizer.uniform(-fragment_height * 0.028, fragment_height * 0.028)
+        top_offset = max(-top_limit, min(top_limit, top_offset))
+        taper_shift = taper * abs((amount - 0.5) * 2) * fragment_height * 0.28
+        y = round(top + top_offset + taper_shift)
+        points.append((x, y))
+
+    for index in range(point_count, -1, -1):
+        amount = index / point_count
+        x = round(left + (fragment_width * amount))
+        bottom_offset += randomizer.uniform(-fragment_height * 0.032, fragment_height * 0.032)
+        bottom_offset = max(-bottom_limit, min(bottom_limit, bottom_offset))
+        taper_shift = taper * abs((amount - 0.5) * 2) * fragment_height * 0.18
+        y = round(bottom + bottom_offset - taper_shift)
+        points.append((x, y))
+
+    mask = Image.new("L", size, 0)
+    draw = ImageDraw.Draw(mask)
+    draw.polygon(points, fill=255)
+
+    for _ in range(notch_count):
+        radius_x = randomizer.randint(max(18, fragment_height // 8), max(26, fragment_height // 3))
+        radius_y = randomizer.randint(max(16, fragment_height // 10), max(24, fragment_height // 2))
+        edge = randomizer.choice(["top", "bottom", "left", "right"])
+        if edge in ("top", "bottom"):
+            cx = randomizer.randint(left + radius_x, right - radius_x)
+            cy = top + randomizer.randint(-radius_y, radius_y // 2) if edge == "top" else bottom + randomizer.randint(-radius_y // 2, radius_y)
+        else:
+            cx = left + randomizer.randint(-radius_x, radius_x // 2) if edge == "left" else right + randomizer.randint(-radius_x // 2, radius_x)
+            cy = randomizer.randint(top + radius_y, bottom - radius_y)
+        draw.ellipse((cx - radius_x, cy - radius_y, cx + radius_x, cy + radius_y), fill=0)
+
+    if corner_bite:
+        bite_width = randomizer.randint(fragment_width // 8, fragment_width // 4)
+        bite_height = randomizer.randint(fragment_height // 5, fragment_height // 2)
+        bite_side = randomizer.choice(["upper_left", "upper_right", "lower_left", "lower_right"])
+        if bite_side == "upper_left":
+            bite = [(left - 10, top - 10), (left + bite_width, top - 10), (left - 10, top + bite_height)]
+        elif bite_side == "upper_right":
+            bite = [(right + 10, top - 10), (right - bite_width, top - 10), (right + 10, top + bite_height)]
+        elif bite_side == "lower_left":
+            bite = [(left - 10, bottom + 10), (left + bite_width, bottom + 10), (left - 10, bottom - bite_height)]
+        else:
+            bite = [(right + 10, bottom + 10), (right - bite_width, bottom + 10), (right + 10, bottom - bite_height)]
+        draw.polygon(bite, fill=0)
+
+    for _ in range(hole_count):
+        radius_x = randomizer.randint(max(10, fragment_height // 12), max(16, fragment_height // 5))
+        radius_y = randomizer.randint(max(8, fragment_height // 14), max(14, fragment_height // 4))
+        cx = randomizer.randint(left + radius_x + 18, right - radius_x - 18)
+        cy = randomizer.randint(top + radius_y + 18, bottom - radius_y - 18)
+        draw.ellipse((cx - radius_x, cy - radius_y, cx + radius_x, cy + radius_y), fill=0)
+
+    return mask.filter(ImageFilter.GaussianBlur(1.4))
+
+
+def build_fragment_variants(mask_luma: Image.Image, mask_alpha: Image.Image) -> list[tuple[str, Image.Image, int]]:
+    variants = [
+        ("well_fragment_01.png", transform_mask(mask_luma, 101, scale_x=0.84, scale_y=0.8), 101),
+        ("well_fragment_02.png", transform_mask(mask_luma, 202, flip=True, scale_x=0.92, scale_y=0.88), 202),
+        ("well_fragment_03.png", transform_mask(mask_alpha, 303, scale_x=0.84, scale_y=0.84), 303),
+        ("well_fragment_04.png", transform_mask(mask_alpha, 404, flip=True, scale_x=0.76, scale_y=0.92), 404),
+        ("well_fragment_05.png", build_irregular_strip_mask(CANVAS_SIZE, 505, (0.34, 0.48), (0.16, 0.22), waviness=0.16, notch_count=2, taper=0.12), 505),
+        ("well_fragment_06.png", build_irregular_strip_mask(CANVAS_SIZE, 606, (0.44, 0.58), (0.16, 0.21), waviness=0.13, notch_count=3, taper=0.18, corner_bite=True), 606),
+        ("well_fragment_07.png", build_irregular_strip_mask(CANVAS_SIZE, 707, (0.28, 0.38), (0.14, 0.18), waviness=0.22, notch_count=1, hole_count=1, taper=0.08), 707),
+        ("well_fragment_08.png", build_irregular_strip_mask(CANVAS_SIZE, 808, (0.32, 0.44), (0.22, 0.3), waviness=0.14, notch_count=4, hole_count=1, taper=0.2, corner_bite=True), 808),
+        ("well_fragment_09.png", build_irregular_strip_mask(CANVAS_SIZE, 909, (0.24, 0.34), (0.12, 0.16), waviness=0.24, notch_count=2, taper=0.32), 909),
+        ("well_fragment_10.png", build_irregular_strip_mask(CANVAS_SIZE, 1001, (0.38, 0.48), (0.18, 0.24), waviness=0.18, notch_count=3, hole_count=2, taper=0.1), 1001),
+        ("well_fragment_11.png", build_irregular_strip_mask(CANVAS_SIZE, 1102, (0.2, 0.3), (0.11, 0.15), waviness=0.2, notch_count=1, taper=0.42), 1102),
+        ("well_fragment_12.png", build_irregular_strip_mask(CANVAS_SIZE, 1203, (0.3, 0.4), (0.2, 0.28), waviness=0.12, notch_count=3, taper=0.26, corner_bite=True), 1203),
+        ("well_fragment_13.png", build_irregular_strip_mask(CANVAS_SIZE, 1304, (0.36, 0.46), (0.14, 0.19), waviness=0.18, notch_count=4, taper=0.08), 1304),
+        ("well_fragment_14.png", build_irregular_strip_mask(CANVAS_SIZE, 1405, (0.16, 0.24), (0.11, 0.15), waviness=0.24, notch_count=2, taper=0.5, corner_bite=True), 1405),
+    ]
+    return variants
+
+
 def transform_mask(mask: Image.Image, seed: int, flip: bool = False, scale_x: float = 1.0, scale_y: float = 1.0) -> Image.Image:
     work = mask.copy()
     if flip:
@@ -145,14 +252,7 @@ def main() -> None:
     mask_luma = base_mask_from_luma(FRAGMENT_DIR / "fragment_mask.png")
     mask_alpha = base_mask_from_alpha(FRAGMENT_DIR / "fragment_02.png")
 
-    variants = [
-        ("well_fragment_01.png", transform_mask(mask_luma, 101, scale_x=1.02, scale_y=0.96), 101),
-        ("well_fragment_02.png", transform_mask(mask_luma, 202, flip=True, scale_x=0.96, scale_y=1.0), 202),
-        ("well_fragment_03.png", transform_mask(mask_alpha, 303, scale_x=1.0, scale_y=0.92), 303),
-        ("well_fragment_04.png", transform_mask(mask_alpha, 404, flip=True, scale_x=0.94, scale_y=0.94), 404),
-        ("well_fragment_05.png", transform_mask(mask_luma, 505, scale_x=0.9, scale_y=0.92), 505),
-        ("well_fragment_06.png", transform_mask(mask_luma, 606, flip=True, scale_x=1.06, scale_y=0.9), 606),
-    ]
+    variants = build_fragment_variants(mask_luma, mask_alpha)
 
     for filename, alpha_mask, seed in variants:
         image = compose_fragment(alpha_mask, seed)

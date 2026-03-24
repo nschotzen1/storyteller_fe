@@ -7,6 +7,7 @@ const SCREEN = {
 };
 
 const DEFAULT_API_BASE_URL = 'http://localhost:5001';
+const DEFAULT_REQUEST_TIMEOUT_MS = 12000;
 const TYPEWRITER_SESSION_STORAGE_KEY = 'sessionId';
 const MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY = 'memorySpreadAdminMode';
 const DEFAULT_SESSION_ID = 'memory-spread-demo';
@@ -435,17 +436,39 @@ const mapStorytellerRoster = ({ listPayload, generatedPayload, detailsById = {},
 };
 
 const requestJson = async (baseUrl, path, options = {}) => {
+  const { timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS, ...fetchOptions } = options;
   const normalizedBase = (baseUrl || '').replace(/\/$/, '');
   const url = path.startsWith('http')
     ? path
     : `${normalizedBase}${path.startsWith('/') ? '' : '/'}${path}`;
 
-  const response = await fetch(url, options);
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload?.error || payload?.message || `Request failed (${response.status}).`);
+  const controller =
+    typeof AbortController !== 'undefined' && !fetchOptions.signal ? new AbortController() : null;
+  const timeoutId =
+    controller && Number.isFinite(timeoutMs) && timeoutMs > 0
+      ? globalThis.setTimeout(() => controller.abort(), timeoutMs)
+      : null;
+
+  try {
+    const response = await fetch(url, {
+      ...fetchOptions,
+      signal: fetchOptions.signal || controller?.signal
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.error || payload?.message || `Request failed (${response.status}).`);
+    }
+    return payload;
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s.`);
+    }
+    throw error;
+  } finally {
+    if (timeoutId !== null) {
+      globalThis.clearTimeout(timeoutId);
+    }
   }
-  return payload;
 };
 
 const buildQuery = (params = {}) => {
@@ -517,6 +540,57 @@ const MemorySpreadPage = () => {
   const viewportRef = useRef(viewport);
   const panStateRef = useRef(null);
   const hasSpreadCenteredRef = useRef(false);
+
+  const applyFallbackMissionResult = useCallback((storyteller, targetEntity, missionText, fallbackReason) => {
+    const payload = {
+      outcome: 'simulated',
+      userText: '',
+      gmNote: fallbackReason
+    };
+    const assignment = {
+      storytellerId: storyteller.id,
+      name: storyteller.name,
+      status: firstNonEmptyString(storyteller.status, 'active'),
+      outcome: payload.outcome,
+      message: missionText,
+      userText: payload.userText,
+      gmNote: payload.gmNote,
+      assignedAt: new Date().toISOString()
+    };
+
+    setStorytellerAssignmentsByEntityId((prev) => {
+      const current = Array.isArray(prev[targetEntity.id]) ? prev[targetEntity.id] : [];
+      return {
+        ...prev,
+        [targetEntity.id]: [
+          ...current.filter((item) => item.storytellerId !== storyteller.id),
+          assignment
+        ]
+      };
+    });
+    setStorytellers((prev) =>
+      prev.map((item) =>
+        item.id === storyteller.id
+          ? {
+            ...item,
+            status: 'active',
+            lastMission: {
+              outcome: payload.outcome,
+              message: missionText
+            }
+          }
+          : item
+      )
+    );
+    setLastMissionResult({
+      ...payload,
+      storytellerId: storyteller.id,
+      targetArenaEntityId: targetEntity.id,
+      source: 'fallback'
+    });
+    setSelectedArenaEntityId(targetEntity.id);
+    setNotice(`${storyteller.name} mission saved locally for ${targetEntity.label}.`);
+  }, []);
 
   const selectedMemory = useMemo(
     () => memoryCards.find((card) => card.id === selectedMemoryId) || null,
@@ -755,10 +829,10 @@ const MemorySpreadPage = () => {
           : 'Choose a memory to begin the reading.'
       );
     } catch (error) {
-      setMemoryCards(isAdminMode ? [] : ensureTriptych([]));
+      setMemoryCards(ensureTriptych([]));
       setMemorySource('fallback');
       setMemoryError(firstNonEmptyString(error?.message));
-      setNotice('Memory generation failed. Check the saved runtime settings and try again.');
+      setNotice('Memory generation stalled, so demo memories were restored to keep the spread usable.');
     } finally {
       setIsLoadingMemories(false);
     }
@@ -800,9 +874,20 @@ const MemorySpreadPage = () => {
 
     const safelyApplyDeck = (nextCards, source, errorMessage) => {
       if (activeDeckRequestRef.current !== requestId) return;
-      setDeckCards(isAdminMode ? nextCards : ensureDeckSize(nextCards));
+      const nextDeckCards =
+        source === 'fallback'
+          ? ensureDeckSize(nextCards.length ? nextCards : ENTITY_FALLBACK_DECK)
+          : isAdminMode
+            ? nextCards
+            : ensureDeckSize(nextCards);
+      setDeckCards(nextDeckCards);
       setDeckSource(source);
       if (errorMessage) setDeckError(errorMessage);
+      if (source === 'fallback') {
+        setNotice('Entity generation stalled, so demo entity cards were restored.');
+      } else if (nextDeckCards.length > 0) {
+        setNotice('Entity deck is ready. Drag a card into the constellation to anchor it.');
+      }
       setIsLoadingDeck(false);
     };
 
@@ -824,7 +909,7 @@ const MemorySpreadPage = () => {
         ''
       );
     } catch (error) {
-      safelyApplyDeck([], 'fallback', firstNonEmptyString(error?.message));
+      safelyApplyDeck(ENTITY_FALLBACK_DECK, 'fallback', firstNonEmptyString(error?.message));
     }
   }, [hasTypewriterSession, isAdminMode, sessionId]);
 
@@ -932,18 +1017,14 @@ const MemorySpreadPage = () => {
         });
 
         if (mapped.length === 0) {
-          const fallbackRoster = isAdminMode ? [] : STORYTELLER_FALLBACK_ROSTER;
+          const fallbackRoster = STORYTELLER_FALLBACK_ROSTER;
           setStorytellers(fallbackRoster);
           setActiveStorytellerId(fallbackRoster[0]?.id || '');
           setStorytellerSource('fallback');
           setStorytellerError(
             firstNonEmptyString(errorMessage, 'Storyteller APIs returned no results.')
           );
-          setNotice(
-            isAdminMode
-              ? 'No storytellers were generated. Check the API response and try again.'
-              : 'Using fallback storytellers because API responses were empty.'
-          );
+          setNotice('Storyteller generation stalled, so demo storytellers were restored.');
           return;
         }
 
@@ -1065,10 +1146,11 @@ const MemorySpreadPage = () => {
     }
 
     const entityApiId = firstNonEmptyString(missionTargetEntity.sourceId, missionTargetEntity.id);
-    if (!entityApiId || entityApiId.startsWith('fallback-')) {
-      setNotice('Target entity is not API-backed. Generate entity cards before sending missions.');
+    if (!entityApiId) {
+      setNotice('Select a valid target entity before sending the mission.');
       return;
     }
+    const canUseMissionApi = !entityApiId.startsWith('fallback-');
 
     const requestBody = {
       sessionId,
@@ -1138,6 +1220,15 @@ const MemorySpreadPage = () => {
     };
 
     try {
+      if (!canUseMissionApi) {
+        applyFallbackMissionResult(
+          storytellerMenuStoryteller,
+          missionTargetEntity,
+          missionText,
+          'Mission stored locally because the target entity is using fallback data.'
+        );
+        return;
+      }
       const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/sendStorytellerToEntity', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1148,8 +1239,14 @@ const MemorySpreadPage = () => {
       void refreshStorytellersFromList({ suppressNotice: true });
       setSelectedArenaEntityId(missionTargetEntity.id);
     } catch (error) {
-      setStorytellerError(firstNonEmptyString(error?.message, 'Mission dispatch failed.'));
-      setNotice(`Mission dispatch failed: ${firstNonEmptyString(error?.message, 'Unknown error.')}`);
+      const fallbackReason = firstNonEmptyString(error?.message, 'Mission dispatch failed.');
+      setStorytellerError(fallbackReason);
+      applyFallbackMissionResult(
+        storytellerMenuStoryteller,
+        missionTargetEntity,
+        missionText,
+        `Mission stored locally because the API was unavailable: ${fallbackReason}`
+      );
     } finally {
       setIsSendingMission(false);
     }
@@ -1162,7 +1259,8 @@ const MemorySpreadPage = () => {
     refreshStorytellersFromList,
     sessionId,
     storytellerMenuStoryteller,
-    loadStorytellerDetail
+    loadStorytellerDetail,
+    applyFallbackMissionResult
   ]);
 
   useEffect(() => {
@@ -1570,6 +1668,7 @@ const MemorySpreadPage = () => {
     let judgedQualityScore = null;
     let pointsAwarded = 0;
     let judgedPredicate = '';
+    let usedLocalFallback = false;
 
     try {
       const proposalPayload = await requestJson(DEFAULT_API_BASE_URL, '/api/arena/relationships/propose', {
@@ -1609,9 +1708,16 @@ const MemorySpreadPage = () => {
       pointsAwarded = Number(proposalPayload?.points?.awarded) || 0;
       judgedPredicate = firstNonEmptyString(returnedEdge?.predicate);
     } catch (proposalError) {
-      setNotice(`Connection request failed: ${firstNonEmptyString(proposalError?.message, 'Unknown error.')}`);
-      setIsSubmittingConnection(false);
-      return;
+      const fallbackReason = firstNonEmptyString(proposalError?.message, 'Unknown error.');
+      judgedStrength = RELATIONSHIP_STRENGTH.default;
+      judgedQualityScore = null;
+      judgedPredicate = '';
+      pointsAwarded = 0;
+      usedLocalFallback = true;
+      setConnectionRejection({
+        reasons: [`Local fallback used because the relationship API was unavailable: ${fallbackReason}`]
+      });
+      setNotice(`Relationship judge unavailable, so ${pendingEntity.name} was anchored locally.`);
     }
 
     const placementPoint = computePlacementFromConnection(
@@ -1661,14 +1767,13 @@ const MemorySpreadPage = () => {
     }, 1400);
     setDeckCards((prev) => prev.filter((card) => card.id !== pendingEntity.id));
     setNotice(
-      `${pendingEntity.name} is now anchored via "${relation}" (resonance ${judgedStrength}, distance ${placementPoint.distance}${pointsAwarded ? `, +${pointsAwarded} essence` : ''}).`
+      `${pendingEntity.name} is now anchored via "${relation}" (${usedLocalFallback ? 'local fallback, ' : ''}resonance ${judgedStrength}, distance ${placementPoint.distance}${pointsAwarded ? `, +${pointsAwarded} essence` : ''}).`
     );
     setPendingEntity(null);
     setPendingWorldPosition(null);
     setConnectToId('');
     setRelationshipText('');
     setIsSubmittingConnection(false);
-    setConnectionRejection(null);
     setSelectedArenaEntityId(placedEntity.id);
     setMissionTargetEntityId(placedEntity.id);
     schedule(() => fitViewportToArena(true), 80);

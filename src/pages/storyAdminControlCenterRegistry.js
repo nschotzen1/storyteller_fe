@@ -46,8 +46,8 @@ export const STORY_ADMIN_CONTROL_COMPONENTS = [
   {
     key: 'memory_spread',
     label: 'Memory Spread',
-    description: 'Generates memories, entities, storytellers, and relationship evaluation from a saved fragment.',
-    searchTerms: ['memory', 'entities', 'storyteller', 'spread'],
+    description: 'Generates memories, memory card images, entities, storytellers, and relationship evaluation from a saved fragment.',
+    searchTerms: ['memory', 'entities', 'storyteller', 'spread', 'image', 'card'],
     routes: [
       {
         key: 'memory_generation_route',
@@ -56,7 +56,7 @@ export const STORY_ADMIN_CONTROL_COMPONENTS = [
         path: '/api/fragmentToMemories',
         summary: 'Builds memory JSON plus the card art prompts that follow it.',
         runtimeKeys: ['memory_creation', 'texture_creation'],
-        directPromptKeys: ['memory_card_front', 'memory_card_back'],
+        directPromptKeys: [],
         contractBindings: [
           {
             routeKey: 'fragment_to_memories',
@@ -64,6 +64,26 @@ export const STORY_ADMIN_CONTROL_COMPONENTS = [
             label: 'Memory extraction contract'
           }
         ]
+      },
+      {
+        key: 'memory_card_front_route',
+        label: 'Memory card front image',
+        method: 'POST',
+        path: '/api/memories/:memoryId/textToImage/front',
+        summary: 'Generates or regenerates the front image for one persisted memory card.',
+        runtimeKeys: ['texture_creation'],
+        directPromptKeys: ['memory_card_front'],
+        contractBindings: []
+      },
+      {
+        key: 'memory_card_back_route',
+        label: 'Memory card back image',
+        method: 'POST',
+        path: '/api/memories/:memoryId/textToImage/back',
+        summary: 'Generates or regenerates the back image for one persisted memory card.',
+        runtimeKeys: ['texture_creation'],
+        directPromptKeys: ['memory_card_back'],
+        contractBindings: []
       },
       {
         key: 'entity_generation_route',

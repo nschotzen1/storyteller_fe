@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  composeQuestSceneImagePrompt,
   DEFAULT_API_BASE_URL,
   generateQuestSceneImage,
   loadQuestScreens,
   resetQuestScreens,
+  resolveQuestSceneImagePath,
   saveQuestScreens,
   uploadQuestSceneImage
 } from '../api/questScreens';
@@ -21,15 +23,29 @@ import {
   applyQuestAuthoringChanges,
   buildQuestScreenVisualContext
 } from './quest-admin/questAdminAuthoringDraftUtils';
+import {
+  getInitialQuestAdminScope,
+  persistQuestAdminScope,
+  ROSE_COURT_PROLOGUE_SCOPE
+} from '../quest/questScopeDefaults';
+import {
+  BASIC_SCENE_TEMPLATE,
+  getAttachedSceneComponentDefinitions,
+  getSceneComponentDefinition,
+  getSceneComponentSlotDefinition,
+  normalizeSceneComponents,
+  normalizeSceneTemplate,
+  normalizeScreenComponentBinding,
+  normalizeScreenComponentBindings,
+  SCENE_COMPONENT_REGISTRY,
+  SCENE_TEMPLATE_REGISTRY
+} from '../scene-runtime/sceneComponentRegistry';
 import './QuestAdminPage.css';
 
 const QUEST_API_BASE_STORAGE_KEY = 'questApiBaseUrl';
 const QUEST_ADMIN_KEY_STORAGE_KEY = 'questAdminApiKey';
-const QUEST_SESSION_ID_STORAGE_KEY = 'questSessionId';
-const QUEST_ID_STORAGE_KEY = 'questId';
-
-const DEFAULT_QUEST_SESSION_ID = 'rose-court-demo';
-const DEFAULT_QUEST_ID = 'ruined_rose_court';
+const DEFAULT_QUEST_SESSION_ID = ROSE_COURT_PROLOGUE_SCOPE.sessionId;
+const DEFAULT_QUEST_ID = ROSE_COURT_PROLOGUE_SCOPE.questId;
 const QUEST_GENERATION_PIPELINE_KEY = 'quest_generation';
 const QUEST_SCENE_AUTHORING_PIPELINE_KEY = 'quest_scene_authoring';
 const EMPTY_MODELS_PAYLOAD = {
@@ -80,14 +96,12 @@ const getInitialAdminKey = () => {
 
 const getInitialSessionId = () => {
   if (typeof window === 'undefined') return DEFAULT_QUEST_SESSION_ID;
-  const stored = window.localStorage.getItem(QUEST_SESSION_ID_STORAGE_KEY);
-  return stored && stored.trim() ? stored : DEFAULT_QUEST_SESSION_ID;
+  return getInitialQuestAdminScope(window.localStorage).sessionId;
 };
 
 const getInitialQuestId = () => {
   if (typeof window === 'undefined') return DEFAULT_QUEST_ID;
-  const stored = window.localStorage.getItem(QUEST_ID_STORAGE_KEY);
-  return stored && stored.trim() ? stored : DEFAULT_QUEST_ID;
+  return getInitialQuestAdminScope(window.localStorage).questId;
 };
 
 const slugify = (value) => {
@@ -194,6 +208,7 @@ const normalizeScreen = (screen) => {
       typeof screen.textPromptPlaceholder === 'string' && screen.textPromptPlaceholder.trim()
         ? screen.textPromptPlaceholder.trim()
         : 'What do you do?',
+    componentBindings: normalizeScreenComponentBindings(screen.componentBindings),
     directions: Array.isArray(screen.directions)
       ? screen.directions.map(normalizeDirection).filter(Boolean)
       : []
@@ -216,6 +231,9 @@ const normalizeConfig = (payload) => {
         typeof source.questId === 'string' && source.questId.trim()
           ? source.questId.trim()
           : DEFAULT_QUEST_ID,
+      sceneName: typeof source.sceneName === 'string' ? source.sceneName : '',
+      sceneTemplate: normalizeSceneTemplate(source.sceneTemplate),
+      sceneComponents: normalizeSceneComponents(source.sceneComponents),
       startScreenId: '',
       authoringBrief: typeof source.authoringBrief === 'string' ? source.authoringBrief : '',
       phaseGuidance: typeof source.phaseGuidance === 'string' ? source.phaseGuidance : '',
@@ -243,6 +261,9 @@ const normalizeConfig = (payload) => {
       typeof source.questId === 'string' && source.questId.trim()
         ? source.questId.trim()
         : DEFAULT_QUEST_ID,
+    sceneName: typeof source.sceneName === 'string' ? source.sceneName : '',
+    sceneTemplate: normalizeSceneTemplate(source.sceneTemplate),
+    sceneComponents: normalizeSceneComponents(source.sceneComponents),
     startScreenId: screenIds.has(requestedStartScreenId) ? requestedStartScreenId : filteredScreens[0].id,
     authoringBrief: typeof source.authoringBrief === 'string' ? source.authoringBrief : '',
     phaseGuidance: typeof source.phaseGuidance === 'string' ? source.phaseGuidance : '',
@@ -349,6 +370,12 @@ const QuestAdminPage = ({
   const [uploadingSceneImage, setUploadingSceneImage] = useState(false);
   const [generatingSceneImage, setGeneratingSceneImage] = useState(false);
   const [sceneImageModel, setSceneImageModel] = useState('');
+  const [sceneImagePromptPreview, setSceneImagePromptPreview] = useState('');
+  const [sceneImagePromptLoading, setSceneImagePromptLoading] = useState(false);
+  const [sceneImagePromptError, setSceneImagePromptError] = useState('');
+  const [sceneImageResolvedPath, setSceneImageResolvedPath] = useState(null);
+  const [sceneImageResolvedPathLoading, setSceneImageResolvedPathLoading] = useState(false);
+  const [sceneImageResolvedPathError, setSceneImageResolvedPathError] = useState('');
   const [runtimeStatus, setRuntimeStatus] = useState('');
   const [runtimeError, setRuntimeError] = useState('');
   const [sceneImageStatus, setSceneImageStatus] = useState('');
@@ -392,6 +419,46 @@ const QuestAdminPage = ({
     () => buildQuestScreenVisualContext(config, selectedScreenId),
     [config, selectedScreenId]
   );
+  const attachedSceneComponentDefinitions = useMemo(
+    () => getAttachedSceneComponentDefinitions(config?.sceneComponents || []),
+    [config?.sceneComponents]
+  );
+
+  const buildSceneImagePromptPayload = () => {
+    if (!selectedScreen) return null;
+    return {
+      sessionId,
+      questId,
+      sceneName: config?.sceneName || '',
+      sceneTemplate: config?.sceneTemplate || BASIC_SCENE_TEMPLATE,
+      sceneComponents: Array.isArray(config?.sceneComponents) ? config.sceneComponents : [],
+      screenId: selectedScreen.id,
+      screenTitle: selectedScreen.title || selectedScreen.id,
+      screenPrompt: selectedScreen.prompt || '',
+      authoringBrief: config?.authoringBrief || '',
+      visualStyleGuide: config?.visualStyleGuide || '',
+      referenceImagePrompt: selectedScreen.referenceImagePrompt || '',
+      image_prompt: selectedScreen.image_prompt || '',
+      visualContinuityGuidance: selectedScreen.visualContinuityGuidance || '',
+      visualTransitionIntent: selectedScreen.visualTransitionIntent || 'inherit',
+      incomingContext: selectedScreenVisualContext.incoming.map((entry) => ({
+        via: entry.via,
+        title: entry.screen?.title || entry.screen?.id || '',
+        referenceImagePrompt: entry.screen?.referenceImagePrompt || '',
+        image_prompt: entry.screen?.image_prompt || '',
+        visualContinuityGuidance: entry.screen?.visualContinuityGuidance || '',
+        prompt: entry.screen?.prompt || ''
+      })),
+      outgoingContext: selectedScreenVisualContext.outgoing.map((entry) => ({
+        via: entry.via,
+        title: entry.screen?.title || entry.screen?.id || '',
+        referenceImagePrompt: entry.screen?.referenceImagePrompt || '',
+        image_prompt: entry.screen?.image_prompt || '',
+        visualContinuityGuidance: entry.screen?.visualContinuityGuidance || '',
+        prompt: entry.screen?.prompt || ''
+      }))
+    };
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -405,12 +472,12 @@ const QuestAdminPage = ({
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(QUEST_SESSION_ID_STORAGE_KEY, sessionId);
+    persistQuestAdminScope(window.localStorage, { sessionId, questId });
   }, [sessionId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(QUEST_ID_STORAGE_KEY, questId);
+    persistQuestAdminScope(window.localStorage, { sessionId, questId });
   }, [questId]);
 
   useEffect(() => {
@@ -464,6 +531,104 @@ const QuestAdminPage = ({
     if (sceneImageModel && sceneImageModelOptions.includes(sceneImageModel)) return;
     setSceneImageModel(sceneImageModelOptions[0]);
   }, [sceneImageModelOptions, sceneImageModel]);
+
+  useEffect(() => {
+    let active = true;
+    const payload = buildSceneImagePromptPayload();
+
+    if (!payload) {
+      setSceneImagePromptPreview('');
+      setSceneImagePromptError('');
+      setSceneImagePromptLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setSceneImagePromptLoading(true);
+    setSceneImagePromptError('');
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await composeQuestSceneImagePrompt(
+          apiBaseUrl,
+          payload,
+          {
+            adminKey: adminKey.trim() ? adminKey.trim() : undefined
+          }
+        );
+        if (!active) return;
+        setSceneImagePromptPreview(response.composedPrompt || '');
+      } catch (err) {
+        if (!active) return;
+        setSceneImagePromptPreview('');
+        setSceneImagePromptError(err.message || 'Unable to compose the full scene image prompt.');
+      } finally {
+        if (!active) return;
+        setSceneImagePromptLoading(false);
+      }
+    }, 220);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [
+    apiBaseUrl,
+    adminKey,
+    sessionId,
+    questId,
+    config?.sceneName,
+    config?.sceneTemplate,
+    config?.sceneComponents,
+    config?.authoringBrief,
+    config?.visualStyleGuide,
+    selectedScreen,
+    selectedScreenVisualContext
+  ]);
+
+  useEffect(() => {
+    let active = true;
+    const imageUrl = selectedScreen?.imageUrl || '';
+
+    if (!imageUrl) {
+      setSceneImageResolvedPath(null);
+      setSceneImageResolvedPathError('');
+      setSceneImageResolvedPathLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setSceneImageResolvedPathLoading(true);
+    setSceneImageResolvedPathError('');
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await resolveQuestSceneImagePath(
+          apiBaseUrl,
+          { imageUrl },
+          {
+            adminKey: adminKey.trim() ? adminKey.trim() : undefined
+          }
+        );
+        if (!active) return;
+        setSceneImageResolvedPath(response);
+      } catch (err) {
+        if (!active) return;
+        setSceneImageResolvedPath(null);
+        setSceneImageResolvedPathError(err.message || 'Unable to resolve the local image path.');
+      } finally {
+        if (!active) return;
+        setSceneImageResolvedPathLoading(false);
+      }
+    }, 180);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [apiBaseUrl, adminKey, selectedScreen?.imageUrl]);
 
   useEffect(() => {
     let active = true;
@@ -532,6 +697,94 @@ const QuestAdminPage = ({
     });
   };
 
+  const updateSelectedScreenComponentBindings = (updater) => {
+    updateSelectedScreen((screen) => ({
+      ...screen,
+      componentBindings: normalizeScreenComponentBindings(
+        updater(Array.isArray(screen.componentBindings) ? screen.componentBindings : [])
+      )
+    }));
+  };
+
+  const handleAddScreenComponentBinding = () => {
+    if (!attachedSceneComponentDefinitions.length) return;
+    const component = attachedSceneComponentDefinitions[0];
+    const slot = component?.slots?.[0];
+    if (!component || !slot) return;
+    updateSelectedScreenComponentBindings((bindings) => ([
+      ...bindings,
+      normalizeScreenComponentBinding({
+        componentId: component.id,
+        slot: slot.id,
+        props: {}
+      })
+    ]));
+  };
+
+  const handleScreenComponentBindingFieldChange = (bindingIndex, field, value) => {
+    updateSelectedScreenComponentBindings((bindings) => bindings.map((binding, index) => {
+      if (index !== bindingIndex) return binding;
+      if (field === 'componentId') {
+        const nextComponent = getSceneComponentDefinition(value);
+        const nextSlot = nextComponent?.slots?.[0]?.id || '';
+        return normalizeScreenComponentBinding({
+          ...binding,
+          componentId: value,
+          slot: nextSlot,
+          props: {}
+        });
+      }
+      if (field === 'slot') {
+        return normalizeScreenComponentBinding({
+          ...binding,
+          slot: value,
+          props: {}
+        });
+      }
+      return binding;
+    }).filter(Boolean));
+  };
+
+  const handleScreenComponentBindingPropChange = (bindingIndex, key, value) => {
+    updateSelectedScreenComponentBindings((bindings) => bindings.map((binding, index) => {
+      if (index !== bindingIndex) return binding;
+      return normalizeScreenComponentBinding({
+        ...binding,
+        props: {
+          ...(binding.props || {}),
+          [key]: value
+        }
+      });
+    }).filter(Boolean));
+  };
+
+  const handleRemoveScreenComponentBinding = (bindingIndex) => {
+    updateSelectedScreenComponentBindings((bindings) => bindings.filter((_, index) => index !== bindingIndex));
+    setStatus('Screen component binding removed.');
+    setError('');
+  };
+
+  const toggleSceneComponent = (componentId, checked) => {
+    setConfig((prev) => {
+      if (!prev) return prev;
+      const current = normalizeSceneComponents(prev.sceneComponents);
+      const nextComponents = checked
+        ? normalizeSceneComponents([...current, componentId])
+        : current.filter((entry) => entry !== componentId);
+      return {
+        ...prev,
+        sceneComponents: nextComponents,
+        screens: Array.isArray(prev.screens)
+          ? prev.screens.map((screen) => ({
+              ...screen,
+              componentBindings: normalizeScreenComponentBindings(screen.componentBindings)
+                .filter((binding) => nextComponents.includes(binding.componentId))
+            }))
+          : prev.screens
+      };
+    });
+  };
+
   const handleAddScreen = () => {
     setConfig((prev) => {
       if (!prev) return prev;
@@ -559,6 +812,7 @@ const QuestAdminPage = ({
         stageLayout: '',
         stageModules: [],
         textPromptPlaceholder: 'What do you do?',
+        componentBindings: [],
         directions: []
       };
       const next = {
@@ -809,6 +1063,9 @@ const QuestAdminPage = ({
       const payload = {
         sessionId,
         questId,
+        sceneName: config.sceneName,
+        sceneTemplate: config.sceneTemplate,
+        sceneComponents: config.sceneComponents,
         startScreenId: config.startScreenId,
         authoringBrief: config.authoringBrief,
         phaseGuidance: config.phaseGuidance,
@@ -1025,6 +1282,20 @@ const QuestAdminPage = ({
     const activeScreenTitle = selectedScreen.title || selectedScreen.id;
 
     try {
+      const composePayload = buildSceneImagePromptPayload();
+      let promptToUse = sceneImagePromptPreview || '';
+      if (composePayload) {
+        const composed = await composeQuestSceneImagePrompt(
+          apiBaseUrl,
+          composePayload,
+          {
+            adminKey: adminKey.trim() ? adminKey.trim() : undefined
+          }
+        );
+        promptToUse = composed.composedPrompt || promptToUse;
+        setSceneImagePromptPreview(promptToUse);
+      }
+
       const payload = await generateQuestSceneImage(
         apiBaseUrl,
         {
@@ -1032,6 +1303,7 @@ const QuestAdminPage = ({
           questId,
           screenId: activeScreenId,
           screenTitle: activeScreenTitle,
+          prompt: promptToUse,
           referenceImagePrompt: selectedScreen.referenceImagePrompt || '',
           image_prompt: selectedScreen.image_prompt || '',
           imageModel: sceneImageModel || ''
@@ -1050,6 +1322,30 @@ const QuestAdminPage = ({
       setSceneImageError(err.message || 'Unable to generate scene image.');
     } finally {
       setGeneratingSceneImage(false);
+    }
+  };
+
+  const handleCopySceneImagePrompt = async () => {
+    if (!sceneImagePromptPreview) return;
+    try {
+      await navigator.clipboard.writeText(sceneImagePromptPreview);
+      setSceneImageStatus('Copied the full text-to-image prompt to the clipboard.');
+      setSceneImageError('');
+    } catch (err) {
+      setSceneImageError(err.message || 'Unable to copy the full scene image prompt.');
+      setSceneImageStatus('');
+    }
+  };
+
+  const handleCopySceneImagePath = async (value, successMessage) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setSceneImageStatus(successMessage);
+      setSceneImageError('');
+    } catch (err) {
+      setSceneImageError(err.message || 'Unable to copy the local image path.');
+      setSceneImageStatus('');
     }
   };
 
@@ -1181,11 +1477,11 @@ const QuestAdminPage = ({
               </div>
               <div className="editorPrimerGrid">
                 <article className="editorPrimerCard">
-                  <strong>1. Scene Brief</strong>
-                  <p>Write the one short authoring brief that explains what this scene is trying to accomplish.</p>
+                  <strong>1. Scene Identity</strong>
+                  <p>Name the scene, keep the base template simple, and attach only the extra components it really needs.</p>
                 </article>
                 <article className="editorPrimerCard">
-                  <strong>2. GM + Visual Guides</strong>
+                  <strong>2. Scene Brief + Guides</strong>
                   <p>Keep one global GM guide and one global visual guide for the whole scene.</p>
                 </article>
                 <article className="editorPrimerCard">
@@ -1196,6 +1492,84 @@ const QuestAdminPage = ({
                   <strong>4. Connections + AI Drafts</strong>
                   <p>Define built-in choices and free-text routes, then use AI drafts as reviewable patches when helpful.</p>
                 </article>
+              </div>
+            </section>
+
+            <section className="editorSection">
+              <div className="editorSectionHeader">
+                <div>
+                  <h3>Scene Identity & Attached Components</h3>
+                  <p>Every scene uses the same base scene template. Attach extra components only when this scene needs them.</p>
+                </div>
+              </div>
+
+              <label>
+                Scene Name
+                <input
+                  type="text"
+                  value={config?.sceneName || ''}
+                  onChange={(event) =>
+                    setConfig((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            sceneName: event.target.value
+                          }
+                        : prev
+                    )
+                  }
+                  placeholder="Rose Court Opening"
+                />
+              </label>
+
+              <label>
+                Base Scene Template
+                <select
+                  value={config?.sceneTemplate || BASIC_SCENE_TEMPLATE}
+                  onChange={(event) =>
+                    setConfig((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            sceneTemplate: normalizeSceneTemplate(event.target.value)
+                          }
+                        : prev
+                    )
+                  }
+                >
+                  {SCENE_TEMPLATE_REGISTRY.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="sceneComponentSection">
+                <strong>Attached Components</strong>
+                <p className="editorMessage">
+                  These are optional pieces of machinery the scene runtime can wire in on top of the base scene.
+                </p>
+                <div className="sceneComponentChecklist">
+                  {SCENE_COMPONENT_REGISTRY.map((component) => {
+                    const checked = Array.isArray(config?.sceneComponents)
+                      ? config.sceneComponents.includes(component.id)
+                      : false;
+                    return (
+                      <label key={component.id} className="routeScreenOption sceneComponentOption">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(event) => toggleSceneComponent(component.id, event.target.checked)}
+                        />
+                        <span>
+                          <strong>{component.label}</strong>
+                          <em>{component.description}</em>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             </section>
 
@@ -1448,6 +1822,133 @@ const QuestAdminPage = ({
                 <section className="editorSection">
                   <div className="editorSectionHeader">
                     <div>
+                      <h3>Components On This Screen</h3>
+                      <p>Choose which of the scene’s attached components is actually active here, and how it is used on this screen.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddScreenComponentBinding}
+                      disabled={attachedSceneComponentDefinitions.length === 0}
+                    >
+                      + Add Binding
+                    </button>
+                  </div>
+
+                  {attachedSceneComponentDefinitions.length === 0 ? (
+                    <p className="editorMessage">
+                      Attach components at the scene level first. Then you can bind them to specific screens here.
+                    </p>
+                  ) : null}
+
+                  {attachedSceneComponentDefinitions.length > 0 && (!selectedScreen.componentBindings || selectedScreen.componentBindings.length === 0) ? (
+                    <p className="editorMessage">No components are currently bound to this screen.</p>
+                  ) : null}
+
+                  <div className="screenComponentBindingList">
+                    {(Array.isArray(selectedScreen.componentBindings) ? selectedScreen.componentBindings : []).map((binding, index) => {
+                      const componentDefinition = getSceneComponentDefinition(binding.componentId);
+                      const slotDefinition = getSceneComponentSlotDefinition(binding.componentId, binding.slot);
+                      return (
+                        <article key={`${binding.componentId}-${binding.slot}-${index}`} className="promptRouteCard screenComponentBindingCard">
+                          <div className="promptRouteHeader">
+                            <div>
+                              <strong>{componentDefinition?.label || binding.componentId}</strong>
+                              <span>{slotDefinition?.description || 'Bind this component into this screen.'}</span>
+                            </div>
+                            <button
+                              type="button"
+                              className="removeDirection"
+                              onClick={() => handleRemoveScreenComponentBinding(index)}
+                            >
+                              Remove
+                            </button>
+                          </div>
+
+                          <div className="promptRouteGrid">
+                            <label>
+                              Component
+                              <select
+                                value={binding.componentId}
+                                onChange={(event) =>
+                                  handleScreenComponentBindingFieldChange(index, 'componentId', event.target.value)
+                                }
+                              >
+                                {attachedSceneComponentDefinitions.map((component) => (
+                                  <option key={`${index}-component-${component.id}`} value={component.id}>
+                                    {component.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label>
+                              Used Here As
+                              <select
+                                value={binding.slot}
+                                onChange={(event) =>
+                                  handleScreenComponentBindingFieldChange(index, 'slot', event.target.value)
+                                }
+                              >
+                                {(Array.isArray(componentDefinition?.slots) ? componentDefinition.slots : []).map((slot) => (
+                                  <option key={`${index}-slot-${slot.id}`} value={slot.id}>
+                                    {slot.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+
+                          {Array.isArray(slotDefinition?.fields) && slotDefinition.fields.length > 0 ? (
+                            <div className="screenComponentBindingFields">
+                              {slotDefinition.fields.map((field) => {
+                                const value = binding.props?.[field.key] ?? '';
+                                if (field.type === 'select') {
+                                  return (
+                                    <label key={`${index}-${field.key}`}>
+                                      {field.label}
+                                      <select
+                                        value={String(value)}
+                                        onChange={(event) =>
+                                          handleScreenComponentBindingPropChange(index, field.key, event.target.value)
+                                        }
+                                      >
+                                        {(Array.isArray(field.options) ? field.options : []).map((option) => (
+                                          <option key={`${index}-${field.key}-${option.value}`} value={option.value}>
+                                            {option.label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </label>
+                                  );
+                                }
+
+                                return (
+                                  <label key={`${index}-${field.key}`}>
+                                    {field.label}
+                                    <input
+                                      type="text"
+                                      value={String(value)}
+                                      onChange={(event) =>
+                                        handleScreenComponentBindingPropChange(index, field.key, event.target.value)
+                                      }
+                                      placeholder={field.placeholder || ''}
+                                    />
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="editorMessage">This binding does not need any extra fields.</p>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <section className="editorSection">
+                  <div className="editorSectionHeader">
+                    <div>
                       <h3>Optional Screen Image</h3>
                       <p>Each screen can keep its current image, upload a different one, or generate one directly from the current prompt fields.</p>
                     </div>
@@ -1495,7 +1996,7 @@ const QuestAdminPage = ({
                   </div>
 
                   <p className="editorMessage">
-                    Generation uses `Reference Text-to-Image Prompt` first, then `Generator Image Prompt`. The new image URL is only persisted after `Save Scene`.
+                    The editor now builds one full standalone prompt from the scene visual guide, this screen, and nearby visual context. The new image URL is only persisted after `Save Scene`.
                   </p>
 
                   <label>
@@ -1511,6 +2012,75 @@ const QuestAdminPage = ({
                       }
                       placeholder="/assets/quest_scene_uploads/... or https://..."
                     />
+                  </label>
+
+                  {sceneImageResolvedPathError ? (
+                    <div className="questAdminInlineNotice error">
+                      {sceneImageResolvedPathError}
+                    </div>
+                  ) : null}
+
+                  <div className="sceneImagePathHeader">
+                    <div>
+                      <h4>Local Asset Path</h4>
+                      <p>The backend resolves the current image URL to the actual project file on disk.</p>
+                    </div>
+                  </div>
+
+                  <label>
+                    Resolved Local File
+                    <div className="sceneImagePathRow">
+                      <input
+                        type="text"
+                        value={
+                          sceneImageResolvedPathLoading && !sceneImageResolvedPath?.localPath
+                            ? 'Resolving local file path…'
+                            : (sceneImageResolvedPath?.localPath || '')
+                        }
+                        readOnly
+                      />
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() =>
+                          handleCopySceneImagePath(
+                            sceneImageResolvedPath?.localPath || '',
+                            'Copied the resolved local image path.'
+                          )
+                        }
+                        disabled={!sceneImageResolvedPath?.localPath}
+                      >
+                        Copy Path
+                      </button>
+                    </div>
+                  </label>
+
+                  <label>
+                    Asset Folder
+                    <div className="sceneImagePathRow">
+                      <input
+                        type="text"
+                        value={
+                          sceneImageResolvedPathLoading && !sceneImageResolvedPath?.assetDirectory
+                            ? 'Resolving asset folder…'
+                            : (sceneImageResolvedPath?.assetDirectory || '')
+                        }
+                        readOnly
+                      />
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() =>
+                          handleCopySceneImagePath(
+                            sceneImageResolvedPath?.assetDirectory || '',
+                            'Copied the local asset folder path.'
+                          )
+                        }
+                        disabled={!sceneImageResolvedPath?.assetDirectory}
+                      >
+                        Copy Folder
+                      </button>
+                    </div>
                   </label>
 
                   <label className="sceneUploadField">
@@ -1539,6 +2109,40 @@ const QuestAdminPage = ({
                         }))
                       }
                       placeholder="A richer visual brief for generating or commissioning art for this screen."
+                    />
+                  </label>
+
+                  <div className="sceneImagePromptHeader">
+                    <div>
+                      <h4>Full Text-to-Image Prompt</h4>
+                      <p>Copy this whole prompt if you want to run image generation manually.</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={handleCopySceneImagePrompt}
+                      disabled={!sceneImagePromptPreview}
+                    >
+                      Copy Full Prompt
+                    </button>
+                  </div>
+
+                  {sceneImagePromptError ? (
+                    <div className="questAdminInlineNotice error">
+                      {sceneImagePromptError}
+                    </div>
+                  ) : null}
+
+                  <label>
+                    Composed Prompt Preview
+                    <textarea
+                      rows={12}
+                      value={
+                        sceneImagePromptLoading && !sceneImagePromptPreview
+                          ? 'Composing full text-to-image prompt…'
+                          : sceneImagePromptPreview
+                      }
+                      readOnly
                     />
                   </label>
 
@@ -2054,6 +2658,17 @@ const QuestAdminPage = ({
                   <p>{selectedScreen.prompt || 'No prompt yet.'}</p>
                 </div>
                 <div className="previewDirections">
+                  {config?.sceneName ? (
+                    <span>Scene name: {config.sceneName}</span>
+                  ) : null}
+                  {config?.sceneTemplate ? (
+                    <span>Base scene template: {config.sceneTemplate}</span>
+                  ) : null}
+                  {Array.isArray(config?.sceneComponents) && config.sceneComponents.length ? (
+                    <span>Attached components: {config.sceneComponents.join(', ')}</span>
+                  ) : (
+                    <span>No optional attached components enabled.</span>
+                  )}
                   {config?.authoringBrief ? (
                     <span>Master brief: {config.authoringBrief}</span>
                   ) : null}
@@ -2075,6 +2690,24 @@ const QuestAdminPage = ({
                   {selectedScreen.visualTransitionIntent ? (
                     <span>Transition intent: {selectedScreen.visualTransitionIntent}</span>
                   ) : null}
+                  {Array.isArray(selectedScreen.componentBindings) && selectedScreen.componentBindings.length ? (
+                    selectedScreen.componentBindings.map((binding, index) => {
+                      const componentDefinition = getSceneComponentDefinition(binding.componentId);
+                      const slotDefinition = getSceneComponentSlotDefinition(binding.componentId, binding.slot);
+                      const propSummary = Object.entries(binding.props || {})
+                        .map(([key, value]) => `${key}: ${value}`)
+                        .join(' | ');
+                      return (
+                        <span key={`${selectedScreen.id}-binding-${index}`}>
+                          Screen component: {componentDefinition?.label || binding.componentId}
+                          {' '}as {slotDefinition?.label || binding.slot}
+                          {propSummary ? ` · ${propSummary}` : ''}
+                        </span>
+                      );
+                    })
+                  ) : (
+                    <span>No screen-level component bindings yet.</span>
+                  )}
                   {selectedScreen.imageUrl ? (
                     <span>Image: {selectedScreen.imageUrl}</span>
                   ) : (
