@@ -194,6 +194,132 @@
   grid-column: 1 / -1;
 }
 
+.typewriterAdminSessionInspector {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #5e4b3b;
+  border-radius: 12px;
+  background:
+    linear-gradient(145deg, rgba(26, 19, 15, 0.95), rgba(15, 11, 9, 0.92)),
+    radial-gradient(circle at top right, rgba(159, 118, 77, 0.12), transparent 40%);
+}
+
+.typewriterAdminInspectorGrid {
+  margin-top: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 0.9rem;
+}
+
+.typewriterAdminInspectorPanel {
+  border: 1px solid rgba(112, 86, 62, 0.7);
+  border-radius: 12px;
+  background: rgba(18, 13, 10, 0.78);
+  padding: 0.95rem;
+}
+
+.typewriterAdminInspectorPanelWide {
+  grid-column: 1 / -1;
+}
+
+.typewriterAdminInspectorPanelHeader h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.typewriterAdminInspectorPanelHeader p {
+  margin: 0.28rem 0 0;
+  color: #c3b39d;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.typewriterAdminInspectorMeta {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  color: #d7cab8;
+  font-size: 0.82rem;
+}
+
+.typewriterAdminInspectorTextBlock {
+  margin-top: 0.75rem;
+}
+
+.typewriterAdminInspectorTextBlock strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.typewriterAdminInspectorText {
+  margin: 0;
+  padding: 0.8rem;
+  border-radius: 10px;
+  border: 1px solid rgba(112, 86, 62, 0.55);
+  background: rgba(12, 9, 8, 0.82);
+  color: #ede1d1;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+  line-height: 1.6;
+}
+
+.typewriterAdminInspectorList {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.typewriterAdminInspectorItem {
+  border: 1px solid rgba(112, 86, 62, 0.5);
+  border-radius: 10px;
+  background: rgba(13, 10, 8, 0.76);
+  padding: 0.85rem;
+}
+
+.typewriterAdminInspectorItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+
+.typewriterAdminInspectorItemHeader strong {
+  display: block;
+}
+
+.typewriterAdminInspectorItemHeader small {
+  display: block;
+  margin-top: 0.2rem;
+  color: #bcae98;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.typewriterAdminInspectorThumb {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid rgba(126, 100, 75, 0.7);
+  background: rgba(23, 17, 13, 0.85);
+  padding: 0.25rem;
+  flex-shrink: 0;
+}
+
+.typewriterAdminInspectorMetaLine {
+  margin: 0.55rem 0 0;
+  color: #d8ccb9;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.typewriterAdminInspectorMetaLine strong {
+  color: #f3e7d7;
+  margin-right: 0.35rem;
+}
+
 .typewriterAdminDisclosureIntro {
   display: flex;
   justify-content: space-between;
@@ -734,6 +860,10 @@
   }
 
   .typewriterAdminSessionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .typewriterAdminInspectorGrid {
     grid-template-columns: 1fr;
   }
 

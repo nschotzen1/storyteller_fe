@@ -2044,6 +2044,56 @@
   gap: 6px;
 }
 
+.atmospherePassRow {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(236, 72, 153, 0.26);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(40, 10, 28, 0.56);
+}
+
+.atmospherePassHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.atmospherePassHeader span {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(249, 168, 212, 0.95);
+}
+
+.atmospherePassHeader em {
+  font-style: normal;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: rgba(226, 214, 191, 0.65);
+}
+
+.atmospherePassRow p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(226, 214, 191, 0.82);
+}
+
+.atmospherePassInput {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  gap: 6px;
+}
+
+@media (max-width: 760px) {
+  .atmospherePassInput {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .ritualPromptRow {
   display: grid;
   gap: 8px;

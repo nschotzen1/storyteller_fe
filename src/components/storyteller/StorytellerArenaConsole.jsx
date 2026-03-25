@@ -240,6 +240,17 @@ const SESSION_STATE_DEFAULT = {
     echoedByKey: '',
     echoedAt: ''
   },
+  atmospherePass: {
+    cue: '',
+    source: '',
+    beatId: '',
+    draftedByKey: '',
+    passedByKey: '',
+    passedToKey: '',
+    passedAt: '',
+    invokedByKey: '',
+    invokedAt: ''
+  },
   canonProposal: {
     text: '',
     proposedByKey: '',
@@ -487,6 +498,55 @@ const buildSceneHandshakeDraft = ({
   }
   return { cue: '', source: '' };
 };
+const buildAtmospherePassDraft = ({
+  worldProfile,
+  diveSceneText,
+  sceneGoal,
+  sceneRisk,
+  activeBeatLabel
+}) => {
+  const mood = trimPromptSeed(worldProfile?.mood);
+  const sensory = [worldProfile?.sound, worldProfile?.scent, worldProfile?.texture]
+    .map((value) => trimPromptSeed(value))
+    .filter(Boolean)
+    .slice(0, 2);
+  const wonder = trimPromptSeed(worldProfile?.wonder);
+  const dive = trimPromptSeed(diveSceneText);
+  const goal = trimPromptSeed(sceneGoal);
+  const stakes = trimPromptSeed(sceneRisk);
+  const beat = trimPromptSeed(activeBeatLabel) || 'this beat';
+  if (dive && mood) {
+    return {
+      cue: `On ${beat}, keep "${dive}" under a ${mood.toLowerCase()} tone.`,
+      source: 'dive+mood'
+    };
+  }
+  if (sensory.length >= 2) {
+    return {
+      cue: `On ${beat}, let ${sensory[0].toLowerCase()} and ${sensory[1].toLowerCase()} guide table narration.`,
+      source: 'sensory'
+    };
+  }
+  if (goal && stakes) {
+    return {
+      cue: `On ${beat}, pursue "${goal}" while everyone feels the risk of ${stakes}.`,
+      source: 'lens'
+    };
+  }
+  if (mood) {
+    return {
+      cue: `On ${beat}, keep every move in a ${mood.toLowerCase()} register.`,
+      source: 'mood'
+    };
+  }
+  if (wonder) {
+    return {
+      cue: `On ${beat}, let this wonder color every line: ${wonder}.`,
+      source: 'wonder'
+    };
+  }
+  return { cue: '', source: '' };
+};
 
 const readWorldProfile = (sessionId) => {
   if (typeof window === 'undefined') return { ...WORLD_PROFILE_DEFAULT };
@@ -679,6 +739,7 @@ const StorytellerArenaConsole = ({
   const [canonProposalInput, setCanonProposalInput] = useState('');
   const [scenePromiseInput, setScenePromiseInput] = useState('');
   const [diveSceneInput, setDiveSceneInput] = useState('');
+  const [atmospherePassInput, setAtmospherePassInput] = useState('');
   const boardRef = useRef(null);
   const boardStageRef = useRef(null);
   const forgePanelRef = useRef(null);
@@ -1125,6 +1186,22 @@ const StorytellerArenaConsole = ({
   const sceneHandshakeEchoed = sceneHandshakeCurrent && Boolean(sceneHandshake.echoedAt);
   const sceneHandshakeByLabel = getPlayerLabelByKey(sceneHandshake.draftedByKey || '', 'Table');
   const sceneHandshakeEchoedByLabel = getPlayerLabelByKey(sceneHandshake.echoedByKey || '', 'Table');
+  const atmospherePass =
+    sessionState.atmospherePass && typeof sessionState.atmospherePass === 'object'
+      ? sessionState.atmospherePass
+      : SESSION_STATE_DEFAULT.atmospherePass;
+  const atmospherePassBeatId =
+    typeof atmospherePass.beatId === 'string' ? atmospherePass.beatId.trim() : '';
+  const atmospherePassCurrent = !atmospherePassBeatId || atmospherePassBeatId === activeBeatId;
+  const atmospherePassCue =
+    atmospherePassCurrent && typeof atmospherePass.cue === 'string' ? atmospherePass.cue.trim() : '';
+  const atmospherePassSource =
+    atmospherePassCurrent && typeof atmospherePass.source === 'string' ? atmospherePass.source.trim() : '';
+  const atmospherePassPassed = atmospherePassCurrent && Boolean(atmospherePass.passedAt);
+  const atmospherePassInvoked = atmospherePassCurrent && Boolean(atmospherePass.invokedAt);
+  const atmospherePassByLabel = getPlayerLabelByKey(atmospherePass.draftedByKey || '', 'Table');
+  const atmospherePassToLabel = getPlayerLabelByKey(atmospherePass.passedToKey || '', 'Table');
+  const atmospherePassInvokedByLabel = getPlayerLabelByKey(atmospherePass.invokedByKey || '', 'Table');
   const expedition =
     sessionState.expedition && typeof sessionState.expedition === 'object'
       ? sessionState.expedition
@@ -1277,6 +1354,26 @@ const StorytellerArenaConsole = ({
         actionId: 'presence'
       },
       {
+        id: 'atmosphere-pass',
+        label: 'Atmosphere Pass',
+        detail: ritualActive
+          ? atmospherePassCue
+            ? atmospherePassInvoked
+              ? 'Atmosphere invoked in ritual'
+              : atmospherePassPassed
+                ? 'Pass is ready to invoke'
+                : 'Pass cue to another seat first'
+            : 'Draft beat atmosphere cue'
+          : atmospherePassCue
+            ? atmospherePassPassed
+              ? 'Cue passed across table'
+              : 'Pass cue to another seat'
+            : 'Draft one cue from mood/lens',
+        ready: ritualActive ? atmospherePassInvoked : atmospherePassPassed,
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      },
+      {
         id: 'world-echo',
         label: 'World Echo',
         detail: ritualActive
@@ -1350,6 +1447,9 @@ const StorytellerArenaConsole = ({
     diveSceneLocked,
     sceneHandshakeCue,
     sceneHandshakeEchoed,
+    atmospherePassCue,
+    atmospherePassPassed,
+    atmospherePassInvoked,
     ritualPromptText,
     ritualPromptResolved,
     ritualCycleComplete,
@@ -1438,6 +1538,22 @@ const StorytellerArenaConsole = ({
         actionId: 'presence'
       };
     }
+    if (!atmospherePassCue) {
+      return {
+        title: 'Draft Atmosphere Pass',
+        detail: 'Draft one cue from mood/lens so every seat carries the same texture.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (!atmospherePassPassed) {
+      return {
+        title: 'Pass Atmosphere Cue',
+        detail: 'Have another ready seat receive the cue before ritual pacing starts.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
     if (!immersionGate.ready) {
       return {
         title: 'Ready the Table',
@@ -1458,6 +1574,14 @@ const StorytellerArenaConsole = ({
       return {
         title: 'Echo Scene Handshake',
         detail: 'Have a second seat echo the entry cue to lock full-table immersion.',
+        actionLabel: 'Open Presence',
+        actionId: 'presence'
+      };
+    }
+    if (ritualActive && atmospherePassCue && atmospherePassPassed && !atmospherePassInvoked) {
+      return {
+        title: 'Invoke Atmosphere Pass',
+        detail: 'Invoke the passed cue to settle table tone and reduce scene pressure.',
         actionLabel: 'Open Presence',
         actionId: 'presence'
       };
@@ -1618,6 +1742,9 @@ const StorytellerArenaConsole = ({
     diveSceneLocked,
     sceneHandshakeCue,
     sceneHandshakeEchoed,
+    atmospherePassCue,
+    atmospherePassPassed,
+    atmospherePassInvoked,
     immersionGate.ready,
     ritualActive,
     relayRequired,
@@ -1853,6 +1980,16 @@ const StorytellerArenaConsole = ({
             echoed: sensoryHookEchoed,
             echoedBy: sensoryHookEchoedByLabel
           },
+          atmospherePass: {
+            cue: atmospherePassCue,
+            source: atmospherePassSource,
+            beat: activeBeat?.label || 'Arrival',
+            by: atmospherePassByLabel,
+            passed: atmospherePassPassed,
+            passedTo: atmospherePassToLabel,
+            invoked: atmospherePassInvoked,
+            invokedBy: atmospherePassInvokedByLabel
+          },
           sceneHandshake: {
             cue: sceneHandshakeCue,
             source: sceneHandshakeSource,
@@ -1986,6 +2123,13 @@ const StorytellerArenaConsole = ({
     sensoryHookByLabel,
     sensoryHookEchoed,
     sensoryHookEchoedByLabel,
+    atmospherePassCue,
+    atmospherePassSource,
+    atmospherePassByLabel,
+    atmospherePassPassed,
+    atmospherePassToLabel,
+    atmospherePassInvoked,
+    atmospherePassInvokedByLabel,
     sceneHandshakeCue,
     sceneHandshakeSource,
     sceneHandshakeByLabel,
@@ -2308,10 +2452,11 @@ const StorytellerArenaConsole = ({
       beatId: nextBeatId,
       beatVotes: {},
       lastBeatSync: null,
-      sceneHandshake: { ...SESSION_STATE_DEFAULT.sceneHandshake },
-      sensoryHook: { ...SESSION_STATE_DEFAULT.sensoryHook },
-      ritualCycle: ensureRitualCycle(SESSION_STATE_DEFAULT.ritualCycle, nextBeatId)
-    }));
+        sceneHandshake: { ...SESSION_STATE_DEFAULT.sceneHandshake },
+        atmospherePass: { ...SESSION_STATE_DEFAULT.atmospherePass },
+        sensoryHook: { ...SESSION_STATE_DEFAULT.sensoryHook },
+        ritualCycle: ensureRitualCycle(SESSION_STATE_DEFAULT.ritualCycle, nextBeatId)
+      }));
   };
 
   const handleToggleVow = (vowKey) => {
@@ -3367,6 +3512,188 @@ const StorytellerArenaConsole = ({
     setNotice('Scene handshake cleared.');
   };
 
+  const handleDraftAtmospherePass = () => {
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const drafterKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!drafterKey) {
+      setNotice('Set focus or turn holder before drafting atmosphere pass.');
+      return;
+    }
+    const manualCue = atmospherePassInput.trim();
+    const generated = buildAtmospherePassDraft({
+      worldProfile,
+      diveSceneText,
+      sceneGoal,
+      sceneRisk,
+      activeBeatLabel: activeBeat?.label || 'Arrival'
+    });
+    const cue = manualCue || generated.cue;
+    if (!cue) {
+      setNotice('Add mood, lens, dive scene, or sensory frame before drafting atmosphere pass.');
+      return;
+    }
+    const source = manualCue ? 'manual' : generated.source;
+    const drafterLabel = getPlayerLabelByKey(drafterKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const entry = createLedgerEntry({
+        type: 'oath',
+        text: `${drafterLabel} drafts atmosphere pass: "${cue}"`,
+        by: drafterLabel
+      });
+      return {
+        ...prev,
+        atmospherePass: {
+          cue,
+          source,
+          beatId: activeBeatId,
+          draftedByKey: drafterKey,
+          passedByKey: '',
+          passedToKey: '',
+          passedAt: '',
+          invokedByKey: '',
+          invokedAt: ''
+        },
+        pulse: {
+          ...nextPulse,
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setAtmospherePassInput('');
+    setNotice('Atmosphere pass drafted.');
+  };
+
+  const handlePassAtmosphere = () => {
+    if (!atmospherePassCue) {
+      setNotice('Draft atmosphere pass first.');
+      return;
+    }
+    if (atmospherePassPassed) {
+      setNotice('Draft a fresh atmosphere pass before passing again.');
+      return;
+    }
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const actorKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    if (!actorKey) {
+      setNotice('Set focus or turn holder before passing atmosphere cue.');
+      return;
+    }
+    if (syncTargetKeys.length > 1 && actorKey === (atmospherePass.draftedByKey || '')) {
+      setNotice('A different seat should receive the atmosphere pass for multiplayer flow.');
+      return;
+    }
+    const actorLabel = getPlayerLabelByKey(actorKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const existingPass =
+        prev.atmospherePass && typeof prev.atmospherePass === 'object'
+          ? prev.atmospherePass
+          : SESSION_STATE_DEFAULT.atmospherePass;
+      const entry = createLedgerEntry({
+        type: 'oath',
+        text: `${actorLabel} receives atmosphere pass: "${existingPass.cue || atmospherePassCue}"`,
+        by: actorLabel
+      });
+      return {
+        ...prev,
+        atmospherePass: {
+          ...existingPass,
+          beatId: existingPass.beatId || activeBeatId,
+          passedByKey: existingPass.draftedByKey || '',
+          passedToKey: actorKey,
+          passedAt: new Date().toISOString(),
+          invokedByKey: '',
+          invokedAt: ''
+        },
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + 1),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + 1)
+        },
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry].slice(-24)
+      };
+    });
+    setNotice(`${actorLabel} receives the atmosphere pass.`);
+  };
+
+  const handleInvokeAtmospherePass = () => {
+    if (!ritualActive) {
+      setNotice('Open ritual mode before invoking atmosphere pass.');
+      return;
+    }
+    if (!atmospherePassCue) {
+      setNotice('Draft atmosphere pass first.');
+      return;
+    }
+    if (!atmospherePassPassed) {
+      setNotice('Pass atmosphere cue to another seat before invoking.');
+      return;
+    }
+    if (atmospherePassInvoked) {
+      setNotice('Draft and pass a fresh cue before invoking again.');
+      return;
+    }
+    const fallbackKey = getPlayerKey(activePlayer, activePlayerIndex);
+    const actorKey = focusPlayerKey || currentTurnKey || fallbackKey;
+    const actorLabel = getPlayerLabelByKey(actorKey, 'Table');
+    setSessionState((prev) => {
+      const nextPulse = prev.pulse || { momentum: 2, clarity: 2 };
+      const cycleUpdate = markRitualCycleStep(prev, 'perform');
+      const cycleEntry = cycleUpdate.justCompleted
+        ? createLedgerEntry({
+            type: 'canon',
+            text: 'Ritual cycle complete: Prime → Perform → Seal.',
+            by: 'Table'
+          })
+        : null;
+      const cycleBonus = cycleUpdate.justCompleted ? 1 : 0;
+      const previousClockRaw = Number(prev.sceneClock);
+      const previousClock = Number.isFinite(previousClockRaw) ? previousClockRaw : 2;
+      const effect = applyVowModifiers(
+        { momentum: 0, clarity: 1, sceneClock: -1 },
+        prev.vows,
+        { ritualActive: Boolean(prev.ritualActive) }
+      );
+      const existingPass =
+        prev.atmospherePass && typeof prev.atmospherePass === 'object'
+          ? prev.atmospherePass
+          : SESSION_STATE_DEFAULT.atmospherePass;
+      const entry = createLedgerEntry({
+        type: 'canon',
+        text: `${actorLabel} invokes atmosphere pass: "${existingPass.cue || atmospherePassCue}"`,
+        by: actorLabel
+      });
+      return {
+        ...prev,
+        atmospherePass: {
+          ...existingPass,
+          invokedByKey: actorKey,
+          invokedAt: new Date().toISOString()
+        },
+        pulse: {
+          momentum: clampPulseValue((nextPulse?.momentum ?? 2) + effect.momentum + cycleBonus),
+          clarity: clampPulseValue((nextPulse?.clarity ?? 2) + effect.clarity + cycleBonus)
+        },
+        sceneClock: clampSceneClockValue(previousClock + effect.sceneClock),
+        ritualCycle: cycleUpdate.ritualCycle,
+        ledger: [...(Array.isArray(prev.ledger) ? prev.ledger : []), entry, cycleEntry]
+          .filter(Boolean)
+          .slice(-24)
+      };
+    });
+    setNotice(`${actorLabel} invokes the atmosphere pass.`);
+  };
+
+  const handleResetAtmospherePass = () => {
+    setSessionState((prev) => ({
+      ...prev,
+      atmospherePass: { ...SESSION_STATE_DEFAULT.atmospherePass }
+    }));
+    setAtmospherePassInput('');
+    setNotice('Atmosphere pass reset.');
+  };
+
   const handleDraftCanonProposal = () => {
     const text = canonProposalInput.trim();
     if (!text) {
@@ -3604,7 +3931,8 @@ const StorytellerArenaConsole = ({
     setSessionState((prev) => ({
       ...prev,
       diveScene: { ...SESSION_STATE_DEFAULT.diveScene },
-      sceneHandshake: { ...SESSION_STATE_DEFAULT.sceneHandshake }
+      sceneHandshake: { ...SESSION_STATE_DEFAULT.sceneHandshake },
+      atmospherePass: { ...SESSION_STATE_DEFAULT.atmospherePass }
     }));
     setDiveSceneInput('');
     setNotice('Dive scene reset.');
@@ -3952,6 +4280,7 @@ const StorytellerArenaConsole = ({
         lastBeatSync: null,
         worldEcho: { ...SESSION_STATE_DEFAULT.worldEcho },
         sensoryHook: { ...SESSION_STATE_DEFAULT.sensoryHook },
+        atmospherePass: { ...SESSION_STATE_DEFAULT.atmospherePass },
         ritualPrompt: { ...SESSION_STATE_DEFAULT.ritualPrompt },
         ritualCycle: ensureRitualCycle(SESSION_STATE_DEFAULT.ritualCycle, prev.beatId || activeBeatId),
         relay: {
@@ -3986,6 +4315,7 @@ const StorytellerArenaConsole = ({
         lastBeatSync: null,
         worldEcho: { ...SESSION_STATE_DEFAULT.worldEcho },
         sensoryHook: { ...SESSION_STATE_DEFAULT.sensoryHook },
+        atmospherePass: { ...SESSION_STATE_DEFAULT.atmospherePass },
         sceneHandshake: { ...SESSION_STATE_DEFAULT.sceneHandshake },
         ritualPrompt: { ...SESSION_STATE_DEFAULT.ritualPrompt },
         ritualCycle: ensureRitualCycle(SESSION_STATE_DEFAULT.ritualCycle, prev.beatId || activeBeatId),
@@ -6410,6 +6740,61 @@ const StorytellerArenaConsole = ({
                   </button>
                 </div>
               </div>
+              <div className="atmospherePassRow">
+                <div className="atmospherePassHeader">
+                  <span>Atmosphere Pass</span>
+                  <em>
+                    {atmospherePassCue
+                      ? atmospherePassInvoked
+                        ? 'Invoked'
+                        : atmospherePassPassed
+                          ? 'Passed'
+                          : 'Drafted'
+                      : 'Unset'}
+                  </em>
+                </div>
+                <p>
+                  {atmospherePassCue
+                    ? `"${atmospherePassCue}" · source ${atmospherePassSource || 'world'} · drafted by ${atmospherePassByLabel}${
+                        atmospherePassPassed ? ` · passed to ${atmospherePassToLabel}` : ''
+                      }${atmospherePassInvoked ? ` · invoked by ${atmospherePassInvokedByLabel}` : ''}`
+                    : 'Draft one beat atmosphere cue, pass it to another seat, then invoke it during ritual.'}
+                </p>
+                <div className="atmospherePassInput">
+                  <input
+                    value={atmospherePassInput}
+                    placeholder="Example: Every line should carry storm-hush urgency."
+                    onChange={(event) => setAtmospherePassInput(event.target.value)}
+                  />
+                  <button type="button" className="ghost subtle" onClick={handleDraftAtmospherePass}>
+                    Draft
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handlePassAtmosphere}
+                    disabled={!atmospherePassCue || atmospherePassPassed}
+                  >
+                    Pass
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleInvokeAtmospherePass}
+                    disabled={!ritualActive || !atmospherePassCue || !atmospherePassPassed || atmospherePassInvoked}
+                  >
+                    Invoke
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost subtle"
+                    onClick={handleResetAtmospherePass}
+                    disabled={!atmospherePassCue && !atmospherePassPassed && !atmospherePassInvoked}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
               <div className="scenePromiseRow">
                 <div className="scenePromiseHeader">
                   <span>Scene Promise</span>
@@ -6754,6 +7139,11 @@ const StorytellerArenaConsole = ({
                 {diveSceneText
                   ? `Dive ${diveSceneAffirmed}/${diveSceneRequired || 0}${diveSceneLocked ? ' Locked' : ''}`
                   : 'Dive Unset'}
+              </span>
+              <span>
+                {atmospherePassCue
+                  ? `Atmos ${atmospherePassInvoked ? 'Invoked' : atmospherePassPassed ? 'Passed' : 'Drafted'}`
+                  : 'Atmos Unset'}
               </span>
               <span>
                 {scenePromiseText

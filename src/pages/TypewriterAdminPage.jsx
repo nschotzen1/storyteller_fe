@@ -1,6 +1,7 @@
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_API_BASE_URL,
+  inspectTypewriterSession,
   loadLlmRouteConfigs,
   loadLlmRouteConfigVersions,
   loadOpenAiModels,
@@ -315,6 +316,13 @@ const TYPEWRITER_ASSET_FLOW = [
     asset: 'LLM verdict plus appendedText',
     storage: 'TypewriterKey usage state',
     note: 'Checks whether any textual key such as Xerofag or a storyteller-created key may append itself to the live narrative.'
+  },
+  {
+    title: 'Session inspection',
+    route: '/api/typewriter/session/inspect',
+    asset: 'Joined session snapshot for debugging',
+    storage: 'NarrativeFragment + Storyteller + TypewriterKey + NarrativeEntity',
+    note: 'Read-only inspector that shows the live fragment, storyteller slots, internal entity truth, and player-facing key disclosure for one session.'
   }
 ];
 
@@ -381,6 +389,18 @@ const formatDate = (timestamp) => {
   const parsed = Date.parse(timestamp);
   if (Number.isNaN(parsed)) return 'Never';
   return new Date(parsed).toLocaleString();
+};
+
+const formatInspectorValue = (value, fallback = 'Not available') => {
+  const normalized = typeof value === 'string' ? value.trim() : `${value ?? ''}`.trim();
+  return normalized || fallback;
+};
+
+const formatInspectorList = (value) => {
+  const entries = Array.isArray(value)
+    ? value.map((entry) => `${entry || ''}`.trim()).filter(Boolean)
+    : [];
+  return entries.length ? entries.join(', ') : 'None';
 };
 
 const normalizeCountDraft = (value, fallback = 1, min = 1, max = 10) => {
@@ -535,7 +555,12 @@ const TypewriterAdminPage = () => {
   const [activeSection, setActiveSection] = useState(getInitialAdminSection);
   const [selectedControlComponentKey, setSelectedControlComponentKey] = useState('all');
   const [isSessionToolsExpanded, setIsSessionToolsExpanded] = useState(false);
+  const [isSessionInspectorExpanded, setIsSessionInspectorExpanded] = useState(false);
   const [isTypewriterAssetFlowExpanded, setIsTypewriterAssetFlowExpanded] = useState(false);
+  const [sessionInspectorTargetId, setSessionInspectorTargetId] = useState(getInitialStoredSessionId);
+  const [sessionInspector, setSessionInspector] = useState(null);
+  const [sessionInspectorLoading, setSessionInspectorLoading] = useState(false);
+  const [sessionInspectorError, setSessionInspectorError] = useState('');
   const [promptFilter, setPromptFilter] = useState('');
   const [contractFilter, setContractFilter] = useState('');
   const [selectedControlRoutesByComponent, setSelectedControlRoutesByComponent] = useState({
@@ -564,6 +589,11 @@ const TypewriterAdminPage = () => {
       return;
     }
     window.localStorage.removeItem(TYPEWRITER_SESSION_STORAGE_KEY);
+  }, [currentSessionId]);
+
+  useEffect(() => {
+    if (!currentSessionId) return;
+    setSessionInspectorTargetId((prev) => prev || currentSessionId);
   }, [currentSessionId]);
 
   useEffect(() => {
@@ -632,6 +662,40 @@ const TypewriterAdminPage = () => {
       llmRouteConfigsPayload
     };
   }, [adminKey, apiBaseUrl, applyLoadedAdminData]);
+
+  const loadSessionInspector = useCallback(
+    async (requestedSessionId = sessionInspectorTargetId, { silentStatus = false } = {}) => {
+      const normalizedSessionId = typeof requestedSessionId === 'string' ? requestedSessionId.trim() : '';
+      if (!normalizedSessionId) {
+        setSessionInspector(null);
+        setSessionInspectorError('Enter a session id to inspect.');
+        return null;
+      }
+
+      setSessionInspectorLoading(true);
+      setSessionInspectorError('');
+
+      try {
+        const payload = await inspectTypewriterSession(apiBaseUrl, {
+          sessionId: normalizedSessionId,
+          adminKey
+        });
+        setSessionInspector(payload || null);
+        setSessionInspectorTargetId(normalizedSessionId);
+        if (!silentStatus) {
+          setStatus(`Loaded session inspector for ${normalizedSessionId}.`);
+        }
+        return payload || null;
+      } catch (err) {
+        setSessionInspector(null);
+        setSessionInspectorError(err.message || 'Unable to inspect the requested session.');
+        return null;
+      } finally {
+        setSessionInspectorLoading(false);
+      }
+    },
+    [adminKey, apiBaseUrl, sessionInspectorTargetId]
+  );
 
   useEffect(() => {
     let active = true;
@@ -1360,6 +1424,8 @@ const TypewriterAdminPage = () => {
         throw new Error('Session creation did not return a sessionId.');
       }
       setCurrentSessionId(nextSessionId);
+      setSessionInspectorTargetId(nextSessionId);
+      await loadSessionInspector(nextSessionId, { silentStatus: true });
       setStatus(`Generated session ${nextSessionId}.`);
     } catch (err) {
       setError(err.message || 'Unable to generate session.');
@@ -1388,6 +1454,8 @@ const TypewriterAdminPage = () => {
         throw new Error('Session creation did not return a sessionId.');
       }
       setCurrentSessionId(nextSessionId);
+      setSessionInspectorTargetId(nextSessionId);
+      await loadSessionInspector(nextSessionId, { silentStatus: true });
       setStatus(`Generated session ${nextSessionId} and saved the fragment to Mongo.`);
     } catch (err) {
       setError(err.message || 'Unable to generate seeded session.');
@@ -1417,6 +1485,7 @@ const TypewriterAdminPage = () => {
         fragment,
         setInitialFragment: true
       });
+      await loadSessionInspector(currentSessionId, { silentStatus: true });
       setStatus(`Saved fragment into session ${currentSessionId}.`);
     } catch (err) {
       setError(err.message || 'Unable to save fragment to the current session.');
@@ -1427,6 +1496,9 @@ const TypewriterAdminPage = () => {
 
   const handleClearStoredSession = () => {
     setCurrentSessionId('');
+    setSessionInspectorTargetId('');
+    setSessionInspector(null);
+    setSessionInspectorError('');
     setStatus('Cleared the stored session. Typewriter will create a fresh session on next use.');
     setError('');
   };
@@ -1457,6 +1529,15 @@ const TypewriterAdminPage = () => {
           placeholder="Optional shared PC name"
         />
       </label>
+      <label>
+        Session inspector target
+        <input
+          type="text"
+          value={sessionInspectorTargetId}
+          onChange={(event) => setSessionInspectorTargetId(event.target.value)}
+          placeholder="Session id to inspect"
+        />
+      </label>
       <label className="typewriterAdminSessionFragment">
         Session fragment seed
         <textarea
@@ -1480,6 +1561,24 @@ const TypewriterAdminPage = () => {
         >
           {sessionSaving ? 'Working...' : 'Save fragment to current session'}
         </button>
+        <button
+          type="button"
+          onClick={() => loadSessionInspector()}
+          disabled={sessionSaving || sessionInspectorLoading || !sessionInspectorTargetId.trim()}
+        >
+          {sessionInspectorLoading ? 'Inspecting...' : 'Inspect session'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (!currentSessionId) return;
+            setSessionInspectorTargetId(currentSessionId);
+            void loadSessionInspector(currentSessionId);
+          }}
+          disabled={sessionSaving || sessionInspectorLoading || !currentSessionId}
+        >
+          Inspect stored session
+        </button>
         <button type="button" onClick={handleClearStoredSession} disabled={sessionSaving}>
           Clear stored session
         </button>
@@ -1500,6 +1599,229 @@ const TypewriterAdminPage = () => {
     </section>
   );
 
+  const sessionInspectorContent = (
+    <>
+      <p className="typewriterPromptMeta">
+        <strong>NarrativeEntity</strong> is the internal world truth. <strong>TypewriterKey</strong> is the live keyboard object plus the
+        player-facing disclosure layer, including hidden or revealed tooltip state.
+      </p>
+
+      {sessionInspectorError ? <p className="typewriterAdminError">{sessionInspectorError}</p> : null}
+      {sessionInspectorLoading ? <p className="typewriterAdminLoading">Inspecting session state...</p> : null}
+
+      {sessionInspector ? (
+        <>
+          <div className="typewriterControlMetaRow">
+            <span className="typewriterControlChip">Session: {sessionInspector.sessionId}</span>
+            <span className="typewriterControlChip">Words: {sessionInspector.narrativeWordCount || 0}</span>
+            <span className="typewriterControlChip">Storytellers: {sessionInspector.counts?.storytellerCount || 0}</span>
+            <span className="typewriterControlChip">Slots filled: {sessionInspector.counts?.slotFilledCount || 0}</span>
+            <span className="typewriterControlChip">Textual keys: {sessionInspector.counts?.typewriterKeyCount || 0}</span>
+            <span className="typewriterControlChip">Entities: {sessionInspector.counts?.entityCount || 0}</span>
+          </div>
+
+          <div className="typewriterAdminInspectorGrid">
+            <article className="typewriterAdminInspectorPanel typewriterAdminInspectorPanelWide">
+              <header className="typewriterAdminInspectorPanelHeader">
+                <div>
+                  <h3>Narrative Snapshot</h3>
+                  <p>The current fragment and the initial seeded fragment for this session.</p>
+                </div>
+              </header>
+              <div className="typewriterAdminInspectorMeta">
+                <span><strong>Session</strong> {formatInspectorValue(sessionInspector.sessionId)}</span>
+                <span><strong>Initial fragment</strong> {sessionInspector.initialFragment ? 'Present' : 'Missing'}</span>
+              </div>
+              <div className="typewriterAdminInspectorTextBlock">
+                <strong>Current fragment</strong>
+                <pre className="typewriterAdminInspectorText">{formatInspectorValue(sessionInspector.fragment, 'No fragment saved yet.')}</pre>
+              </div>
+              <div className="typewriterAdminInspectorTextBlock">
+                <strong>Initial fragment</strong>
+                <pre className="typewriterAdminInspectorText">{formatInspectorValue(sessionInspector.initialFragment, 'No initial fragment saved.')}</pre>
+              </div>
+            </article>
+
+            <article className="typewriterAdminInspectorPanel">
+              <header className="typewriterAdminInspectorPanelHeader">
+                <div>
+                  <h3>Storyteller Slots</h3>
+                  <p>Blank or filled storyteller image keys mapped onto the typewriter.</p>
+                </div>
+              </header>
+              <div className="typewriterAdminInspectorList">
+                {(sessionInspector.slots || []).map((slot) => (
+                  <article key={slot.slotKey || slot.slotIndex} className="typewriterAdminInspectorItem">
+                    <div className="typewriterAdminInspectorItemHeader">
+                      <div>
+                        <strong>{formatInspectorValue(slot.storytellerName, slot.slotKey || `Slot ${slot.slotIndex}`)}</strong>
+                        <small>{slot.filled ? 'Filled storyteller slot' : 'Blank storyteller slot'}</small>
+                      </div>
+                      {slot.keyImageUrl || slot.blankTextureUrl ? (
+                        <img
+                          className="typewriterAdminInspectorThumb"
+                          src={slot.keyImageUrl || slot.blankTextureUrl}
+                          alt={`${slot.slotKey || 'storyteller slot'} preview`}
+                        />
+                      ) : null}
+                    </div>
+                    <div className="typewriterControlMetaRow">
+                      <span className="typewriterControlChip">Slot index: {slot.slotIndex}</span>
+                      <span className="typewriterControlChip">Shape: {formatInspectorValue(slot.keyShape)}</span>
+                      <span className="typewriterControlChip">State: {slot.filled ? 'filled' : 'blank'}</span>
+                    </div>
+                    <p className="typewriterAdminInspectorMetaLine"><strong>Symbol</strong> {formatInspectorValue(slot.symbol, 'No symbol yet')}</p>
+                    <p className="typewriterAdminInspectorMetaLine"><strong>Description</strong> {formatInspectorValue(slot.description, 'No storyteller bound yet')}</p>
+                  </article>
+                ))}
+              </div>
+            </article>
+
+            <article className="typewriterAdminInspectorPanel typewriterAdminInspectorPanelWide">
+              <header className="typewriterAdminInspectorPanelHeader">
+                <div>
+                  <h3>Textual Typewriter Keys</h3>
+                  <p>These are the real pressable keys. The tooltip line shows what the player knows, while description stays as internal truth.</p>
+                </div>
+              </header>
+              {(sessionInspector.typewriterKeys || []).length ? (
+                <div className="typewriterAdminInspectorList">
+                  {sessionInspector.typewriterKeys.map((key) => (
+                    <article key={key.id || key.keyText} className="typewriterAdminInspectorItem">
+                      <div className="typewriterAdminInspectorItemHeader">
+                        <div>
+                          <strong>{formatInspectorValue(key.keyText, 'Untitled key')}</strong>
+                          <small>{formatInspectorValue(key.sourceType, 'unknown source')} {key.entityName ? `• ${key.entityName}` : ''}</small>
+                        </div>
+                        {key.keyImageUrl ? (
+                          <img
+                            className="typewriterAdminInspectorThumb"
+                            src={key.keyImageUrl}
+                            alt={`${key.keyText || 'typewriter key'} preview`}
+                          />
+                        ) : null}
+                      </div>
+                      <div className="typewriterControlMetaRow">
+                        <span className="typewriterControlChip">Knowledge: {formatInspectorValue(key.knowledgeState, 'unknown')}</span>
+                        <span className="typewriterControlChip">Pressed: {Number.isFinite(Number(key.timesPressed)) ? Number(key.timesPressed) : 0}</span>
+                        <span className="typewriterControlChip">Verification: {formatInspectorValue(key.verificationKind, 'none')}</span>
+                      </div>
+                      <p className="typewriterAdminInspectorMetaLine"><strong>Insert text</strong> {formatInspectorValue(key.insertText, 'No insert text')}</p>
+                      <p className="typewriterAdminInspectorMetaLine">
+                        <strong>Player-facing tooltip</strong> {key.playerFacingTooltip ? key.playerFacingTooltip : 'Hidden until discovered.'}
+                      </p>
+                      <p className="typewriterAdminInspectorMetaLine"><strong>Internal description</strong> {formatInspectorValue(key.description, 'No internal description')}</p>
+                      <p className="typewriterAdminInspectorMetaLine">
+                        <strong>Entity link</strong> {key.entityId ? `${formatInspectorValue(key.entityName, 'Unnamed entity')} (${key.entityId})` : 'No linked entity'}
+                      </p>
+                      <p className="typewriterAdminInspectorMetaLine">
+                        <strong>Storyteller provenance</strong> {key.storytellerName ? `${key.storytellerName} (${key.storytellerId || 'no id'})` : 'Not storyteller-created'}
+                      </p>
+                      <p className="typewriterAdminInspectorMetaLine"><strong>Last pressed</strong> {formatDate(key.lastPressedAt)}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="typewriterPromptMeta">No textual keys are active in this session yet.</p>
+              )}
+            </article>
+
+            <article className="typewriterAdminInspectorPanel">
+              <header className="typewriterAdminInspectorPanelHeader">
+                <div>
+                  <h3>Entities</h3>
+                  <p>Canonical world objects currently surfaced into the typewriter.</p>
+                </div>
+              </header>
+              {(sessionInspector.entities || []).length ? (
+                <div className="typewriterAdminInspectorList">
+                  {sessionInspector.entities.map((entity) => (
+                    <article key={entity.id || entity.externalId || entity.name} className="typewriterAdminInspectorItem">
+                      <div className="typewriterAdminInspectorItemHeader">
+                        <div>
+                          <strong>{formatInspectorValue(entity.name, 'Unnamed entity')}</strong>
+                          <small>{formatInspectorValue(entity.type, 'unknown type')} {entity.subtype ? `• ${entity.subtype}` : ''}</small>
+                        </div>
+                      </div>
+                      <div className="typewriterControlMetaRow">
+                        <span className="typewriterControlChip">Source: {formatInspectorValue(entity.source, 'unknown')}</span>
+                        <span className="typewriterControlChip">Key text: {formatInspectorValue(entity.typewriterKeyText, 'none')}</span>
+                      </div>
+                      <p className="typewriterAdminInspectorMetaLine"><strong>Description</strong> {formatInspectorValue(entity.description, 'No description')}</p>
+                      <p className="typewriterAdminInspectorMetaLine"><strong>Lore</strong> {formatInspectorValue(entity.lore, 'No lore')}</p>
+                      <p className="typewriterAdminInspectorMetaLine"><strong>Tags</strong> {formatInspectorList(entity.tags)}</p>
+                      <p className="typewriterAdminInspectorMetaLine">
+                        <strong>Introduced by</strong> {entity.introducedByStorytellerName ? `${entity.introducedByStorytellerName} (${entity.introducedByStorytellerId || 'no id'})` : 'Not linked to a storyteller'}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="typewriterPromptMeta">No typewriter-linked entities have been persisted for this session yet.</p>
+              )}
+            </article>
+
+            <article className="typewriterAdminInspectorPanel">
+              <header className="typewriterAdminInspectorPanelHeader">
+                <div>
+                  <h3>Storytellers</h3>
+                  <p>The storyteller records currently occupying typewriter slots in this session.</p>
+                </div>
+              </header>
+              {(sessionInspector.storytellers || []).length ? (
+                <div className="typewriterAdminInspectorList">
+                  {sessionInspector.storytellers.map((storyteller) => (
+                    <article key={storyteller.id || storyteller.name} className="typewriterAdminInspectorItem">
+                      <div className="typewriterAdminInspectorItemHeader">
+                        <div>
+                          <strong>{formatInspectorValue(storyteller.name, 'Unnamed storyteller')}</strong>
+                          <small>{formatInspectorValue(storyteller.status, 'no status')} {Number.isFinite(Number(storyteller.level)) ? `• level ${Number(storyteller.level)}` : ''}</small>
+                        </div>
+                        {storyteller.keyImageUrl ? (
+                          <img
+                            className="typewriterAdminInspectorThumb"
+                            src={storyteller.keyImageUrl}
+                            alt={`${storyteller.name || 'storyteller'} key`}
+                          />
+                        ) : null}
+                      </div>
+                      <div className="typewriterControlMetaRow">
+                        <span className="typewriterControlChip">Slot: {Number.isInteger(storyteller.keySlotIndex) ? storyteller.keySlotIndex : 'none'}</span>
+                        <span className="typewriterControlChip">Introduced: {storyteller.introducedInTypewriter ? 'yes' : 'no'}</span>
+                        <span className="typewriterControlChip">Interventions: {storyteller.typewriterInterventionsCount || 0}</span>
+                      </div>
+                      <p className="typewriterAdminInspectorMetaLine"><strong>Symbol</strong> {formatInspectorValue(storyteller.symbol, 'No symbol')}</p>
+                      <p className="typewriterAdminInspectorMetaLine"><strong>Key description</strong> {formatInspectorValue(storyteller.description, 'No key description')}</p>
+                      <p className="typewriterAdminInspectorMetaLine"><strong>Last intervention</strong> {formatDate(storyteller.lastTypewriterInterventionAt)}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="typewriterPromptMeta">No storyteller slots are filled in this session yet.</p>
+              )}
+            </article>
+          </div>
+        </>
+      ) : (
+        <p className="typewriterPromptMeta">
+          Inspect a session to load the live typewriter state. This panel is meant to answer “what exists right now?” without digging through Mongo manually.
+        </p>
+      )}
+    </>
+  );
+
+  const sessionInspectorSection = (
+    <section className="typewriterAdminSessionInspector">
+      <div className="typewriterAdminSessionHeader">
+        <div>
+          <h2>Typewriter Session Inspector</h2>
+          <p>Read one saved session as a joined snapshot: fragment, storyteller slots, textual keys, entities, and what the player can currently know.</p>
+        </div>
+      </div>
+      {sessionInspectorContent}
+    </section>
+  );
+
   const collapsedSessionToolsSection = (
     <details
       className="typewriterControlDisclosure"
@@ -1516,6 +1838,22 @@ const TypewriterAdminPage = () => {
           {sessionModeToggle}
         </div>
         {sessionToolsGrid}
+      </div>
+    </details>
+  );
+
+  const collapsedSessionInspectorSection = (
+    <details
+      className="typewriterControlDisclosure"
+      open={isSessionInspectorExpanded}
+      onToggle={(event) => setIsSessionInspectorExpanded(event.currentTarget.open)}
+    >
+      <summary className="typewriterControlDisclosureSummary">
+        <span>Typewriter Session Inspector</span>
+        <small>World truth, player-facing knowledge, and live keyboard state in one joined snapshot.</small>
+      </summary>
+      <div className="typewriterControlDisclosureBody">
+        {sessionInspectorContent}
       </div>
     </details>
   );
@@ -1637,7 +1975,10 @@ const TypewriterAdminPage = () => {
         {collapsedSessionToolsSection}
 
         {selectedControlComponentKey === 'typewriter' ? (
-          collapsedTypewriterAssetFlowSection
+          <>
+            {collapsedTypewriterAssetFlowSection}
+            {collapsedSessionInspectorSection}
+          </>
         ) : null}
 
         <div className="typewriterAdminListToolbar">
@@ -2110,7 +2451,10 @@ const TypewriterAdminPage = () => {
       ) : null}
 
       {activeSection === 'session' ? (
-      sessionToolsSection
+      <>
+        {sessionToolsSection}
+        {sessionInspectorSection}
+      </>
       ) : null}
 
       {activeSection === 'runtime' ? (
