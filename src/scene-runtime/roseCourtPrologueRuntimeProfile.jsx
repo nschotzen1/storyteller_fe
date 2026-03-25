@@ -550,6 +550,7 @@ export const ROSE_COURT_PROLOGUE_RUNTIME_PROFILE = Object.freeze({
     config,
     activeScreen,
     sceneState,
+    storyBoardState,
     messengerOpen,
     activeMessengerSceneId,
     messengerStateByScene,
@@ -593,6 +594,13 @@ export const ROSE_COURT_PROLOGUE_RUNTIME_PROFILE = Object.freeze({
         isWellScreen: sceneState.isWellScreen,
         isBlackoutScreen: sceneState.isBlackoutScreen,
         wellState: wellSceneState
+      },
+      storyBoard: storyBoardState || {
+        enabled: true,
+        transition: null,
+        currentScreenId: activeScreen?.id || '',
+        hintedScreenIds: [],
+        visitedScreenIds: []
       },
       directions: sceneState.visibleDirections.map((direction) => ({
         direction: direction.direction,

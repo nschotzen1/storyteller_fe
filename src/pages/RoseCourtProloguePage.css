@@ -2,7 +2,7 @@
    Rose Court Prologue — Evidence Board / Investigation Wall
    ═══════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Patrick+Hand&family=Courier+Prime:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Forum&family=Patrick+Hand&family=Courier+Prime:wght@400;700&display=swap');
 
 /* ── Root — full-page cork/paper investigation board ── */
 .taleRoot {
@@ -25,6 +25,8 @@
   --board-hand: 'Caveat', 'Segoe Script', 'Comic Sans MS', cursive;
   --board-heading: 'Patrick Hand', 'Caveat', cursive;
   --board-mono: 'Courier Prime', 'Courier New', monospace;
+  --board-serif: 'Cormorant Garamond', 'Times New Roman', serif;
+  --board-display: 'Forum', 'Cormorant Garamond', serif;
 
   min-height: 100vh;
   width: 100%;
@@ -66,6 +68,14 @@
   display: none;
 }
 
+.taleRoot--storyboardTransition .talePage {
+  filter: blur(10px);
+  opacity: 0.08;
+  transform: scale(0.985);
+  pointer-events: none;
+  transition: opacity 240ms ease, filter 240ms ease, transform 240ms ease;
+}
+
 /* ── Page container ── */
 .talePage {
   max-width: 68rem;
@@ -73,23 +83,26 @@
   padding: 3rem 1.5rem 3rem;
   position: relative;
   z-index: 1;
+  transition: opacity 240ms ease, filter 240ms ease, transform 240ms ease;
 }
 
 /* ── The main evidence card — pinned to the board ── */
 .taleSheet {
   position: relative;
   margin: 1.6rem auto 2.5rem;
-  padding: 2.5rem 2.8rem 2.8rem;
+  max-width: 58rem;
+  padding: 2.2rem 2.5rem 2.8rem;
   background:
-    linear-gradient(168deg, rgba(255,252,243,0.6), rgba(240,232,212,0.85) 40%, rgba(228,218,196,0.9)),
+    linear-gradient(168deg, rgba(255, 252, 244, 0.96), rgba(244, 236, 220, 0.92) 42%, rgba(231, 220, 196, 0.96)),
     url('/textures/paper_texture_rugged.png') center / 320px 320px repeat;
   border: none;
   border-radius: 2px;
   box-shadow:
-    3px 5px 18px var(--board-shadow),
+    0 26px 64px rgba(35, 23, 11, 0.18),
+    0 12px 22px rgba(35, 23, 11, 0.12),
     1px 1px 0 rgba(180,160,120,0.2);
-  transform: rotate(-0.4deg);
-  transition: transform 300ms ease;
+  transform: rotate(-0.35deg);
+  transition: transform 300ms ease, box-shadow 300ms ease;
 }
 
 /* Push-pin at top center */
@@ -125,12 +138,12 @@
 /* ── Scene illustration — taped photograph ── */
 .taleScene {
   position: relative;
-  width: min(100%, 52rem);
-  aspect-ratio: 16 / 10;
-  margin: 0.4rem auto 2rem;
+  width: min(100%, 51rem);
+  aspect-ratio: 16 / 9;
+  margin: 0.4rem auto 2.2rem;
   overflow: visible;
   background: transparent;
-  transform: rotate(0.6deg);
+  transform: rotate(0.42deg);
 }
 
 .taleScene--well {
@@ -381,6 +394,41 @@
   color: var(--board-ink-faint);
 }
 
+.taleStoryHeading {
+  max-width: 44rem;
+  margin: 0 auto 1.35rem;
+  padding: 0 0.4rem;
+  text-align: center;
+}
+
+.taleStoryHeading__eyebrow {
+  margin: 0 0 0.4rem;
+  color: var(--board-red);
+  font-family: var(--board-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.taleStoryHeading__title {
+  margin: 0;
+  color: var(--board-ink);
+  font-family: var(--board-display);
+  font-size: clamp(2.4rem, 5vw, 4.4rem);
+  font-weight: 400;
+  line-height: 0.96;
+  letter-spacing: 0.02em;
+}
+
+.taleStoryHeading__meta {
+  margin: 0.6rem 0 0;
+  color: var(--board-ink-soft);
+  font-family: var(--board-serif);
+  font-size: clamp(1rem, 1.6vw, 1.18rem);
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
 /* ── Narrative text — handwritten notes ── */
 .taleTextPanel {
   position: relative;
@@ -395,17 +443,18 @@
 
 .taleTextPanel__narrative p {
   margin: 0 0 0.72rem;
-  font-family: var(--board-hand);
-  font-size: clamp(1.45rem, 2vw, 1.75rem);
+  font-family: var(--board-serif);
+  font-size: clamp(1.38rem, 2vw, 1.72rem);
   font-weight: 500;
-  line-height: 1.55;
+  line-height: 1.6;
+  color: rgba(26, 20, 16, 0.9);
 }
 
 /* No ornate drop cap — just a marker-highlighted first letter */
 .taleTextPanel__narrative p:first-child::first-letter {
   float: left;
-  font-family: var(--board-heading);
-  font-size: 4.2rem;
+  font-family: var(--board-display);
+  font-size: 4.7rem;
   line-height: 0.8;
   font-weight: 400;
   color: var(--board-marker);
@@ -418,7 +467,7 @@
 .taleTextPanel__note {
   color: var(--board-ink-soft);
   font-style: italic;
-  font-size: 1.2rem;
+  font-size: 1.15rem;
 }
 
 .taleTextPanel__ledger {
@@ -434,10 +483,11 @@
 .taleTextPanel__transmission {
   color: var(--board-ink-faint);
   font-family: var(--board-mono);
-  font-size: 0.95rem;
+  font-size: 0.83rem;
   font-style: normal;
-  margin-top: 0.55rem;
-  letter-spacing: 0.02em;
+  margin-top: 0.9rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 /* ── Notices ── */
@@ -467,12 +517,12 @@
 .taleDirections {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  margin-top: 1.15rem;
+  gap: 0.38rem;
+  margin-top: 1.35rem;
   max-width: 42rem;
   margin-left: auto;
   margin-right: auto;
-  padding-top: 0.95rem;
+  padding-top: 1.15rem;
   position: relative;
 }
 
@@ -497,15 +547,15 @@
   gap: 0.65rem;
   width: 100%;
   text-align: left;
-  padding: 0.45rem 0.6rem;
+  padding: 0.55rem 0.3rem;
   border: none;
   background: transparent;
   color: var(--board-marker);
-  font-family: var(--board-heading);
-  font-size: clamp(1.4rem, 2vw, 1.7rem);
+  font-family: var(--board-serif);
+  font-size: clamp(1.36rem, 2vw, 1.68rem);
   font-weight: 400;
   cursor: pointer;
-  transition: color 150ms ease, transform 150ms ease;
+  transition: color 150ms ease, transform 150ms ease, letter-spacing 150ms ease;
   position: relative;
 }
 
@@ -525,6 +575,7 @@
 .taleCmd:hover {
   color: var(--board-red);
   transform: translateX(4px);
+  letter-spacing: 0.01em;
 }
 
 .taleCmd:disabled {
@@ -766,6 +817,252 @@
   min-height: 0;
 }
 
+/* ── Story board overlay ── */
+.roseBoard {
+  position: fixed;
+  inset: 0;
+  z-index: 420;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(170, 132, 88, 0.14), transparent 28%),
+    radial-gradient(circle at 82% 12%, rgba(112, 72, 44, 0.1), transparent 26%),
+    linear-gradient(180deg, rgba(22, 17, 12, 0.88), rgba(15, 11, 9, 0.94)),
+    url('/textures/paper_texture_rugged.png') center / 420px 420px repeat;
+}
+
+.roseBoard::before,
+.roseBoard::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.roseBoard::before {
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.015), transparent 18%, transparent 82%, rgba(255,255,255,0.015)),
+    linear-gradient(180deg, rgba(0,0,0,0.12), transparent 20%, transparent 80%, rgba(0,0,0,0.18));
+}
+
+.roseBoard::after {
+  border: 1px solid rgba(201, 168, 112, 0.14);
+  inset: 1rem;
+}
+
+.roseBoard__camera {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.22, 0.78, 0.18, 1);
+  will-change: transform;
+}
+
+.roseBoard__surface {
+  position: relative;
+  transform-origin: 0 0;
+}
+
+.roseBoard__grain {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 30%),
+    radial-gradient(circle at 75% 22%, rgba(255,255,255,0.022), transparent 28%),
+    url('/textures/grainy2.png') center / 300px 300px repeat;
+  opacity: 0.22;
+  mix-blend-mode: screen;
+}
+
+.roseBoard__routes {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.roseBoard__routeBase,
+.roseBoard__routeActive {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.roseBoard__routeBase {
+  stroke: rgba(239, 228, 208, 0.18);
+  stroke-width: 9;
+}
+
+.roseBoard__routeActive {
+  stroke: rgba(189, 58, 50, 0.96);
+  stroke-width: 5;
+  stroke-dasharray: 24 12;
+  animation: roseBoardRouteDash 1.6s linear infinite;
+  filter: drop-shadow(0 0 12px rgba(176, 48, 42, 0.4));
+}
+
+.roseBoard__card {
+  position: absolute;
+  width: 420px;
+  min-height: 540px;
+  padding: 1.1rem 1.1rem 1.25rem;
+  border-radius: 2px;
+  background:
+    linear-gradient(180deg, rgba(250, 245, 233, 0.98), rgba(238, 229, 210, 0.96)),
+    url('/textures/paper_texture_rugged.png') center / 260px 260px repeat;
+  box-shadow:
+    0 32px 58px rgba(0,0,0,0.24),
+    0 10px 16px rgba(0,0,0,0.12);
+  transform-origin: center center;
+  transition: opacity 360ms ease, filter 360ms ease, box-shadow 360ms ease;
+}
+
+.roseBoard__card--visited,
+.roseBoard__card--hinted {
+  width: 290px;
+  min-height: 370px;
+}
+
+.roseBoard__card--hinted {
+  opacity: 0.42;
+  filter: saturate(0.7);
+}
+
+.roseBoard__card--destination {
+  box-shadow:
+    0 36px 72px rgba(0,0,0,0.3),
+    0 0 0 1px rgba(176, 48, 42, 0.12);
+}
+
+.roseBoard__pin {
+  position: absolute;
+  top: -7px;
+  left: 22px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #e85050, #a02828 60%, #6a1818);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+}
+
+.roseBoard__imageWrap {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid rgba(78, 64, 46, 0.18);
+  box-shadow: inset 0 0 0 4px rgba(245, 236, 218, 0.55);
+}
+
+.roseBoard__imageWrap img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.84) contrast(1.04);
+}
+
+.roseBoard__cardBody {
+  padding: 1rem 0.2rem 0;
+}
+
+.roseBoard__zone {
+  margin: 0 0 0.35rem;
+  color: var(--board-red);
+  font-family: var(--board-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.roseBoard__card h2 {
+  margin: 0;
+  color: var(--board-ink);
+  font-family: var(--board-display);
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 0.96;
+}
+
+.roseBoard__card--visited h2,
+.roseBoard__card--hinted h2 {
+  font-size: 1.52rem;
+}
+
+.roseBoard__excerpt {
+  margin: 0.75rem 0 0;
+  color: rgba(26, 20, 16, 0.84);
+  font-family: var(--board-serif);
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+.roseBoard__choices {
+  margin: 0.95rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--board-marker);
+  font-family: var(--board-serif);
+  font-size: 0.98rem;
+}
+
+.roseBoard__choices li + li {
+  margin-top: 0.34rem;
+}
+
+.roseBoard__choices li::before {
+  content: '•';
+  margin-right: 0.42rem;
+  color: var(--board-red);
+}
+
+.roseBoard__caption {
+  position: absolute;
+  left: 50%;
+  bottom: 1.35rem;
+  transform: translateX(-50%);
+  min-width: min(92vw, 32rem);
+  padding: 0.9rem 1.15rem;
+  background: rgba(18, 14, 11, 0.52);
+  color: rgba(247, 240, 225, 0.92);
+  text-align: center;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 18px 38px rgba(0,0,0,0.18);
+}
+
+.roseBoard__eyebrow {
+  margin: 0;
+  color: rgba(237, 219, 189, 0.74);
+  font-family: var(--board-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.roseBoard__title {
+  margin: 0.35rem 0 0;
+  color: #f7f0e1;
+  font-family: var(--board-display);
+  font-size: clamp(1.55rem, 2.7vw, 2.2rem);
+  line-height: 1;
+}
+
+.roseBoard__status {
+  margin: 0.35rem 0 0;
+  color: rgba(247, 240, 225, 0.78);
+  font-family: var(--board-serif);
+  font-size: 1rem;
+  font-style: italic;
+}
+
+@keyframes roseBoardRouteDash {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -74;
+  }
+}
+
 /* ── Blackout ── */
 .roseCourtBlackout {
   width: 100%;
@@ -801,6 +1098,10 @@
     max-width: 16rem;
     transform: rotate(0deg);
   }
+
+  .roseBoard__caption {
+    width: calc(100vw - 2rem);
+  }
 }
 
 @media (max-width: 520px) {
@@ -812,9 +1113,12 @@
     padding: 1.2rem 0.95rem 1.45rem;
   }
 
-  .taleChapterBar {
-    font-size: 0.8rem;
-    padding: 0.25rem 0 0.65rem;
+  .taleStoryHeading {
+    margin-bottom: 1rem;
+  }
+
+  .taleStoryHeading__meta {
+    font-size: 0.98rem;
   }
 
   .taleTextPanel__narrative p {
@@ -842,5 +1146,10 @@
   .talePhotoTape::after {
     width: 52px;
     height: 18px;
+  }
+
+  .roseBoard__caption {
+    width: calc(100vw - 1.4rem);
+    bottom: 0.7rem;
   }
 }

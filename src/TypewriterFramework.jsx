@@ -693,6 +693,105 @@ const mergeFontMetadata = (baseMetadata, overrideMetadata) => {
   };
 };
 
+const fontMetadataEquals = (leftMetadata, rightMetadata) => {
+  const left = normalizeFontMetadata(leftMetadata);
+  const right = normalizeFontMetadata(rightMetadata);
+  if (!left && !right) return true;
+  if (!left || !right) return false;
+  return left.font === right.font
+    && left.font_size === right.font_size
+    && left.font_color === right.font_color;
+};
+
+const normalizePageStyleRange = (range) => {
+  if (!range || typeof range !== 'object') return null;
+  const start = Number(range.start);
+  const end = Number(range.end);
+  const style = normalizeFontMetadata(range.style);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || !style) {
+    return null;
+  }
+  return {
+    start: Math.max(0, Math.floor(start)),
+    end: Math.max(0, Math.floor(end)),
+    style
+  };
+};
+
+const normalizePageStyleRanges = (ranges = []) => (
+  (Array.isArray(ranges) ? ranges : [])
+    .map(normalizePageStyleRange)
+    .filter(Boolean)
+    .sort((left, right) => left.start - right.start || left.end - right.end)
+);
+
+const mergePageStyleRanges = (ranges = []) => {
+  const normalized = normalizePageStyleRanges(ranges);
+  if (!normalized.length) return [];
+  return normalized.reduce((accumulator, range) => {
+    const previous = accumulator[accumulator.length - 1];
+    if (
+      previous
+      && previous.end >= range.start
+      && fontMetadataEquals(previous.style, range.style)
+    ) {
+      previous.end = Math.max(previous.end, range.end);
+      return accumulator;
+    }
+    accumulator.push({ ...range, style: { ...range.style } });
+    return accumulator;
+  }, []);
+};
+
+const trimPageStyleRangesToLength = (ranges = [], textLength = 0) => {
+  const safeLength = Math.max(0, Number.isFinite(Number(textLength)) ? Math.floor(Number(textLength)) : 0);
+  return normalizePageStyleRanges(ranges)
+    .map((range) => ({
+      ...range,
+      end: Math.min(range.end, safeLength)
+    }))
+    .filter((range) => range.end > range.start);
+};
+
+const appendTextToPage = (page = {}, textToAppend = '', style = null) => {
+  const addition = String(textToAppend || '');
+  const existingText = String(page?.text || '');
+  const nextText = `${existingText}${addition}`;
+  if (!addition) {
+    return {
+      ...page,
+      text: nextText,
+      pageStyleRanges: mergePageStyleRanges(page?.pageStyleRanges || [])
+    };
+  }
+
+  const nextRanges = [...(Array.isArray(page?.pageStyleRanges) ? page.pageStyleRanges : [])];
+  const normalizedStyle = normalizeFontMetadata(style);
+  if (normalizedStyle) {
+    nextRanges.push({
+      start: existingText.length,
+      end: nextText.length,
+      style: normalizedStyle
+    });
+  }
+
+  return {
+    ...page,
+    text: nextText,
+    pageStyleRanges: mergePageStyleRanges(nextRanges)
+  };
+};
+
+const removeTrailingCharacterFromPage = (page = {}) => {
+  const existingText = String(page?.text || '');
+  const nextText = existingText.slice(0, -1);
+  return {
+    ...page,
+    text: nextText,
+    pageStyleRanges: trimPageStyleRangesToLength(page?.pageStyleRanges || [], nextText.length)
+  };
+};
+
 const getFirstSequenceStyle = (sequence = []) => {
   if (!Array.isArray(sequence)) return null;
   for (const step of sequence) {
@@ -1001,7 +1100,7 @@ const TypewriterFramework = (props) => {
   const [ghostwriterState, dispatchGhostwriter] = useReducer(ghostwriterReducer, initialGhostwriterState);
   // --- Page History State (Still useState as per instructions) ---
   const [pages, setPages] = useState([
-    { text: '', filmBgUrl: DEFAULT_FILM_BG_URL }
+    { text: '', filmBgUrl: DEFAULT_FILM_BG_URL, pageStyleRanges: [] }
   ]);
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -1040,7 +1139,7 @@ const TypewriterFramework = (props) => {
   const storytellerInitialSyncSessionRef = useRef('');
   const lastStorytellerCheckIntervalRef = useRef(-1);
   const wasProcessingSequenceRef = useRef(false);
-  const sequencePersistenceRef = useRef({ persistToPage: false });
+  const sequencePersistenceRef = useRef({ persistToPage: false, persistStyle: null });
   const currentGhostTextRef = useRef('');
 
   const [sessionId, setSessionId] = useState(() => readStoredSessionId());
@@ -1092,7 +1191,8 @@ const TypewriterFramework = (props) => {
         return [
           {
             ...prev[0],
-            text: restoredFragment
+            text: restoredFragment,
+            pageStyleRanges: []
           }
         ];
       });
@@ -1124,7 +1224,11 @@ const TypewriterFramework = (props) => {
   }, [debugSettings, persistDebugSettingsToStorage]);
 
   // --- Derived ---
-  const { text: pageText, filmBgUrl: pageBg } = pages[currentPage] || {};
+  const {
+    text: pageText,
+    filmBgUrl: pageBg,
+    pageStyleRanges = []
+  } = pages[currentPage] || {};
   const visibleGhostText = `${typingState.currentGhostText || ''}${typingState.sequenceUserText || ''}`;
   const typingInteractionAllowed = typingAllowed && !isTextKeyVerificationPending;
   const displayedKeyTextures = keys.map((key, index) => {
@@ -1247,7 +1351,7 @@ const TypewriterFramework = (props) => {
 
   const applyTypewriterReply = useCallback((reply, fullText, options = {}) => {
     if (isProcessingSequenceRef.current) {
-      sequencePersistenceRef.current = { persistToPage: false };
+      sequencePersistenceRef.current = { persistToPage: false, persistStyle: null };
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
       return false;
     }
@@ -1257,17 +1361,18 @@ const TypewriterFramework = (props) => {
       : reply;
     const { sequence, metadata } = normalizeTypewriterReply(replyToApply);
     if (!sequence.length) {
-      sequencePersistenceRef.current = { persistToPage: false };
+      sequencePersistenceRef.current = { persistToPage: false, persistStyle: null };
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
       return false;
     }
 
-    sequencePersistenceRef.current = {
-      persistToPage: Boolean(options.persistToPage)
-    };
-
     const resolvedSequenceStyle = getFirstSequenceStyle(sequence);
     const resolvedStyle = mergeFontMetadata(metadata, resolvedSequenceStyle);
+
+    sequencePersistenceRef.current = {
+      persistToPage: Boolean(options.persistToPage),
+      persistStyle: options.persistToPage ? resolvedStyle : null
+    };
 
     if (resolvedStyle) {
       setCurrentFontStyles(resolvedStyle);
@@ -1432,7 +1537,7 @@ const TypewriterFramework = (props) => {
             // Update pages: Add new blank page, move to it
             setPages(prev => [
               ...prev.slice(0, currentPage + 1),
-              { text: '', filmBgUrl: newFilm }
+              { text: '', filmBgUrl: newFilm, pageStyleRanges: [] }
             ]);
             setCurrentPage(prev => prev + 1);
 
@@ -1448,6 +1553,7 @@ const TypewriterFramework = (props) => {
                 type: pageTransitionActionTypes.FINISH_SLIDE_ANIMATION,
                 payload: { newScrollMode: INITIAL_SCROLL_MODE }
               });
+              setCurrentFontStyles(null);
               dispatchTyping({ type: typingActionTypes.SET_TYPING_ALLOWED, payload: true });
               dispatchTyping({ type: typingActionTypes.SET_SHOW_CURSOR, payload: true });
               dispatchTyping({ type: typingActionTypes.RESET_TYPING_STATE_FOR_NEW_PAGE });
@@ -1494,6 +1600,7 @@ const TypewriterFramework = (props) => {
         type: pageTransitionActionTypes.FINISH_SLIDE_ANIMATION,
         payload: { newScrollMode: INITIAL_SCROLL_MODE }
       });
+      setCurrentFontStyles(null);
       dispatchTyping({ type: typingActionTypes.SET_TYPING_ALLOWED, payload: (targetIdx === pages.length - 1) });
       dispatchTyping({ type: typingActionTypes.SET_SHOW_CURSOR, payload: true });
       dispatchTyping({ type: typingActionTypes.RESET_TYPING_STATE_FOR_NEW_PAGE });
@@ -1553,10 +1660,7 @@ const TypewriterFramework = (props) => {
       setPages(prev => {
         const updatedPages = [...prev];
         if (updatedPages[currentPage] && updatedPages[currentPage].text.length > 0) {
-          updatedPages[currentPage] = {
-            ...updatedPages[currentPage],
-            text: updatedPages[currentPage].text.slice(0, -1)
-          };
+          updatedPages[currentPage] = removeTrailingCharacterFromPage(updatedPages[currentPage]);
         }
         return updatedPages;
       });
@@ -1575,10 +1679,7 @@ const TypewriterFramework = (props) => {
       } else {
         setPages(prev => {
           const updatedPages = [...prev];
-          updatedPages[currentPage] = {
-            ...updatedPages[currentPage],
-            text: updatedPages[currentPage].text + charToCommit
-          };
+          updatedPages[currentPage] = appendTextToPage(updatedPages[currentPage], charToCommit);
           return updatedPages;
         });
       }
@@ -1657,23 +1758,29 @@ const TypewriterFramework = (props) => {
 
     if (typingState.currentActionIndex >= typingState.actionSequence.length) {
       const shouldPersistSequenceText = Boolean(sequencePersistenceRef.current?.persistToPage);
+      const persistedSequenceStyle = sequencePersistenceRef.current?.persistStyle || null;
       const persistedGhostText = currentGhostTextRef.current;
       const userSuffix = String(typingState.sequenceUserText || '');
       if (shouldPersistSequenceText || userSuffix) {
         setPages(prev => {
           const updatedPages = [...prev];
-          const existingPage = updatedPages[currentPage] || { text: '', filmBgUrl: DEFAULT_FILM_BG_URL };
-          const committedSequenceText = shouldPersistSequenceText
-            ? `${existingPage.text || ''}${persistedGhostText}`
-            : (existingPage.text || '');
-          updatedPages[currentPage] = {
-            ...existingPage,
-            text: `${committedSequenceText}${userSuffix}`
+          let existingPage = updatedPages[currentPage] || {
+            text: '',
+            filmBgUrl: DEFAULT_FILM_BG_URL,
+            pageStyleRanges: []
           };
+          if (shouldPersistSequenceText && persistedGhostText) {
+            existingPage = appendTextToPage(existingPage, persistedGhostText, persistedSequenceStyle);
+          }
+          if (userSuffix) {
+            existingPage = appendTextToPage(existingPage, userSuffix);
+          }
+          updatedPages[currentPage] = existingPage;
           return updatedPages;
         });
       }
-      sequencePersistenceRef.current = { persistToPage: false };
+      sequencePersistenceRef.current = { persistToPage: false, persistStyle: null };
+      setCurrentFontStyles(null);
       if (activeStorytellerPress) {
         setActiveStorytellerPress(null);
       }
@@ -1942,6 +2049,7 @@ const TypewriterFramework = (props) => {
     dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
+    setCurrentFontStyles(null);
   };
 
   const takeOverSequenceAtCursor = useCallback(() => {
@@ -1950,21 +2058,30 @@ const TypewriterFramework = (props) => {
     const frozenGhostText = String(typingState.currentGhostText || '');
     const sequenceSuffix = String(typingState.sequenceUserText || '');
     const frozenText = `${frozenGhostText}${sequenceSuffix}`;
+    const persistedSequenceStyle = sequencePersistenceRef.current?.persistStyle || null;
 
     if (frozenText) {
       setPages(prev => {
         const updatedPages = [...prev];
-        const existingPage = updatedPages[currentPage] || { text: '', filmBgUrl: DEFAULT_FILM_BG_URL };
-        updatedPages[currentPage] = {
-          ...existingPage,
-          text: `${existingPage.text || ''}${frozenText}`
+        let existingPage = updatedPages[currentPage] || {
+          text: '',
+          filmBgUrl: DEFAULT_FILM_BG_URL,
+          pageStyleRanges: []
         };
+        if (frozenGhostText) {
+          existingPage = appendTextToPage(existingPage, frozenGhostText, persistedSequenceStyle);
+        }
+        if (sequenceSuffix) {
+          existingPage = appendTextToPage(existingPage, sequenceSuffix);
+        }
+        updatedPages[currentPage] = existingPage;
         return updatedPages;
       });
     }
 
     dispatchTyping({ type: typingActionTypes.CANCEL_SEQUENCE });
-    sequencePersistenceRef.current = { persistToPage: false };
+    sequencePersistenceRef.current = { persistToPage: false, persistStyle: null };
+    setCurrentFontStyles(null);
     setActiveStorytellerPress(null);
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
@@ -2330,6 +2447,7 @@ const TypewriterFramework = (props) => {
 
       <PaperDisplay
         pageText={pageText}
+        pageStyleRanges={pageStyleRanges}
         ghostText={currentGhostText}
         sequenceUserText={sequenceUserText}
         currentFontStyles={currentFontStyles}

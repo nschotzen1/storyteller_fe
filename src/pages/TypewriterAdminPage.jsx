@@ -409,6 +409,53 @@ const normalizeCountDraft = (value, fallback = 1, min = 1, max = 10) => {
   return Math.min(Math.max(min, Math.floor(next)), max);
 };
 
+const getRouteRuntimeModeLabel = (route = null) => {
+  const runtimeRows = Array.isArray(route?.runtimeRows) ? route.runtimeRows : [];
+  if (!runtimeRows.length) return 'No runtime controls';
+  if (runtimeRows.every((runtimeRow) => runtimeRow.useMock)) return 'Mock';
+  if (runtimeRows.every((runtimeRow) => !runtimeRow.useMock)) return 'Live';
+  return 'Mixed';
+};
+
+const buildRouteRuntimeSummary = (route = null) => {
+  const runtimeRows = Array.isArray(route?.runtimeRows) ? route.runtimeRows : [];
+  if (!runtimeRows.length) return 'No shared runtime pipeline attached.';
+  return runtimeRows
+    .map((runtimeRow) =>
+      runtimeRow.useMock
+        ? `${runtimeRow.label}: mock`
+        : `${runtimeRow.label}: ${runtimeRow.provider || 'openai'} / ${runtimeRow.model || 'unset'}`
+    )
+    .join(' | ');
+};
+
+const collectUniqueRuntimeRows = (routes = []) => {
+  const runtimeMap = new Map();
+  routes.forEach((route) => {
+    (route?.runtimeRows || []).forEach((runtimeRow) => {
+      if (!runtimeRow?.key || runtimeMap.has(runtimeRow.key)) return;
+      runtimeMap.set(runtimeRow.key, runtimeRow);
+    });
+  });
+  return Array.from(runtimeMap.values());
+};
+
+const buildRuntimeSettingsPayload = (runtimeRows = []) => {
+  const payload = { pipelines: {} };
+  runtimeRows.forEach((runtimeRow) => {
+    if (!runtimeRow?.key) return;
+    payload.pipelines[runtimeRow.key] = {
+      useMock: Boolean(runtimeRow.useMock),
+      model: runtimeRow.model,
+      provider: runtimeRow.provider || 'openai'
+    };
+    if (runtimeRow.supportsCount && runtimeRow.countProperty) {
+      payload.pipelines[runtimeRow.key][runtimeRow.countProperty] = runtimeRow.countValue;
+    }
+  });
+  return payload;
+};
+
 const stringifyJsonDraft = (value) => {
   if (value === null || value === undefined || value === '') return '';
   try {
@@ -567,6 +614,7 @@ const TypewriterAdminPage = () => {
     typewriter: 'typewriter:story_continuation_route'
   });
   const [savingControlRouteId, setSavingControlRouteId] = useState('');
+  const [savingControlComponentKey, setSavingControlComponentKey] = useState('');
   const [expandedPromptKey, setExpandedPromptKey] = useState('story_continuation');
   const [expandedContractKey, setExpandedContractKey] = useState('');
   const deferredPromptFilter = useDeferredValue(promptFilter);
@@ -1354,17 +1402,7 @@ const TypewriterAdminPage = () => {
 
     try {
       if (Array.isArray(route.runtimeRows) && route.runtimeRows.length) {
-        const runtimePayload = { pipelines: {} };
-        route.runtimeRows.forEach((runtimeRow) => {
-          runtimePayload.pipelines[runtimeRow.key] = {
-            useMock: Boolean(runtimeRow.useMock),
-            model: runtimeRow.model,
-            provider: runtimeRow.provider || 'openai'
-          };
-          if (runtimeRow.supportsCount && runtimeRow.countProperty) {
-            runtimePayload.pipelines[runtimeRow.key][runtimeRow.countProperty] = runtimeRow.countValue;
-          }
-        });
+        const runtimePayload = buildRuntimeSettingsPayload(route.runtimeRows);
         await saveTypewriterAiSettings(apiBaseUrl, runtimePayload, {
           adminKey,
           updatedBy: 'story-admin-control-center'
@@ -1410,6 +1448,34 @@ const TypewriterAdminPage = () => {
       setError(err.message || `Unable to save ${route.label}.`);
     } finally {
       setSavingControlRouteId('');
+    }
+  };
+
+  const handleSaveControlComponentRuntime = async (component) => {
+    if (!component) return;
+    const componentRuntimeRows = collectUniqueRuntimeRows(component.routes);
+    if (!componentRuntimeRows.length) {
+      setError('');
+      setStatus(`No quick runtime settings are mapped for ${component.label}.`);
+      return;
+    }
+
+    setSavingControlComponentKey(component.key);
+    setError('');
+    setStatus('');
+
+    try {
+      const runtimePayload = buildRuntimeSettingsPayload(componentRuntimeRows);
+      await saveTypewriterAiSettings(apiBaseUrl, runtimePayload, {
+        adminKey,
+        updatedBy: 'story-admin-control-overview'
+      });
+      await reloadAdminData();
+      setStatus(`Saved quick runtime settings for ${component.label}.`);
+    } catch (err) {
+      setError(err.message || `Unable to save quick runtime settings for ${component.label}.`);
+    } finally {
+      setSavingControlComponentKey('');
     }
   };
 
@@ -1563,7 +1629,9 @@ const TypewriterAdminPage = () => {
         </button>
         <button
           type="button"
-          onClick={() => loadSessionInspector()}
+          onClick={() => {
+            void loadSessionInspector();
+          }}
           disabled={sessionSaving || sessionInspectorLoading || !sessionInspectorTargetId.trim()}
         >
           {sessionInspectorLoading ? 'Inspecting...' : 'Inspect session'}
@@ -2011,16 +2079,10 @@ const TypewriterAdminPage = () => {
           {visibleControlComponents.map((component) => {
             const selectedRouteId = selectedControlRoutesByComponent[component.key];
             const selectedRoute = component.routes.find((route) => route.routeId === selectedRouteId) || component.routes[0] || null;
+            const componentRuntimeRows = collectUniqueRuntimeRows(component.routes);
             const isSavingSelectedRoute = selectedRoute ? savingControlRouteId === selectedRoute.routeId : false;
-            const selectedRouteSummary = selectedRoute?.runtimeRows?.length
-              ? selectedRoute.runtimeRows
-                .map((runtimeRow) =>
-                  runtimeRow.useMock
-                    ? `${runtimeRow.label}: mock`
-                    : `${runtimeRow.label}: ${runtimeRow.provider || 'openai'} / ${runtimeRow.model || 'unset'}`
-                )
-                .join(' | ')
-              : 'No shared runtime pipeline attached.';
+            const isSavingComponentRuntime = savingControlComponentKey === component.key;
+            const selectedRouteSummary = buildRouteRuntimeSummary(selectedRoute);
 
             return (
               <section key={component.key} className="typewriterControlComponentCard">
@@ -2038,6 +2100,197 @@ const TypewriterAdminPage = () => {
                     ].filter(Boolean).join(' + ')}
                   </span>
                 </header>
+
+                {component.flowOverview ? (
+                  <section className="typewriterControlOverview">
+                    <div className="typewriterControlOverviewHeader">
+                      <div>
+                        <h4>Flow At A Glance</h4>
+                        <p>{component.flowOverview.summary}</p>
+                      </div>
+                    </div>
+                    <div className="typewriterControlOverviewGrid">
+                      <article className="typewriterControlOverviewCard">
+                        <strong>Main path</strong>
+                        <p>{component.flowOverview.mainPath}</p>
+                      </article>
+                      <article className="typewriterControlOverviewCard">
+                        <strong>Supporting routes</strong>
+                        <p>{component.flowOverview.supportingPath}</p>
+                      </article>
+                      <article className="typewriterControlOverviewCard">
+                        <strong>Produces</strong>
+                        <div className="typewriterControlMetaRow">
+                          {(Array.isArray(component.flowOverview.outputs) ? component.flowOverview.outputs : []).map((output) => (
+                            <span key={output} className="typewriterControlChip">{output}</span>
+                          ))}
+                        </div>
+                      </article>
+                    </div>
+
+                    {component.routes.length ? (
+                      <div className="typewriterControlRoutesDigest">
+                        <div className="typewriterControlOverviewHeader typewriterControlOverviewHeaderSplit">
+                          <div>
+                            <h4>Available Routes</h4>
+                            <p>Each route’s job in the component, what triggers it, what it returns, and a quick runtime editor for mock/model changes before you open the full route workspace.</p>
+                          </div>
+                          {componentRuntimeRows.length ? (
+                            <div className="typewriterPromptButtons typewriterPromptButtons-inline">
+                              <button
+                                type="button"
+                                onClick={() => handleSaveControlComponentRuntime(component)}
+                                disabled={loading || saving || savingPrompts || savingLlmConfigs || isSavingSelectedRoute || isSavingComponentRuntime}
+                              >
+                                {isSavingComponentRuntime ? 'Saving quick edits...' : 'Save Quick Runtime Edits'}
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="typewriterControlRoutesDigestTable" role="table" aria-label={`${component.label} route summary`}>
+                          <div className="typewriterControlRoutesDigestHead" role="row">
+                            <span role="columnheader">Route</span>
+                            <span role="columnheader">Role</span>
+                            <span role="columnheader">Trigger</span>
+                            <span role="columnheader">Output</span>
+                            <span role="columnheader">Quick runtime</span>
+                          </div>
+                          {component.routes.map((route) => (
+                            <div
+                              key={`${route.routeId}-digest`}
+                              role="row"
+                              className={
+                                selectedRoute?.routeId === route.routeId
+                                  ? 'typewriterControlRoutesDigestRow isSelected'
+                                  : 'typewriterControlRoutesDigestRow'
+                              }
+                            >
+                              <div role="cell" className="typewriterControlRoutesDigestCell">
+                                <button
+                                  type="button"
+                                  className="typewriterControlRoutesDigestRouteButton"
+                                  onClick={() =>
+                                    setSelectedControlRoutesByComponent((prev) => ({
+                                      ...prev,
+                                      [component.key]: route.routeId
+                                    }))
+                                  }
+                                >
+                                  <strong>{route.label}</strong>
+                                  <small>{route.method} {route.path}</small>
+                                </button>
+                              </div>
+                              <div role="cell" className="typewriterControlRoutesDigestCell">
+                                <strong>{route.roleLabel || route.flowGroup || 'Route'}</strong>
+                              </div>
+                              <div role="cell" className="typewriterControlRoutesDigestCell">
+                                <span>{route.triggerSummary || route.flowSummary || route.summary}</span>
+                              </div>
+                              <div role="cell" className="typewriterControlRoutesDigestCell">
+                                <span>{route.outputSummary || route.summary}</span>
+                              </div>
+                              <div role="cell" className="typewriterControlRoutesDigestCell typewriterControlRoutesDigestRuntimeCell">
+                                {route.runtimeRows.length ? (
+                                  <div className="typewriterControlRoutesDigestRuntime">
+                                    <div className="typewriterControlRoutesDigestRuntimeStatus">
+                                      <span className="typewriterControlChip">{getRouteRuntimeModeLabel(route)}</span>
+                                    </div>
+                                    {route.runtimeRows.map((runtimeRow) => {
+                                      const options = getModelOptions(runtimeRow.modelKind, runtimeRow.model, runtimeRow.provider);
+                                      return (
+                                        <div
+                                          key={`${route.routeId}-${runtimeRow.key}-quick`}
+                                          className="typewriterControlRoutesDigestRuntimeCard"
+                                        >
+                                          <div className="typewriterControlRoutesDigestRuntimeHeader">
+                                            <strong>{runtimeRow.label}</strong>
+                                            <small>{runtimeRow.description}</small>
+                                          </div>
+                                          <div className="typewriterControlRoutesDigestRuntimeControls">
+                                            <label className="typewriterControlRoutesDigestToggle">
+                                              <input
+                                                type="checkbox"
+                                                aria-label={`${route.label} ${runtimeRow.label} mock toggle`}
+                                                checked={runtimeRow.useMock}
+                                                onChange={(event) => updatePipeline(runtimeRow.key, { useMock: event.target.checked })}
+                                              />
+                                              <span>{runtimeRow.useMock ? 'Mock' : 'Live'}</span>
+                                            </label>
+                                            {runtimeRow.supportedProviders?.length > 1 ? (
+                                              <label className="typewriterControlRoutesDigestField">
+                                                <span>Provider</span>
+                                                <select
+                                                  aria-label={`${route.label} ${runtimeRow.label} provider`}
+                                                  value={runtimeRow.provider}
+                                                  onChange={(event) => {
+                                                    const nextProvider = event.target.value;
+                                                    const nextOptions = getModelOptions(runtimeRow.modelKind, '', nextProvider);
+                                                    updatePipeline(runtimeRow.key, {
+                                                      provider: nextProvider,
+                                                      model: nextOptions[0] || runtimeRow.model
+                                                    });
+                                                  }}
+                                                >
+                                                  {runtimeRow.supportedProviders.map((providerId) => (
+                                                    <option key={providerId} value={providerId}>
+                                                      {providerId}
+                                                    </option>
+                                                  ))}
+                                                </select>
+                                              </label>
+                                            ) : null}
+                                            <label className="typewriterControlRoutesDigestField">
+                                              <span>Model</span>
+                                              <select
+                                                aria-label={`${route.label} ${runtimeRow.label} model`}
+                                                value={runtimeRow.model}
+                                                onChange={(event) => updatePipeline(runtimeRow.key, { model: event.target.value })}
+                                              >
+                                                {options.map((optionId) => (
+                                                  <option key={optionId} value={optionId}>
+                                                    {optionId}
+                                                  </option>
+                                                ))}
+                                              </select>
+                                            </label>
+                                            {runtimeRow.supportsCount ? (
+                                              <label className="typewriterControlRoutesDigestField typewriterControlRoutesDigestFieldCount">
+                                                <span>{runtimeRow.countLabel}</span>
+                                                <input
+                                                  type="number"
+                                                  min={runtimeRow.minCount}
+                                                  max={runtimeRow.maxCount}
+                                                  aria-label={`${route.label} ${runtimeRow.label} ${runtimeRow.countLabel}`}
+                                                  value={runtimeRow.countValue}
+                                                  onChange={(event) =>
+                                                    updatePipeline(runtimeRow.key, {
+                                                      [runtimeRow.countProperty]: normalizeCountDraft(
+                                                        event.target.value,
+                                                        runtimeRow.countValue,
+                                                        runtimeRow.minCount,
+                                                        runtimeRow.maxCount
+                                                      )
+                                                    })
+                                                  }
+                                                />
+                                              </label>
+                                            ) : null}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <span className="typewriterControlRoutesDigestEmpty">No runtime settings</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </section>
+                ) : null}
 
                 {component.customPanelKey === 'well_scene_config' ? (
                   <WellAdminWorkspace apiBaseUrl={apiBaseUrl} adminKey={adminKey} />
@@ -2058,22 +2311,8 @@ const TypewriterAdminPage = () => {
                           const previousRoute = component.routes[index - 1];
                           const showGroupLabel = route.flowGroup && route.flowGroup !== previousRoute?.flowGroup;
                           const isSelected = selectedRoute?.routeId === route.routeId;
-                          const routeRuntimeModeLabel = !route.runtimeRows.length
-                            ? 'No runtime controls'
-                            : route.runtimeRows.every((runtimeRow) => runtimeRow.useMock)
-                              ? 'Mock'
-                              : route.runtimeRows.every((runtimeRow) => !runtimeRow.useMock)
-                                ? 'Live'
-                                : 'Mixed';
-                          const routeSummary = route.runtimeRows.length
-                            ? route.runtimeRows
-                              .map((runtimeRow) =>
-                                runtimeRow.useMock
-                                  ? `${runtimeRow.label}: mock`
-                                  : `${runtimeRow.label}: ${runtimeRow.provider || 'openai'} / ${runtimeRow.model || 'unset'}`
-                              )
-                              .join(' | ')
-                            : 'No shared runtime pipeline attached.';
+                          const routeRuntimeModeLabel = getRouteRuntimeModeLabel(route);
+                          const routeSummary = buildRouteRuntimeSummary(route);
 
                           return (
                             <React.Fragment key={route.routeId}>
@@ -2152,14 +2391,13 @@ const TypewriterAdminPage = () => {
                           <section className="typewriterControlSection">
                             <div className="typewriterControlSectionHeader">
                               <div>
-                                <h4>Runtime mode and models</h4>
-                                <p>Change mock/live behavior and the active model for this route before touching prompts.</p>
+                                <h4>Runtime summary</h4>
+                                <p>Edit mock/live and model settings in Available Routes above. This panel only mirrors the active route configuration.</p>
                               </div>
                             </div>
 
                             <div className="typewriterControlRuntimeGrid">
                               {selectedRoute.runtimeRows.map((runtimeRow) => {
-                                const options = getModelOptions(runtimeRow.modelKind, runtimeRow.model, runtimeRow.provider);
                                 const sharedUsageEntries = (controlRuntimeUsageMap[runtimeRow.key] || [])
                                   .filter((entry) => entry.routeId !== selectedRoute.routeId);
                                 const sharedUsageLabel = sharedUsageEntries.length
@@ -2178,70 +2416,16 @@ const TypewriterAdminPage = () => {
                                       <strong>{runtimeRow.label}</strong>
                                       <span>{runtimeRow.description}</span>
                                     </div>
-                                    <label className="typewriterMockToggle">
-                                      <input
-                                        type="checkbox"
-                                        checked={runtimeRow.useMock}
-                                        onChange={(event) => updatePipeline(runtimeRow.key, { useMock: event.target.checked })}
-                                      />
-                                      <span>{runtimeRow.useMock ? 'Mock' : 'Live'}</span>
-                                    </label>
-                                    {runtimeRow.supportedProviders?.length > 1 ? (
-                                      <label className="typewriterNumericSetting">
-                                        <span>Provider</span>
-                                        <select
-                                          value={runtimeRow.provider}
-                                          onChange={(event) => {
-                                            const nextProvider = event.target.value;
-                                            const nextOptions = getModelOptions(runtimeRow.modelKind, '', nextProvider);
-                                            updatePipeline(runtimeRow.key, {
-                                              provider: nextProvider,
-                                              model: nextOptions[0] || runtimeRow.model
-                                            });
-                                          }}
-                                        >
-                                          {runtimeRow.supportedProviders.map((providerId) => (
-                                            <option key={providerId} value={providerId}>
-                                              {providerId}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </label>
-                                    ) : null}
-                                    <label className="typewriterNumericSetting">
-                                      <span>Model</span>
-                                      <select
-                                        value={runtimeRow.model}
-                                        onChange={(event) => updatePipeline(runtimeRow.key, { model: event.target.value })}
-                                      >
-                                        {options.map((optionId) => (
-                                          <option key={optionId} value={optionId}>
-                                            {optionId}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    </label>
-                                    {runtimeRow.supportsCount ? (
-                                      <label className="typewriterNumericSetting">
-                                        <span>{runtimeRow.countLabel}</span>
-                                        <input
-                                          type="number"
-                                          min={runtimeRow.minCount}
-                                          max={runtimeRow.maxCount}
-                                          value={runtimeRow.countValue}
-                                          onChange={(event) =>
-                                            updatePipeline(runtimeRow.key, {
-                                              [runtimeRow.countProperty]: normalizeCountDraft(
-                                                event.target.value,
-                                                runtimeRow.countValue,
-                                                runtimeRow.minCount,
-                                                runtimeRow.maxCount
-                                              )
-                                            })
-                                          }
-                                        />
-                                      </label>
-                                    ) : null}
+                                    <div className="typewriterControlMetaRow">
+                                      <span className="typewriterControlChip">Mode: {runtimeRow.useMock ? 'Mock' : 'Live'}</span>
+                                      <span className="typewriterControlChip">Provider: {runtimeRow.provider || 'openai'}</span>
+                                      <span className="typewriterControlChip">Model: {runtimeRow.model || 'unset'}</span>
+                                      {runtimeRow.supportsCount ? (
+                                        <span className="typewriterControlChip">
+                                          {runtimeRow.countLabel}: {runtimeRow.countValue}
+                                        </span>
+                                      ) : null}
+                                    </div>
                                     {sharedUsageLabel ? (
                                       <p className="typewriterControlRuntimeNote">
                                         Shared pipeline. Changes also affect {sharedUsageLabel}.

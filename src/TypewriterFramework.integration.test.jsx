@@ -258,7 +258,7 @@ describe('TypewriterFramework integration', () => {
     fetchNextFilmImage.mockResolvedValue({ data: { image_url: 'new_page_specific.png' }, error: null });
     fetchShouldGenerateContinuation.mockResolvedValue({ shouldGenerate: false });
 
-    render(<TypewriterFramework />);
+    const { container } = render(<TypewriterFramework />);
 
     for (let i = 0; i < 31; i += 1) {
       clickKey('A');
@@ -360,7 +360,7 @@ describe('TypewriterFramework integration', () => {
       error: null
     });
 
-    render(<TypewriterFramework />);
+    const { container } = render(<TypewriterFramework />);
 
     act(() => {
       vi.advanceTimersByTime(900);
@@ -407,6 +407,11 @@ describe('TypewriterFramework integration', () => {
     fetchStorytellerTypewriterReply.mockResolvedValue({
       data: {
         fragment: 'It was then that I, Aster Vell, noticed the seam in the light and named the Buraha Light-Wake before withdrawing.',
+        style: {
+          font: 'Cinzel Decorative',
+          font_size: '2rem',
+          font_color: '#253f33',
+        },
         sequence: [
           {
             action: 'type',
@@ -444,7 +449,7 @@ describe('TypewriterFramework integration', () => {
       error: null,
     });
 
-    render(<TypewriterFramework />);
+    const { container } = render(<TypewriterFramework />);
 
     act(() => {
       vi.advanceTimersByTime(900);
@@ -477,9 +482,10 @@ describe('TypewriterFramework integration', () => {
     );
 
     expect(storytellerReleased).toBe(true);
-    expect(
-      screen.getByText(/It was then that I, Aster Vell, noticed the seam in the light/i)
-    ).toBeInTheDocument();
+    expect(container.querySelector('.last-line-content')?.textContent).toMatch(
+      /It was then that I, Aster Vell, noticed the seam in the light/i
+    );
+    expect(document.querySelector('.typewriter-page-styled-char')).toHaveStyle('font-family: Cinzel Decorative');
     expect(document.querySelector('.fade-ghost-container')).not.toBeInTheDocument();
   });
 

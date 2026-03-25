@@ -54,12 +54,29 @@ const resolveFadeTransitionMs = (durationMs) => {
   return Math.round(Math.max(MIN_FADE_TRANSITION_MS, Math.min(MAX_FADE_TRANSITION_MS, numeric)));
 };
 
+const buildFontMetadataStyle = (fontMetadata) => {
+  if (!fontMetadata || typeof fontMetadata !== 'object') return null;
+  const style = {};
+  if (fontMetadata.font) {
+    style.fontFamily = fontMetadata.font;
+  }
+  const normalizedFontSize = normalizeGhostFontSize(fontMetadata.font_size);
+  if (normalizedFontSize) {
+    style.fontSize = normalizedFontSize;
+  }
+  if (fontMetadata.font_color) {
+    style.color = fontMetadata.font_color;
+  }
+  return Object.keys(style).length ? style : null;
+};
+
 // This component will handle the rendering of the paper, text, film background,
 // and the page slide animations.
 
 const PaperDisplay = ({
   // Text and content props
   pageText,
+  pageStyleRanges = [],
   ghostText,
   sequenceUserText,
   currentFontStyles, // New prop
@@ -141,6 +158,23 @@ const PaperDisplay = ({
   });
 
   const ghostAnimationClassesRef = React.useRef([]);
+  const normalizedPageStyleRanges = React.useMemo(
+    () => (Array.isArray(pageStyleRanges) ? pageStyleRanges : [])
+      .filter((range) =>
+        range
+        && Number.isFinite(Number(range.start))
+        && Number.isFinite(Number(range.end))
+        && Number(range.end) > Number(range.start)
+        && range.style
+      )
+      .map((range) => ({
+        start: Math.floor(Number(range.start)),
+        end: Math.floor(Number(range.end)),
+        style: { ...range.style }
+      }))
+      .sort((left, right) => left.start - right.start || left.end - right.end),
+    [pageStyleRanges]
+  );
 
   // Apply font styles
   const textStyles = {
@@ -153,11 +187,7 @@ const PaperDisplay = ({
     color: '#3b1d15', // Example default
   };
 
-  const ghostTextStyles = {};
-  if (currentFontStyles?.font) ghostTextStyles.fontFamily = currentFontStyles.font;
-  const normalizedGhostFontSize = normalizeGhostFontSize(currentFontStyles?.font_size);
-  if (normalizedGhostFontSize) ghostTextStyles.fontSize = normalizedGhostFontSize;
-  if (currentFontStyles?.font_color) ghostTextStyles.color = currentFontStyles.font_color;
+  const ghostTextStyles = buildFontMetadataStyle(currentFontStyles) || {};
   const shouldRenderCursor = Boolean(showCursor || isProcessingSequence || fadeState?.isActive);
 
   React.useEffect(() => {
@@ -245,6 +275,67 @@ const PaperDisplay = ({
     />
   );
 
+  const getPersistedCharStyle = React.useCallback((globalIndex) => {
+    if (!Number.isFinite(Number(globalIndex))) return null;
+    return normalizedPageStyleRanges.find((range) =>
+      globalIndex >= range.start && globalIndex < range.end
+    )?.style || null;
+  }, [normalizedPageStyleRanges]);
+
+  const getLineGlobalStartOffset = React.useCallback((lines, lineIdx) => {
+    let offset = 0;
+    for (let index = 0; index < lineIdx; index += 1) {
+      offset += String(lines[index] ?? '').length + 1;
+    }
+    return offset;
+  }, []);
+
+  const renderPersistedLineText = React.useCallback((lineText = '', globalStartOffset = 0, keyPrefix = 'persisted') => {
+    const segments = lineText.includes(SPECIAL_KEY_TEXT)
+      ? lineText.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
+      : [lineText];
+
+    let currentOffsetWithinLine = 0;
+
+    return segments.map((segment, segmentIdx) => {
+      if (segment === SPECIAL_KEY_TEXT) {
+        const highlightStyle = buildFontMetadataStyle(
+          getPersistedCharStyle(globalStartOffset + currentOffsetWithinLine)
+        ) || undefined;
+        currentOffsetWithinLine += segment.length;
+        return (
+          <span
+            key={`${keyPrefix}-xerofag-${segmentIdx}`}
+            className="xerofag-highlight"
+            style={highlightStyle}
+          >
+            {segment}
+          </span>
+        );
+      }
+
+        const renderedChars = segment.split('').map((char, charIdx) => {
+          const charGlobalIndex = globalStartOffset + currentOffsetWithinLine + charIdx;
+          const persistedStyle = buildFontMetadataStyle(getPersistedCharStyle(charGlobalIndex));
+          if (!persistedStyle) {
+            return char;
+          }
+        return (
+          <span
+            key={`${keyPrefix}-styled-${segmentIdx}-${charIdx}-${charGlobalIndex}`}
+            className="typewriter-page-styled-char"
+            style={persistedStyle}
+          >
+            {char}
+          </span>
+        );
+      });
+
+      currentOffsetWithinLine += segment.length;
+      return <React.Fragment key={`${keyPrefix}-segment-${segmentIdx}`}>{renderedChars}</React.Fragment>;
+    });
+  }, [SPECIAL_KEY_TEXT, getPersistedCharStyle]);
+
   const renderFadeLines = () => {
     const baseText = String(pageText ?? '');
     const userTailText = String(sequenceUserText || '');
@@ -269,6 +360,7 @@ const PaperDisplay = ({
 
     return renderedBaseLines.map((line, idx) => {
       const isLastLine = idx === lastLineIndex;
+      const globalStartOffset = getLineGlobalStartOffset(lines, idx);
       return (
         <div
           key={`fade-line-${idx}`}
@@ -276,7 +368,7 @@ const PaperDisplay = ({
           ref={isLastLine ? lastLineRef : null}
         >
           <span className="last-line-content">
-            {line}
+            {renderPersistedLineText(line, globalStartOffset, `fade-line-${idx}`)}
             {isLastLine && stableFadeText.length > 0 && (
               <span className="fade-ghost-stable" style={ghostTextStyles}>
                 {renderTextWithLineBreaks(stableFadeText)}
@@ -494,10 +586,7 @@ const PaperDisplay = ({
                   return allLinesToRender.map((line, lineIdx) => {
                     const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
 
-                    let currentLineGlobalStartOffset = 0;
-                    for (let i = 0; i < lineIdx; i++) {
-                      currentLineGlobalStartOffset += originalLines[i].length + 1;
-                    }
+                    const currentLineGlobalStartOffset = getLineGlobalStartOffset(originalLines, lineIdx);
 
                     let currentOffsetWithinLine = 0;
 
@@ -530,6 +619,20 @@ const PaperDisplay = ({
                               </span>
                             );
                           } else {
+                            const persistedStyle = charGlobalIndex < pageTextLength
+                              ? buildFontMetadataStyle(getPersistedCharStyle(charGlobalIndex))
+                              : null;
+                            if (persistedStyle) {
+                              return (
+                                <span
+                                  key={`${charKey}-persisted`}
+                                  className="typewriter-page-styled-char"
+                                  style={persistedStyle}
+                                >
+                                  {char}
+                                </span>
+                              );
+                            }
                             return char;
                           }
 

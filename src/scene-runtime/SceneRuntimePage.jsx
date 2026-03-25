@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Messanger from '../Messanger';
 import TypewriterFramework from '../TypewriterFramework';
 import RoseCourtOpeningSequence from '../pages/RoseCourtOpeningSequence';
+import RoseCourtStoryBoardOverlay from './RoseCourtStoryBoardOverlay';
 import {
   DEFAULT_API_BASE_URL,
   advanceQuest,
@@ -32,6 +33,14 @@ const EMPTY_MESSENGER_SCENE_STATE = Object.freeze({
   sceneBrief: null,
   count: 0
 });
+
+const STORY_BOARD_PHASE_DELAYS_MS = Object.freeze({
+  lock: 180,
+  reveal: 860,
+  settle: 860
+});
+
+const STORY_BOARD_PROFILE_ID = 'rose-court-prologue';
 
 const getStoredValue = (key, fallback) => {
   if (typeof window === 'undefined') return fallback;
@@ -66,16 +75,32 @@ const buildInitialMessengerState = (sceneIds = []) => {
   return state;
 };
 
+const readSceneRuntimeDebugParams = () => {
+  if (typeof window === 'undefined') {
+    return {
+      forcedScreenId: '',
+      skipOpeningSequence: false
+    };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return {
+    forcedScreenId: String(params.get('screenId') || '').trim(),
+    skipOpeningSequence: params.get('skipOpeningSequence') === '1'
+  };
+};
+
 function SceneRuntimePage({
   profile,
   initialApiBaseUrl = DEFAULT_API_BASE_URL
 }) {
   const { scope } = profile;
+  const debugParamsRef = useRef(readSceneRuntimeDebugParams());
   const [apiBaseUrl, setApiBaseUrl] = useState(() => getStoredValue(scope.apiBaseStorageKey, initialApiBaseUrl));
   const [sessionId, setSessionId] = useState(() => getStoredValue(scope.sessionIdStorageKey, scope.defaultSessionId));
   const [playerId, setPlayerId] = useState(() => getStoredValue(scope.playerIdStorageKey, scope.defaultPlayerId));
   const [config, setConfig] = useState(null);
-  const [currentScreenId, setCurrentScreenId] = useState('');
+  const [currentScreenId, setCurrentScreenId] = useState(() => debugParamsRef.current.forcedScreenId);
   const [playerPrompt, setPlayerPrompt] = useState('');
   const [traversalEvents, setTraversalEvents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -88,6 +113,7 @@ function SceneRuntimePage({
   const [openingSequenceOpen, setOpeningSequenceOpen] = useState(false);
   const [activeOpeningSequenceBinding, setActiveOpeningSequenceBinding] = useState(null);
   const [openingSequenceState, setOpeningSequenceState] = useState(null);
+  const [storyBoardTransition, setStoryBoardTransition] = useState(null);
   const [error, setError] = useState('');
   const [messengerError, setMessengerError] = useState('');
   const [imageStatus, setImageStatus] = useState('idle');
@@ -96,6 +122,8 @@ function SceneRuntimePage({
   const [messengerStateByScene, setMessengerStateByScene] = useState(() => buildInitialMessengerState(profile?.messenger?.sceneIds || []));
   const flowRef = useRef({});
   const textPanelRef = useRef(null);
+  const storyBoardTimeoutsRef = useRef([]);
+  const storyBoardRunIdRef = useRef(0);
   const messengerSceneIds = useMemo(() => {
     if (typeof profile.getMessengerSceneIds === 'function') {
       const resolvedSceneIds = profile.getMessengerSceneIds(config);
@@ -159,6 +187,31 @@ function SceneRuntimePage({
   const activeMessengerMeta = messengerScenesMeta[activeMessengerSceneId]
     || messengerScenesMeta[messengerDefaultSceneId]
     || {};
+  const storyBoardEnabled = profile.id === STORY_BOARD_PROFILE_ID;
+
+  const clearStoryBoardTimeouts = () => {
+    if (typeof window === 'undefined') return;
+    storyBoardTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    storyBoardTimeoutsRef.current = [];
+  };
+
+  const waitForStoryBoard = (delay) => new Promise((resolve) => {
+    if (typeof window === 'undefined') {
+      resolve();
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      storyBoardTimeoutsRef.current = storyBoardTimeoutsRef.current.filter((entry) => entry !== timeoutId);
+      resolve();
+    }, delay);
+    storyBoardTimeoutsRef.current.push(timeoutId);
+  });
+
+  const prefersReducedMotion = () => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  };
 
   const resolveOpeningSequenceKey = (screenId = '', binding = null) => (
     `${screenId}:${binding?.componentId || ''}:${binding?.slot || ''}:${binding?.id || ''}`
@@ -181,6 +234,10 @@ function SceneRuntimePage({
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(scope.playerIdStorageKey, playerId);
   }, [playerId, scope.playerIdStorageKey]);
+
+  useEffect(() => () => {
+    clearStoryBoardTimeouts();
+  }, []);
 
   useEffect(() => {
     setMessengerStateByScene((prev) => {
@@ -254,6 +311,12 @@ function SceneRuntimePage({
           if (prev && questPayload?.screens?.some((screen) => screen.id === prev)) {
             return prev;
           }
+          if (
+            debugParamsRef.current.forcedScreenId
+            && questPayload?.screens?.some((screen) => screen.id === debugParamsRef.current.forcedScreenId)
+          ) {
+            return debugParamsRef.current.forcedScreenId;
+          }
           return questPayload?.startScreenId || questPayload?.screens?.[0]?.id || '';
         });
 
@@ -285,6 +348,13 @@ function SceneRuntimePage({
   useEffect(() => {
     const binding = openingSequenceBindings[0] || null;
     const screenId = activeScreen?.id || '';
+
+    if (debugParamsRef.current.skipOpeningSequence) {
+      setOpeningSequenceOpen(false);
+      setActiveOpeningSequenceBinding(null);
+      setOpeningSequenceState(null);
+      return;
+    }
 
     if (!screenId || !binding) {
       setOpeningSequenceOpen(false);
@@ -482,8 +552,99 @@ function SceneRuntimePage({
     }
   };
 
+  const runStoryBoardTransition = async (direction) => {
+    if (!activeScreen || !direction?.targetScreenId || advancing) return;
+
+    const sourceScreenId = activeScreen.id;
+    const targetScreenId = direction.targetScreenId;
+    const runId = storyBoardRunIdRef.current + 1;
+    storyBoardRunIdRef.current = runId;
+    clearStoryBoardTimeouts();
+
+    setAdvancing(true);
+    setError('');
+    setStoryBoardTransition({
+      phase: 'locking',
+      requestPending: true,
+      sourceScreenId,
+      targetScreenId,
+      selectedDirection: direction.direction || '',
+      selectedDirectionLabel: direction.label || direction.direction || ''
+    });
+
+    const requestPromise = handleQuestAdvance({
+      sessionId,
+      questId: scope.questId,
+      playerId,
+      currentScreenId: sourceScreenId,
+      actionType: 'direction',
+      direction: direction?.direction || '',
+      targetScreenId
+    })
+      .then((response) => ({ ok: true, response }))
+      .catch((err) => ({ ok: false, err }));
+
+    try {
+      await waitForStoryBoard(STORY_BOARD_PHASE_DELAYS_MS.lock);
+      if (storyBoardRunIdRef.current !== runId) return;
+
+      setStoryBoardTransition((prev) => (
+        prev ? { ...prev, phase: 'reveal' } : prev
+      ));
+
+      await waitForStoryBoard(STORY_BOARD_PHASE_DELAYS_MS.reveal);
+      if (storyBoardRunIdRef.current !== runId) return;
+
+      setStoryBoardTransition((prev) => (
+        prev ? { ...prev, phase: 'travel' } : prev
+      ));
+
+      const requestResult = await requestPromise;
+      if (storyBoardRunIdRef.current !== runId) return;
+      if (!requestResult.ok) {
+        throw requestResult.err;
+      }
+
+      setStoryBoardTransition((prev) => (
+        prev
+          ? {
+              ...prev,
+              phase: 'arrive',
+              requestPending: false,
+              targetScreenId: requestResult.response?.screen?.id || targetScreenId
+            }
+          : prev
+      ));
+
+      await waitForStoryBoard(STORY_BOARD_PHASE_DELAYS_MS.settle);
+      if (storyBoardRunIdRef.current !== runId) return;
+
+      setStoryBoardTransition(null);
+    } catch (err) {
+      if (storyBoardRunIdRef.current === runId) {
+        setStoryBoardTransition(null);
+        setError(err.message || profile.copy?.directionError || 'Unable to move there.');
+      }
+    } finally {
+      if (storyBoardRunIdRef.current === runId) {
+        setAdvancing(false);
+      }
+    }
+  };
+
   const handleDirectionClick = async (direction) => {
     if (!activeScreen || advancing) return;
+    if (
+      storyBoardEnabled
+      && !sceneState.isBlackoutScreen
+      && !sceneState.isWellScreen
+      && direction?.targetScreenId
+      && screenMap.has(direction.targetScreenId)
+      && !prefersReducedMotion()
+    ) {
+      await runStoryBoardTransition(direction);
+      return;
+    }
     try {
       setAdvancing(true);
       setError('');
@@ -502,6 +663,47 @@ function SceneRuntimePage({
       setAdvancing(false);
     }
   };
+
+  const storyBoardState = useMemo(() => ({
+    enabled: storyBoardEnabled,
+    transition: storyBoardTransition
+      ? {
+          phase: storyBoardTransition.phase,
+          sourceScreenId: storyBoardTransition.sourceScreenId,
+          targetScreenId: storyBoardTransition.targetScreenId,
+          selectedDirection: storyBoardTransition.selectedDirection,
+          selectedDirectionLabel: storyBoardTransition.selectedDirectionLabel,
+          requestPending: Boolean(storyBoardTransition.requestPending)
+        }
+      : null,
+    currentScreenId: activeScreen?.id || '',
+    hintedScreenIds: sceneState.visibleDirections.map((direction) => direction.targetScreenId),
+    visitedScreenIds: sceneState.visibleHistory
+      .map((entry) => entry.toScreenId || entry.fromScreenId || '')
+      .filter(Boolean)
+  }), [
+    activeScreen?.id,
+    sceneState.visibleDirections,
+    sceneState.visibleHistory,
+    storyBoardEnabled,
+    storyBoardTransition
+  ]);
+  const storyBoardSourceScreen = storyBoardTransition
+    ? screenMap.get(storyBoardTransition.sourceScreenId) || activeScreen
+    : null;
+  const storyBoardDestinationScreen = storyBoardTransition
+    ? screenMap.get(storyBoardTransition.targetScreenId) || activeScreen
+    : null;
+  const storyBoardVisitedScreens = storyBoardTransition
+    ? sceneState.visibleHistory
+        .map((entry) => screenMap.get(entry.fromScreenId) || screenMap.get(entry.toScreenId))
+        .filter(Boolean)
+    : [];
+  const storyBoardHintedScreens = storyBoardTransition
+    ? sceneState.visibleDirections
+        .map((direction) => screenMap.get(direction.targetScreenId))
+        .filter(Boolean)
+    : [];
 
   const handleSpecialSceneComplete = async (submittedValue) => {
     if (
@@ -554,6 +756,7 @@ function SceneRuntimePage({
         config,
         activeScreen,
         sceneState,
+        storyBoardState,
         messengerOpen,
         activeMessengerSceneId,
         messengerStateByScene,
@@ -575,6 +778,7 @@ function SceneRuntimePage({
     config,
     activeScreen,
     sceneState,
+    storyBoardState,
     openingSequenceOpen,
     openingSequenceState,
     messengerOpen,
@@ -620,7 +824,7 @@ function SceneRuntimePage({
   }
 
   return (
-    <div className="taleRoot">
+    <div className={`taleRoot ${storyBoardTransition ? 'taleRoot--storyboardTransition' : ''}`}>
       <div className="talePage">
         <article className="taleSheet">
           <section className={`taleScene ${hasWellInteraction ? 'taleScene--well' : ''}`} aria-label={profile.copy?.sceneAriaLabel || 'Scene'}>
@@ -641,13 +845,13 @@ function SceneRuntimePage({
             })}
           </section>
 
-          <div className="taleChapterBar">
-            <span className="taleChapterBar__beat">{sceneState.stageBeat}</span>
-            <span className="taleChapterBar__sep">·</span>
-            {sceneState.stageCues.map((cue) => (
-              <span key={cue} className="taleChapterBar__cue">{cue}</span>
-            ))}
-          </div>
+          <header className="taleStoryHeading">
+            <p className="taleStoryHeading__eyebrow">{sceneState.stageBeat}</p>
+            <h1 className="taleStoryHeading__title">
+              {activeScreen?.title || profile.copy?.sceneAriaLabel || 'Story page'}
+            </h1>
+            <p className="taleStoryHeading__meta">{sceneState.stageCues.join(' · ')}</p>
+          </header>
 
           <section className="taleTextPanel" ref={textPanelRef}>
             <div className="taleTextPanel__narrative">
@@ -763,6 +967,18 @@ function SceneRuntimePage({
           </section>
         </article>
       </div>
+
+      {storyBoardTransition ? (
+        <RoseCourtStoryBoardOverlay
+          phase={storyBoardTransition.phase}
+          sourceScreen={storyBoardSourceScreen}
+          destinationScreen={storyBoardDestinationScreen}
+          visitedScreens={storyBoardVisitedScreens}
+          hintedScreens={storyBoardHintedScreens}
+          selectedDirectionLabel={storyBoardTransition.selectedDirectionLabel}
+          requestPending={storyBoardTransition.requestPending}
+        />
+      ) : null}
 
       {messengerOpen && activeMessengerSceneId ? (
         <div className="roseCourtMessengerModal" role="dialog" aria-modal="true" aria-label={profile.copy?.messengerDialogAriaLabel || 'Messenger'}>
