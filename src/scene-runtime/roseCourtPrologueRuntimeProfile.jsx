@@ -429,6 +429,7 @@ export const ROSE_COURT_PROLOGUE_RUNTIME_PROFILE = Object.freeze({
 
     return (
       <>
+        <div className="talePhotoTape" aria-hidden="true" />
         <img
           key={activeScreen?.id || 'loading'}
           className="taleSceneImage"

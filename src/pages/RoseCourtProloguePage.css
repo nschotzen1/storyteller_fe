@@ -1,38 +1,60 @@
 /* ═══════════════════════════════════════════════════
-   Rose Court Prologue — Illustrated Fairy Tale Book
+   Rose Court Prologue — Evidence Board / Investigation Wall
    ═══════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Fondamento:ital@0;1&family=IM+Fell+English:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Patrick+Hand&family=Courier+Prime:wght@400;700&display=swap');
 
-/* ── Root — full-page parchment scroll ── */
+/* ── Root — full-page cork/paper investigation board ── */
 .taleRoot {
-  --tale-ink: #2a1a0a;
-  --tale-ink-soft: rgba(42, 26, 10, 0.6);
-  --tale-ink-faint: rgba(42, 26, 10, 0.35);
-  --tale-accent: #7a4422;
-  --tale-accent-hover: #5a2e12;
-  --tale-gold: #b8973a;
-  --tale-gold-dim: rgba(184, 151, 58, 0.35);
-  --tale-parchment: #f4ead4;
-  --tale-parchment-light: #fcf6ea;
-  --tale-border: rgba(140, 110, 70, 0.25);
-  --tale-error: #8b2020;
-  --tale-ok: #3d6b44;
-  --tale-serif: 'IM Fell English', 'Georgia', 'Times New Roman', serif;
-  --tale-heading: 'Fondamento', 'EB Garamond', 'Georgia', serif;
-  --tale-dropcap: 'Cinzel Decorative', 'EB Garamond', serif;
+  --board-ink: #1a1410;
+  --board-ink-soft: rgba(26, 20, 16, 0.7);
+  --board-ink-faint: rgba(26, 20, 16, 0.4);
+  --board-red: #b0302a;
+  --board-red-soft: rgba(176, 48, 42, 0.55);
+  --board-marker: #1e3a5f;
+  --board-marker-soft: rgba(30, 58, 95, 0.6);
+  --board-tape: #e6cb6b;
+  --board-tape-alpha: rgba(230, 203, 107, 0.72);
+  --board-pin: #cc3333;
+  --board-paper: #f0e8d4;
+  --board-paper-light: #f7f1e3;
+  --board-paper-dark: #d8ccb0;
+  --board-cork: #b8946a;
+  --board-border: rgba(140, 110, 70, 0.3);
+  --board-shadow: rgba(40, 26, 10, 0.32);
+  --board-hand: 'Caveat', 'Segoe Script', 'Comic Sans MS', cursive;
+  --board-heading: 'Patrick Hand', 'Caveat', cursive;
+  --board-mono: 'Courier Prime', 'Courier New', monospace;
 
   min-height: 100vh;
   width: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 50% 0%, rgba(255, 243, 218, 0.95), rgba(245, 234, 210, 0.72) 46%, rgba(229, 210, 176, 0.82) 100%),
+    /* fold creases */
+    linear-gradient(90deg, transparent 49.5%, rgba(0,0,0,0.04) 49.5%, rgba(0,0,0,0.04) 50.5%, transparent 50.5%),
+    linear-gradient(0deg, transparent 49.5%, rgba(0,0,0,0.03) 49.5%, rgba(0,0,0,0.03) 50.5%, transparent 50.5%),
+    /* subtle vignette */
+    radial-gradient(ellipse at center, rgba(255,248,235,0.1), rgba(180,148,106,0.18) 70%, rgba(100,72,40,0.28) 100%),
+    /* paper base */
     url('/textures/paper_texture_rugged.png');
-  background-size: cover, 460px 460px;
-  background-attachment: fixed, fixed;
-  font-family: var(--tale-serif);
-  color: var(--tale-ink);
+  background-size: 100% 100%, 100% 100%, cover, 460px 460px;
+  background-attachment: fixed;
+  font-family: var(--board-hand);
+  color: var(--board-ink);
+  position: relative;
+}
+
+/* Grain overlay */
+.taleRoot::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url('/textures/grainy2.png') center / 340px 340px repeat;
+  mix-blend-mode: multiply;
+  opacity: 0.08;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .taleRoot--blackout {
@@ -40,62 +62,80 @@
   background-image: none;
 }
 
-/* ── Page container — centered book column ── */
-.talePage {
-  max-width: 66rem;
-  margin: 0 auto;
-  padding: 8.9rem 1.5rem 3rem;
+.taleRoot--blackout::before {
+  display: none;
 }
 
+/* ── Page container ── */
+.talePage {
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 3rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── The main evidence card — pinned to the board ── */
 .taleSheet {
   position: relative;
   margin: 1.6rem auto 2.5rem;
-  padding: 2.25rem 2.7rem 2.6rem;
+  padding: 2.5rem 2.8rem 2.8rem;
   background:
-    radial-gradient(circle at top, rgba(255, 250, 241, 0.7), rgba(249, 240, 221, 0.22) 36%, rgba(220, 196, 154, 0.08) 100%),
-    url('/parchment_bg.png');
-  background-size: cover, 100% 100%;
-  background-position: center;
-  border-radius: 16px;
+    linear-gradient(168deg, rgba(255,252,243,0.6), rgba(240,232,212,0.85) 40%, rgba(228,218,196,0.9)),
+    url('/textures/paper_texture_rugged.png') center / 320px 320px repeat;
+  border: none;
+  border-radius: 2px;
   box-shadow:
-    0 30px 60px rgba(90, 56, 24, 0.18),
-    0 12px 26px rgba(80, 48, 20, 0.11);
+    3px 5px 18px var(--board-shadow),
+    1px 1px 0 rgba(180,160,120,0.2);
+  transform: rotate(-0.4deg);
+  transition: transform 300ms ease;
 }
 
+/* Push-pin at top center */
 .taleSheet::before {
   content: '';
   position: absolute;
-  inset: 0;
-  background:
-    url('/ornaments/rose-page-frame.svg') center / 100% 100% no-repeat;
-  pointer-events: none;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #e85050, #a02828 60%, #6a1818);
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.35),
+    inset 0 -2px 3px rgba(0,0,0,0.2),
+    inset 0 1px 2px rgba(255,200,200,0.4);
+  z-index: 10;
 }
 
+/* Paper wear / coffee stain */
 .taleSheet::after {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    url('/textures/grainy2.png') center / 420px 420px repeat,
-    radial-gradient(circle at 18% 24%, rgba(138, 97, 53, 0.08), transparent 18%),
-    radial-gradient(circle at 84% 78%, rgba(138, 97, 53, 0.06), transparent 16%);
-  mix-blend-mode: multiply;
-  opacity: 0.16;
+    radial-gradient(circle at 82% 18%, rgba(138, 97, 53, 0.06), transparent 14%),
+    radial-gradient(circle at 15% 85%, rgba(120, 80, 40, 0.05), transparent 12%);
   pointer-events: none;
+  border-radius: 2px;
 }
 
-/* ── Scene illustration — book insert with torn edges ── */
+/* ── Scene illustration — taped photograph ── */
 .taleScene {
   position: relative;
-  width: min(100%, 54rem);
-  aspect-ratio: 16 / 9.8;
-  margin: 0.15rem auto 1.6rem;
+  width: min(100%, 52rem);
+  aspect-ratio: 16 / 10;
+  margin: 0.4rem auto 2rem;
   overflow: visible;
   background: transparent;
+  transform: rotate(0.6deg);
 }
 
 .taleScene--well {
   background: #050404;
+  transform: none;
 }
 
 .taleScene--well::before,
@@ -103,83 +143,110 @@
   display: none;
 }
 
+/* Magic marker frame — hand-drawn border effect */
 .taleScene::before {
   content: '';
   position: absolute;
-  inset: -0.8rem -0.7rem -1rem;
-  background: url('/ornaments/rose-illustration-frame.svg') center / 100% 100% no-repeat;
+  inset: -6px;
+  border: 3px solid var(--board-marker);
+  border-radius: 1px;
+  opacity: 0.65;
+  /* Slightly irregular border via box-shadow */
+  box-shadow:
+    inset 1px 0 0 var(--board-marker-soft),
+    inset -1px 0 0 var(--board-marker-soft),
+    inset 0 1px 0 var(--board-marker-soft),
+    inset 0 -1px 0 var(--board-marker-soft),
+    2px 2px 0 rgba(30, 58, 95, 0.08);
   z-index: 4;
   pointer-events: none;
 }
 
+/* Inner photo mat border */
 .taleScene::after {
   content: '';
   position: absolute;
-  inset: 0.95rem 1.25rem 1.55rem;
-  border-radius: 1.6rem;
-  background:
-    linear-gradient(180deg, rgba(247, 237, 216, 0.98), rgba(236, 220, 186, 0.92)),
-    url('/textures/paper_texture_rugged.png') center / 280px 280px repeat;
-  box-shadow:
-    inset 0 0 0 1px rgba(146, 109, 63, 0.16),
-    0 10px 22px rgba(74, 45, 18, 0.08);
+  inset: 0;
+  border: 1px solid rgba(140, 110, 70, 0.25);
+  background: rgba(245, 238, 220, 0.4);
   z-index: 0;
   pointer-events: none;
 }
 
+/* Cellotape strips — top-left and bottom-right corners */
+.talePhotoTape {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.talePhotoTape::before,
+.talePhotoTape::after {
+  content: '';
+  position: absolute;
+  width: 72px;
+  height: 24px;
+  background: var(--board-tape-alpha);
+  border: 1px solid rgba(200, 180, 100, 0.3);
+  z-index: 5;
+  opacity: 0.85;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Top-left tape strip — diagonal */
+.talePhotoTape::before {
+  top: -8px;
+  left: -12px;
+  transform: rotate(-32deg);
+}
+
+/* Bottom-right tape strip — diagonal */
+.talePhotoTape::after {
+  bottom: -8px;
+  right: -12px;
+  transform: rotate(-28deg);
+}
+
 .taleSceneImage {
   position: absolute;
-  inset: 1.25rem 1.58rem 1.95rem;
+  inset: 4px;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
   object-fit: cover;
   object-position: center center;
-  border-radius: 1rem;
+  border: none;
+  border-radius: 0;
   box-sizing: border-box;
-  filter: sepia(0.22) saturate(0.82) brightness(1.05) contrast(0.92);
+  filter: saturate(0.75) contrast(1.08) brightness(0.98);
   z-index: 1;
 }
 
 .taleSceneWash {
   position: absolute;
-  inset: 1.25rem 1.58rem 1.95rem;
+  inset: 4px;
   background:
-    linear-gradient(180deg, rgba(255, 249, 235, 0.2), rgba(255, 249, 235, 0) 28%, rgba(246, 234, 210, 0.26) 100%),
-    radial-gradient(circle at center, rgba(255, 250, 240, 0) 36%, rgba(89, 58, 29, 0.09) 100%);
-  border-radius: 1rem;
+    linear-gradient(180deg, rgba(255,248,230,0.12), transparent 30%, rgba(200,180,140,0.15) 100%);
   pointer-events: none;
   z-index: 2;
 }
 
 .taleSceneVignette {
   position: absolute;
-  inset: 1.25rem 1.58rem 1.95rem;
+  inset: 4px;
   pointer-events: none;
   box-shadow:
-    inset 0 0 42px rgba(71, 44, 19, 0.17),
-    inset 0 -30px 36px rgba(255, 244, 220, 0.28);
-  border-radius: 1rem;
+    inset 0 0 30px rgba(40, 26, 10, 0.2),
+    inset 0 0 60px rgba(40, 26, 10, 0.08);
   z-index: 3;
 }
 
-/* Torn bottom edge mask */
-.taleSceneTorn {
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 2rem;
-  background: var(--tale-parchment);
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 40V18c20-4 35 2 55 6s42-8 65 0 38 10 58 3 32-14 52-8 35 12 58 6 30-10 55-4 40 8 60 2 28-10 50-6 45 14 62 8 32-6 55-3 38 5 58 0 42-12 60-6 28 8 52 4 35-3 55-8 42 10 65 2 30-8 52-4 38 12 58 6V40z' fill='white'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 40V18c20-4 35 2 55 6s42-8 65 0 38 10 58 3 32-14 52-8 35 12 58 6 30-10 55-4 40 8 60 2 28-10 50-6 45 14 62 8 32-6 55-3 38 5 58 0 42-12 60-6 28 8 52 4 35-3 55-8 42 10 65 2 30-8 52-4 38 12 58 6V40z' fill='white'/%3E%3C/svg%3E");
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
-}
-
-/* Scene caption */
+/* Scene caption — handwritten label under photo */
 .taleSceneCaption {
   display: none;
 }
 
-/* Variant gallery overlaid on scene */
+/* Variant gallery */
 .taleVariantOverlay {
   position: absolute;
   left: 50%;
@@ -193,97 +260,128 @@
 .taleVariantCard {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  width: 15rem;
-  padding: 1.1rem 1.2rem;
-  background: rgba(245, 234, 208, 0.96);
-  border: 1px solid var(--tale-border);
-  border-radius: 0.4rem;
-  color: var(--tale-ink);
-  font-family: var(--tale-serif);
-  font-size: 1.1rem;
+  gap: 0.4rem;
+  width: 14rem;
+  padding: 1rem 1.1rem;
+  background: var(--board-paper);
+  border: none;
+  border-radius: 1px;
+  color: var(--board-ink);
+  font-family: var(--board-hand);
+  font-size: 1.15rem;
   text-align: left;
   cursor: pointer;
-  box-shadow: 0 6px 24px rgba(42, 26, 10, 0.25);
+  box-shadow:
+    2px 3px 12px var(--board-shadow),
+    0 0 0 1px rgba(180,160,120,0.15);
+  transform: rotate(-1deg);
   transition: transform 200ms ease, box-shadow 200ms ease;
+  position: relative;
+}
+
+/* Push pin on variant cards */
+.taleVariantCard::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: 12px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #e85050, #a02828 60%, #6a1818);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.taleVariantCard:nth-child(2) {
+  transform: rotate(0.8deg);
+}
+
+.taleVariantCard:nth-child(3) {
+  transform: rotate(-0.5deg);
 }
 
 .taleVariantCard:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 32px rgba(42, 26, 10, 0.32);
+  transform: translateY(-3px) rotate(0deg);
+  box-shadow:
+    3px 5px 18px var(--board-shadow);
 }
 
 .taleVariantCard__label {
-  font-size: 0.75rem;
-  color: var(--tale-accent);
+  font-family: var(--board-mono);
+  font-size: 0.7rem;
+  color: var(--board-red);
   text-transform: uppercase;
-  letter-spacing: 0.15em;
-  font-weight: 600;
+  letter-spacing: 0.18em;
+  font-weight: 700;
 }
 
 .taleVariantCard strong {
-  font-family: var(--tale-heading);
+  font-family: var(--board-heading);
   font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--tale-accent-hover);
+  font-weight: 400;
+  color: var(--board-marker);
 }
 
 .taleVariantCard p {
   margin: 0;
-  font-size: 1rem;
-  color: var(--tale-ink-soft);
-  line-height: 1.4;
-  font-style: italic;
+  font-size: 1.05rem;
+  color: var(--board-ink-soft);
+  line-height: 1.35;
 }
 
-/* ── Chapter header — thin ornamental strip ── */
+/* ── Chapter header — case file label ── */
 .taleChapterBar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.55rem;
+  gap: 0.5rem;
   justify-content: center;
   max-width: 52rem;
-  margin: 0 auto 0.35rem;
-  padding: 1.25rem 0 0.85rem;
-  font-size: 0.98rem;
-  color: var(--tale-ink-soft);
+  margin: 0 auto 0.6rem;
+  padding: 1rem 0 0.75rem;
+  font-size: 0.95rem;
+  color: var(--board-ink-soft);
   position: relative;
   text-align: center;
 }
 
+/* Red string line instead of ornamental divider */
 .taleChapterBar::before {
   content: '';
   position: absolute;
-  top: 0.08rem;
+  top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: min(24rem, 70%);
-  height: 2rem;
-  background: url('/ornaments/rose-divider.svg') center / contain no-repeat;
-  opacity: 0.78;
+  width: min(20rem, 60%);
+  height: 2px;
+  background: var(--board-red);
+  opacity: 0.35;
   pointer-events: none;
 }
 
 .taleChapterBar__beat {
-  font-family: var(--tale-heading);
-  font-size: 1.64rem;
-  font-weight: 600;
-  color: var(--tale-accent);
-  letter-spacing: 0.03em;
+  font-family: var(--board-heading);
+  font-size: 1.6rem;
+  font-weight: 400;
+  color: var(--board-red);
+  letter-spacing: 0.02em;
 }
 
 .taleChapterBar__sep {
-  color: var(--tale-gold-dim);
+  color: var(--board-red-soft);
   user-select: none;
 }
 
 .taleChapterBar__cue {
-  font-style: italic;
-  font-size: 1rem;
+  font-family: var(--board-mono);
+  font-size: 0.82rem;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--board-ink-faint);
 }
 
-/* ── Narrative text — the story ── */
+/* ── Narrative text — handwritten notes ── */
 .taleTextPanel {
   position: relative;
   max-width: 54rem;
@@ -297,75 +395,79 @@
 
 .taleTextPanel__narrative p {
   margin: 0 0 0.72rem;
-  font-size: clamp(1.52rem, 2.06vw, 1.82rem);
-  line-height: 1.62;
-  font-weight: 400;
+  font-family: var(--board-hand);
+  font-size: clamp(1.45rem, 2vw, 1.75rem);
+  font-weight: 500;
+  line-height: 1.55;
 }
 
-/* Ornate drop cap */
+/* No ornate drop cap — just a marker-highlighted first letter */
 .taleTextPanel__narrative p:first-child::first-letter {
   float: left;
-  font-family: var(--tale-dropcap);
-  font-size: 6.3rem;
-  line-height: 0.78;
-  font-weight: 700;
-  color: var(--tale-accent);
-  margin-right: 0.3rem;
-  margin-top: 0.18rem;
-  padding: 0.02rem 0.12rem 0 0;
-  text-shadow:
-    1px 1px 0 rgba(255, 245, 222, 0.7),
-    2px 2px 0 rgba(184, 151, 58, 0.18),
-    0 0 10px rgba(184, 151, 58, 0.08);
+  font-family: var(--board-heading);
+  font-size: 4.2rem;
+  line-height: 0.8;
+  font-weight: 400;
+  color: var(--board-marker);
+  margin-right: 0.2rem;
+  margin-top: 0.1rem;
+  padding: 0.05rem 0.08rem 0 0;
+  text-shadow: none;
 }
 
 .taleTextPanel__note {
-  color: var(--tale-ink-soft);
+  color: var(--board-ink-soft);
   font-style: italic;
-  font-size: 1.24rem;
+  font-size: 1.2rem;
 }
 
 .taleTextPanel__ledger {
-  color: var(--tale-accent);
-  font-size: 1.2rem;
-  font-weight: 500;
+  color: var(--board-red);
+  font-size: 1.18rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: var(--board-red-soft);
+  text-underline-offset: 3px;
 }
 
 .taleTextPanel__transmission {
-  color: var(--tale-ink-faint);
-  font-size: 1.14rem;
-  font-style: italic;
+  color: var(--board-ink-faint);
+  font-family: var(--board-mono);
+  font-size: 0.95rem;
+  font-style: normal;
   margin-top: 0.55rem;
+  letter-spacing: 0.02em;
 }
 
 /* ── Notices ── */
 .taleNotice {
   margin: 0.35rem 0;
   padding: 0.52rem 0.8rem;
-  border-left: 3px solid var(--tale-gold-dim);
-  font-size: 1.08rem;
-  color: var(--tale-ink-soft);
+  border-left: 3px solid var(--board-red-soft);
+  font-size: 1.05rem;
+  color: var(--board-ink-soft);
   font-style: italic;
 }
 
 .taleNotice.is-error {
-  border-left-color: var(--tale-error);
-  color: var(--tale-error);
+  border-left-color: var(--board-red);
+  color: var(--board-red);
 }
 
 /* ── Stage modules ── */
 .taleModules {
   margin: 1rem 0 0.7rem;
   padding: 0.75rem 0;
-  border-top: 1px solid var(--tale-border);
-  border-bottom: 1px solid var(--tale-border);
+  border-top: 1px dashed var(--board-border);
+  border-bottom: 1px dashed var(--board-border);
 }
 
-/* ── Direction choices — ornamental links ── */
+/* ── Direction choices — hand-drawn arrow links ── */
 .taleDirections {
   display: flex;
   flex-direction: column;
-  gap: 0.28rem;
+  gap: 0.3rem;
   margin-top: 1.15rem;
   max-width: 42rem;
   margin-left: auto;
@@ -374,91 +476,101 @@
   position: relative;
 }
 
+/* Red string horizontal line */
 .taleDirections::before {
   content: '';
   position: absolute;
   top: -0.1rem;
   left: 50%;
   transform: translateX(-50%);
-  width: min(18rem, 60%);
-  height: 1.4rem;
-  background: url('/ornaments/rose-divider.svg') center / contain no-repeat;
-  opacity: 0.52;
+  width: min(16rem, 55%);
+  height: 1.5px;
+  background: var(--board-red);
+  opacity: 0.3;
   pointer-events: none;
 }
 
 .taleCmd {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.65rem;
   width: 100%;
-  text-align: center;
-  padding: 0.18rem 0;
+  text-align: left;
+  padding: 0.45rem 0.6rem;
   border: none;
   background: transparent;
-  color: var(--tale-accent);
-  font-family: var(--tale-heading);
-  font-size: clamp(1.56rem, 2.1vw, 1.82rem);
-  font-weight: 600;
+  color: var(--board-marker);
+  font-family: var(--board-heading);
+  font-size: clamp(1.4rem, 2vw, 1.7rem);
+  font-weight: 400;
   cursor: pointer;
-  transition: color 150ms ease;
+  transition: color 150ms ease, transform 150ms ease;
+  position: relative;
 }
 
+/* Hand-drawn arrow SVG */
 .taleCmd::before {
-  content: '❧';
+  content: '';
   display: inline-block;
-  margin-right: 0.5rem;
-  color: var(--tale-accent);
+  flex-shrink: 0;
+  width: 28px;
+  height: 16px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 16' fill='none' stroke='%23b0302a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 9c4-1 8-2 14-2s8 1 12 0' /%3E%3Cpath d='M22 3c2 2 5 4 7 5-3 1-5 3-7 5' /%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .taleCmd:hover {
-  color: var(--tale-accent-hover);
-  text-decoration: underline;
-  text-decoration-style: wavy;
-  text-underline-offset: 4px;
-  text-decoration-thickness: 1px;
-  text-decoration-color: var(--tale-gold);
+  color: var(--board-red);
+  transform: translateX(4px);
 }
 
 .taleCmd:disabled {
   opacity: 0.35;
   cursor: not-allowed;
-  text-decoration: none;
+  transform: none;
 }
 
 .taleMuted {
   margin: 0;
-  color: var(--tale-ink-faint);
-  font-size: 1.16rem;
+  color: var(--board-ink-faint);
+  font-family: var(--board-hand);
+  font-size: 1.15rem;
   font-style: italic;
 }
 
-/* ── Prompt history — marginal notes ── */
+/* ── Prompt history — scrawled margin notes ── */
 .taleHistory {
   margin-top: 0.95rem;
   padding-top: 0.65rem;
-  border-top: 1px solid rgba(140, 110, 70, 0.18);
+  border-top: 1px dashed rgba(140, 110, 70, 0.22);
 }
 
 .taleHistory__line {
   margin: 0 0 0.15rem;
-  color: var(--tale-ink-faint);
+  color: var(--board-ink-faint);
+  font-family: var(--board-hand);
   font-size: 1rem;
   font-style: italic;
 }
 
 .taleHistory__from {
-  color: var(--tale-accent);
+  color: var(--board-red);
   font-style: normal;
-  font-weight: 500;
-  font-size: 0.88rem;
+  font-weight: 600;
+  font-size: 0.85rem;
 }
 
 .taleHistory__time {
   margin-left: 0.5rem;
-  font-size: 0.82rem;
-  color: var(--tale-ink-faint);
+  font-family: var(--board-mono);
+  font-size: 0.78rem;
+  color: var(--board-ink-faint);
 }
 
-/* ── Quill prompt — writing on the page ── */
+/* ── Quill prompt — pen on notepaper ── */
 .talePrompt {
   display: grid;
   gap: 0.45rem;
@@ -467,7 +579,7 @@
   margin-left: auto;
   margin-right: auto;
   padding-top: 1rem;
-  border-top: 1px solid var(--tale-border);
+  border-top: 1px dashed var(--board-border);
 }
 
 .talePrompt__label {
@@ -476,10 +588,10 @@
   justify-content: center;
   gap: 0.42rem;
   margin: 0 auto;
-  color: var(--tale-accent);
-  font-family: var(--tale-heading);
-  font-size: 1.68rem;
-  font-weight: 500;
+  color: var(--board-marker);
+  font-family: var(--board-heading);
+  font-size: 1.55rem;
+  font-weight: 400;
 }
 
 .talePrompt__row {
@@ -490,8 +602,8 @@
 
 .talePrompt__ornament {
   flex: 0 0 auto;
-  color: var(--tale-gold);
-  font-size: 1.55rem;
+  color: var(--board-red);
+  font-size: 1.35rem;
   margin-right: 0.5rem;
   user-select: none;
 }
@@ -500,25 +612,25 @@
   flex: 1 1 0;
   background: transparent;
   border: none;
-  border-bottom: 1px solid var(--tale-border);
+  border-bottom: 1.5px dashed var(--board-border);
   outline: none;
-  color: var(--tale-ink);
-  font-family: var(--tale-serif);
-  font-size: 1.5rem;
-  font-style: italic;
+  color: var(--board-ink);
+  font-family: var(--board-hand);
+  font-size: 1.45rem;
+  font-weight: 500;
   padding: 0.25rem 0;
-  caret-color: transparent;
+  caret-color: var(--board-red);
 }
 
 .talePrompt__input::placeholder {
-  color: var(--tale-ink-faint);
+  color: var(--board-ink-faint);
   font-style: italic;
 }
 
 .talePrompt__cursor {
   flex: 0 0 auto;
-  color: var(--tale-accent);
-  font-size: 1.42rem;
+  color: var(--board-red);
+  font-size: 1.3rem;
   margin-left: 0.2rem;
   animation: taleCursorBlink 1.2s ease-in-out infinite;
 }
@@ -530,7 +642,7 @@
 
 .talePrompt__loading {
   margin-left: 0.4rem;
-  color: var(--tale-ink-faint);
+  color: var(--board-ink-faint);
   font-style: italic;
   animation: taleCursorBlink 0.7s ease-in-out infinite;
 }
@@ -549,7 +661,7 @@
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(42, 26, 10, 0.72);
+  background: rgba(26, 20, 14, 0.78);
   cursor: pointer;
 }
 
@@ -566,30 +678,28 @@
   gap: 1rem;
   margin-bottom: 0.75rem;
   padding: 0.65rem 1.2rem;
-  background: var(--tale-parchment);
-  background-image: url('/parchment_bg.png');
-  background-size: cover;
-  border: 1px solid var(--tale-border);
-  border-radius: 0.4rem;
-  color: var(--tale-ink);
-  font-family: var(--tale-serif);
-  font-size: 1.1rem;
+  background: var(--board-paper);
+  border: 1px dashed var(--board-border);
+  border-radius: 1px;
+  color: var(--board-ink);
+  font-family: var(--board-hand);
+  font-size: 1.15rem;
 }
 
 .roseCourtMessengerModal__bar button {
-  border: 1px solid var(--tale-border);
-  border-radius: 999px;
-  background: var(--tale-parchment-light);
-  color: var(--tale-accent);
-  font-family: var(--tale-serif);
-  font-size: 1rem;
+  border: 1px solid var(--board-border);
+  border-radius: 2px;
+  background: var(--board-paper-light);
+  color: var(--board-marker);
+  font-family: var(--board-hand);
+  font-size: 1.05rem;
   padding: 0.35rem 0.9rem;
   cursor: pointer;
   transition: background 150ms ease;
 }
 
 .roseCourtMessengerModal__bar button:hover {
-  background: var(--tale-parchment);
+  background: var(--board-paper-dark);
 }
 
 .sceneTypewriterModal {
@@ -628,7 +738,7 @@
   border-bottom: 1px solid rgba(212, 186, 132, 0.24);
   background: linear-gradient(180deg, rgba(21, 15, 11, 0.96), rgba(12, 9, 7, 0.98));
   color: #eadfc8;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--board-mono);
   font-size: 0.78rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -636,11 +746,11 @@
 
 .sceneTypewriterModal__bar button {
   border: 1px solid rgba(212, 186, 132, 0.28);
-  border-radius: 999px;
+  border-radius: 2px;
   background: rgba(38, 27, 18, 0.72);
   color: #f4e8cf;
   padding: 0.52rem 0.9rem;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--board-mono);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -669,11 +779,16 @@
 /* ── Responsive ── */
 @media (max-width: 820px) {
   .talePage {
-    padding: 7.6rem 1rem 2rem;
+    padding: 2rem 1rem 2rem;
   }
 
   .taleSheet {
-    padding: 1.55rem 1.35rem 1.9rem;
+    padding: 1.6rem 1.4rem 1.9rem;
+    transform: rotate(0deg);
+  }
+
+  .taleScene {
+    transform: rotate(0deg);
   }
 
   .taleVariantOverlay {
@@ -684,21 +799,17 @@
   .taleVariantCard {
     width: 100%;
     max-width: 16rem;
-  }
-
-  .taleSceneCaption span {
-    font-size: 1.3rem;
+    transform: rotate(0deg);
   }
 }
 
 @media (max-width: 520px) {
   .talePage {
-    padding: 6.8rem 0.7rem 1.5rem;
+    padding: 1.5rem 0.7rem 1.5rem;
   }
 
   .taleSheet {
     padding: 1.2rem 0.95rem 1.45rem;
-    border-radius: 12px;
   }
 
   .taleChapterBar {
@@ -708,22 +819,28 @@
 
   .taleTextPanel__narrative p {
     font-size: 1.26rem;
-    line-height: 1.56;
+    line-height: 1.5;
   }
 
   .taleTextPanel__narrative p:first-child::first-letter {
-    font-size: 4.6rem;
+    font-size: 3.4rem;
   }
 
   .taleCmd {
-    font-size: 1.24rem;
-  }
-
-  .talePrompt__label {
     font-size: 1.2rem;
   }
 
+  .talePrompt__label {
+    font-size: 1.15rem;
+  }
+
   .talePrompt__input {
-    font-size: 1.16rem;
+    font-size: 1.15rem;
+  }
+
+  .talePhotoTape::before,
+  .talePhotoTape::after {
+    width: 52px;
+    height: 18px;
   }
 }
