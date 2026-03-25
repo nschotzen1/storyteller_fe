@@ -169,7 +169,15 @@ describe('TypewriterAdminPage control center', () => {
       expect(screen.getByText('Component Control Center')).toBeInTheDocument();
     });
 
+    expect(screen.getByLabelText('Current stored session')).not.toBeVisible();
+    fireEvent.click(screen.getByText('Session Bootstrap'));
+    expect(screen.getByLabelText('Current stored session')).toBeVisible();
+
     fireEvent.click(screen.getByRole('button', { name: 'Typewriter' }));
+
+    expect(screen.getByText('Session hydration')).not.toBeVisible();
+    fireEvent.click(screen.getByText('Typewriter Asset Flow'));
+    expect(screen.getByText('Session hydration')).toBeVisible();
 
     expect(screen.getByText('Core loop')).toBeInTheDocument();
     expect(screen.getByText('Guards')).toBeInTheDocument();

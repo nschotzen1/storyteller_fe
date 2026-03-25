@@ -534,6 +534,8 @@ const TypewriterAdminPage = () => {
   const [memorySpreadAdminEnabled, setMemorySpreadAdminEnabled] = useState(getInitialMemorySpreadAdminMode);
   const [activeSection, setActiveSection] = useState(getInitialAdminSection);
   const [selectedControlComponentKey, setSelectedControlComponentKey] = useState('all');
+  const [isSessionToolsExpanded, setIsSessionToolsExpanded] = useState(false);
+  const [isTypewriterAssetFlowExpanded, setIsTypewriterAssetFlowExpanded] = useState(false);
   const [promptFilter, setPromptFilter] = useState('');
   const [contractFilter, setContractFilter] = useState('');
   const [selectedControlRoutesByComponent, setSelectedControlRoutesByComponent] = useState({
@@ -1429,6 +1431,62 @@ const TypewriterAdminPage = () => {
     setError('');
   };
 
+  const sessionModeToggle = (
+    <label className="typewriterAdminModeToggle">
+      <input
+        type="checkbox"
+        checked={memorySpreadAdminEnabled}
+        onChange={(event) => setMemorySpreadAdminEnabled(event.target.checked)}
+      />
+      <span>Enable Memory Spread admin tools</span>
+    </label>
+  );
+
+  const sessionToolsGrid = (
+    <div className="typewriterAdminSessionGrid">
+      <label>
+        Current stored session
+        <input type="text" value={currentSessionId} readOnly placeholder="No session stored" />
+      </label>
+      <label>
+        Player character name
+        <input
+          type="text"
+          value={currentPlayerCharacterName}
+          onChange={(event) => setCurrentPlayerCharacterName(event.target.value)}
+          placeholder="Optional shared PC name"
+        />
+      </label>
+      <label className="typewriterAdminSessionFragment">
+        Session fragment seed
+        <textarea
+          value={sessionFragmentDraft}
+          onChange={(event) => setSessionFragmentDraft(event.target.value)}
+          rows={5}
+          placeholder="Optional fragment text to save into the selected or newly generated session."
+        />
+      </label>
+      <div className="typewriterAdminButtons">
+        <button type="button" onClick={handleGenerateSession} disabled={sessionSaving}>
+          {sessionSaving ? 'Working...' : 'Generate session'}
+        </button>
+        <button type="button" onClick={handleGenerateSessionWithFragment} disabled={sessionSaving}>
+          {sessionSaving ? 'Working...' : 'Generate session + fragment'}
+        </button>
+        <button
+          type="button"
+          onClick={handleSaveFragmentToCurrentSession}
+          disabled={sessionSaving || !currentSessionId}
+        >
+          {sessionSaving ? 'Working...' : 'Save fragment to current session'}
+        </button>
+        <button type="button" onClick={handleClearStoredSession} disabled={sessionSaving}>
+          Clear stored session
+        </button>
+      </div>
+    </div>
+  );
+
   const sessionToolsSection = (
     <section className="typewriterAdminSessionTools">
       <div className="typewriterAdminSessionHeader">
@@ -1436,58 +1494,64 @@ const TypewriterAdminPage = () => {
           <h2>Session Bootstrap</h2>
           <p>Generate a session and optionally seed a fragment into Mongo. Clear the stored session to let the typewriter start fresh.</p>
         </div>
-        <label className="typewriterAdminModeToggle">
-          <input
-            type="checkbox"
-            checked={memorySpreadAdminEnabled}
-            onChange={(event) => setMemorySpreadAdminEnabled(event.target.checked)}
-          />
-          <span>Enable Memory Spread admin tools</span>
-        </label>
+        {sessionModeToggle}
       </div>
-      <div className="typewriterAdminSessionGrid">
-        <label>
-          Current stored session
-          <input type="text" value={currentSessionId} readOnly placeholder="No session stored" />
-        </label>
-        <label>
-          Player character name
-          <input
-            type="text"
-            value={currentPlayerCharacterName}
-            onChange={(event) => setCurrentPlayerCharacterName(event.target.value)}
-            placeholder="Optional shared PC name"
-          />
-        </label>
-        <label className="typewriterAdminSessionFragment">
-          Session fragment seed
-          <textarea
-            value={sessionFragmentDraft}
-            onChange={(event) => setSessionFragmentDraft(event.target.value)}
-            rows={5}
-            placeholder="Optional fragment text to save into the selected or newly generated session."
-          />
-        </label>
-        <div className="typewriterAdminButtons">
-          <button type="button" onClick={handleGenerateSession} disabled={sessionSaving}>
-            {sessionSaving ? 'Working...' : 'Generate session'}
-          </button>
-          <button type="button" onClick={handleGenerateSessionWithFragment} disabled={sessionSaving}>
-            {sessionSaving ? 'Working...' : 'Generate session + fragment'}
-          </button>
-          <button
-            type="button"
-            onClick={handleSaveFragmentToCurrentSession}
-            disabled={sessionSaving || !currentSessionId}
-          >
-            {sessionSaving ? 'Working...' : 'Save fragment to current session'}
-          </button>
-          <button type="button" onClick={handleClearStoredSession} disabled={sessionSaving}>
-            Clear stored session
-          </button>
+      {sessionToolsGrid}
+    </section>
+  );
+
+  const collapsedSessionToolsSection = (
+    <details
+      className="typewriterControlDisclosure"
+      open={isSessionToolsExpanded}
+      onToggle={(event) => setIsSessionToolsExpanded(event.currentTarget.open)}
+    >
+      <summary className="typewriterControlDisclosureSummary">
+        <span>Session Bootstrap</span>
+        <small>Generate, seed, or clear the shared typewriter session only when you need it.</small>
+      </summary>
+      <div className="typewriterControlDisclosureBody">
+        <div className="typewriterAdminDisclosureIntro">
+          <p>Generate a session and optionally seed a fragment into Mongo. Clear the stored session to let the typewriter start fresh.</p>
+          {sessionModeToggle}
+        </div>
+        {sessionToolsGrid}
+      </div>
+    </details>
+  );
+
+  const collapsedTypewriterAssetFlowSection = (
+    <details
+      className="typewriterControlDisclosure"
+      open={isTypewriterAssetFlowExpanded}
+      onToggle={(event) => setIsTypewriterAssetFlowExpanded(event.currentTarget.open)}
+    >
+      <summary className="typewriterControlDisclosureSummary">
+        <span>Typewriter Asset Flow</span>
+        <small>{TYPEWRITER_ASSET_FLOW.length} stages</small>
+      </summary>
+      <div className="typewriterControlDisclosureBody">
+        <p className="typewriterPromptMeta">
+          The typewriter now produces both visual storyteller keys and saved textual keys. This explainer stays collapsed by default so the route workspace starts higher on the page.
+        </p>
+        <div className="typewriterControlRouteList">
+          {TYPEWRITER_ASSET_FLOW.map((item) => (
+            <article key={item.title} className="typewriterControlRouteCard">
+              <div className="typewriterControlRouteSummary">
+                <strong>{item.title}</strong>
+                <br />
+                <span>{item.note}</span>
+              </div>
+              <div className="typewriterControlMetaRow">
+                <span className="typewriterControlChip">{item.route}</span>
+                <span className="typewriterControlChip">{item.asset}</span>
+                <span className="typewriterControlChip">{item.storage}</span>
+              </div>
+            </article>
+          ))}
         </div>
       </div>
-    </section>
+    </details>
   );
 
   return (
@@ -1570,34 +1634,10 @@ const TypewriterAdminPage = () => {
           </div>
         </div>
 
-        {sessionToolsSection}
+        {collapsedSessionToolsSection}
 
         {selectedControlComponentKey === 'typewriter' ? (
-          <section className="typewriterControlComponentCard">
-            <header className="typewriterControlComponentHeader">
-              <div>
-                <h3>Typewriter Asset Flow</h3>
-                <p>The typewriter now produces both visual storyteller keys and saved textual keys. These are the main assets and where they come from.</p>
-              </div>
-              <span className="typewriterControlComponentCount">{TYPEWRITER_ASSET_FLOW.length} stages</span>
-            </header>
-            <div className="typewriterControlRouteList">
-              {TYPEWRITER_ASSET_FLOW.map((item) => (
-                <article key={item.title} className="typewriterControlRouteCard">
-                  <div className="typewriterControlRouteSummary">
-                    <strong>{item.title}</strong>
-                    <br />
-                    <span>{item.note}</span>
-                  </div>
-                  <div className="typewriterControlMetaRow">
-                    <span className="typewriterControlChip">{item.route}</span>
-                    <span className="typewriterControlChip">{item.asset}</span>
-                    <span className="typewriterControlChip">{item.storage}</span>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
+          collapsedTypewriterAssetFlowSection
         ) : null}
 
         <div className="typewriterAdminListToolbar">

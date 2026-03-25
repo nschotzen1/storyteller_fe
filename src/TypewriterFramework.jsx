@@ -97,6 +97,11 @@ const SPECIAL_KEY_INSERT_TEXT = 'The Xerofag ';
 const STORYTELLER_SLOT_HORIZONTAL_KEY = 'STORYTELLER_SLOT_HORIZONTAL';
 const STORYTELLER_SLOT_VERTICAL_KEY = 'STORYTELLER_SLOT_VERTICAL';
 const STORYTELLER_SLOT_RECT_HORIZONTAL_KEY = 'STORYTELLER_SLOT_RECT_HORIZONTAL';
+const KEY_ROWS = [
+  ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', STORYTELLER_SLOT_HORIZONTAL_KEY],
+  ['A', 'S', 'D', 'F', 'G', 'H', SPECIAL_KEY_TEXT, 'J', 'K', 'L', STORYTELLER_SLOT_VERTICAL_KEY],
+  ['Z', 'X', 'C', 'V', 'B', 'N', 'M', STORYTELLER_SLOT_RECT_HORIZONTAL_KEY]
+];
 const STORYTELLER_KEY_SLOT_DEFINITIONS = [
   {
     slotIndex: 0,
@@ -186,7 +191,10 @@ const BUILTIN_XEROFAG_TYPEWRITER_KEY = {
   sourceType: 'builtin',
   storytellerId: '',
   storytellerName: '',
+  knowledgeState: 'hidden',
+  playerFacingTooltip: '',
   textureUrl: '/textures/keys/blank_rect_horizontal_1.png',
+  keyImageUrl: '/textures/keys/THE_XEROFAG_1.png',
   verificationKind: 'typewriter_key_verification',
   sortOrder: 0,
 };
@@ -229,9 +237,18 @@ const normalizeTypewriterTextKey = (typewriterKey) => {
     sourceType: typeof typewriterKey.sourceType === 'string' ? typewriterKey.sourceType.trim() : '',
     storytellerId: typeof typewriterKey.storytellerId === 'string' ? typewriterKey.storytellerId.trim() : '',
     storytellerName: typeof typewriterKey.storytellerName === 'string' ? typewriterKey.storytellerName.trim() : '',
+    knowledgeState: typeof typewriterKey.knowledgeState === 'string' && typewriterKey.knowledgeState.trim()
+      ? typewriterKey.knowledgeState.trim()
+      : 'known',
+    playerFacingTooltip: typeof typewriterKey.playerFacingTooltip === 'string'
+      ? typewriterKey.playerFacingTooltip.trim()
+      : description,
     textureUrl: typeof typewriterKey.textureUrl === 'string' && typewriterKey.textureUrl.trim()
       ? typewriterKey.textureUrl.trim()
       : '/textures/keys/blank_rect_horizontal_1.png',
+    keyImageUrl: typeof typewriterKey.keyImageUrl === 'string' && typewriterKey.keyImageUrl.trim()
+      ? typewriterKey.keyImageUrl.trim()
+      : '',
     verificationKind: typeof typewriterKey.verificationKind === 'string' && typewriterKey.verificationKind.trim()
       ? typewriterKey.verificationKind.trim()
       : 'typewriter_key_verification',
@@ -940,11 +957,7 @@ const formatTimingWithMs = (value) => {
   return `${seconds} (${Math.round(value)}ms)`;
 };
 
-const keys = [
-  'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', STORYTELLER_SLOT_HORIZONTAL_KEY,
-  'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', STORYTELLER_SLOT_VERTICAL_KEY,
-  'Z', 'X', 'C', 'V', 'B', 'N', 'M', STORYTELLER_SLOT_RECT_HORIZONTAL_KEY
-];
+const keys = KEY_ROWS.flat();
 
 const TypewriterFramework = (props) => {
   const {
@@ -2376,9 +2389,11 @@ const TypewriterFramework = (props) => {
 
       <Keyboard
         keys={keys}
+        keyRows={KEY_ROWS}
         keyTextures={displayedKeyTextures}
         storytellerSlots={storytellerSlots}
         textualTypewriterKeys={typewriterTextKeys}
+        inlineTextualKeyTexts={[SPECIAL_KEY_TEXT]}
         lastPressedKey={lastPressedKey}
         pressedStorytellerKey={activeStorytellerPress?.slotKey || null}
         ghostPressedKey={ghostPressedKey}

@@ -194,6 +194,21 @@
   grid-column: 1 / -1;
 }
 
+.typewriterAdminDisclosureIntro {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.typewriterAdminDisclosureIntro p {
+  margin: 0;
+  color: #c3b39d;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
 .typewriterControlCenter {
   margin-top: 1rem;
 }
@@ -711,6 +726,10 @@
   }
 
   .typewriterAdminSessionHeader {
+    flex-direction: column;
+  }
+
+  .typewriterAdminDisclosureIntro {
     flex-direction: column;
   }
 

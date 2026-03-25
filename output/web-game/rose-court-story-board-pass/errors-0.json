@@ -1,0 +1,10 @@
+[
+  {
+    "type": "pageerror",
+    "text": "ReferenceError: Cannot access 'storyBoardState' before initialization"
+  },
+  {
+    "type": "console.error",
+    "text": "The above error occurred in the <SceneRuntimePage> component:\n\n    at SceneRuntimePage (http://localhost:5173/src/scene-runtime/SceneRuntimePage.jsx?t=1774437805122:100:3)\n    at RoseCourtProloguePage\n    at main\n    at div\n    at App (http://localhost:5173/src/App.jsx?t=1774437805122:78:27)\n\nConsider adding an error boundary to your tree to customize error handling behavior.\nVisit https://reactjs.org/link/error-boundaries to learn more about error boundaries."
+  }
+]

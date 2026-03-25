@@ -8,12 +8,13 @@ const KEY_TILT_RANDOM_MAX = 0.7;
 const KEY_TILT_RANDOM_MIN = -0.7;
 const KEY_OFFSET_Y_RANDOM_MAX = 1;
 const KEY_OFFSET_Y_RANDOM_MIN = -1;
-
-const allKeys = [
-  'Q','W','E','R','T','Y','U','I','O','P','STORYTELLER_SLOT_HORIZONTAL',
-  'A','S','D','F','G','H','J','K','L','STORYTELLER_SLOT_VERTICAL',
-  'Z','X','C','V','B','N','M','STORYTELLER_SLOT_RECT_HORIZONTAL'
+const keyRows = [
+  ['Q','W','E','R','T','Y','U','I','O','P','STORYTELLER_SLOT_HORIZONTAL'],
+  ['A','S','D','F','G','H',SPECIAL_KEY_TEXT,'J','K','L','STORYTELLER_SLOT_VERTICAL'],
+  ['Z','X','C','V','B','N','M','STORYTELLER_SLOT_RECT_HORIZONTAL']
 ];
+
+const allKeys = keyRows.flat();
 const regularKeys = allKeys.filter((key) => !key.startsWith('STORYTELLER_SLOT_'));
 const storytellerSlotKeys = [
   'STORYTELLER_SLOT_HORIZONTAL',
@@ -42,6 +43,7 @@ describe('Keyboard Component', () => {
 
   const defaultProps = {
     keys: allKeys,
+    keyRows,
     keyTextures: allKeyTextures,
     storytellerSlots: [
       { slotIndex: 0, slotKey: 'STORYTELLER_SLOT_HORIZONTAL', storytellerName: '', filled: false },
@@ -54,9 +56,13 @@ describe('Keyboard Component', () => {
         entityName: 'The Xerofag',
         keyText: SPECIAL_KEY_TEXT,
         description: 'Undead canines.',
+        knowledgeState: 'hidden',
+        playerFacingTooltip: '',
+        keyImageUrl: '/textures/keys/THE_XEROFAG_1.png',
         textureUrl: '/textures/keys/blank_rect_horizontal_1.png',
       }
     ],
+    inlineTextualKeyTexts: [SPECIAL_KEY_TEXT],
     lastPressedKey: null,
     pressedStorytellerKey: null,
     typingAllowed: true,
@@ -87,10 +93,32 @@ describe('Keyboard Component', () => {
     expect(screen.getByAltText('Spacebar')).toBeInTheDocument();
   });
 
-  test('renders correct number of key rows (3 rows + 1 textual row + 1 spacebar row)', () => {
+  test('renders correct number of key rows when only the inline Xerofag key is present (3 rows + 1 spacebar row)', () => {
     const { container } = render(<Keyboard {...defaultProps} />);
     const keyRows = container.querySelectorAll('.key-row');
+    expect(keyRows.length).toBe(4);
+  });
+
+  test('renders a separate textual row for non-inline dynamic text keys', () => {
+    const { container } = render(
+      <Keyboard
+        {...defaultProps}
+        textualTypewriterKeys={[
+          ...defaultProps.textualTypewriterKeys,
+          {
+            id: 'entity-1',
+            entityName: 'Buraha Light-Wake',
+            keyText: 'Buraha Light',
+            description: 'A slow intelligence hiding inside the sea-lights.',
+            textureUrl: '/textures/keys/blank_rect_horizontal_1.png',
+          }
+        ]}
+      />
+    );
+
+    const keyRows = container.querySelectorAll('.key-row');
     expect(keyRows.length).toBe(5);
+    expect(screen.getByAltText('Key Buraha Light')).toBeInTheDocument();
   });
 
   test('key images use correct src from keyTextures', () => {
@@ -103,8 +131,36 @@ describe('Keyboard Component', () => {
       const actualIndex = allKeys.findIndex((item) => item === storytellerSlotKeys[index]);
       expect(screen.getByAltText(label)).toHaveAttribute('src', allKeyTextures[actualIndex]);
     });
-    expect(screen.getByAltText(`Key ${SPECIAL_KEY_TEXT}`)).toHaveAttribute('src', '/textures/keys/blank_rect_horizontal_1.png');
+    expect(screen.getByAltText(`Key ${SPECIAL_KEY_TEXT}`)).toHaveAttribute('src', '/textures/keys/THE_XEROFAG_1.png');
     expect(screen.getByAltText('Spacebar')).toHaveAttribute('src', '/textures/keys/spacebar.png');
+  });
+
+  test('does not expose a tooltip for a hidden-knowledge textual key like Xerofag', () => {
+    render(<Keyboard {...defaultProps} />);
+    const keyWrapper = screen.getByAltText(`Key ${SPECIAL_KEY_TEXT}`).closest('.typewriter-key-wrapper');
+    expect(keyWrapper).not.toHaveAttribute('title');
+  });
+
+  test('uses player-facing tooltip text for discovered textual keys', () => {
+    render(
+      <Keyboard
+        {...defaultProps}
+        textualTypewriterKeys={[
+          ...defaultProps.textualTypewriterKeys,
+          {
+            id: 'entity-1',
+            entityName: 'Buraha Light-Wake',
+            keyText: 'Buraha Light',
+            description: 'Internal world description that should not be used directly.',
+            playerFacingTooltip: 'A slow intelligence hiding inside the sea-lights.',
+            textureUrl: '/textures/keys/blank_rect_horizontal_1.png',
+          }
+        ]}
+      />
+    );
+
+    const keyWrapper = screen.getByAltText('Key Buraha Light').closest('.typewriter-key-wrapper');
+    expect(keyWrapper).toHaveAttribute('title', 'A slow intelligence hiding inside the sea-lights.');
   });
   
   test('applies key-pressed class when lastPressedKey matches a regular key', () => {
