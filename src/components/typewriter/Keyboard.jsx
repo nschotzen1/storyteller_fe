@@ -146,7 +146,7 @@ const Keyboard = ({
                 if (!storytellerSlot.filled || !onStorytellerPress) {
                   return;
                 }
-                if (!typingAllowed) {
+                if (!typingAllowed || storytellerSlot.canPress === false || storytellerSlot.typewriterInterventionInFlight) {
                   playEndOfPageSound();
                   return;
                 }

@@ -242,6 +242,29 @@ describe('Keyboard Component', () => {
     );
   });
 
+  test('blocks storyteller press when the slot is waiting for narrative growth', () => {
+    render(
+      <Keyboard
+        {...defaultProps}
+        storytellerSlots={[
+          {
+            slotIndex: 0,
+            slotKey: 'STORYTELLER_SLOT_HORIZONTAL',
+            storytellerName: 'Aster Vell',
+            filled: true,
+            canPress: false,
+            pressLockedReason: 'growth_required'
+          },
+          { slotIndex: 1, slotKey: 'STORYTELLER_SLOT_VERTICAL', storytellerName: '', filled: false },
+          { slotIndex: 2, slotKey: 'STORYTELLER_SLOT_RECT_HORIZONTAL', storytellerName: '', filled: false },
+        ]}
+      />
+    );
+    fireEvent.click(screen.getByAltText('Storyteller key Aster Vell').closest('.typewriter-key-wrapper'));
+    expect(mockPlayEndOfPageSound).toHaveBeenCalledTimes(1);
+    expect(mockOnStorytellerPress).not.toHaveBeenCalled();
+  });
+
   describe('when typingAllowed is false', () => {
     const propsWithTypingDisabled = { ...defaultProps, typingAllowed: false };
 

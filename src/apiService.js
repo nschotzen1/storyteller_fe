@@ -254,10 +254,20 @@ export const fetchStorytellerTypewriterReply = async (sessionId, storytellerId, 
       body: JSON.stringify(payload)
     });
     if (!response.ok) {
+      let errorBody = null;
+      try {
+        errorBody = await response.json();
+      } catch {
+        errorBody = null;
+      }
       console.error(`API error in fetchStorytellerTypewriterReply: ${response.status} ${response.statusText}`);
       return {
-        data: null,
-        error: { message: `API error: ${response.status} ${response.statusText}`, status: response.status }
+        data: errorBody,
+        error: {
+          message: errorBody?.error || `API error: ${response.status} ${response.statusText}`,
+          status: response.status,
+          code: errorBody?.code || ''
+        }
       };
     }
     const data = await response.json();

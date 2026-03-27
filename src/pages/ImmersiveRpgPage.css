@@ -609,6 +609,86 @@
   margin-top: 1.2rem;
 }
 
+.immersiveRpgFlowPanel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+  padding: 1rem;
+  border-radius: 24px;
+  border: 1px solid rgba(69, 49, 35, 0.12);
+  background: rgba(255, 248, 231, 0.56);
+}
+
+.immersiveRpgFlowPanel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.immersiveRpgFlowPanel__header h3 {
+  margin: 0.2rem 0 0;
+  font-size: 1.24rem;
+}
+
+.immersiveRpgActionModes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.immersiveRpgActionModes__chip {
+  display: grid;
+  gap: 0.35rem;
+  text-align: left;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(69, 49, 35, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 251, 243, 0.78);
+  color: var(--rpg-ink);
+  cursor: pointer;
+}
+
+.immersiveRpgActionModes__chip strong,
+.immersiveRpgQuickPrompts__button,
+.immersiveRpgPartyCard__select strong,
+.immersiveRpgWorldbook__entry span,
+.immersiveRpgParty__count {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.74rem;
+}
+
+.immersiveRpgActionModes__chip span {
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: var(--rpg-ink-soft);
+}
+
+.immersiveRpgActionModes__chip.is-active {
+  border-color: rgba(59, 87, 48, 0.34);
+  background: rgba(112, 137, 91, 0.15);
+  box-shadow: inset 0 0 0 1px rgba(59, 87, 48, 0.14);
+}
+
+.immersiveRpgQuickPrompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.immersiveRpgQuickPrompts__button,
+.immersiveRpgPartyCard__remove {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.55rem 0.8rem;
+  background: rgba(57, 41, 29, 0.08);
+  color: var(--rpg-ink);
+  cursor: pointer;
+}
+
 .immersiveRpgComposer textarea {
   min-height: 7.4rem;
   resize: vertical;
@@ -638,6 +718,79 @@
 .immersiveRpgSheet__wide,
 .immersiveRpgNotebook__wide {
   grid-column: 1 / -1;
+}
+
+.immersiveRpgPartyList,
+.immersiveRpgWorldbook {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.immersiveRpgPartyCard,
+.immersiveRpgWorldbook__entry {
+  border-radius: 18px;
+  border: 1px solid rgba(69, 49, 35, 0.12);
+  background: rgba(255, 251, 243, 0.7);
+}
+
+.immersiveRpgPartyCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.85rem;
+}
+
+.immersiveRpgPartyCard.is-active {
+  border-color: rgba(59, 87, 48, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(59, 87, 48, 0.14);
+}
+
+.immersiveRpgPartyCard__select {
+  display: grid;
+  gap: 0.18rem;
+  text-align: left;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.immersiveRpgPartyCard__select span {
+  font-size: 0.92rem;
+  color: var(--rpg-ink-soft);
+}
+
+.immersiveRpgPartyCard__select p,
+.immersiveRpgWorldbook__entry p,
+.immersiveRpgParty__empty {
+  margin: 0;
+  line-height: 1.42;
+  color: var(--rpg-ink-soft);
+}
+
+.immersiveRpgPartyForm {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.immersiveRpgWorldbook__entry {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.85rem 0.95rem;
+}
+
+.immersiveRpgWorldbook__entry span,
+.immersiveRpgParty__count {
+  color: rgba(36, 23, 16, 0.56);
 }
 
 .immersiveRpgNotebook {
@@ -950,6 +1103,10 @@
 }
 
 @media (max-width: 860px) {
+  .immersiveRpgActionModes {
+    grid-template-columns: 1fr;
+  }
+
   .immersiveRpgStageModules--focus-left,
   .immersiveRpgStageModules--focus-right,
   .immersiveRpgStageModules--triptych {
@@ -976,7 +1133,8 @@
   }
 
   .immersiveRpgSheet__grid,
-  .immersiveRpgNotebook__form {
+  .immersiveRpgNotebook__form,
+  .immersiveRpgPartyForm {
     grid-template-columns: 1fr;
   }
 

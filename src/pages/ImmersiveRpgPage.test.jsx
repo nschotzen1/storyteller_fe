@@ -3,7 +3,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import ImmersiveRpgPage from './ImmersiveRpgPage';
 import {
   fetchImmersiveRpgScene,
-  rollImmersiveRpg
+  rollImmersiveRpg,
+  sendImmersiveRpgChat
 } from '../api/immersiveRpg';
 
 vi.mock('../api/immersiveRpg', () => ({
@@ -278,5 +279,47 @@ describe('ImmersiveRpgPage notebook wiring', () => {
 
     expect(screen.getByText(/Set or generate the shared session in Story Admin/i)).toBeInTheDocument();
     expect(fetchImmersiveRpgScene).not.toHaveBeenCalled();
+  });
+
+  it('supports switching party speaker and prefixes chat by mode', async () => {
+    window.localStorage.setItem('typewriterAdminApiBaseUrl', 'http://localhost:5001');
+    window.localStorage.setItem('sessionId', 'shared-session-1');
+    window.localStorage.setItem('immersiveRpgPlayerName', 'Iris Vale');
+
+    const freeformNotebook = {
+      mode: 'story',
+      title: 'Shared Table',
+      prompt: 'Multiple voices are available.',
+      instruction: '',
+      scratchLines: [],
+      focusTags: [],
+      pendingRoll: null,
+      diceFaces: [],
+      successTrack: null,
+      resultSummary: 'Standing by.'
+    };
+    fetchImmersiveRpgScene.mockResolvedValue(buildSceneEnvelope(freeformNotebook));
+    sendImmersiveRpgChat.mockResolvedValue(buildSceneEnvelope(freeformNotebook));
+
+    render(<ImmersiveRpgPage />);
+
+    await screen.findByText('Party Roster');
+
+    fireEvent.change(screen.getByPlaceholderText('Serin Vale'), { target: { value: 'Bram Ash' } });
+    fireEvent.change(screen.getByPlaceholderText('Scout'), { target: { value: 'Scout' } });
+    fireEvent.change(screen.getByPlaceholderText('Sees omens before danger turns visible'), { target: { value: 'Tracks movement in the dark' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add Seat/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Survey details/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Speak as Bram Ash/i), { target: { value: 'What scrape marks are fresh here?' } });
+    fireEvent.click(screen.getByRole('button', { name: /Send Action/i }));
+
+    await waitFor(() => {
+      expect(sendImmersiveRpgChat).toHaveBeenCalledWith('http://localhost:5001', {
+        sessionId: 'shared-session-1',
+        playerName: 'Bram Ash',
+        message: '[Survey details: Bram Ash] What scrape marks are fresh here?'
+      });
+    });
   });
 });

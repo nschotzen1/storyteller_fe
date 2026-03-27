@@ -177,8 +177,56 @@ const createInitialStorytellerSlots = () =>
     storytellerName: '',
     keyImageUrl: '',
     symbol: '',
-    description: ''
+    description: '',
+    canPress: false,
+    pressLockedReason: '',
+    currentFragmentLength: 0,
+    lastPressFragmentLength: null,
+    requiredFragmentLength: 0,
+    fragmentGrowthNeeded: 0,
+    lastTypewriterPressAt: null,
+    typewriterInterventionInFlight: false
   }));
+
+const normalizeStorytellerSlot = (slot = {}) => {
+  if (!slot || typeof slot !== 'object') return null;
+  const slotDefinition = Number.isInteger(slot.slotIndex)
+    ? STORYTELLER_KEY_SLOT_DEFINITIONS.find((candidate) => candidate.slotIndex === slot.slotIndex) || null
+    : getStorytellerSlotDefinitionByKey(slot.slotKey);
+  if (!slotDefinition) return null;
+  const filled = Boolean(slot.filled);
+  return {
+    ...slotDefinition,
+    ...slot,
+    filled,
+    storytellerId: typeof slot.storytellerId === 'string' ? slot.storytellerId : '',
+    storytellerName: typeof slot.storytellerName === 'string' ? slot.storytellerName : '',
+    keyImageUrl: typeof slot.keyImageUrl === 'string' ? slot.keyImageUrl : '',
+    symbol: typeof slot.symbol === 'string' ? slot.symbol : '',
+    description: typeof slot.description === 'string' ? slot.description : '',
+    canPress: typeof slot.canPress === 'boolean' ? slot.canPress : filled,
+    pressLockedReason: typeof slot.pressLockedReason === 'string' ? slot.pressLockedReason : '',
+    currentFragmentLength: Number.isFinite(Number(slot.currentFragmentLength)) ? Math.max(0, Math.floor(Number(slot.currentFragmentLength))) : 0,
+    lastPressFragmentLength: Number.isFinite(Number(slot.lastPressFragmentLength)) ? Math.max(0, Math.floor(Number(slot.lastPressFragmentLength))) : null,
+    requiredFragmentLength: Number.isFinite(Number(slot.requiredFragmentLength)) ? Math.max(0, Math.floor(Number(slot.requiredFragmentLength))) : 0,
+    fragmentGrowthNeeded: Number.isFinite(Number(slot.fragmentGrowthNeeded)) ? Math.max(0, Math.floor(Number(slot.fragmentGrowthNeeded))) : 0,
+    lastTypewriterPressAt: slot.lastTypewriterPressAt || null,
+    typewriterInterventionInFlight: Boolean(slot.typewriterInterventionInFlight)
+  };
+};
+
+const mergeStorytellerSlots = (currentSlots = [], incomingSlots = []) => {
+  const incomingBySlotIndex = new Map(
+    (Array.isArray(incomingSlots) ? incomingSlots : [])
+      .map(normalizeStorytellerSlot)
+      .filter(Boolean)
+      .map((slot) => [slot.slotIndex, slot])
+  );
+  return (Array.isArray(currentSlots) ? currentSlots : []).map((slot) => {
+    const incoming = incomingBySlotIndex.get(slot.slotIndex);
+    return incoming ? { ...slot, ...incoming } : slot;
+  });
+};
 
 const BUILTIN_XEROFAG_TYPEWRITER_KEY = {
   id: 'builtin:xerofag',
@@ -806,6 +854,12 @@ const getStorytellerSlotDebugState = (slot) => {
   if (!slot?.filled || !slot?.keyImageUrl) {
     return { label: slotLabel, status: 'empty', storytellerName: '' };
   }
+  if (slot?.typewriterInterventionInFlight) {
+    return { label: slotLabel, status: 'busy', storytellerName: slot.storytellerName || '' };
+  }
+  if (slot?.canPress === false && slot?.pressLockedReason === 'growth_required') {
+    return { label: slotLabel, status: 'waiting', storytellerName: slot.storytellerName || '' };
+  }
   const isMock = typeof slot.keyImageUrl === 'string'
     && slot.keyImageUrl.includes('/assets/mocks/storyteller_keys/');
   return {
@@ -1109,6 +1163,7 @@ const TypewriterFramework = (props) => {
   const [storytellerSlots, setStorytellerSlots] = useState(() => createInitialStorytellerSlots());
   const [typewriterTextKeys, setTypewriterTextKeys] = useState(() => createInitialTypewriterTextKeys());
   const [activeStorytellerPress, setActiveStorytellerPress] = useState(null);
+  const storytellerPressInFlightRef = useRef(false);
   const [ghostPressedKey, setGhostPressedKey] = useState(null);
   const [preGhostAtmosphere, setPreGhostAtmosphere] = useState(false);
   const [isTextKeyVerificationPending, setIsTextKeyVerificationPending] = useState(false);
@@ -1219,6 +1274,12 @@ const TypewriterFramework = (props) => {
   }, [typingState.currentGhostText]);
 
   useEffect(() => {
+    if (!activeStorytellerPress) {
+      storytellerPressInFlightRef.current = false;
+    }
+  }, [activeStorytellerPress]);
+
+  useEffect(() => {
     if (!persistDebugSettingsToStorage || typeof window === 'undefined') return;
     localStorage.setItem(TYPEWRITER_DEBUG_STORAGE_KEY, JSON.stringify(debugSettings));
   }, [debugSettings, persistDebugSettingsToStorage]);
@@ -1259,6 +1320,7 @@ const TypewriterFramework = (props) => {
     storytellerInitialSyncSessionRef.current = '';
     storytellerCheckInFlightRef.current = false;
     lastStorytellerCheckIntervalRef.current = -1;
+    storytellerPressInFlightRef.current = false;
     setStorytellerSlots(createInitialStorytellerSlots());
     setTypewriterTextKeys(createInitialTypewriterTextKeys());
     setActiveStorytellerPress(null);
@@ -1277,15 +1339,7 @@ const TypewriterFramework = (props) => {
         return false;
       }
 
-      const slotMap = new Map(
-        (Array.isArray(data.slots) ? data.slots : []).map((slot) => [slot.slotIndex, slot])
-      );
-      setStorytellerSlots((prev) =>
-        prev.map((slot) => {
-          const nextSlot = slotMap.get(slot.slotIndex);
-          return nextSlot ? { ...slot, ...nextSlot } : slot;
-        })
-      );
+      setStorytellerSlots((prev) => mergeStorytellerSlots(prev, data.slots));
       const returnedTypewriterKeys = Array.isArray(data.typewriterKeys)
         ? data.typewriterKeys
         : Array.isArray(data.entityKeys)
@@ -2192,6 +2246,11 @@ const TypewriterFramework = (props) => {
 
   const handleStorytellerPress = async (slot) => {
     if (!slot?.filled || !sessionId || !typingInteractionAllowed) return;
+    if (slot?.canPress === false) return;
+    if (storytellerPressInFlightRef.current || activeStorytellerPress || ghostwriterState.isAwaitingApiReply || typingState.isProcessingSequence) {
+      return;
+    }
+    storytellerPressInFlightRef.current = true;
     ensureAmbientStarted();
     setActiveStorytellerPress({ slotKey: slot.slotKey });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: true });
@@ -2207,6 +2266,9 @@ const TypewriterFramework = (props) => {
         slotIndex: slot.slotIndex,
         fadeTimingScale: debugSettings.fadeTimingScale
       });
+      if (Array.isArray(response?.data?.slots)) {
+        setStorytellerSlots((prev) => mergeStorytellerSlots(prev, response.data.slots));
+      }
       if (response?.error || !response?.data) {
         setActiveStorytellerPress(null);
         dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });

@@ -14,6 +14,9 @@ import ImmersiveRpgNotebookPanel from '../components/immersive-rpg/ImmersiveRpgN
 const API_BASE_STORAGE_KEY = 'typewriterAdminApiBaseUrl';
 const SESSION_STORAGE_KEY = 'sessionId';
 const PLAYER_NAME_STORAGE_KEY = 'immersiveRpgPlayerName';
+const PARTY_STORAGE_KEY = 'immersiveRpgPartyRoster';
+const WORLDBOOK_STORAGE_KEY = 'immersiveRpgWorldbook';
+const WORLD_MODE_STORAGE_KEY = 'immersiveRpgActionMode';
 
 const MISSING_SESSION_MESSAGE = 'Set or generate the shared session in Story Admin before opening Immersive RPG.';
 
@@ -76,6 +79,36 @@ const defaultSceneMeta = {
   mockedContext: []
 };
 
+const defaultPartyMemberDraft = {
+  name: '',
+  role: '',
+  lens: ''
+};
+
+const ACTION_MODES = [
+  {
+    id: 'act',
+    label: 'Act in scene',
+    prompt: 'Take a concrete action in the present scene.'
+  },
+  {
+    id: 'survey',
+    label: 'Survey details',
+    prompt: 'Ask for sensory detail or hidden texture before acting.'
+  },
+  {
+    id: 'worldbuild',
+    label: 'Add lore',
+    prompt: 'Propose a detail that expands the world and invite the GM to confirm it.'
+  }
+];
+
+const STORY_PROMPT_TEMPLATES = {
+  act: 'I move first and keep the scene in motion by...',
+  survey: 'Before anyone acts, what detail in this place feels wrong or newly revealed?',
+  worldbuild: 'I want to add one true detail to this world:'
+};
+
 const rollFormFromPending = (pendingRoll) => ({
   skill: pendingRoll?.skill || defaultRollForm.skill,
   label: pendingRoll?.label || defaultRollForm.label,
@@ -130,6 +163,57 @@ const getSceneStage = (scene) => ({
   stageModules: Array.isArray(scene?.stageModules) ? scene.stageModules : defaultStage.stageModules
 });
 
+const readStoredJson = (key, fallback) => {
+  if (typeof window === 'undefined') return fallback;
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed ?? fallback;
+  } catch (_error) {
+    return fallback;
+  }
+};
+
+const getInitialPartyRoster = () => {
+  const stored = readStoredJson(PARTY_STORAGE_KEY, null);
+  if (Array.isArray(stored) && stored.length) {
+    return stored.filter((member) => member?.name).slice(0, 4);
+  }
+
+  const playerName = getInitialPlayerName();
+  return playerName ? [{ name: playerName, role: 'Lead', lens: 'Primary POV' }] : [];
+};
+
+const getInitialWorldbook = () => {
+  const stored = readStoredJson(WORLDBOOK_STORAGE_KEY, null);
+  return Array.isArray(stored) ? stored.slice(0, 12) : [];
+};
+
+const getInitialActionMode = () => {
+  if (typeof window === 'undefined') return ACTION_MODES[0].id;
+  const stored = window.localStorage.getItem(WORLD_MODE_STORAGE_KEY);
+  return ACTION_MODES.some((mode) => mode.id === stored) ? stored : ACTION_MODES[0].id;
+};
+
+const buildWorldbookSeed = (scene, sceneMeta) => {
+  const items = [
+    scene?.sceneTitle ? { type: 'truth', text: scene.sceneTitle } : null,
+    scene?.sourceSceneBrief?.placeName ? { type: 'place', text: scene.sourceSceneBrief.placeName } : null,
+    scene?.currentBeat ? { type: 'pressure', text: scene.currentBeat } : null
+  ].filter(Boolean);
+
+  if (!items.length && sceneMeta?.currentSceneKey) {
+    return { type: 'truth', text: sceneMeta.currentSceneKey };
+  }
+
+  return {
+    type: 'truth',
+    text: items.map((item) => `${item.type}: ${item.text}`).join(' | ')
+  };
+};
+
 function ImmersiveRpgPage() {
   const [sharedConfig, setSharedConfig] = useState(readSharedConfig);
   const [scene, setScene] = useState(null);
@@ -142,6 +226,11 @@ function ImmersiveRpgPage() {
   const [rolling, setRolling] = useState(false);
   const [savingSheet, setSavingSheet] = useState(false);
   const [error, setError] = useState('');
+  const [partyRoster, setPartyRoster] = useState(getInitialPartyRoster);
+  const [activePartyMemberName, setActivePartyMemberName] = useState(() => getInitialPartyRoster()[0]?.name || '');
+  const [partyDraft, setPartyDraft] = useState(defaultPartyMemberDraft);
+  const [actionMode, setActionMode] = useState(getInitialActionMode);
+  const [worldbookEntries, setWorldbookEntries] = useState(getInitialWorldbook);
   const apiBaseUrl = sharedConfig.apiBaseUrl;
   const sessionId = sharedConfig.sessionId;
   const playerName = sharedConfig.playerName;
@@ -150,6 +239,9 @@ function ImmersiveRpgPage() {
   const stage = getSceneStage(scene);
   const activePendingRoll = notebook.pendingRoll;
   const isNotebookDrivenRoll = Boolean(activePendingRoll);
+  const activePartyMember = partyRoster.find((member) => member.name === activePartyMemberName) || null;
+  const effectivePlayerName = activePartyMember?.name || playerName;
+  const selectedActionMode = ACTION_MODES.find((mode) => mode.id === actionMode) || ACTION_MODES[0];
 
   const hydrateFromPayload = (payload) => {
     setScene(payload?.scene || null);
@@ -203,6 +295,33 @@ function ImmersiveRpgPage() {
       window.removeEventListener('storage', handleStorage);
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(PARTY_STORAGE_KEY, JSON.stringify(partyRoster));
+  }, [partyRoster]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(WORLDBOOK_STORAGE_KEY, JSON.stringify(worldbookEntries));
+  }, [worldbookEntries]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(WORLD_MODE_STORAGE_KEY, actionMode);
+  }, [actionMode]);
+
+  useEffect(() => {
+    if (playerName && !partyRoster.length) {
+      setPartyRoster([{ name: playerName, role: 'Lead', lens: 'Primary POV' }]);
+      setActivePartyMemberName(playerName);
+      return;
+    }
+
+    if (partyRoster.length && !partyRoster.some((member) => member.name === activePartyMemberName)) {
+      setActivePartyMemberName(partyRoster[0]?.name || '');
+    }
+  }, [playerName, partyRoster, activePartyMemberName]);
 
   useEffect(() => {
     let active = true;
@@ -285,7 +404,13 @@ function ImmersiveRpgPage() {
         }))
       },
       lastRoll: scene?.rollLog?.length ? scene.rollLog[scene.rollLog.length - 1] : null,
-      characterName: characterSheet?.identity?.name || characterSheet?.playerName || ''
+      characterName: characterSheet?.identity?.name || characterSheet?.playerName || '',
+      party: {
+        active: effectivePlayerName || '',
+        members: partyRoster
+      },
+      actionMode,
+      worldbookEntries
     });
 
     window.advanceTime = () => {};
@@ -294,7 +419,7 @@ function ImmersiveRpgPage() {
       delete window.render_game_to_text;
       delete window.advanceTime;
     };
-  }, [sessionId, sceneMeta, scene, characterSheet, activePendingRoll, notebook, stage]);
+  }, [sessionId, sceneMeta, scene, characterSheet, activePendingRoll, notebook, stage, effectivePlayerName, partyRoster, actionMode, worldbookEntries]);
 
   const updateCharacterSheetField = (section, key, value) => {
     setCharacterSheet((current) => ({
@@ -304,6 +429,45 @@ function ImmersiveRpgPage() {
         [key]: value
       }
     }));
+  };
+
+  const handleAddPartyMember = (event) => {
+    event.preventDefault();
+    const nextMember = {
+      name: partyDraft.name.trim(),
+      role: partyDraft.role.trim(),
+      lens: partyDraft.lens.trim()
+    };
+
+    if (!nextMember.name) return;
+
+    setPartyRoster((current) => {
+      const withoutDuplicate = current.filter((member) => member.name !== nextMember.name);
+      return [...withoutDuplicate, nextMember].slice(0, 4);
+    });
+    setActivePartyMemberName(nextMember.name);
+    setPartyDraft(defaultPartyMemberDraft);
+  };
+
+  const handleRemovePartyMember = (memberName) => {
+    setPartyRoster((current) => current.filter((member) => member.name !== memberName));
+  };
+
+  const handleAddWorldbookEntry = () => {
+    const seededEntry = buildWorldbookSeed(scene, sceneMeta);
+    setWorldbookEntries((current) => [
+      {
+        id: `${Date.now()}`,
+        ...seededEntry
+      },
+      ...current
+    ].slice(0, 12));
+  };
+
+  const handleQuickPrompt = (modeId) => {
+    const template = STORY_PROMPT_TEMPLATES[modeId] || STORY_PROMPT_TEMPLATES.act;
+    setActionMode(modeId);
+    setChatInput(template);
   };
 
   const handleChatSubmit = async (event) => {
@@ -318,10 +482,13 @@ function ImmersiveRpgPage() {
     setChatting(true);
     setError('');
     try {
+      const speakerPrefix = effectivePlayerName
+        ? `${selectedActionMode.label}: ${effectivePlayerName}`
+        : selectedActionMode.label;
       const payload = await sendImmersiveRpgChat(apiBaseUrl, {
         sessionId,
-        playerName,
-        message
+        playerName: effectivePlayerName,
+        message: `[${speakerPrefix}] ${message}`
       });
       hydrateFromPayload(payload);
       setChatInput('');
@@ -391,8 +558,8 @@ function ImmersiveRpgPage() {
           <span className="immersiveRpgHero__eyebrow">Immersive RPG</span>
           <h1>{scene?.sceneTitle || `Scene ${sceneMeta.currentSceneNumber}: The Mysterious Encounter`}</h1>
           <p>
-            Mongo decides the active scene from the shared session. This screen only reads that session state,
-            renders the modular scene surface, and waits when required context has not been persisted yet.
+            This page now supports table play as well as solo immersion: keep a live party roster, switch POV before speaking,
+            and pin world details into a shared worldbook while the backend keeps driving the active scene.
           </p>
         </div>
 
@@ -401,13 +568,18 @@ function ImmersiveRpgPage() {
             <span className="immersiveRpgHero__metaLabel">Shared Session</span>
             <strong className="immersiveRpgHero__metaValue">{sessionId || 'Not set'}</strong>
             <span className="immersiveRpgHero__metaHint">
-              {playerName ? `PC: ${playerName}` : 'PC name optional in Story Admin'}
+              {effectivePlayerName ? `Active speaker: ${effectivePlayerName}` : 'PC name optional in Story Admin'}
             </span>
           </div>
           <div className="immersiveRpgHero__metaCard">
             <span className="immersiveRpgHero__metaLabel">Shared API</span>
             <strong className="immersiveRpgHero__metaValue">{apiBaseUrl}</strong>
             <span className="immersiveRpgHero__metaHint">Runtime model and mock/live mode come from Story Admin.</span>
+          </div>
+          <div className="immersiveRpgHero__metaCard">
+            <span className="immersiveRpgHero__metaLabel">Table Flow</span>
+            <strong className="immersiveRpgHero__metaValue">{partyRoster.length || 1} seat{partyRoster.length === 1 ? '' : 's'}</strong>
+            <span className="immersiveRpgHero__metaHint">{selectedActionMode.prompt}</span>
           </div>
         </div>
       </header>
@@ -492,6 +664,45 @@ function ImmersiveRpgPage() {
                 />
               </div>
 
+              <section className="immersiveRpgFlowPanel">
+                <div className="immersiveRpgFlowPanel__header">
+                  <div>
+                    <span className="immersiveRpgSceneCard__label">Flow Support</span>
+                    <h3>World + Table Layer</h3>
+                  </div>
+                  <button type="button" className="immersiveRpgButton immersiveRpgButton--ghost" onClick={handleAddWorldbookEntry}>
+                    Pin Current Beat
+                  </button>
+                </div>
+
+                <div className="immersiveRpgActionModes" role="tablist" aria-label="Action modes">
+                  {ACTION_MODES.map((mode) => (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      className={['immersiveRpgActionModes__chip', actionMode === mode.id ? 'is-active' : ''].filter(Boolean).join(' ')}
+                      onClick={() => setActionMode(mode.id)}
+                    >
+                      <strong>{mode.label}</strong>
+                      <span>{mode.prompt}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="immersiveRpgQuickPrompts">
+                  {ACTION_MODES.map((mode) => (
+                    <button
+                      key={`${mode.id}-prompt`}
+                      type="button"
+                      className="immersiveRpgQuickPrompts__button"
+                      onClick={() => handleQuickPrompt(mode.id)}
+                    >
+                      {mode.id === 'worldbuild' ? 'Seed lore prompt' : mode.id === 'survey' ? 'Seed detail prompt' : 'Seed action prompt'}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
               <div className="immersiveRpgTranscript">
                 {(scene?.transcript || []).map((entry) => (
                   <article key={entry.entryId} className={`immersiveRpgTranscript__entry immersiveRpgTranscript__entry--${entry.role}`}>
@@ -508,7 +719,7 @@ function ImmersiveRpgPage() {
                 <textarea
                   value={chatInput}
                   onChange={(event) => setChatInput(event.target.value)}
-                  placeholder="Describe what the PC does. Do not choose from menus. Just act."
+                  placeholder={`Speak as ${effectivePlayerName || 'the active POV'}. ${selectedActionMode.prompt}`}
                   rows={4}
                 />
                 <button type="submit" className="immersiveRpgButton" disabled={chatting}>
@@ -520,6 +731,61 @@ function ImmersiveRpgPage() {
           </section>
 
           <aside className="immersiveRpgSidebar">
+            <div className="immersiveRpgSheet">
+              <div className="immersiveRpgPanelHeader">
+                <div>
+                  <span className="immersiveRpgPanelHeader__label">Multiplayer Support</span>
+                  <h3>Party Roster</h3>
+                </div>
+                <span className="immersiveRpgParty__count">{partyRoster.length || 1} active seat{partyRoster.length === 1 ? '' : 's'}</span>
+              </div>
+
+              <div className="immersiveRpgPartyList">
+                {partyRoster.length ? partyRoster.map((member) => (
+                  <article key={member.name} className={['immersiveRpgPartyCard', member.name === activePartyMemberName ? 'is-active' : ''].filter(Boolean).join(' ')}>
+                    <button type="button" className="immersiveRpgPartyCard__select" onClick={() => setActivePartyMemberName(member.name)}>
+                      <strong>{member.name}</strong>
+                      <span>{member.role || 'Unassigned role'}</span>
+                      <p>{member.lens || 'No lens set yet.'}</p>
+                    </button>
+                    <button type="button" className="immersiveRpgPartyCard__remove" onClick={() => handleRemovePartyMember(member.name)} aria-label={`Remove ${member.name}`}>
+                      Remove
+                    </button>
+                  </article>
+                )) : (
+                  <p className="immersiveRpgParty__empty">No table seats yet. Add a second perspective or keep it solo.</p>
+                )}
+              </div>
+
+              <form className="immersiveRpgPartyForm" onSubmit={handleAddPartyMember}>
+                <label>
+                  <span>Name</span>
+                  <input
+                    value={partyDraft.name}
+                    onChange={(event) => setPartyDraft((current) => ({ ...current, name: event.target.value }))}
+                    placeholder="Serin Vale"
+                  />
+                </label>
+                <label>
+                  <span>Role</span>
+                  <input
+                    value={partyDraft.role}
+                    onChange={(event) => setPartyDraft((current) => ({ ...current, role: event.target.value }))}
+                    placeholder="Scout"
+                  />
+                </label>
+                <label className="immersiveRpgSheet__wide">
+                  <span>Lens</span>
+                  <input
+                    value={partyDraft.lens}
+                    onChange={(event) => setPartyDraft((current) => ({ ...current, lens: event.target.value }))}
+                    placeholder="Sees omens before danger turns visible"
+                  />
+                </label>
+                <button type="submit" className="immersiveRpgButton immersiveRpgButton--ink">Add Seat</button>
+              </form>
+            </div>
+
             <div className="immersiveRpgSheet">
               <div className="immersiveRpgPanelHeader">
                 <div>
@@ -570,6 +836,25 @@ function ImmersiveRpgPage() {
                     onChange={(event) => updateCharacterSheetField('skills', 'stealth', event.target.value === '' ? null : Number(event.target.value))}
                   />
                 </label>
+              </div>
+            </div>
+
+            <div className="immersiveRpgSheet">
+              <div className="immersiveRpgPanelHeader">
+                <div>
+                  <span className="immersiveRpgPanelHeader__label">Worldbuilding</span>
+                  <h3>Worldbook Pins</h3>
+                </div>
+              </div>
+              <div className="immersiveRpgWorldbook">
+                {worldbookEntries.length ? worldbookEntries.map((entry) => (
+                  <article key={entry.id} className="immersiveRpgWorldbook__entry">
+                    <span>{entry.type}</span>
+                    <p>{entry.text}</p>
+                  </article>
+                )) : (
+                  <p className="immersiveRpgParty__empty">Pin scenes, places, and pressure points here to keep the world coherent across turns.</p>
+                )}
               </div>
             </div>
 

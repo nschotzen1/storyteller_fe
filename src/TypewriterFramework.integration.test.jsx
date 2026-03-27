@@ -57,6 +57,14 @@ const buildStorytellerSlotPayload = (overrides = {}) => ([
     keyImageUrl: '',
     symbol: '',
     description: '',
+    canPress: false,
+    pressLockedReason: '',
+    currentFragmentLength: 0,
+    lastPressFragmentLength: null,
+    requiredFragmentLength: 0,
+    fragmentGrowthNeeded: 0,
+    lastTypewriterPressAt: null,
+    typewriterInterventionInFlight: false,
   },
   {
     slotIndex: 1,
@@ -69,6 +77,14 @@ const buildStorytellerSlotPayload = (overrides = {}) => ([
     keyImageUrl: '',
     symbol: '',
     description: '',
+    canPress: false,
+    pressLockedReason: '',
+    currentFragmentLength: 0,
+    lastPressFragmentLength: null,
+    requiredFragmentLength: 0,
+    fragmentGrowthNeeded: 0,
+    lastTypewriterPressAt: null,
+    typewriterInterventionInFlight: false,
   },
   {
     slotIndex: 2,
@@ -81,6 +97,14 @@ const buildStorytellerSlotPayload = (overrides = {}) => ([
     keyImageUrl: '',
     symbol: '',
     description: '',
+    canPress: false,
+    pressLockedReason: '',
+    currentFragmentLength: 0,
+    lastPressFragmentLength: null,
+    requiredFragmentLength: 0,
+    fragmentGrowthNeeded: 0,
+    lastTypewriterPressAt: null,
+    typewriterInterventionInFlight: false,
   },
 ]).map((slot) => ({
   ...slot,
@@ -353,6 +377,7 @@ describe('TypewriterFramework integration', () => {
             keyImageUrl: 'http://localhost:5001/assets/demo/aster_vell_key.png',
             symbol: 'ink moth',
             description: 'Weathered brass and smoky enamel.',
+            canPress: true,
           },
         }),
         typewriterKeys: [],
@@ -398,6 +423,7 @@ describe('TypewriterFramework integration', () => {
             keyImageUrl: 'http://localhost:5001/assets/demo/aster_vell_key.png',
             symbol: 'ink moth',
             description: 'Weathered brass and smoky enamel.',
+            canPress: true,
           },
         }),
         typewriterKeys: [],
@@ -407,6 +433,22 @@ describe('TypewriterFramework integration', () => {
     fetchStorytellerTypewriterReply.mockResolvedValue({
       data: {
         fragment: 'It was then that I, Aster Vell, noticed the seam in the light and named the Buraha Light-Wake before withdrawing.',
+        slots: buildStorytellerSlotPayload({
+          0: {
+            filled: true,
+            storytellerId: 'storyteller-1',
+            storytellerName: 'Aster Vell',
+            keyImageUrl: 'http://localhost:5001/assets/demo/aster_vell_key.png',
+            symbol: 'ink moth',
+            description: 'Weathered brass and smoky enamel.',
+            canPress: false,
+            pressLockedReason: 'growth_required',
+            currentFragmentLength: 118,
+            lastPressFragmentLength: 118,
+            requiredFragmentLength: 130,
+            fragmentGrowthNeeded: 12,
+          },
+        }),
         style: {
           font: 'Cinzel Decorative',
           font_size: '2rem',
@@ -482,11 +524,82 @@ describe('TypewriterFramework integration', () => {
     );
 
     expect(storytellerReleased).toBe(true);
+    fireEvent.click(storytellerKey);
+    expect(fetchStorytellerTypewriterReply).toHaveBeenCalledTimes(1);
+    expect(playEndOfPageSound).toHaveBeenCalled();
     expect(container.querySelector('.last-line-content')?.textContent).toMatch(
       /It was then that I, Aster Vell, noticed the seam in the light/i
     );
     expect(document.querySelector('.typewriter-page-styled-char')).toHaveStyle('font-family: Cinzel Decorative');
     expect(document.querySelector('.fade-ghost-container')).not.toBeInTheDocument();
+  });
+
+  test('ignores repeated storyteller clicks while the intervention request is in flight', async () => {
+    let resolveStorytellerReply;
+    fetchShouldCreateStorytellerKey.mockResolvedValue({
+      data: {
+        slots: buildStorytellerSlotPayload({
+          0: {
+            filled: true,
+            storytellerId: 'storyteller-1',
+            storytellerName: 'Aster Vell',
+            keyImageUrl: 'http://localhost:5001/assets/demo/aster_vell_key.png',
+            symbol: 'ink moth',
+            description: 'Weathered brass and smoky enamel.',
+            canPress: true,
+          },
+        }),
+        typewriterKeys: [],
+      },
+      error: null
+    });
+    fetchStorytellerTypewriterReply.mockImplementation(() => new Promise((resolve) => {
+      resolveStorytellerReply = resolve;
+    }));
+
+    render(<TypewriterFramework />);
+
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByAltText('Storyteller key Aster Vell')).toBeInTheDocument();
+    });
+
+    const storytellerKey = screen.getByAltText('Storyteller key Aster Vell').closest('.typewriter-key-wrapper');
+    fireEvent.click(storytellerKey);
+    fireEvent.click(storytellerKey);
+
+    expect(fetchStorytellerTypewriterReply).toHaveBeenCalledTimes(1);
+
+    resolveStorytellerReply({
+      data: {
+        sequence: [],
+        slots: buildStorytellerSlotPayload({
+          0: {
+            filled: true,
+            storytellerId: 'storyteller-1',
+            storytellerName: 'Aster Vell',
+            keyImageUrl: 'http://localhost:5001/assets/demo/aster_vell_key.png',
+            symbol: 'ink moth',
+            description: 'Weathered brass and smoky enamel.',
+            canPress: false,
+            pressLockedReason: 'growth_required',
+            currentFragmentLength: 118,
+            lastPressFragmentLength: 118,
+            requiredFragmentLength: 130,
+            fragmentGrowthNeeded: 12,
+          },
+        }),
+        typewriterKeys: [],
+      },
+      error: null,
+    });
+
+    await waitFor(() => {
+      expect(playEndOfPageSound).not.toHaveBeenCalled();
+    });
   });
 
   test('normalizes mock and non-mock reply schemas into a single sequence', () => {
