@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './MemorySpreadPage.css';
+import SeerReadingPage from './SeerReadingPage';
 
 const SCREEN = {
   MEMORIES: 'memories',
@@ -92,6 +93,19 @@ const readMemorySpreadRequestTimeoutMs = () => {
     return DEFAULT_GENERATION_TIMEOUT_MS;
   }
   return Math.min(300000, Math.max(1000, Math.round(parsed)));
+};
+
+const readMemorySpreadSeerMode = () => {
+  if (typeof window === 'undefined') return true;
+  const params = new URLSearchParams(window.location.search);
+  const mode = `${params.get('mode') || ''}`.trim().toLowerCase();
+  if (!mode || mode === 'seer') {
+    return true;
+  }
+  if (mode === 'legacy' || mode === 'classic' || mode === 'spread') {
+    return false;
+  }
+  return true;
 };
 
 const MEMORY_FALLBACK_CARDS = [
@@ -736,7 +750,7 @@ const resolveGenerationSource = ({ mockText = false, mockImages = false } = {}) 
   return { source: 'hybrid', detail: 'mixed live/mock' };
 };
 
-const MemorySpreadPage = () => {
+const LegacyMemorySpreadPage = () => {
   const [isAdminMode] = useState(() => readMemorySpreadAdminMode());
   const [isDebugMode] = useState(() => readMemorySpreadDebugMode());
   const [apiBaseUrl] = useState(() => readMemorySpreadApiBaseUrl());
@@ -3274,6 +3288,16 @@ const MemorySpreadPage = () => {
       )}
     </div>
   );
+};
+
+const MemorySpreadPage = () => {
+  const [isSeerMode] = useState(() => readMemorySpreadSeerMode());
+
+  if (isSeerMode) {
+    return <SeerReadingPage />;
+  }
+
+  return <LegacyMemorySpreadPage />;
 };
 
 export default MemorySpreadPage;

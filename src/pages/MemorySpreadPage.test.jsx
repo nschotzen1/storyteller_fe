@@ -157,7 +157,7 @@ describe('MemorySpreadPage', () => {
       configurable: true
     });
     window.localStorage.clear();
-    window.history.replaceState({}, '', '/?view=memory-spread&memoryDebug=1');
+    window.history.replaceState({}, '', '/?view=memory-spread&mode=legacy&memoryDebug=1');
   });
 
   afterEach(() => {
@@ -203,7 +203,7 @@ describe('MemorySpreadPage', () => {
   test('shows a timeout error and failed trace entry when the memory API stalls', async () => {
     vi.useFakeTimers();
     global.fetch = createAbortableFetchMock();
-    window.history.replaceState({}, '', '/?view=memory-spread&memoryDebug=1&memoryTimeoutMs=12000');
+    window.history.replaceState({}, '', '/?view=memory-spread&mode=legacy&memoryDebug=1&memoryTimeoutMs=12000');
 
     render(<MemorySpreadPage />);
 
@@ -223,7 +223,7 @@ describe('MemorySpreadPage', () => {
   test('keeps waiting for JSON after headers arrive before the timeout window closes', async () => {
     vi.useFakeTimers();
     global.fetch = createDelayedJsonResponseMock(createMemoryPayload(), 1500);
-    window.history.replaceState({}, '', '/?view=memory-spread&memoryDebug=1&memoryTimeoutMs=1000');
+    window.history.replaceState({}, '', '/?view=memory-spread&mode=legacy&memoryDebug=1&memoryTimeoutMs=1000');
 
     render(<MemorySpreadPage />);
 
@@ -285,7 +285,7 @@ describe('MemorySpreadPage', () => {
     });
     global.fetch = fetchMock;
 
-    window.history.replaceState({}, '', '/?view=memory-spread&memoryDebug=1&memoryMockImages=1');
+    window.history.replaceState({}, '', '/?view=memory-spread&mode=legacy&memoryDebug=1&memoryMockImages=1');
 
     render(<MemorySpreadPage />);
 
@@ -338,7 +338,7 @@ describe('MemorySpreadPage', () => {
     window.history.replaceState(
       {},
       '',
-      `/?view=memory-spread&memoryDebug=1&memoryMock=1&memoryApiBaseUrl=${encodeURIComponent(LIVE_BACKEND_BASE_URL)}`
+      `/?view=memory-spread&mode=legacy&memoryDebug=1&memoryMock=1&memoryApiBaseUrl=${encodeURIComponent(LIVE_BACKEND_BASE_URL)}`
     );
 
     render(<MemorySpreadPage />);
@@ -401,7 +401,7 @@ describe('MemorySpreadPage', () => {
     window.history.replaceState(
       {},
       '',
-      `/?view=memory-spread&memoryDebug=1&memoryMockImages=1&memoryApiBaseUrl=${encodeURIComponent(LIVE_BACKEND_BASE_URL)}`
+      `/?view=memory-spread&mode=legacy&memoryDebug=1&memoryMockImages=1&memoryApiBaseUrl=${encodeURIComponent(LIVE_BACKEND_BASE_URL)}`
     );
 
     const { container } = render(<MemorySpreadPage />);

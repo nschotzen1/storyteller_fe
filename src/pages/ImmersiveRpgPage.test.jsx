@@ -318,8 +318,136 @@ describe('ImmersiveRpgPage notebook wiring', () => {
       expect(sendImmersiveRpgChat).toHaveBeenCalledWith('http://localhost:5001', {
         sessionId: 'shared-session-1',
         playerName: 'Bram Ash',
-        message: '[Survey details: Bram Ash] What scrape marks are fresh here?'
+        message: expect.stringContaining('[Survey details: Bram Ash |')
       });
+    });
+  });
+
+  it('supports proposing and canonizing world lore candidates', async () => {
+    window.localStorage.setItem('typewriterAdminApiBaseUrl', 'http://localhost:5001');
+    window.localStorage.setItem('sessionId', 'shared-session-1');
+    window.localStorage.setItem('immersiveRpgPlayerName', 'Iris Vale');
+
+    const freeformNotebook = {
+      mode: 'story',
+      title: 'Shared Table',
+      prompt: 'Multiple voices are available.',
+      instruction: '',
+      scratchLines: [],
+      focusTags: [],
+      pendingRoll: null,
+      diceFaces: [],
+      successTrack: null,
+      resultSummary: 'Standing by.'
+    };
+    fetchImmersiveRpgScene.mockResolvedValue(buildSceneEnvelope(freeformNotebook));
+
+    render(<ImmersiveRpgPage />);
+
+    await screen.findByText('Lore Forge');
+
+    fireEvent.change(screen.getByPlaceholderText(/Propose one world truth/i), {
+      target: { value: 'The moonlit canal only opens when two bells ring in sequence.' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Propose$/i }));
+
+    expect(await screen.findByText(/moonlit canal only opens/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Canonize/i }));
+
+    expect(await screen.findByText(/0 pending/i)).toBeInTheDocument();
+    expect(await screen.findByText('canon')).toBeInTheDocument();
+  });
+
+  it('supports multiplayer intent consensus and applies it to the composer', async () => {
+    window.localStorage.setItem('typewriterAdminApiBaseUrl', 'http://localhost:5001');
+    window.localStorage.setItem('sessionId', 'shared-session-1');
+    window.localStorage.setItem('immersiveRpgPlayerName', 'Iris Vale');
+
+    const freeformNotebook = {
+      mode: 'story',
+      title: 'Shared Table',
+      prompt: 'Multiple voices are available.',
+      instruction: '',
+      scratchLines: [],
+      focusTags: [],
+      pendingRoll: null,
+      diceFaces: [],
+      successTrack: null,
+      resultSummary: 'Standing by.'
+    };
+    fetchImmersiveRpgScene.mockResolvedValue(buildSceneEnvelope(freeformNotebook));
+    sendImmersiveRpgChat.mockResolvedValue(buildSceneEnvelope(freeformNotebook));
+
+    render(<ImmersiveRpgPage />);
+
+    await screen.findByText('Intent Sync');
+
+    fireEvent.change(screen.getByPlaceholderText('Serin Vale'), { target: { value: 'Bram Ash' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add Seat/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Probe Detail/i }));
+    expect(screen.getByText(/Bram Ash: probe/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Iris Vale Lead Primary POV/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Probe Detail/i }));
+    expect(screen.getByText(/Probe Detail leads/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Apply Consensus To Composer/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Send Action/i }));
+
+    await waitFor(() => {
+      expect(sendImmersiveRpgChat).toHaveBeenCalledWith('http://localhost:5001', expect.objectContaining({
+        message: expect.stringContaining('[Survey details: Iris Vale |')
+      }));
+    });
+  });
+
+  it('supports objective ready-check flow and tags chat with objective context', async () => {
+    window.localStorage.setItem('typewriterAdminApiBaseUrl', 'http://localhost:5001');
+    window.localStorage.setItem('sessionId', 'shared-session-1');
+    window.localStorage.setItem('immersiveRpgPlayerName', 'Iris Vale');
+
+    const freeformNotebook = {
+      mode: 'story',
+      title: 'Shared Table',
+      prompt: 'Multiple voices are available.',
+      instruction: '',
+      scratchLines: [],
+      focusTags: [],
+      pendingRoll: null,
+      diceFaces: [],
+      successTrack: null,
+      resultSummary: 'Standing by.'
+    };
+    fetchImmersiveRpgScene.mockResolvedValue(buildSceneEnvelope(freeformNotebook));
+    sendImmersiveRpgChat.mockResolvedValue(buildSceneEnvelope(freeformNotebook));
+
+    render(<ImmersiveRpgPage />);
+
+    await screen.findByText('Objective Forge');
+
+    fireEvent.change(screen.getByPlaceholderText('Serin Vale'), { target: { value: 'Bram Ash' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add Seat/i }));
+
+    fireEvent.change(screen.getByPlaceholderText('Secure the journal before dawn'), {
+      target: { value: 'Secure the journal before dawn' }
+    });
+    fireEvent.change(screen.getByPlaceholderText('If we fail, the watcher marks the house.'), {
+      target: { value: 'If we fail, the watcher marks the house.' }
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Iris Vale Waiting/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Bram Ash Waiting/i }));
+    expect(screen.getByText('2/2 seats ready')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Advance From Ready Check/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Send Action/i }));
+
+    await waitFor(() => {
+      expect(sendImmersiveRpgChat).toHaveBeenCalledWith('http://localhost:5001', expect.objectContaining({
+        message: expect.stringContaining('Objective: Secure the journal before dawn')
+      }));
     });
   });
 });

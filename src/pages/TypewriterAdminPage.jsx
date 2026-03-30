@@ -84,6 +84,28 @@ const SETTING_PIPELINES = [
     defaultProvider: 'openai'
   },
   {
+    key: 'seer_reading_orchestrator',
+    label: 'Seer Reading Orchestrator',
+    description: '/api/seer/readings/:readingId/turn',
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai'
+  },
+  {
+    key: 'seer_reading_card_generation',
+    label: 'Seer Reading Card Generation',
+    description: 'internal://seer-reading/cards/generate',
+    modelKind: 'text',
+    supportedProviders: ['openai', 'anthropic'],
+    defaultProvider: 'openai',
+    supportsCount: true,
+    countProperty: 'cardCount',
+    countLabel: 'Default card count',
+    minCount: 1,
+    maxCount: 10,
+    defaultCount: 3
+  },
+  {
     key: 'memory_creation',
     label: 'Memory creation',
     description: '/api/fragmentToMemories',
@@ -199,6 +221,18 @@ const PROMPT_PIPELINES = [
     label: 'Immersive RPG GM',
     description: '/api/immersive-rpg/chat GM orchestration prompt',
     settingsKey: 'immersive_rpg_gm'
+  },
+  {
+    key: 'seer_reading_orchestrator',
+    label: 'Seer Reading Orchestrator',
+    description: '/api/seer/readings/:readingId/turn orchestration prompt',
+    settingsKey: 'seer_reading_orchestrator'
+  },
+  {
+    key: 'seer_reading_card_generation',
+    label: 'Seer Reading Card Generation',
+    description: 'internal://seer-reading/cards/generate opening card-generation prompt',
+    settingsKey: 'seer_reading_card_generation'
   },
   {
     key: 'memory_creation',

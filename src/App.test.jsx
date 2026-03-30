@@ -124,4 +124,15 @@ describe('App curtain view orchestration', () => {
 
     expect(screen.getByTestId('rose-court-montage-page')).toBeInTheDocument();
   });
+
+  it('exposes seer reading directly from the top-level navigation', () => {
+    renderAppAt();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Seer Reading' }));
+
+    expect(screen.getByTestId('memory-spread-page')).toBeInTheDocument();
+    expect(window.location.search).toContain('view=memory-spread');
+    expect(window.location.search).toContain('memoryDebug=1');
+    expect(window.location.search).toContain('seerFixture=authority');
+  });
 });

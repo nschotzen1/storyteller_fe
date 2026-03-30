@@ -39,7 +39,7 @@ const VIEW_OPTIONS = [
   { id: VIEW.MONTAGE, label: 'Montage' },
   { id: VIEW.WELL, label: 'Well' },
   { id: VIEW.QUEST_ADMIN, label: 'Quest Admin' },
-  { id: VIEW.MEMORY_SPREAD, label: 'Memory Spread' },
+  { id: VIEW.MEMORY_SPREAD, label: 'Seer Reading' },
   { id: VIEW.IMMERSIVE_RPG, label: 'Immersive RPG' }
 ];
 
@@ -48,6 +48,21 @@ const TYPEWRITER_CURTAIN_PHASE = {
   INTRO: 'intro',
   OUTRO: 'outro'
 };
+
+function applyDefaultViewQueryParams(params, view) {
+  if (!(params instanceof URLSearchParams)) return;
+
+  if (view === VIEW.MEMORY_SPREAD) {
+    params.set('memoryDebug', '1');
+    if (!`${params.get('readingId') || ''}`.trim()) {
+      params.set('seerFixture', 'authority');
+    }
+    const mode = `${params.get('mode') || ''}`.trim().toLowerCase();
+    if (!mode || ['seer', 'legacy', 'classic', 'spread'].includes(mode)) {
+      params.delete('mode');
+    }
+  }
+}
 
 const readInitialView = () => {
   if (typeof window === 'undefined') return VIEW.ARENA;
@@ -74,6 +89,7 @@ function App() {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     params.set('view', view);
+    applyDefaultViewQueryParams(params, view);
     const nextQuery = params.toString();
     const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`;
     window.history.replaceState({}, '', nextUrl);
