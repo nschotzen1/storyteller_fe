@@ -181,6 +181,35 @@ describe('TypewriterAdminPage control center', () => {
     window.localStorage.clear();
   });
 
+  it('can seed a session fragment and hand it off directly to Seer Reading', async () => {
+    const assignSpy = vi.spyOn(window.location, 'assign').mockImplementation(() => {});
+
+    render(<TypewriterAdminPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Component Control Center')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Session Bootstrap'));
+    fireEvent.click(screen.getByRole('button', { name: 'Open in Seer Reading' }));
+
+    await waitFor(() => {
+      expect(typewriterAdminApi.startOrSeedTypewriterSession).toHaveBeenCalledWith(
+        'http://localhost:5001',
+        expect.objectContaining({
+          fragment: expect.any(String),
+          setInitialFragment: true
+        })
+      );
+    });
+
+    expect(window.localStorage.getItem('sessionId')).toBe('session-test');
+    expect(assignSpy).toHaveBeenCalledWith(expect.stringContaining('view=memory-spread'));
+    expect(assignSpy).toHaveBeenCalledWith(expect.stringContaining('sessionId=session-test'));
+    expect(assignSpy).toHaveBeenCalledWith(expect.stringContaining('seerFixture=triad'));
+    assignSpy.mockRestore();
+  });
+
   it('renders flow-ordered route cards and swaps the prompt workspace to the selected route', async () => {
     render(<TypewriterAdminPage />);
 
@@ -239,6 +268,22 @@ describe('TypewriterAdminPage control center', () => {
     await waitFor(() => {
       expect(screen.getByText(/Shared pipeline\. Changes also affect/i)).toBeInTheDocument();
     });
+  });
+
+  it('lists Seer Reading routes inside the Memory Spread control center', async () => {
+    render(<TypewriterAdminPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Component Control Center')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Memory Spread' }));
+
+    const routeSummaryTable = screen.getByRole('table', { name: /Memory Spread route summary/i });
+    expect(within(routeSummaryTable).getByRole('button', { name: /Seer reading create/i })).toBeInTheDocument();
+    expect(within(routeSummaryTable).getByRole('button', { name: /Seer reading turn/i })).toBeInTheDocument();
+    expect(within(routeSummaryTable).getByRole('button', { name: /Seer card claim/i })).toBeInTheDocument();
+    expect(within(routeSummaryTable).getByRole('button', { name: /Seer reading close/i })).toBeInTheDocument();
   });
 
   it('saves quick runtime edits from the route summary table', async () => {

@@ -110,16 +110,88 @@ export const STORY_ADMIN_CONTROL_COMPONENTS = [
   {
     key: 'memory_spread',
     label: 'Memory Spread',
-    description: 'Generates memories, memory card images, entities, storytellers, and relationship evaluation from a saved fragment.',
-    flowDescription: 'This flow starts by extracting memories from a fragment, then branches into card art, entity/storyteller generation, and later judgment passes.',
+    description: 'Owns both the legacy memory-generation pipeline and the newer Seer Reading ritual built on top of saved fragments and sessions.',
+    flowDescription: 'This flow can either extract memories directly from a fragment or open a Seer Reading that seeds cards, runs an orchestration turn loop, and seals claimed cards back into the spread.',
     flowOverview: {
-      summary: 'Memory Spread starts with one extraction route, then fans out into artifact generation and follow-on content generation before any later evaluation.',
-      mainPath: 'Memory generation -> Memory card front/back image generation',
-      supportingPath: 'Entity and storyteller generation branch from the same fragment, and relationship evaluation scores proposals after content exists.',
-      outputs: ['Memories', 'Card art prompts and images', 'Entities', 'Storytellers', 'Relationship judgments']
+      summary: 'Memory Spread now has two faces: the legacy extraction fan-out and the Seer Reading ritual loop that creates readings, advances turns, and claims cards.',
+      mainPath: 'Seer reading create -> Seer turn orchestration -> Card claim / reading closure',
+      supportingPath: 'Legacy memory generation still feeds memory art, entity/storyteller generation, and relationship evaluation from the same saved fragment.',
+      outputs: ['Seer readings', 'Interpretive cards', 'Memories', 'Card art prompts and images', 'Entities', 'Storytellers', 'Relationship judgments']
     },
     searchTerms: ['memory', 'entities', 'storyteller', 'spread', 'image', 'card'],
     routes: [
+      {
+        key: 'seer_reading_create_route',
+        label: 'Seer reading create',
+        method: 'POST',
+        path: '/api/seer/readings',
+        summary: 'Seeds one blurred vision, opening cards, and the normalized reading payload for the Seer UI.',
+        flowGroup: 'Seer ritual',
+        flowSummary: 'Opening ritual call that resolves the fragment/session context and drafts the initial interpretive card spread.',
+        roleLabel: 'Entry',
+        triggerSummary: 'The player opens Seer Reading from Story Admin or the Seer view without an existing reading.',
+        outputSummary: 'Returns the seeded vision, dynamic cards, and initial runtime envelope for the reading.',
+        runtimeKeys: ['seer_reading_card_generation'],
+        directPromptKeys: ['seer_reading_card_generation'],
+        contractBindings: [
+          {
+            routeKey: 'seer_reading_card_generation',
+            promptKey: 'seer_reading_card_generation',
+            label: 'Opening card generation contract'
+          }
+        ]
+      },
+      {
+        key: 'seer_reading_turn_route',
+        label: 'Seer reading turn',
+        method: 'POST',
+        path: '/api/seer/readings/:readingId/turn',
+        summary: 'Advances the Seer Reading by one dominant ritual consequence.',
+        flowGroup: 'Seer ritual',
+        flowSummary: 'Core orchestrator turn that chooses one meaningful change and returns the next reading state.',
+        roleLabel: 'Entry',
+        triggerSummary: 'The player answers the seer, focuses a card, or focuses a vision evidence node.',
+        outputSummary: 'Returns spoken seer text, tool traces, state changes, and the next normalized reading payload.',
+        runtimeKeys: ['seer_reading_orchestrator'],
+        directPromptKeys: [],
+        contractBindings: [
+          {
+            routeKey: 'seer_reading_orchestrator',
+            promptKey: 'seer_reading_orchestrator',
+            label: 'Seer turn orchestration contract'
+          }
+        ]
+      },
+      {
+        key: 'seer_reading_claim_route',
+        label: 'Seer card claim',
+        method: 'POST',
+        path: '/api/seer/readings/:readingId/cards/:cardId/claim',
+        summary: 'Seals a fully revealed card into the reading and advances focus.',
+        flowGroup: 'Seer ritual',
+        flowSummary: 'Claim step that turns a resolved card into a persistent reading artifact.',
+        roleLabel: 'Artifact',
+        triggerSummary: 'A revealed card becomes claimable and the player chooses to keep it.',
+        outputSummary: 'Returns the updated reading with the card moved into claimed cards.',
+        runtimeKeys: [],
+        directPromptKeys: [],
+        contractBindings: []
+      },
+      {
+        key: 'seer_reading_close_route',
+        label: 'Seer reading close',
+        method: 'POST',
+        path: '/api/seer/readings/:readingId/close',
+        summary: 'Closes the reading and records closure metadata.',
+        flowGroup: 'Seer ritual',
+        flowSummary: 'Closure step that seals the reading state without running another interpretation turn.',
+        roleLabel: 'Closure',
+        triggerSummary: 'The player or system decides the reading should end.',
+        outputSummary: 'Returns the final normalized reading payload in a closed state.',
+        runtimeKeys: [],
+        directPromptKeys: [],
+        contractBindings: []
+      },
       {
         key: 'memory_generation_route',
         label: 'Memory generation',
@@ -184,7 +256,13 @@ export const STORY_ADMIN_CONTROL_COMPONENTS = [
         outputSummary: 'Returns entities plus the art prompts or images that represent them.',
         runtimeKeys: ['entity_creation', 'texture_creation'],
         directPromptKeys: ['entity_creation', 'entity_card_front', 'texture_creation'],
-        contractBindings: []
+        contractBindings: [
+          {
+            routeKey: 'text_to_entity',
+            promptKey: 'entity_creation',
+            label: 'Entity extraction contract'
+          }
+        ]
       },
       {
         key: 'storyteller_generation_route',

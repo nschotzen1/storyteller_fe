@@ -54,7 +54,7 @@ function applyDefaultViewQueryParams(params, view) {
 
   if (view === VIEW.MEMORY_SPREAD) {
     params.set('memoryDebug', '1');
-    if (!`${params.get('readingId') || ''}`.trim()) {
+    if (!`${params.get('readingId') || ''}`.trim() && !`${params.get('seerFixture') || ''}`.trim()) {
       params.set('seerFixture', 'authority');
     }
     const mode = `${params.get('mode') || ''}`.trim().toLowerCase();

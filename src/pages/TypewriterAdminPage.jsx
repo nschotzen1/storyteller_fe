@@ -1594,6 +1594,65 @@ const TypewriterAdminPage = () => {
     }
   };
 
+  const openSeerReadingForSession = useCallback((sessionIdToOpen) => {
+    const normalizedSessionId = typeof sessionIdToOpen === 'string' ? sessionIdToOpen.trim() : '';
+    if (!normalizedSessionId || typeof window === 'undefined') return;
+    window.localStorage.setItem(TYPEWRITER_SESSION_STORAGE_KEY, normalizedSessionId);
+    const params = new URLSearchParams(window.location.search);
+    params.set('view', 'memory-spread');
+    params.set('memoryDebug', '1');
+    params.set('seerFixture', 'triad');
+    params.set('sessionId', normalizedSessionId);
+    params.set('memoryApiBaseUrl', apiBaseUrl);
+    params.delete('readingId');
+    params.delete('mode');
+    const nextUrl = `${window.location.pathname}?${params.toString()}`;
+    window.location.assign(nextUrl);
+  }, [apiBaseUrl]);
+
+  const handleOpenSeerReading = async () => {
+    const fragment = `${sessionFragmentDraft || ''}`.trim();
+    let nextSessionId = `${currentSessionId || ''}`.trim();
+
+    if (!nextSessionId && !fragment) {
+      setError('Enter a fragment or generate a session before opening Seer Reading.');
+      setStatus('');
+      return;
+    }
+
+    setSessionSaving(true);
+    setError('');
+    setStatus('');
+
+    try {
+      if (!nextSessionId) {
+        const payload = await startOrSeedTypewriterSession(apiBaseUrl, {
+          fragment,
+          setInitialFragment: true
+        });
+        const resolvedSessionId = typeof payload?.sessionId === 'string' ? payload.sessionId.trim() : '';
+        if (!resolvedSessionId) {
+          throw new Error('Session creation did not return a sessionId.');
+        }
+        nextSessionId = resolvedSessionId;
+        setCurrentSessionId(resolvedSessionId);
+        setSessionInspectorTargetId(resolvedSessionId);
+        await loadSessionInspector(resolvedSessionId, { silentStatus: true });
+      }
+
+      if (!nextSessionId) {
+        throw new Error('Session creation did not return a sessionId.');
+      }
+
+      setStatus(`Opening Seer Reading for session ${nextSessionId}.`);
+      openSeerReadingForSession(nextSessionId);
+    } catch (err) {
+      setError(err.message || 'Unable to open Seer Reading from Story Admin.');
+    } finally {
+      setSessionSaving(false);
+    }
+  };
+
   const handleClearStoredSession = () => {
     setCurrentSessionId('');
     setSessionInspectorTargetId('');
@@ -1684,6 +1743,9 @@ const TypewriterAdminPage = () => {
         <button type="button" onClick={handleClearStoredSession} disabled={sessionSaving}>
           Clear stored session
         </button>
+        <button type="button" onClick={handleOpenSeerReading} disabled={sessionSaving || (!currentSessionId && !`${sessionFragmentDraft || ''}`.trim())}>
+          {sessionSaving ? 'Working...' : 'Open in Seer Reading'}
+        </button>
       </div>
     </div>
   );
@@ -1693,7 +1755,7 @@ const TypewriterAdminPage = () => {
       <div className="typewriterAdminSessionHeader">
         <div>
           <h2>Session Bootstrap</h2>
-          <p>Generate a session and optionally seed a fragment into Mongo. Clear the stored session to let the typewriter start fresh.</p>
+          <p>Generate a session, seed a fragment into Mongo, and hand that session directly to Seer Reading.</p>
         </div>
         {sessionModeToggle}
       </div>

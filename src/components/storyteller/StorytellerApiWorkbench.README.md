@@ -38,7 +38,7 @@ Every request includes the shared `sessionId` plus a per-player `playerId` (body
 ### POST `/api/textToEntity`
 
 Generates entities and optional card prompts.
-The workbench lets you toggle `includeCards`, `includeFront`, `includeBack`, and `debug`.
+The workbench lets you set preferred `desiredEntityCategories`, and toggle `includeCards`, `includeFront`, `includeBack`, and `debug`.
 Responses are shown in the panel and cards are rendered (max 8).
 Card image URLs are resolved against the base URL so `/assets/...` works locally.
 

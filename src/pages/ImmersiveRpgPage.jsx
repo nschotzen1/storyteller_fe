@@ -23,6 +23,9 @@ const WORLD_CANDIDATES_STORAGE_KEY = 'immersiveRpgWorldCandidates';
 const TABLE_INTENT_STORAGE_KEY = 'immersiveRpgTableIntentVotes';
 const OBJECTIVE_STATE_STORAGE_KEY = 'immersiveRpgObjectiveState';
 const READY_CHECK_STORAGE_KEY = 'immersiveRpgReadyCheckState';
+const DIVE_RITUAL_STORAGE_KEY = 'immersiveRpgDiveRitualState';
+const SPOTLIGHT_STATE_STORAGE_KEY = 'immersiveRpgSpotlightState';
+const WORLD_THREADS_STORAGE_KEY = 'immersiveRpgWorldThreads';
 
 const MISSING_SESSION_MESSAGE = 'Set or generate the shared session in Story Admin before opening Immersive RPG.';
 
@@ -101,6 +104,28 @@ const defaultObjectiveState = {
   stakes: '',
   progress: 0,
   maxProgress: 4
+};
+
+const defaultDiveRitualState = {
+  ambience: '',
+  focalTruth: '',
+  commitments: {}
+};
+
+const defaultSpotlightState = {
+  holder: '',
+  beatGoal: '',
+  assists: {}
+};
+
+const defaultWorldThreadState = {
+  title: '',
+  sourceType: 'truth',
+  sourceEntryId: '',
+  support: 0,
+  progress: 0,
+  maxProgress: 3,
+  status: 'active'
 };
 
 const ACTION_MODES = [
@@ -253,7 +278,39 @@ const getInitialTurnState = () => {
 
 const getInitialWorldCandidates = () => {
   const stored = readStoredJson(WORLD_CANDIDATES_STORAGE_KEY, null);
-  return Array.isArray(stored) ? stored.slice(0, 12) : [];
+  if (!Array.isArray(stored)) return [];
+
+  return stored.slice(0, 12).map((candidate) => {
+    const rawSupporters = Array.isArray(candidate?.supporters)
+      ? candidate.supporters
+      : [];
+    const normalizedSupporters = Array.from(new Set(
+      rawSupporters
+        .map((name) => (typeof name === 'string' ? name.trim() : ''))
+        .filter(Boolean)
+    )).slice(0, 12);
+
+    if (normalizedSupporters.length) {
+      return {
+        ...candidate,
+        supporters: normalizedSupporters,
+        support: normalizedSupporters.length
+      };
+    }
+
+    const fallbackSupport = Number.isFinite(Number(candidate?.support))
+      ? Math.max(0, Number(candidate.support))
+      : 0;
+    const fallbackSupporters = candidate?.proposer && fallbackSupport > 0
+      ? [candidate.proposer]
+      : [];
+
+    return {
+      ...candidate,
+      supporters: fallbackSupporters,
+      support: fallbackSupporters.length || fallbackSupport
+    };
+  });
 };
 
 const getInitialIntentVotes = () => {
@@ -287,6 +344,65 @@ const getInitialReadyCheck = () => {
   return stored;
 };
 
+const getInitialDiveRitualState = () => {
+  const stored = readStoredJson(DIVE_RITUAL_STORAGE_KEY, null);
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) {
+    return defaultDiveRitualState;
+  }
+
+  const commitments = stored.commitments && typeof stored.commitments === 'object' && !Array.isArray(stored.commitments)
+    ? stored.commitments
+    : {};
+
+  return {
+    ambience: typeof stored.ambience === 'string' ? stored.ambience : defaultDiveRitualState.ambience,
+    focalTruth: typeof stored.focalTruth === 'string' ? stored.focalTruth : defaultDiveRitualState.focalTruth,
+    commitments
+  };
+};
+
+const getInitialSpotlightState = () => {
+  const stored = readStoredJson(SPOTLIGHT_STATE_STORAGE_KEY, null);
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) {
+    return defaultSpotlightState;
+  }
+
+  const assists = stored.assists && typeof stored.assists === 'object' && !Array.isArray(stored.assists)
+    ? stored.assists
+    : {};
+
+  return {
+    holder: typeof stored.holder === 'string' ? stored.holder : defaultSpotlightState.holder,
+    beatGoal: typeof stored.beatGoal === 'string' ? stored.beatGoal : defaultSpotlightState.beatGoal,
+    assists
+  };
+};
+
+const getInitialWorldThreads = () => {
+  const stored = readStoredJson(WORLD_THREADS_STORAGE_KEY, null);
+  if (!Array.isArray(stored)) return [];
+
+  return stored.slice(0, 8).map((thread) => {
+    const progress = Number.isFinite(Number(thread?.progress))
+      ? Math.max(0, Number(thread.progress))
+      : defaultWorldThreadState.progress;
+    const maxProgress = Number.isFinite(Number(thread?.maxProgress))
+      ? Math.max(1, Number(thread.maxProgress))
+      : defaultWorldThreadState.maxProgress;
+
+    return {
+      id: typeof thread?.id === 'string' && thread.id.trim() ? thread.id : `thread-${Date.now()}`,
+      title: typeof thread?.title === 'string' ? thread.title : defaultWorldThreadState.title,
+      sourceType: typeof thread?.sourceType === 'string' ? thread.sourceType : defaultWorldThreadState.sourceType,
+      sourceEntryId: typeof thread?.sourceEntryId === 'string' ? thread.sourceEntryId : defaultWorldThreadState.sourceEntryId,
+      support: Number.isFinite(Number(thread?.support)) ? Math.max(0, Number(thread.support)) : defaultWorldThreadState.support,
+      progress: Math.min(progress, maxProgress),
+      maxProgress,
+      status: thread?.status === 'resolved' ? 'resolved' : 'active'
+    };
+  });
+};
+
 const buildWorldbookSeed = (scene, sceneMeta) => {
   const items = [
     scene?.sceneTitle ? { type: 'truth', text: scene.sceneTitle } : null,
@@ -302,6 +418,23 @@ const buildWorldbookSeed = (scene, sceneMeta) => {
     type: 'truth',
     text: items.map((item) => `${item.type}: ${item.text}`).join(' | ')
   };
+};
+
+const summarizeCandidateSupport = (supportCount = 0, seatCount = 1) => {
+  const safeSupport = Math.max(0, Number(supportCount) || 0);
+  const safeSeats = Math.max(1, Number(seatCount) || 1);
+  if (safeSupport >= safeSeats) return 'Table-locked';
+  if (safeSupport >= Math.max(2, Math.ceil(safeSeats / 2))) return 'Ready for canon';
+  return 'Needs more support';
+};
+
+const getCanonicalSupporters = (candidate) => {
+  if (!candidate || !Array.isArray(candidate.supporters)) return [];
+  return Array.from(new Set(
+    candidate.supporters
+      .map((name) => (typeof name === 'string' ? name.trim() : ''))
+      .filter(Boolean)
+  )).slice(0, 12);
 };
 
 function ImmersiveRpgPage() {
@@ -328,6 +461,9 @@ function ImmersiveRpgPage() {
   const [tableIntentVotes, setTableIntentVotes] = useState(getInitialIntentVotes);
   const [objectiveState, setObjectiveState] = useState(getInitialObjectiveState);
   const [readyCheckState, setReadyCheckState] = useState(getInitialReadyCheck);
+  const [diveRitualState, setDiveRitualState] = useState(getInitialDiveRitualState);
+  const [spotlightState, setSpotlightState] = useState(getInitialSpotlightState);
+  const [worldThreads, setWorldThreads] = useState(getInitialWorldThreads);
   const apiBaseUrl = sharedConfig.apiBaseUrl;
   const sessionId = sharedConfig.sessionId;
   const playerName = sharedConfig.playerName;
@@ -369,8 +505,32 @@ function ImmersiveRpgPage() {
   const readySeatCount = Object.values(normalizedReadyCheck).filter(Boolean).length;
   const readyThreshold = Math.max(1, Math.floor(tableSeats.length / 2) + 1);
   const hasReadyConsensus = readySeatCount >= readyThreshold;
+  const normalizedDiveCommitments = tableSeats.reduce((accumulator, seatName) => {
+    const rawCommitment = diveRitualState?.commitments?.[seatName];
+    accumulator[seatName] = typeof rawCommitment === 'string' ? rawCommitment.trim() : '';
+    return accumulator;
+  }, {});
+  const committedSeatCount = Object.values(normalizedDiveCommitments).filter(Boolean).length;
+  const diveThreshold = Math.max(1, Math.floor(tableSeats.length / 2) + 1);
+  const hasDiveConsensus = committedSeatCount >= diveThreshold;
+  const spotlightHolder = tableSeats.includes(spotlightState.holder) ? spotlightState.holder : '';
+  const normalizedSpotlightAssists = tableSeats.reduce((accumulator, seatName) => {
+    if (!spotlightHolder || seatName === spotlightHolder) return accumulator;
+    accumulator[seatName] = spotlightState.assists?.[seatName] === true;
+    return accumulator;
+  }, {});
+  const spotlightAssistCount = Object.values(normalizedSpotlightAssists).filter(Boolean).length;
+  const spotlightAssistThreshold = tableSeats.length <= 1 ? 0 : Math.max(1, Math.floor((tableSeats.length - 1) / 2));
+  const hasSpotlightConsensus = tableSeats.length <= 1
+    ? Boolean(spotlightHolder)
+    : Boolean(spotlightHolder) && spotlightAssistCount >= spotlightAssistThreshold;
+  const activeSpotlightGoal = (spotlightState.beatGoal || '').trim();
+  const spotlightReadyForPrime = hasSpotlightConsensus && Boolean(activeSpotlightGoal);
+  const activeWorldThreads = worldThreads.filter((thread) => thread.status !== 'resolved');
   const activeObjectiveTitle = objectiveState.title.trim();
   const activeObjectiveStakes = objectiveState.stakes.trim();
+  const activeAmbience = (diveRitualState.ambience || '').trim();
+  const activeFocalTruth = (diveRitualState.focalTruth || '').trim() || activeObjectiveTitle;
   const immersionPulse = Math.min(
     100,
     22 +
@@ -380,6 +540,11 @@ function ImmersiveRpgPage() {
       (Math.max(tableSeats.length, 1) * 6) +
       ((activeIntent?.support || 0) * 4) +
       (readySeatCount * 3) +
+      (committedSeatCount * 3) +
+      (spotlightAssistCount * 2) +
+      (spotlightReadyForPrime ? 4 : 0) +
+      (activeWorldThreads.length * 3) +
+      (activeAmbience ? 5 : 0) +
       (activeObjectiveTitle ? 4 : 0)
   );
   const immersionTier = immersionPulse >= 80
@@ -387,6 +552,71 @@ function ImmersiveRpgPage() {
     : immersionPulse >= 55
       ? 'Stable Immersion'
       : 'Bootstrapping';
+  const flowSteps = [
+    {
+      id: 'anchor',
+      label: 'Anchor',
+      ready: Boolean(scene?.sourceSceneBrief?.placeSummary),
+      detail: scene?.sourceSceneBrief?.placeName || sceneMeta.currentSceneKey
+    },
+    {
+      id: 'intent',
+      label: 'Intent',
+      ready: Boolean(activeIntent),
+      detail: activeIntent ? `${activeIntent.label} with ${activeIntent.support} support` : 'Vote on the table direction'
+    },
+    {
+      id: 'ready',
+      label: 'Ready',
+      ready: hasReadyConsensus,
+      detail: `${readySeatCount}/${tableSeats.length} seats ready`
+    },
+    {
+      id: 'action',
+      label: 'Action',
+      ready: Boolean(chatInput.trim()),
+      detail: chatInput.trim() ? 'Composer primed' : `Prompt ${effectivePlayerName || activeTurnSpeaker || 'active POV'}`
+    },
+    {
+      id: 'canon',
+      label: 'Canon',
+      ready: worldbookEntries.length > 0 || Boolean(activeObjectiveTitle),
+      detail: activeObjectiveTitle || `${worldbookEntries.length} pinned truths`
+    }
+  ];
+  const nextOpenStep = flowSteps.find((step) => !step.ready) || flowSteps[flowSteps.length - 1];
+  const currentFlowPhase = nextOpenStep?.label || 'Canon';
+  const flowRecommendation = nextOpenStep?.id === 'anchor'
+    ? 'Anchor the scene with one place detail before the table acts.'
+    : nextOpenStep?.id === 'intent'
+      ? 'Have each seat vote so the table commits to one shared direction.'
+      : nextOpenStep?.id === 'ready'
+        ? 'Confirm enough seats are ready before advancing the beat.'
+        : nextOpenStep?.id === 'action'
+          ? 'Prime the composer with a concrete move, survey, or lore reveal.'
+          : activeObjectiveTitle
+            ? `Push on the current objective: ${activeObjectiveTitle}.`
+            : 'Promote a surviving truth into canon so the world stays coherent.';
+  const highestSupportCandidate = worldCandidates.reduce((best, candidate) => {
+    const support = getCanonicalSupporters(candidate).length || Number(candidate?.support || 0);
+    if (!best || support > Number(best.support || 0)) {
+      return candidate;
+    }
+    return best;
+  }, null);
+  const supportSummary = highestSupportCandidate
+    ? summarizeCandidateSupport(getCanonicalSupporters(highestSupportCandidate).length || highestSupportCandidate.support, tableSeats.length)
+    : 'No active proposal';
+  const candidateCanonThreshold = Math.max(1, Math.floor(tableSeats.length / 2) + 1);
+  const recentCanonEcho = worldbookEntries.filter((entry) => entry.type === 'canon').slice(0, 3);
+  const diveRitualReadiness = activeAmbience && activeFocalTruth
+    ? `${committedSeatCount}/${tableSeats.length} seats committed`
+    : 'Set ambience + focal truth';
+  const spotlightReadiness = spotlightHolder
+    ? tableSeats.length <= 1
+      ? 'Solo spotlight ready'
+      : `${spotlightAssistCount}/${Math.max(1, tableSeats.length - 1)} assists`
+    : 'Choose lead seat';
 
   const hydrateFromPayload = (payload) => {
     setScene(payload?.scene || null);
@@ -487,6 +717,21 @@ function ImmersiveRpgPage() {
   }, [readyCheckState]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(DIVE_RITUAL_STORAGE_KEY, JSON.stringify(diveRitualState));
+  }, [diveRitualState]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(SPOTLIGHT_STATE_STORAGE_KEY, JSON.stringify(spotlightState));
+  }, [spotlightState]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(WORLD_THREADS_STORAGE_KEY, JSON.stringify(worldThreads));
+  }, [worldThreads]);
+
+  useEffect(() => {
     if (playerName && !partyRoster.length) {
       setPartyRoster([{ name: playerName, role: 'Lead', lens: 'Primary POV' }]);
       setActivePartyMemberName(playerName);
@@ -530,6 +775,42 @@ function ImmersiveRpgPage() {
       const currentKeys = Object.keys(current);
       const nextKeys = Object.keys(next);
       const unchanged = currentKeys.length === nextKeys.length && nextKeys.every((key) => current[key] === next[key]);
+      return unchanged ? current : next;
+    });
+  }, [tableSeats]);
+
+  useEffect(() => {
+    setDiveRitualState((current) => {
+      const nextCommitments = tableSeats.reduce((accumulator, seatName) => {
+        const commitment = current?.commitments?.[seatName];
+        accumulator[seatName] = typeof commitment === 'string' ? commitment : '';
+        return accumulator;
+      }, {});
+      const next = {
+        ...defaultDiveRitualState,
+        ...current,
+        commitments: nextCommitments
+      };
+      const unchanged = JSON.stringify(current) === JSON.stringify(next);
+      return unchanged ? current : next;
+    });
+  }, [tableSeats]);
+
+  useEffect(() => {
+    setSpotlightState((current) => {
+      const nextHolder = tableSeats.includes(current.holder) ? current.holder : (tableSeats[0] || '');
+      const nextAssists = tableSeats.reduce((accumulator, seatName) => {
+        if (seatName === nextHolder) return accumulator;
+        accumulator[seatName] = current.assists?.[seatName] === true;
+        return accumulator;
+      }, {});
+      const next = {
+        ...defaultSpotlightState,
+        ...current,
+        holder: nextHolder,
+        assists: nextAssists
+      };
+      const unchanged = JSON.stringify(current) === JSON.stringify(next);
       return unchanged ? current : next;
     });
   }, [tableSeats]);
@@ -628,7 +909,32 @@ function ImmersiveRpgPage() {
       actionMode,
       worldbookEntries,
       worldbuilding: {
-        pendingCandidateCount: worldCandidates.length
+        pendingCandidateCount: worldCandidates.length,
+        candidates: worldCandidates.map((candidate) => {
+          const supporters = getCanonicalSupporters(candidate);
+          const support = supporters.length || Number(candidate.support || 0);
+          return {
+            id: candidate.id,
+            proposer: candidate.proposer || '',
+            text: candidate.text || '',
+            support,
+            supporters,
+            readiness: summarizeCandidateSupport(support, tableSeats.length)
+          };
+        })
+      },
+      threads: {
+        activeCount: activeWorldThreads.length,
+        totalCount: worldThreads.length,
+        items: worldThreads.map((thread) => ({
+          id: thread.id,
+          title: thread.title,
+          progress: thread.progress,
+          maxProgress: thread.maxProgress,
+          status: thread.status,
+          sourceType: thread.sourceType,
+          support: thread.support
+        }))
       },
       immersion: {
         pulse: immersionPulse,
@@ -637,6 +943,7 @@ function ImmersiveRpgPage() {
       flow: {
         anchorReady: Boolean(scene?.sourceSceneBrief?.placeSummary),
         intentReady: Boolean(activeIntent),
+        spotlightReady: spotlightReadyForPrime,
         actionDraftReady: Boolean(chatInput.trim()),
         canonReady: worldbookEntries.length > 0,
         objectiveReady: Boolean(activeObjectiveTitle),
@@ -658,6 +965,31 @@ function ImmersiveRpgPage() {
         threshold: readyThreshold,
         hasConsensus: hasReadyConsensus,
         seats: normalizedReadyCheck
+      },
+      diveRitual: {
+        ambience: activeAmbience,
+        focalTruth: activeFocalTruth,
+        committedSeats: committedSeatCount,
+        totalSeats: tableSeats.length,
+        threshold: diveThreshold,
+        hasConsensus: hasDiveConsensus,
+        commitments: normalizedDiveCommitments
+      },
+      spotlight: {
+        holder: spotlightHolder,
+        beatGoal: activeSpotlightGoal,
+        assistCount: spotlightAssistCount,
+        assistThreshold: spotlightAssistThreshold,
+        hasConsensus: hasSpotlightConsensus,
+        assists: normalizedSpotlightAssists
+      },
+      canon: {
+        recent: recentCanonEcho.map((entry) => ({
+          id: entry.id,
+          text: entry.text,
+          proposer: entry.proposer || '',
+          support: Number(entry.support || 0)
+        }))
       }
     });
 
@@ -667,7 +999,7 @@ function ImmersiveRpgPage() {
       delete window.render_game_to_text;
       delete window.advanceTime;
     };
-  }, [sessionId, sceneMeta, scene, characterSheet, activePendingRoll, notebook, stage, effectivePlayerName, partyRoster, turnState.round, turnPositionLabel, activeTurnSpeaker, actionMode, worldbookEntries, worldCandidates.length, immersionPulse, immersionTier, chatInput, activeIntent, normalizedIntentVotes, activeObjectiveTitle, activeObjectiveStakes, hasReadyConsensus, objectiveState.progress, objectiveState.maxProgress, readySeatCount, tableSeats.length, readyThreshold, normalizedReadyCheck]);
+  }, [sessionId, sceneMeta, scene, characterSheet, activePendingRoll, notebook, stage, effectivePlayerName, partyRoster, turnState.round, turnPositionLabel, activeTurnSpeaker, actionMode, worldbookEntries, worldCandidates, worldThreads, activeWorldThreads.length, immersionPulse, immersionTier, chatInput, activeIntent, normalizedIntentVotes, spotlightReadyForPrime, activeObjectiveTitle, activeObjectiveStakes, hasReadyConsensus, objectiveState.progress, objectiveState.maxProgress, readySeatCount, tableSeats.length, readyThreshold, normalizedReadyCheck, activeAmbience, activeFocalTruth, committedSeatCount, diveThreshold, hasDiveConsensus, normalizedDiveCommitments, spotlightHolder, activeSpotlightGoal, spotlightAssistCount, spotlightAssistThreshold, hasSpotlightConsensus, normalizedSpotlightAssists]);
 
   const updateCharacterSheetField = (section, key, value) => {
     setCharacterSheet((current) => ({
@@ -739,12 +1071,14 @@ function ImmersiveRpgPage() {
     const text = candidateDraft.trim();
     if (!text) return;
     const proposer = effectivePlayerName || activeTurnSpeaker || 'Table';
+    const proposerSupporters = proposer ? [proposer] : [];
     setWorldCandidates((current) => ([
       {
         id: `candidate-${Date.now()}`,
         text,
         proposer,
-        support: 1
+        supporters: proposerSupporters,
+        support: proposerSupporters.length || 1
       },
       ...current
     ]).slice(0, 12));
@@ -752,28 +1086,57 @@ function ImmersiveRpgPage() {
   };
 
   const handleSupportCandidate = (candidateId) => {
+    const supportingSeat = effectivePlayerName || activeTurnSpeaker || tableSeats[0];
+    if (!supportingSeat) return;
     setWorldCandidates((current) => current.map((candidate) => (
-      candidate.id === candidateId
-        ? {
-          ...candidate,
-          support: Math.min(99, Number(candidate.support || 0) + 1)
-        }
-        : candidate
+      candidate.id !== candidateId
+        ? candidate
+        : (() => {
+          const existingSupporters = getCanonicalSupporters(candidate);
+          const hasSeatSupport = existingSupporters.includes(supportingSeat);
+          const nextSupporters = hasSeatSupport
+            ? existingSupporters.filter((name) => name !== supportingSeat)
+            : [...existingSupporters, supportingSeat];
+
+          return {
+            ...candidate,
+            supporters: nextSupporters,
+            support: nextSupporters.length
+          };
+        })()
     )));
   };
 
   const handleCanonizeCandidate = (candidateId) => {
     const candidate = worldCandidates.find((entry) => entry.id === candidateId);
     if (!candidate) return;
+    const supporters = getCanonicalSupporters(candidate);
+    const support = supporters.length || Number(candidate.support || 0);
+    if (support < candidateCanonThreshold) return;
     setWorldbookEntries((current) => ([
       {
         id: `canon-${Date.now()}`,
         type: 'canon',
-        text: candidate.text
+        text: candidate.text,
+        proposer: candidate.proposer,
+        support,
+        supporters
       },
       ...current
     ]).slice(0, 12));
     setWorldCandidates((current) => current.filter((entry) => entry.id !== candidateId));
+  };
+
+  const handleAdoptCandidateAsObjective = (candidateId) => {
+    const candidate = worldCandidates.find((entry) => entry.id === candidateId);
+    if (!candidate) return;
+    setObjectiveState((current) => ({
+      ...current,
+      title: candidate.text,
+      stakes: current.stakes || 'If this truth breaks, the scene loses its shared footing.'
+    }));
+    setActionMode('worldbuild');
+    setChatInput(`We anchor the next beat around this shared truth: ${candidate.text}`);
   };
 
   const handleSetIntentVote = (intentId) => {
@@ -824,6 +1187,126 @@ function ImmersiveRpgPage() {
     setChatInput(`Objective: ${activeObjectiveTitle}. Stakes: ${activeObjectiveStakes || 'unknown'}. I take the next decisive step by...`);
   };
 
+  const handleSetDiveCommitment = (seatName, value) => {
+    setDiveRitualState((current) => ({
+      ...current,
+      commitments: {
+        ...(current.commitments || {}),
+        [seatName]: value
+      }
+    }));
+  };
+
+  const handleSetSpotlightHolder = (seatName) => {
+    setSpotlightState((current) => {
+      const nextAssists = tableSeats.reduce((accumulator, currentSeat) => {
+        if (currentSeat === seatName) return accumulator;
+        accumulator[currentSeat] = current.assists?.[currentSeat] === true;
+        return accumulator;
+      }, {});
+      return {
+        ...current,
+        holder: seatName,
+        assists: nextAssists
+      };
+    });
+    setActivePartyMemberName(seatName);
+    const seatIndex = tableSeats.findIndex((entry) => entry === seatName);
+    if (seatIndex >= 0) {
+      setTurnState((current) => ({ ...current, turnIndex: seatIndex }));
+    }
+  };
+
+  const handleToggleSpotlightAssist = (seatName) => {
+    if (!spotlightHolder || seatName === spotlightHolder) return;
+    setSpotlightState((current) => ({
+      ...current,
+      assists: {
+        ...(current.assists || {}),
+        [seatName]: !(current.assists?.[seatName] === true)
+      }
+    }));
+  };
+
+  const handleTrackWorldThread = (entry) => {
+    const title = `${entry?.text || ''}`.trim();
+    if (!title) return;
+    const sourceEntryId = `${entry?.id || ''}`.trim();
+    setWorldThreads((current) => {
+      const existingBySource = sourceEntryId && current.some((thread) => thread.sourceEntryId === sourceEntryId);
+      const existingByTitle = current.some((thread) => thread.title === title && thread.status !== 'resolved');
+      if (existingBySource || existingByTitle) return current;
+
+      const support = Number.isFinite(Number(entry?.support)) ? Math.max(0, Number(entry.support)) : 0;
+      return ([
+        {
+          ...defaultWorldThreadState,
+          id: `thread-${Date.now()}`,
+          title,
+          sourceType: entry?.type || 'truth',
+          sourceEntryId,
+          support
+        },
+        ...current
+      ]).slice(0, 8);
+    });
+  };
+
+  const handleThreadProgressDelta = (threadId, delta) => {
+    setWorldThreads((current) => current.map((thread) => {
+      if (thread.id !== threadId) return thread;
+      const nextProgress = Math.min(
+        thread.maxProgress,
+        Math.max(0, Number(thread.progress || 0) + delta)
+      );
+      return {
+        ...thread,
+        progress: nextProgress
+      };
+    }));
+  };
+
+  const handleResolveThread = (threadId) => {
+    setWorldThreads((current) => current.map((thread) => (
+      thread.id === threadId
+        ? { ...thread, status: 'resolved', progress: thread.maxProgress }
+        : thread
+    )));
+  };
+
+  const handlePrimeThreadToComposer = (thread) => {
+    if (!thread?.title) return;
+    const nextProgress = Math.min(thread.maxProgress, (thread.progress || 0) + 1);
+    const objectivePrefix = activeObjectiveTitle ? ` Objective: ${activeObjectiveTitle}.` : '';
+    setActionMode('act');
+    setChatInput(`Thread focus: ${thread.title}.${objectivePrefix} We push this thread to ${nextProgress}/${thread.maxProgress} by...`);
+  };
+
+  const handleStartDiveBeat = () => {
+    if (!activeAmbience || !activeFocalTruth || !hasDiveConsensus) return;
+    const commitmentSummary = tableSeats
+      .map((seatName) => {
+        const commitment = normalizedDiveCommitments[seatName];
+        return commitment ? `${seatName}: ${commitment}` : '';
+      })
+      .filter(Boolean)
+      .join(' | ');
+    setActionMode('act');
+    setChatInput(`Dive beat. Ambience: ${activeAmbience}. Focal truth: ${activeFocalTruth}. Table commitments: ${commitmentSummary}. I act now by...`);
+  };
+
+  const handlePrimeSpotlightBeat = () => {
+    if (!spotlightReadyForPrime || !spotlightHolder) return;
+    const assistingSeats = Object.entries(normalizedSpotlightAssists)
+      .filter(([, assisted]) => assisted)
+      .map(([seatName]) => seatName);
+    const assistSummary = assistingSeats.length ? assistingSeats.join(', ') : 'none';
+    const objectivePrefix = activeObjectiveTitle ? ` Objective: ${activeObjectiveTitle}.` : '';
+    const focalPrefix = activeFocalTruth ? ` Focal truth: ${activeFocalTruth}.` : '';
+    setActionMode('act');
+    setChatInput(`Spotlight beat. Lead: ${spotlightHolder}. Goal: ${activeSpotlightGoal}. Assists: ${assistSummary}.${objectivePrefix}${focalPrefix} I carry the beat by...`);
+  };
+
   const handleChatSubmit = async (event) => {
     event.preventDefault();
     const message = chatInput.trim();
@@ -841,10 +1324,11 @@ function ImmersiveRpgPage() {
         : selectedActionMode.label;
       const turnPrefix = `Lead ${turnPositionLabel}, Round ${turnState.round}`;
       const objectivePrefix = activeObjectiveTitle ? ` | Objective: ${activeObjectiveTitle}` : '';
+      const spotlightPrefix = spotlightReadyForPrime ? ` | Spotlight: ${spotlightHolder} -> ${activeSpotlightGoal}` : '';
       const payload = await sendImmersiveRpgChat(apiBaseUrl, {
         sessionId,
         playerName: effectivePlayerName,
-        message: `[${speakerPrefix} | ${turnPrefix}${objectivePrefix}] ${message}`
+        message: `[${speakerPrefix} | ${turnPrefix}${objectivePrefix}${spotlightPrefix}] ${message}`
       });
       hydrateFromPayload(payload);
       setChatInput('');
@@ -937,8 +1421,8 @@ function ImmersiveRpgPage() {
           </div>
           <div className="immersiveRpgHero__metaCard">
             <span className="immersiveRpgHero__metaLabel">Table Flow</span>
-            <strong className="immersiveRpgHero__metaValue">{partyRoster.length || 1} seat{partyRoster.length === 1 ? '' : 's'}</strong>
-            <span className="immersiveRpgHero__metaHint">{selectedActionMode.prompt}</span>
+            <strong className="immersiveRpgHero__metaValue">{currentFlowPhase} · {partyRoster.length || 1} seat{partyRoster.length === 1 ? '' : 's'}</strong>
+            <span className="immersiveRpgHero__metaHint">{flowRecommendation}</span>
           </div>
           <div className="immersiveRpgHero__metaCard">
             <span className="immersiveRpgHero__metaLabel">Immersion Pulse</span>
@@ -1071,17 +1555,45 @@ function ImmersiveRpgPage() {
                 </div>
 
                 <div className="immersiveRpgFlowTrack">
-                  {[
-                    { id: 'anchor', label: 'Anchor', ready: Boolean(scene?.sourceSceneBrief?.placeSummary) },
-                    { id: 'intent', label: 'Intent', ready: Boolean(activeIntent) },
-                    { id: 'action', label: 'Action', ready: Boolean(chatInput.trim()) },
-                    { id: 'canon', label: 'Canon', ready: worldbookEntries.length > 0 || Boolean(activeObjectiveTitle) }
-                  ].map((step) => (
-                    <article key={step.id} className={['immersiveRpgFlowTrack__step', step.ready ? 'is-ready' : ''].filter(Boolean).join(' ')}>
+                  {flowSteps.map((step) => (
+                    <article
+                      key={step.id}
+                      className={[
+                        'immersiveRpgFlowTrack__step',
+                        step.ready ? 'is-ready' : '',
+                        currentFlowPhase === step.label ? 'is-current' : ''
+                      ].filter(Boolean).join(' ')}
+                    >
                       <span>{step.label}</span>
                       <strong>{step.ready ? 'Ready' : 'Open'}</strong>
+                      <small>{step.detail}</small>
                     </article>
                   ))}
+                </div>
+
+                <div className="immersiveRpgSessionLoop">
+                  <div className="immersiveRpgSessionLoop__header">
+                    <strong>Session Loop</strong>
+                    <span>{currentFlowPhase} phase</span>
+                  </div>
+                  <div className="immersiveRpgSessionLoop__grid">
+                    <article className="immersiveRpgSessionLoop__card">
+                      <span>Next move</span>
+                      <strong>{flowRecommendation}</strong>
+                    </article>
+                    <article className="immersiveRpgSessionLoop__card">
+                      <span>Active seat</span>
+                      <strong>{activeTurnSpeaker || effectivePlayerName || 'Solo POV'}</strong>
+                    </article>
+                    <article className="immersiveRpgSessionLoop__card">
+                      <span>Lore pressure</span>
+                      <strong>{supportSummary}</strong>
+                    </article>
+                    <article className="immersiveRpgSessionLoop__card">
+                      <span>Objective</span>
+                      <strong>{activeObjectiveTitle || 'Unwritten'}</strong>
+                    </article>
+                  </div>
                 </div>
 
                 <div className="immersiveRpgObjectiveForge">
@@ -1152,6 +1664,111 @@ function ImmersiveRpgPage() {
                     onClick={handleApplyObjectiveToComposer}
                   >
                     Advance From Ready Check
+                  </button>
+                </div>
+
+                <div className="immersiveRpgDiveRitual">
+                  <div className="immersiveRpgDiveRitual__header">
+                    <strong>Dive Ritual</strong>
+                    <span>{diveRitualReadiness}</span>
+                  </div>
+                  <div className="immersiveRpgDiveRitual__fields">
+                    <label>
+                      <span>Ambience cue</span>
+                      <input
+                        value={diveRitualState.ambience}
+                        onChange={(event) => setDiveRitualState((current) => ({ ...current, ambience: event.target.value }))}
+                        placeholder="Wet stone, bell haze, candle smoke"
+                      />
+                    </label>
+                    <label>
+                      <span>Focal truth</span>
+                      <input
+                        value={diveRitualState.focalTruth}
+                        onChange={(event) => setDiveRitualState((current) => ({ ...current, focalTruth: event.target.value }))}
+                        placeholder="The thirteenth chime means the house is listening"
+                      />
+                    </label>
+                  </div>
+                  <div className="immersiveRpgDiveRitual__seats">
+                    {tableSeats.map((seatName) => (
+                      <label key={`dive-${seatName}`} className="immersiveRpgDiveRitual__seat">
+                        <span>{seatName}</span>
+                        <input
+                          value={normalizedDiveCommitments[seatName]}
+                          onChange={(event) => handleSetDiveCommitment(seatName, event.target.value)}
+                          placeholder="One line commitment"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="immersiveRpgQuickPrompts__button"
+                    disabled={!activeAmbience || !activeFocalTruth || !hasDiveConsensus}
+                    onClick={handleStartDiveBeat}
+                  >
+                    Start Dive Beat
+                  </button>
+                </div>
+
+                <div className="immersiveRpgSpotlightRail">
+                  <div className="immersiveRpgSpotlightRail__header">
+                    <strong>Spotlight Baton</strong>
+                    <span>{spotlightReadiness}</span>
+                  </div>
+                  <div className="immersiveRpgSpotlightRail__seats">
+                    {tableSeats.map((seatName) => (
+                      <button
+                        key={`spotlight-holder-${seatName}`}
+                        type="button"
+                        className={['immersiveRpgSpotlightRail__seat', spotlightHolder === seatName ? 'is-holder' : ''].filter(Boolean).join(' ')}
+                        onClick={() => handleSetSpotlightHolder(seatName)}
+                      >
+                        <strong>{seatName}</strong>
+                        <span>{spotlightHolder === seatName ? 'Lead spotlight' : 'Set lead'}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <label className="immersiveRpgSpotlightRail__goal">
+                    <span>Beat goal</span>
+                    <input
+                      value={spotlightState.beatGoal}
+                      onChange={(event) => setSpotlightState((current) => ({ ...current, beatGoal: event.target.value }))}
+                      placeholder="Cross the lane unseen before the watcher turns"
+                    />
+                  </label>
+                  {tableSeats.length > 1 ? (
+                    <div className="immersiveRpgSpotlightRail__assists">
+                      {tableSeats.filter((seatName) => seatName !== spotlightHolder).map((seatName) => {
+                        const isAssisting = normalizedSpotlightAssists[seatName] === true;
+                        return (
+                          <button
+                            key={`spotlight-assist-${seatName}`}
+                            type="button"
+                            className={['immersiveRpgSpotlightRail__assist', isAssisting ? 'is-assisting' : ''].filter(Boolean).join(' ')}
+                            onClick={() => handleToggleSpotlightAssist(seatName)}
+                            disabled={!spotlightHolder}
+                          >
+                            <strong>{seatName}</strong>
+                            <span>{isAssisting ? 'Assisting' : 'Tap to assist'}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="immersiveRpgQuickPrompts__button"
+                    disabled={!spotlightReadyForPrime}
+                    onClick={handlePrimeSpotlightBeat}
+                    title={
+                      spotlightReadyForPrime
+                        ? 'Prime the spotlight beat into the composer.'
+                        : `Set lead + beat goal${tableSeats.length > 1 ? ' + enough assists' : ''} first.`
+                    }
+                  >
+                    Prime Spotlight Beat
                   </button>
                 </div>
 
@@ -1248,33 +1865,56 @@ function ImmersiveRpgPage() {
                   </div>
                   {worldCandidates.length ? (
                     <div className="immersiveRpgLoreForge__list">
-                      {worldCandidates.map((candidate) => (
-                        <article key={candidate.id} className="immersiveRpgLoreForge__entry">
-                          <header>
-                            <span>{candidate.proposer}</span>
-                            <span>{candidate.support || 0} support</span>
-                          </header>
-                          <p>{candidate.text}</p>
-                          <div className="immersiveRpgLoreForge__actions">
-                            <button type="button" className="immersiveRpgQuickPrompts__button" onClick={() => handleSupportCandidate(candidate.id)}>
-                              Support
-                            </button>
-                            <button type="button" className="immersiveRpgQuickPrompts__button" onClick={() => handleCanonizeCandidate(candidate.id)}>
-                              Canonize
-                            </button>
-                            <button
-                              type="button"
-                              className="immersiveRpgQuickPrompts__button"
-                              onClick={() => {
-                                setActionMode('worldbuild');
-                                setChatInput(`I propose we treat this as canon: ${candidate.text}`);
-                              }}
-                            >
-                              Send To Chat
-                            </button>
-                          </div>
-                        </article>
-                      ))}
+                      {worldCandidates.map((candidate) => {
+                        const supporters = getCanonicalSupporters(candidate);
+                        const support = supporters.length || Number(candidate.support || 0);
+                        const supportStatus = summarizeCandidateSupport(support, tableSeats.length);
+                        const seatSupport = `${Math.min(support, tableSeats.length)}/${tableSeats.length}`;
+                        const canCanonize = support >= candidateCanonThreshold;
+                        const supportingSeat = effectivePlayerName || activeTurnSpeaker || tableSeats[0];
+                        const isSupporting = supporters.includes(supportingSeat);
+
+                        return (
+                          <article key={candidate.id} className="immersiveRpgLoreForge__entry">
+                            <header>
+                              <span>{candidate.proposer}</span>
+                              <span>{support} support · {supportStatus}</span>
+                            </header>
+                            <p>{candidate.text}</p>
+                            <div className="immersiveRpgLoreForge__meta">
+                              <small>{seatSupport} seats backing this truth</small>
+                              {supporters.length ? <small>{supporters.join(', ')}</small> : <small>No seats supporting yet.</small>}
+                            </div>
+                            <div className="immersiveRpgLoreForge__actions">
+                              <button type="button" className="immersiveRpgQuickPrompts__button" onClick={() => handleSupportCandidate(candidate.id)}>
+                                {isSupporting ? 'Withdraw Support' : 'Support'}
+                              </button>
+                              <button type="button" className="immersiveRpgQuickPrompts__button" onClick={() => handleAdoptCandidateAsObjective(candidate.id)}>
+                                Adopt As Objective
+                              </button>
+                              <button
+                                type="button"
+                                className="immersiveRpgQuickPrompts__button"
+                                onClick={() => handleCanonizeCandidate(candidate.id)}
+                                disabled={!canCanonize}
+                                title={canCanonize ? 'Enough support to canonize.' : `Needs ${candidateCanonThreshold} supporting seats to canonize.`}
+                              >
+                                Canonize
+                              </button>
+                              <button
+                                type="button"
+                                className="immersiveRpgQuickPrompts__button"
+                                onClick={() => {
+                                  setActionMode('worldbuild');
+                                  setChatInput(`I propose we treat this as canon: ${candidate.text}`);
+                                }}
+                              >
+                                Send To Chat
+                              </button>
+                            </div>
+                          </article>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="immersiveRpgParty__empty">No pending lore proposals. Add one truth and let the table support or canonize it.</p>
@@ -1293,6 +1933,31 @@ function ImmersiveRpgPage() {
                   </article>
                 ))}
               </div>
+
+              {recentCanonEcho.length ? (
+                <div className="immersiveRpgCanonEcho">
+                  <div className="immersiveRpgCanonEcho__header">
+                    <strong>Recent Canon Echo</strong>
+                    <span>{recentCanonEcho.length} pinned truth{recentCanonEcho.length === 1 ? '' : 's'}</span>
+                  </div>
+                  <div className="immersiveRpgCanonEcho__list">
+                    {recentCanonEcho.map((entry) => (
+                      <button
+                        key={`canon-echo-${entry.id}`}
+                        type="button"
+                        className="immersiveRpgCanonEcho__chip"
+                        onClick={() => {
+                          setActionMode('worldbuild');
+                          setChatInput(`Canon echo: ${entry.text}. I build from this truth by...`);
+                        }}
+                      >
+                        <strong>{entry.text}</strong>
+                        <span>{entry.proposer || 'table canon'} · {entry.support || 0} support</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               <form className="immersiveRpgComposer" onSubmit={handleChatSubmit}>
                 <textarea
@@ -1430,9 +2095,57 @@ function ImmersiveRpgPage() {
                   <article key={entry.id} className="immersiveRpgWorldbook__entry">
                     <span>{entry.type}</span>
                     <p>{entry.text}</p>
+                    {entry.proposer ? <small>{entry.proposer} · {entry.support || 0} support</small> : null}
+                    {Array.isArray(entry.supporters) && entry.supporters.length ? <small>{entry.supporters.join(', ')}</small> : null}
+                    <button
+                      type="button"
+                      className="immersiveRpgQuickPrompts__button"
+                      onClick={() => handleTrackWorldThread(entry)}
+                    >
+                      Track As Thread
+                    </button>
                   </article>
                 )) : (
                   <p className="immersiveRpgParty__empty">Pin scenes, places, and pressure points here to keep the world coherent across turns.</p>
+                )}
+              </div>
+
+              <div className="immersiveRpgWorldThreads">
+                <div className="immersiveRpgWorldThreads__header">
+                  <strong>World Threads</strong>
+                  <span>{activeWorldThreads.length}/{worldThreads.length || 0} active</span>
+                </div>
+                {worldThreads.length ? (
+                  <div className="immersiveRpgWorldThreads__list">
+                    {worldThreads.map((thread) => (
+                      <article
+                        key={thread.id}
+                        className={['immersiveRpgWorldThreads__entry', thread.status === 'resolved' ? 'is-resolved' : ''].filter(Boolean).join(' ')}
+                      >
+                        <header>
+                          <span>{thread.sourceType}</span>
+                          <span>{thread.progress}/{thread.maxProgress}</span>
+                        </header>
+                        <p>{thread.title}</p>
+                        <div className="immersiveRpgWorldThreads__actions">
+                          <button type="button" className="immersiveRpgQuickPrompts__button" onClick={() => handleThreadProgressDelta(thread.id, 1)} disabled={thread.status === 'resolved'}>
+                            Advance Thread
+                          </button>
+                          <button type="button" className="immersiveRpgQuickPrompts__button" onClick={() => handleThreadProgressDelta(thread.id, -1)} disabled={thread.status === 'resolved'}>
+                            Setback Thread
+                          </button>
+                          <button type="button" className="immersiveRpgQuickPrompts__button" onClick={() => handlePrimeThreadToComposer(thread)}>
+                            Prime Composer
+                          </button>
+                          <button type="button" className="immersiveRpgQuickPrompts__button" onClick={() => handleResolveThread(thread.id)} disabled={thread.status === 'resolved'}>
+                            Resolve Thread
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="immersiveRpgParty__empty">Track pinned truths as world threads, then advance them into actions.</p>
                 )}
               </div>
             </div>

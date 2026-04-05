@@ -24,6 +24,9 @@ const createLocalStorageMock = () => {
 
 const createReadingPayload = (overrides = {}) => ({
   readingId: 'seer-reading-1',
+  sessionId: 'session-seer-1',
+  worldId: 'world-ashwind',
+  universeId: 'universe-stone-rite',
   status: 'active',
   beat: 'card_attunement',
   transcript: [
@@ -174,6 +177,8 @@ const createReadingPayload = (overrides = {}) => ({
     focusMemoryId: 'memory-during'
   },
   claimedCards: [],
+  claimedEntityLinks: [],
+  characterSheet: null,
   metadata: {
     cardConfig: {
       generationMode: 'mock_pipeline',
@@ -181,6 +186,28 @@ const createReadingPayload = (overrides = {}) => ({
     }
   },
   lastTurn: null,
+  ...overrides
+});
+
+const createCharacterSheet = (overrides = {}) => ({
+  playerId: 'memory-spread-player',
+  playerName: 'Test Player',
+  identity: {
+    name: 'Ashward Marrow',
+    archetype: 'North-Facing Cairn',
+    occupation: 'Ritual watchkeeper'
+  },
+  coreTraits: {
+    drive: 'Keep the old warnings legible.',
+    burden: 'Knows the sign before understanding it.'
+  },
+  skills: {
+    awareness: 20,
+    occult: 15
+  },
+  notes: [
+    'location: North-Facing Cairn - A high place that sees too far.'
+  ],
   ...overrides
 });
 
@@ -223,6 +250,156 @@ describe('SeerReadingPage mode', () => {
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/api/seer/readings/seer-reading-1?playerId=memory-spread-player'),
         expect.objectContaining({})
+      );
+    });
+  });
+
+  test('can bootstrap a reading from a sessionId passed in the URL', async () => {
+    window.history.replaceState({}, '', '/?view=memory-spread&sessionId=query-session');
+    const payload = createReadingPayload({ readingId: 'seer-reading-query' });
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => payload
+    }));
+    global.fetch = fetchMock;
+
+    render(<MemorySpreadPage />);
+
+    await screen.findByRole('heading', { name: 'Seer Reading' });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/seer/readings'),
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"sessionId":"query-session"')
+        })
+      );
+    });
+  });
+
+  test('passes mock mode through reading creation and storyteller missions when requested in the URL', async () => {
+    window.history.replaceState({}, '', '/?view=memory-spread&sessionId=query-session&seerMock=1');
+    const readingPayload = createReadingPayload({
+      readingId: 'seer-reading-query',
+      claimedCards: [
+        {
+          cardId: 'card-location',
+          title: 'North-Facing Cairn',
+          kind: 'location',
+          claimedAt: '2026-03-29T00:00:00.000Z',
+          entityExternalId: 'entity-ext-north-facing-cairn'
+        }
+      ],
+      claimedEntityLinks: [
+        {
+          cardId: 'card-location',
+          title: 'North-Facing Cairn',
+          entityId: 'entity-db-1',
+          entityExternalId: 'entity-ext-north-facing-cairn',
+          readingId: 'seer-reading-query',
+          claimedAt: '2026-03-29T00:00:00.000Z'
+        }
+      ],
+      characterSheet: createCharacterSheet(),
+      metadata: {
+        demoMockMode: true
+      }
+    });
+    const fetchMock = vi.fn(async (url, options = {}) => {
+      if (`${url}`.includes('/api/immersive-rpg/character-sheet')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ characterSheet: createCharacterSheet() })
+        };
+      }
+      if (`${url}`.includes('/api/entities?')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            entities: [
+              {
+                _id: 'entity-db-1',
+                externalId: 'entity-ext-north-facing-cairn',
+                name: 'North-Facing Cairn',
+                type: 'location',
+                canonicalStatus: 'claimed',
+                reuseCount: 2,
+                mediaAssets: [{ kind: 'image' }],
+                evidence: [{ kind: 'memory' }],
+                sourceReadingIds: ['seer-reading-query'],
+                tags: ['watchpoint']
+              }
+            ]
+          })
+        };
+      }
+      if (`${url}`.includes('/api/storytellers?')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            storytellers: [
+              { id: 'apparition-1', name: 'Kestrel Vane', status: 'active' }
+            ]
+          })
+        };
+      }
+      if (`${url}`.includes('/api/sendStorytellerToEntity')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            outcome: 'success',
+            userText: 'Kestrel Vane returns with a weather omen.',
+            gmNote: 'Mock mission completed.',
+            subEntities: [],
+            runtime: {
+              mission: {
+                mocked: true
+              }
+            },
+            characterSheet: createCharacterSheet()
+          })
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => readingPayload
+      };
+    });
+    global.fetch = fetchMock;
+
+    render(<MemorySpreadPage />);
+
+    await screen.findByRole('heading', { name: 'Seer Reading' });
+    expect(screen.getByRole('button', { name: 'Mock Mode' })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Instruction'), {
+      target: { value: 'Trace what this cairn taught me about storms.' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send Storyteller' }));
+
+    await screen.findByText('Kestrel Vane returns with a weather omen.');
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/seer/readings'),
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"mock":true')
+        })
+      );
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/sendStorytellerToEntity'),
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"mock":true')
+        })
       );
     });
   });
@@ -388,7 +565,36 @@ describe('SeerReadingPage mode', () => {
           cardId: 'card-location',
           title: 'North-Facing Cairn',
           kind: 'location',
+          claimedAt: '2026-03-29T00:00:00.000Z',
+          entityExternalId: 'entity-ext-north-facing-cairn'
+        }
+      ],
+      claimedEntityLinks: [
+        {
+          cardId: 'card-location',
+          title: 'North-Facing Cairn',
+          entityId: 'entity-db-1',
+          entityExternalId: 'entity-ext-north-facing-cairn',
+          readingId: 'seer-reading-1',
           claimedAt: '2026-03-29T00:00:00.000Z'
+        }
+      ],
+      characterSheet: createCharacterSheet(),
+      transcript: [
+        {
+          id: 'turn-1',
+          role: 'seer',
+          content: 'Three cards answer. One burns close enough to speak.'
+        },
+        {
+          id: 'turn-player-claim',
+          role: 'player',
+          content: 'I claim North-Facing Cairn.'
+        },
+        {
+          id: 'turn-seer-claim',
+          role: 'seer',
+          content: 'North-Facing Cairn is yours now. Keep it, and turn next to Ashward Marrow.'
         }
       ],
       focus: {
@@ -418,8 +624,45 @@ describe('SeerReadingPage mode', () => {
         ]
       }
     });
+    const bankPayload = {
+      entities: [
+        {
+          _id: 'entity-db-1',
+          externalId: 'entity-ext-north-facing-cairn',
+          name: 'North-Facing Cairn',
+          type: 'location',
+          canonicalStatus: 'claimed',
+          reuseCount: 2,
+          mediaAssets: [{ kind: 'image' }],
+          evidence: [{ kind: 'memory' }],
+          sourceReadingIds: ['seer-reading-1'],
+          tags: ['watchpoint', 'ritual']
+        }
+      ]
+    };
 
     const fetchMock = vi.fn(async (url) => {
+      if (`${url}`.includes('/api/immersive-rpg/character-sheet')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ characterSheet: createCharacterSheet() })
+        };
+      }
+      if (`${url}`.includes('/api/entities?')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => bankPayload
+        };
+      }
+      if (`${url}`.includes('/api/storytellers?')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ storytellers: [{ id: 'apparition-1', name: 'Kestrel Vane', status: 'active' }] })
+        };
+      }
       if (`${url}`.includes('/cards/card-location/claim')) {
         return {
           ok: true,
@@ -442,15 +685,147 @@ describe('SeerReadingPage mode', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Seal and Keep' }));
 
-    await screen.findByText('North-Facing Cairn is yours now. Keep it, and turn next to Ashward Marrow.');
+    await screen.findByText('entity-ext-north-facing-cairn');
     expect(screen.getByText('Claimed Cards')).toBeInTheDocument();
     expect(screen.getAllByText('North-Facing Cairn').length).toBeGreaterThan(0);
+    expect(screen.getByText('Canonical Thread')).toBeInTheDocument();
+    expect(screen.getByText('entity-ext-north-facing-cairn')).toBeInTheDocument();
+    expect(screen.getByText('Character Sheet')).toBeInTheDocument();
+    expect(screen.getByText('Keep the old warnings legible.')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/api/seer/readings/seer-reading-1/cards/card-location/claim'),
         expect.objectContaining({
           method: 'POST'
+        })
+      );
+    });
+  });
+
+  test('can deepen a claimed entity and show the mission outcome with updated sheet state', async () => {
+    const readingPayload = createReadingPayload({
+      claimedCards: [
+        {
+          cardId: 'card-location',
+          title: 'North-Facing Cairn',
+          kind: 'location',
+          claimedAt: '2026-03-29T00:00:00.000Z',
+          entityExternalId: 'entity-ext-north-facing-cairn'
+        }
+      ],
+      claimedEntityLinks: [
+        {
+          cardId: 'card-location',
+          title: 'North-Facing Cairn',
+          entityId: 'entity-db-1',
+          entityExternalId: 'entity-ext-north-facing-cairn',
+          readingId: 'seer-reading-1',
+          claimedAt: '2026-03-29T00:00:00.000Z'
+        }
+      ],
+      characterSheet: createCharacterSheet()
+    });
+    const updatedCharacterSheet = createCharacterSheet({
+      coreTraits: {
+        drive: 'Keep the old warnings legible.',
+        burden: 'The cairn now speaks back through storm and omen.'
+      },
+      notes: [
+        'location: North-Facing Cairn - A high place that sees too far.',
+        'mission: The cairn taught Ashward how to read danger in the weather.'
+      ]
+    });
+    const fetchMock = vi.fn(async (url, options = {}) => {
+      if (`${url}`.includes('/api/immersive-rpg/character-sheet')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ characterSheet: updatedCharacterSheet })
+        };
+      }
+      if (`${url}`.includes('/api/entities?')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            entities: [
+              {
+                _id: 'entity-db-1',
+                externalId: 'entity-ext-north-facing-cairn',
+                name: 'North-Facing Cairn',
+                type: 'location',
+                canonicalStatus: 'claimed',
+                reuseCount: 3,
+                mediaAssets: [{ kind: 'image' }],
+                evidence: [{ kind: 'memory' }, { kind: 'mission' }],
+                sourceReadingIds: ['seer-reading-1'],
+                tags: ['watchpoint', 'ritual']
+              }
+            ]
+          })
+        };
+      }
+      if (`${url}`.includes('/api/storytellers?')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            storytellers: [
+              { id: 'apparition-1', name: 'Kestrel Vane', status: 'active' }
+            ]
+          })
+        };
+      }
+      if (`${url}`.includes('/api/sendStorytellerToEntity')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            outcome: 'success',
+            userText: 'Kestrel Vane returns with weather-sense carved into memory.',
+            gmNote: 'Push the plateau into a recurring omen later.',
+            subEntities: [
+              { externalId: 'entity-sub-1', name: 'Storm Psalm' }
+            ],
+            runtime: {
+              mission: {
+                mocked: true
+              }
+            },
+            characterSheet: updatedCharacterSheet
+          })
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => readingPayload
+      };
+    });
+    global.fetch = fetchMock;
+
+    render(<MemorySpreadPage />);
+
+    await screen.findByText('Deepen This Thread');
+
+    fireEvent.change(screen.getByLabelText('Instruction'), {
+      target: { value: 'Trace what this cairn taught me about coming storms.' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send Storyteller' }));
+
+    await screen.findByText('Kestrel Vane returns with weather-sense carved into memory.');
+
+    expect(screen.getByText('Storm Psalm')).toBeInTheDocument();
+    expect(screen.getByText('The cairn now speaks back through storm and omen.')).toBeInTheDocument();
+    expect(screen.getByText('mission: The cairn taught Ashward how to read danger in the weather.')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/sendStorytellerToEntity'),
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"entityId":"entity-ext-north-facing-cairn"')
         })
       );
     });
