@@ -35,3 +35,7 @@
 .appIntroOverlay__video--visible {
   opacity: 1;
 }
+
+.appIntroOverlay--closing-still {
+  cursor: pointer;
+}
