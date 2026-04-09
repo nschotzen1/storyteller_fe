@@ -163,6 +163,27 @@ export const STORY_ADMIN_CONTROL_COMPONENTS = [
         ]
       },
       {
+        key: 'seer_reading_tool_registry_route',
+        label: 'Seer tool registry',
+        method: 'GET',
+        path: 'internal://seer-reading/tools',
+        summary: 'Read-only registry of the executable tools the Seer orchestrator may call.',
+        flowGroup: 'Seer ritual',
+        flowSummary: 'Reference surface for the actual runtime tool set behind the seer turn prompt.',
+        roleLabel: 'Reference',
+        triggerSummary: 'Used when debugging or editing the seer turn prompt and its tool vocabulary.',
+        outputSummary: 'Shows the runtime tool ids, descriptions, and expected input keys.',
+        runtimeKeys: [],
+        directPromptKeys: [],
+        contractBindings: [
+          {
+            routeKey: 'seer_reading_tool_registry',
+            promptKey: '',
+            label: 'Seer tool registry contract'
+          }
+        ]
+      },
+      {
         key: 'seer_reading_claim_route',
         label: 'Seer card claim',
         method: 'POST',

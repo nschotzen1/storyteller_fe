@@ -26,6 +26,9 @@ const READY_CHECK_STORAGE_KEY = 'immersiveRpgReadyCheckState';
 const DIVE_RITUAL_STORAGE_KEY = 'immersiveRpgDiveRitualState';
 const SPOTLIGHT_STATE_STORAGE_KEY = 'immersiveRpgSpotlightState';
 const WORLD_THREADS_STORAGE_KEY = 'immersiveRpgWorldThreads';
+const TABLE_PRESENCE_STORAGE_KEY = 'immersiveRpgTablePresenceState';
+const SCENE_PACT_STORAGE_KEY = 'immersiveRpgScenePactState';
+const WORLD_WEAVE_STORAGE_KEY = 'immersiveRpgWorldWeaveState';
 
 const MISSING_SESSION_MESSAGE = 'Set or generate the shared session in Story Admin before opening Immersive RPG.';
 
@@ -128,6 +131,28 @@ const defaultWorldThreadState = {
   status: 'active'
 };
 
+const defaultScenePactState = {
+  anchorKey: '',
+  toneWord: '',
+  seatMoves: {},
+  momentum: 0,
+  lastPrimedAt: ''
+};
+
+const defaultWorldWeaveState = {
+  threadId: '',
+  seatEchoes: {},
+  resonance: 0,
+  lastPrimedAt: ''
+};
+
+const PRESENCE_STATES = [
+  { id: 'ready', label: 'Ready' },
+  { id: 'immersed', label: 'In Scene' },
+  { id: 'worldbuilding', label: 'Worldbuilding' },
+  { id: 'away', label: 'Away' }
+];
+
 const ACTION_MODES = [
   {
     id: 'act',
@@ -164,6 +189,24 @@ const TABLE_INTENTS = [
     label: 'Reveal Truth',
     prompt: 'Lock one new canon detail.',
     mode: 'worldbuild'
+  }
+];
+
+const SCENE_PACT_MOVES = [
+  {
+    id: 'scout',
+    label: 'Scout',
+    prompt: 'Scout one hidden edge before danger shifts.'
+  },
+  {
+    id: 'shield',
+    label: 'Shield',
+    prompt: 'Shield one vulnerable truth from immediate pressure.'
+  },
+  {
+    id: 'weave',
+    label: 'Weave',
+    prompt: 'Weave one world detail directly into present action.'
   }
 ];
 
@@ -403,6 +446,45 @@ const getInitialWorldThreads = () => {
   });
 };
 
+const getInitialTablePresence = () => {
+  const stored = readStoredJson(TABLE_PRESENCE_STORAGE_KEY, null);
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {};
+  return stored;
+};
+
+const getInitialScenePact = () => {
+  const stored = readStoredJson(SCENE_PACT_STORAGE_KEY, null);
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return defaultScenePactState;
+  const momentum = Number.isFinite(Number(stored.momentum))
+    ? Math.max(0, Math.min(6, Number(stored.momentum)))
+    : defaultScenePactState.momentum;
+  return {
+    anchorKey: typeof stored.anchorKey === 'string' ? stored.anchorKey : defaultScenePactState.anchorKey,
+    toneWord: typeof stored.toneWord === 'string' ? stored.toneWord : defaultScenePactState.toneWord,
+    seatMoves: stored.seatMoves && typeof stored.seatMoves === 'object' && !Array.isArray(stored.seatMoves)
+      ? stored.seatMoves
+      : {},
+    momentum,
+    lastPrimedAt: typeof stored.lastPrimedAt === 'string' ? stored.lastPrimedAt : defaultScenePactState.lastPrimedAt
+  };
+};
+
+const getInitialWorldWeave = () => {
+  const stored = readStoredJson(WORLD_WEAVE_STORAGE_KEY, null);
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return defaultWorldWeaveState;
+  const resonance = Number.isFinite(Number(stored.resonance))
+    ? Math.max(0, Math.min(6, Number(stored.resonance)))
+    : defaultWorldWeaveState.resonance;
+  return {
+    threadId: typeof stored.threadId === 'string' ? stored.threadId : defaultWorldWeaveState.threadId,
+    seatEchoes: stored.seatEchoes && typeof stored.seatEchoes === 'object' && !Array.isArray(stored.seatEchoes)
+      ? stored.seatEchoes
+      : {},
+    resonance,
+    lastPrimedAt: typeof stored.lastPrimedAt === 'string' ? stored.lastPrimedAt : defaultWorldWeaveState.lastPrimedAt
+  };
+};
+
 const buildWorldbookSeed = (scene, sceneMeta) => {
   const items = [
     scene?.sceneTitle ? { type: 'truth', text: scene.sceneTitle } : null,
@@ -464,6 +546,9 @@ function ImmersiveRpgPage() {
   const [diveRitualState, setDiveRitualState] = useState(getInitialDiveRitualState);
   const [spotlightState, setSpotlightState] = useState(getInitialSpotlightState);
   const [worldThreads, setWorldThreads] = useState(getInitialWorldThreads);
+  const [tablePresenceState, setTablePresenceState] = useState(getInitialTablePresence);
+  const [scenePactState, setScenePactState] = useState(getInitialScenePact);
+  const [worldWeaveState, setWorldWeaveState] = useState(getInitialWorldWeave);
   const apiBaseUrl = sharedConfig.apiBaseUrl;
   const sessionId = sharedConfig.sessionId;
   const playerName = sharedConfig.playerName;
@@ -527,10 +612,76 @@ function ImmersiveRpgPage() {
   const activeSpotlightGoal = (spotlightState.beatGoal || '').trim();
   const spotlightReadyForPrime = hasSpotlightConsensus && Boolean(activeSpotlightGoal);
   const activeWorldThreads = worldThreads.filter((thread) => thread.status !== 'resolved');
+  const normalizedPresenceState = tableSeats.reduce((accumulator, seatName) => {
+    const stateId = tablePresenceState[seatName];
+    accumulator[seatName] = PRESENCE_STATES.some((entry) => entry.id === stateId) ? stateId : 'ready';
+    return accumulator;
+  }, {});
+  const presenceCounts = PRESENCE_STATES.map((state) => ({
+    ...state,
+    count: Object.values(normalizedPresenceState).filter((seatState) => seatState === state.id).length
+  }));
+  const seatedPresenceSummary = presenceCounts
+    .filter((entry) => entry.count > 0)
+    .map((entry) => `${entry.label}: ${entry.count}`)
+    .join(' · ') || 'No seat presence yet';
   const activeObjectiveTitle = objectiveState.title.trim();
   const activeObjectiveStakes = objectiveState.stakes.trim();
   const activeAmbience = (diveRitualState.ambience || '').trim();
   const activeFocalTruth = (diveRitualState.focalTruth || '').trim() || activeObjectiveTitle;
+  const scenePactAnchorOptions = [
+    activeObjectiveTitle
+      ? { key: 'objective', label: `Objective: ${activeObjectiveTitle}`, text: activeObjectiveTitle }
+      : null,
+    ...worldbookEntries.slice(0, 4).map((entry, index) => ({
+      key: `worldbook:${entry.id}`,
+      label: `Worldbook Pin ${index + 1}`,
+      text: entry.text
+    })),
+    ...worldCandidates.slice(0, 4).map((candidate, index) => ({
+      key: `candidate:${candidate.id}`,
+      label: `Lore Candidate ${index + 1}`,
+      text: candidate.text
+    })),
+    scene?.sourceSceneBrief?.placeSummary
+      ? {
+        key: 'scene',
+        label: 'Scene Anchor',
+        text: scene.sourceSceneBrief.placeSummary
+      }
+      : null
+  ].filter(Boolean);
+  const scenePactAnchor = scenePactAnchorOptions.find((entry) => entry.key === scenePactState.anchorKey) || null;
+  const scenePactTone = (scenePactState.toneWord || '').trim();
+  const normalizedScenePactMoves = tableSeats.reduce((accumulator, seatName) => {
+    const moveId = scenePactState.seatMoves?.[seatName];
+    accumulator[seatName] = SCENE_PACT_MOVES.some((entry) => entry.id === moveId) ? moveId : '';
+    return accumulator;
+  }, {});
+  const scenePactAssignedSeats = Object.values(normalizedScenePactMoves).filter(Boolean).length;
+  const scenePactCoverage = new Set(Object.values(normalizedScenePactMoves).filter(Boolean)).size;
+  const scenePactCoverageTarget = Math.min(SCENE_PACT_MOVES.length, Math.max(1, tableSeats.length));
+  const hasScenePactAnchor = Boolean(scenePactAnchor);
+  const hasScenePactTone = Boolean(scenePactTone);
+  const hasScenePactMoves = scenePactAssignedSeats >= Math.max(1, tableSeats.length);
+  const hasScenePactCoverage = scenePactCoverage >= scenePactCoverageTarget;
+  const isScenePactReady = hasScenePactAnchor && hasScenePactTone && hasScenePactMoves && hasScenePactCoverage;
+  const scenePactMomentum = Math.max(0, Math.min(6, Number(scenePactState.momentum || 0)));
+  const scenePactStatus = isScenePactReady ? 'Ready to prime' : 'Assemble pact';
+  const scenePactReadinessLabel = `${scenePactAssignedSeats}/${tableSeats.length} seats · ${scenePactCoverage}/${scenePactCoverageTarget} coverage`;
+  const worldWeaveThread = activeWorldThreads.find((thread) => thread.id === worldWeaveState.threadId) || null;
+  const worldWeaveSeatEchoes = tableSeats.reduce((accumulator, seatName) => {
+    const rawEcho = worldWeaveState.seatEchoes?.[seatName];
+    accumulator[seatName] = typeof rawEcho === 'string' ? rawEcho.trim() : '';
+    return accumulator;
+  }, {});
+  const worldWeaveCommittedSeats = Object.values(worldWeaveSeatEchoes).filter(Boolean).length;
+  const worldWeaveThreshold = Math.max(1, Math.floor(tableSeats.length / 2) + 1);
+  const hasWorldWeaveConsensus = worldWeaveCommittedSeats >= worldWeaveThreshold;
+  const worldWeaveResonance = Math.max(0, Math.min(6, Number(worldWeaveState.resonance || 0)));
+  const isWorldWeaveReady = Boolean(worldWeaveThread) && hasWorldWeaveConsensus;
+  const worldWeaveStatus = isWorldWeaveReady ? 'Ready to prime' : 'Need thread + seat echoes';
+  const worldWeaveReadiness = `${worldWeaveCommittedSeats}/${tableSeats.length} seats`;
   const immersionPulse = Math.min(
     100,
     22 +
@@ -545,7 +696,11 @@ function ImmersiveRpgPage() {
       (spotlightReadyForPrime ? 4 : 0) +
       (activeWorldThreads.length * 3) +
       (activeAmbience ? 5 : 0) +
-      (activeObjectiveTitle ? 4 : 0)
+      (activeObjectiveTitle ? 4 : 0) +
+      (scenePactMomentum * 4) +
+      (isScenePactReady ? 6 : 0) +
+      (worldWeaveResonance * 2) +
+      (isWorldWeaveReady ? 4 : 0)
   );
   const immersionTier = immersionPulse >= 80
     ? 'Deep Dive'
@@ -572,6 +727,18 @@ function ImmersiveRpgPage() {
       detail: `${readySeatCount}/${tableSeats.length} seats ready`
     },
     {
+      id: 'pact',
+      label: 'Pact',
+      ready: isScenePactReady,
+      detail: isScenePactReady ? `Momentum ${scenePactMomentum}/6` : scenePactReadinessLabel
+    },
+    {
+      id: 'weave',
+      label: 'Weave',
+      ready: isWorldWeaveReady,
+      detail: worldWeaveThread ? `${worldWeaveReadiness} · Resonance ${worldWeaveResonance}/6` : 'Choose an active world thread'
+    },
+    {
       id: 'action',
       label: 'Action',
       ready: Boolean(chatInput.trim()),
@@ -592,9 +759,13 @@ function ImmersiveRpgPage() {
       ? 'Have each seat vote so the table commits to one shared direction.'
       : nextOpenStep?.id === 'ready'
         ? 'Confirm enough seats are ready before advancing the beat.'
-        : nextOpenStep?.id === 'action'
-          ? 'Prime the composer with a concrete move, survey, or lore reveal.'
-          : activeObjectiveTitle
+        : nextOpenStep?.id === 'pact'
+          ? 'Lock one pact anchor, tone, and seat moves before sending the next beat.'
+          : nextOpenStep?.id === 'weave'
+            ? 'Pick one active world thread and collect seat echoes to fuse worldbuilding into action.'
+          : nextOpenStep?.id === 'action'
+            ? 'Prime the composer with a concrete move, survey, or lore reveal.'
+            : activeObjectiveTitle
             ? `Push on the current objective: ${activeObjectiveTitle}.`
             : 'Promote a surviving truth into canon so the world stays coherent.';
   const highestSupportCandidate = worldCandidates.reduce((best, candidate) => {
@@ -617,6 +788,16 @@ function ImmersiveRpgPage() {
       ? 'Solo spotlight ready'
       : `${spotlightAssistCount}/${Math.max(1, tableSeats.length - 1)} assists`
     : 'Choose lead seat';
+  const transcriptSeedCandidates = (scene?.transcript || [])
+    .slice(-8)
+    .filter((entry) => typeof entry?.text === 'string' && entry.text.trim().length >= 28)
+    .map((entry, index) => ({
+      id: entry.entryId || `transcript-${index}-${entry.createdAt || 'now'}`,
+      text: entry.text.trim(),
+      role: entry.role || 'system'
+    }))
+    .filter((candidate) => !worldThreads.some((thread) => thread.title === candidate.text))
+    .slice(0, 4);
 
   const hydrateFromPayload = (payload) => {
     setScene(payload?.scene || null);
@@ -732,6 +913,21 @@ function ImmersiveRpgPage() {
   }, [worldThreads]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(TABLE_PRESENCE_STORAGE_KEY, JSON.stringify(tablePresenceState));
+  }, [tablePresenceState]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(SCENE_PACT_STORAGE_KEY, JSON.stringify(scenePactState));
+  }, [scenePactState]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(WORLD_WEAVE_STORAGE_KEY, JSON.stringify(worldWeaveState));
+  }, [worldWeaveState]);
+
+  useEffect(() => {
     if (playerName && !partyRoster.length) {
       setPartyRoster([{ name: playerName, role: 'Lead', lens: 'Primary POV' }]);
       setActivePartyMemberName(playerName);
@@ -814,6 +1010,60 @@ function ImmersiveRpgPage() {
       return unchanged ? current : next;
     });
   }, [tableSeats]);
+
+  useEffect(() => {
+    setTablePresenceState((current) => {
+      const next = tableSeats.reduce((accumulator, seatName) => {
+        const raw = current[seatName];
+        accumulator[seatName] = PRESENCE_STATES.some((state) => state.id === raw) ? raw : 'ready';
+        return accumulator;
+      }, {});
+      const currentKeys = Object.keys(current);
+      const nextKeys = Object.keys(next);
+      const unchanged = currentKeys.length === nextKeys.length && nextKeys.every((key) => current[key] === next[key]);
+      return unchanged ? current : next;
+    });
+  }, [tableSeats]);
+
+  useEffect(() => {
+    setScenePactState((current) => {
+      const nextSeatMoves = tableSeats.reduce((accumulator, seatName) => {
+        const moveId = current?.seatMoves?.[seatName];
+        accumulator[seatName] = SCENE_PACT_MOVES.some((entry) => entry.id === moveId) ? moveId : '';
+        return accumulator;
+      }, {});
+      const nextAnchorStillValid = scenePactAnchorOptions.some((entry) => entry.key === current.anchorKey);
+      const next = {
+        ...defaultScenePactState,
+        ...current,
+        anchorKey: nextAnchorStillValid ? current.anchorKey : '',
+        seatMoves: nextSeatMoves,
+        momentum: Math.max(0, Math.min(6, Number(current.momentum || 0)))
+      };
+      const unchanged = JSON.stringify(current) === JSON.stringify(next);
+      return unchanged ? current : next;
+    });
+  }, [tableSeats, scenePactAnchorOptions]);
+
+  useEffect(() => {
+    setWorldWeaveState((current) => {
+      const nextEchoes = tableSeats.reduce((accumulator, seatName) => {
+        const echo = current?.seatEchoes?.[seatName];
+        accumulator[seatName] = typeof echo === 'string' ? echo : '';
+        return accumulator;
+      }, {});
+      const threadStillActive = worldThreads.some((thread) => thread.status !== 'resolved' && thread.id === current.threadId);
+      const next = {
+        ...defaultWorldWeaveState,
+        ...current,
+        threadId: threadStillActive ? current.threadId : '',
+        seatEchoes: nextEchoes,
+        resonance: Math.max(0, Math.min(6, Number(current.resonance || 0)))
+      };
+      const unchanged = JSON.stringify(current) === JSON.stringify(next);
+      return unchanged ? current : next;
+    });
+  }, [tableSeats, worldThreads]);
 
   useEffect(() => {
     let active = true;
@@ -940,14 +1190,42 @@ function ImmersiveRpgPage() {
         pulse: immersionPulse,
         tier: immersionTier
       },
+      scenePact: {
+        status: scenePactStatus,
+        anchor: scenePactAnchor ? scenePactAnchor.text : '',
+        tone: scenePactTone,
+        readiness: scenePactReadinessLabel,
+        assignedSeats: scenePactAssignedSeats,
+        totalSeats: tableSeats.length,
+        coverage: scenePactCoverage,
+        coverageTarget: scenePactCoverageTarget,
+        momentum: scenePactMomentum,
+        isReady: isScenePactReady,
+        moves: normalizedScenePactMoves
+      },
+      worldWeave: {
+        status: worldWeaveStatus,
+        threadId: worldWeaveThread?.id || '',
+        threadTitle: worldWeaveThread?.title || '',
+        committedSeats: worldWeaveCommittedSeats,
+        totalSeats: tableSeats.length,
+        threshold: worldWeaveThreshold,
+        hasConsensus: hasWorldWeaveConsensus,
+        resonance: worldWeaveResonance,
+        isReady: isWorldWeaveReady,
+        seatEchoes: worldWeaveSeatEchoes
+      },
       flow: {
         anchorReady: Boolean(scene?.sourceSceneBrief?.placeSummary),
         intentReady: Boolean(activeIntent),
+        pactReady: isScenePactReady,
+        weaveReady: isWorldWeaveReady,
         spotlightReady: spotlightReadyForPrime,
         actionDraftReady: Boolean(chatInput.trim()),
         canonReady: worldbookEntries.length > 0,
         objectiveReady: Boolean(activeObjectiveTitle),
-        tableReadyConsensus: hasReadyConsensus
+        tableReadyConsensus: hasReadyConsensus,
+        tablePresence: normalizedPresenceState
       },
       tableIntent: {
         active: activeIntent ? { id: activeIntent.id, support: activeIntent.support } : null,
@@ -999,7 +1277,7 @@ function ImmersiveRpgPage() {
       delete window.render_game_to_text;
       delete window.advanceTime;
     };
-  }, [sessionId, sceneMeta, scene, characterSheet, activePendingRoll, notebook, stage, effectivePlayerName, partyRoster, turnState.round, turnPositionLabel, activeTurnSpeaker, actionMode, worldbookEntries, worldCandidates, worldThreads, activeWorldThreads.length, immersionPulse, immersionTier, chatInput, activeIntent, normalizedIntentVotes, spotlightReadyForPrime, activeObjectiveTitle, activeObjectiveStakes, hasReadyConsensus, objectiveState.progress, objectiveState.maxProgress, readySeatCount, tableSeats.length, readyThreshold, normalizedReadyCheck, activeAmbience, activeFocalTruth, committedSeatCount, diveThreshold, hasDiveConsensus, normalizedDiveCommitments, spotlightHolder, activeSpotlightGoal, spotlightAssistCount, spotlightAssistThreshold, hasSpotlightConsensus, normalizedSpotlightAssists]);
+  }, [sessionId, sceneMeta, scene, characterSheet, activePendingRoll, notebook, stage, effectivePlayerName, partyRoster, turnState.round, turnPositionLabel, activeTurnSpeaker, actionMode, worldbookEntries, worldCandidates, worldThreads, activeWorldThreads.length, immersionPulse, immersionTier, chatInput, activeIntent, normalizedIntentVotes, spotlightReadyForPrime, activeObjectiveTitle, activeObjectiveStakes, hasReadyConsensus, objectiveState.progress, objectiveState.maxProgress, readySeatCount, tableSeats.length, readyThreshold, normalizedReadyCheck, activeAmbience, activeFocalTruth, committedSeatCount, diveThreshold, hasDiveConsensus, normalizedDiveCommitments, spotlightHolder, activeSpotlightGoal, spotlightAssistCount, spotlightAssistThreshold, hasSpotlightConsensus, normalizedSpotlightAssists, normalizedPresenceState, scenePactStatus, scenePactAnchor, scenePactTone, scenePactReadinessLabel, scenePactAssignedSeats, scenePactCoverage, scenePactCoverageTarget, scenePactMomentum, isScenePactReady, normalizedScenePactMoves, worldWeaveStatus, worldWeaveThread, worldWeaveCommittedSeats, worldWeaveThreshold, hasWorldWeaveConsensus, worldWeaveResonance, isWorldWeaveReady, worldWeaveSeatEchoes]);
 
   const updateCharacterSheetField = (section, key, value) => {
     setCharacterSheet((current) => ({
@@ -1282,6 +1560,135 @@ function ImmersiveRpgPage() {
     setChatInput(`Thread focus: ${thread.title}.${objectivePrefix} We push this thread to ${nextProgress}/${thread.maxProgress} by...`);
   };
 
+  const handleTrackTranscriptSeed = (candidate) => {
+    const text = `${candidate?.text || ''}`.trim();
+    if (!text) return;
+    handleTrackWorldThread({
+      id: candidate.id,
+      text,
+      type: 'echo',
+      support: 1
+    });
+  };
+
+  const handleSetSeatPresence = (seatName, presenceId) => {
+    if (!PRESENCE_STATES.some((state) => state.id === presenceId)) return;
+    setTablePresenceState((current) => ({
+      ...current,
+      [seatName]: presenceId
+    }));
+  };
+
+  const handleSetScenePactAnchor = (anchorKey) => {
+    setScenePactState((current) => ({
+      ...current,
+      anchorKey
+    }));
+  };
+
+  const handleSetScenePactTone = (value) => {
+    setScenePactState((current) => ({
+      ...current,
+      toneWord: value
+    }));
+  };
+
+  const handleSetScenePactMove = (seatName, moveId) => {
+    if (!SCENE_PACT_MOVES.some((entry) => entry.id === moveId)) return;
+    setScenePactState((current) => ({
+      ...current,
+      seatMoves: {
+        ...(current.seatMoves || {}),
+        [seatName]: moveId
+      }
+    }));
+  };
+
+  const handleScenePactMomentumDelta = (delta) => {
+    setScenePactState((current) => ({
+      ...current,
+      momentum: Math.max(0, Math.min(6, Number(current.momentum || 0) + delta))
+    }));
+  };
+
+  const handlePrimeScenePact = () => {
+    if (!isScenePactReady || !scenePactAnchor) return;
+    const seatMoveSummary = tableSeats
+      .map((seatName) => {
+        const moveId = normalizedScenePactMoves[seatName];
+        const move = SCENE_PACT_MOVES.find((entry) => entry.id === moveId);
+        return move ? `${seatName}: ${move.label}` : '';
+      })
+      .filter(Boolean)
+      .join(' | ');
+    const objectivePrefix = activeObjectiveTitle ? ` Objective: ${activeObjectiveTitle}.` : '';
+    const stakesPrefix = activeObjectiveStakes ? ` Stakes: ${activeObjectiveStakes}.` : '';
+    setActionMode('act');
+    setChatInput(`Scene pact. Anchor: ${scenePactAnchor.text}. Tone: ${scenePactTone}. Moves: ${seatMoveSummary}.${objectivePrefix}${stakesPrefix} I advance this beat by...`);
+    setScenePactState((current) => ({
+      ...current,
+      momentum: Math.max(0, Math.min(6, Number(current.momentum || 0) + 1)),
+      lastPrimedAt: new Date().toISOString()
+    }));
+  };
+
+  const handleSetWorldWeaveThread = (threadId) => {
+    setWorldWeaveState((current) => ({
+      ...current,
+      threadId
+    }));
+  };
+
+  const handleSetWorldWeaveEcho = (seatName, value) => {
+    setWorldWeaveState((current) => ({
+      ...current,
+      seatEchoes: {
+        ...(current.seatEchoes || {}),
+        [seatName]: value
+      }
+    }));
+  };
+
+  const handleWorldWeaveResonanceDelta = (delta) => {
+    setWorldWeaveState((current) => ({
+      ...current,
+      resonance: Math.max(0, Math.min(6, Number(current.resonance || 0) + delta))
+    }));
+  };
+
+  const handlePrimeWorldWeave = () => {
+    if (!isWorldWeaveReady || !worldWeaveThread) return;
+    const echoSummary = tableSeats
+      .map((seatName) => {
+        const echo = worldWeaveSeatEchoes[seatName];
+        return echo ? `${seatName}: ${echo}` : '';
+      })
+      .filter(Boolean)
+      .join(' | ');
+    const objectivePrefix = activeObjectiveTitle ? ` Objective: ${activeObjectiveTitle}.` : '';
+    const focalPrefix = activeFocalTruth ? ` Focal truth: ${activeFocalTruth}.` : '';
+    setActionMode('act');
+    setChatInput(`World weave. Thread: ${worldWeaveThread.title}. Echoes: ${echoSummary}. Resonance ${worldWeaveResonance}/6.${objectivePrefix}${focalPrefix} I step into this world by...`);
+    setWorldWeaveState((current) => ({
+      ...current,
+      resonance: Math.max(0, Math.min(6, Number(current.resonance || 0) + 1)),
+      lastPrimedAt: new Date().toISOString()
+    }));
+  };
+
+  const handlePrimeHandoff = () => {
+    if (!tableSeats.length) return;
+    const currentSeat = activeTurnSpeaker || effectivePlayerName || tableSeats[0];
+    const currentIndex = tableSeats.findIndex((seat) => seat === currentSeat);
+    const nextSeat = tableSeats[(currentIndex + 1 + tableSeats.length) % tableSeats.length] || tableSeats[0];
+    const objectivePrefix = activeObjectiveTitle ? ` Objective: ${activeObjectiveTitle}.` : '';
+    const spotlightPrefix = spotlightReadyForPrime ? ` Spotlight target: ${spotlightHolder} / ${activeSpotlightGoal}.` : '';
+    const intentPrefix = activeIntent ? ` Table intent: ${activeIntent.label}.` : '';
+    setActionMode('act');
+    setChatInput(`Handoff from ${currentSeat} to ${nextSeat}.${objectivePrefix}${spotlightPrefix}${intentPrefix} ${nextSeat} enters with...`);
+    setActivePartyMemberName(nextSeat);
+  };
+
   const handleStartDiveBeat = () => {
     if (!activeAmbience || !activeFocalTruth || !hasDiveConsensus) return;
     const commitmentSummary = tableSeats
@@ -1432,6 +1839,11 @@ function ImmersiveRpgPage() {
                 ? `Table intent: ${activeIntent.label} (${activeIntent.support} support)`
                 : 'Set table intent to align action before the next beat.'}
             </span>
+          </div>
+          <div className="immersiveRpgHero__metaCard">
+            <span className="immersiveRpgHero__metaLabel">Presence Sync</span>
+            <strong className="immersiveRpgHero__metaValue">{seatedPresenceSummary}</strong>
+            <span className="immersiveRpgHero__metaHint">Keep seat state visible so handoffs stay clear during multiplayer beats.</span>
           </div>
         </div>
       </header>
@@ -1593,6 +2005,10 @@ function ImmersiveRpgPage() {
                       <span>Objective</span>
                       <strong>{activeObjectiveTitle || 'Unwritten'}</strong>
                     </article>
+                    <article className="immersiveRpgSessionLoop__card">
+                      <span>Presence</span>
+                      <strong>{seatedPresenceSummary}</strong>
+                    </article>
                   </div>
                 </div>
 
@@ -1712,6 +2128,133 @@ function ImmersiveRpgPage() {
                   </button>
                 </div>
 
+                <div className="immersiveRpgScenePact">
+                  <div className="immersiveRpgScenePact__header">
+                    <strong>Scene Pact</strong>
+                    <span>{scenePactStatus}</span>
+                  </div>
+                  <div className="immersiveRpgScenePact__meta">
+                    <small>{scenePactReadinessLabel}</small>
+                    <small>Momentum {scenePactMomentum}/6</small>
+                  </div>
+                  <div className="immersiveRpgScenePact__anchors">
+                    {scenePactAnchorOptions.length ? scenePactAnchorOptions.map((anchor) => (
+                      <button
+                        key={`scene-pact-anchor-${anchor.key}`}
+                        type="button"
+                        className={['immersiveRpgScenePact__anchor', scenePactState.anchorKey === anchor.key ? 'is-active' : ''].filter(Boolean).join(' ')}
+                        onClick={() => handleSetScenePactAnchor(anchor.key)}
+                        title={anchor.text}
+                      >
+                        {anchor.label}
+                      </button>
+                    )) : (
+                      <small>No anchor available yet. Add an objective, pin a worldbook truth, or keep scene context loaded.</small>
+                    )}
+                  </div>
+                  <label className="immersiveRpgScenePact__tone">
+                    <span>Tone word</span>
+                    <input
+                      value={scenePactState.toneWord}
+                      onChange={(event) => handleSetScenePactTone(event.target.value)}
+                      placeholder="hushed urgency"
+                    />
+                  </label>
+                  <div className="immersiveRpgScenePact__seats">
+                    {tableSeats.map((seatName) => (
+                      <article key={`scene-pact-seat-${seatName}`} className="immersiveRpgScenePact__seat">
+                        <strong>{seatName}</strong>
+                        <div className="immersiveRpgScenePact__moves">
+                          {SCENE_PACT_MOVES.map((move) => (
+                            <button
+                              key={`scene-pact-${seatName}-${move.id}`}
+                              type="button"
+                              className={['immersiveRpgScenePact__move', normalizedScenePactMoves[seatName] === move.id ? 'is-active' : ''].filter(Boolean).join(' ')}
+                              onClick={() => handleSetScenePactMove(seatName, move.id)}
+                              title={move.prompt}
+                            >
+                              {move.label}
+                            </button>
+                          ))}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                  <div className="immersiveRpgScenePact__actions">
+                    <button type="button" className="immersiveRpgQuickPrompts__button" onClick={() => handleScenePactMomentumDelta(1)}>
+                      Gain Momentum
+                    </button>
+                    <button type="button" className="immersiveRpgQuickPrompts__button" onClick={() => handleScenePactMomentumDelta(-1)}>
+                      Bleed Momentum
+                    </button>
+                    <button
+                      type="button"
+                      className="immersiveRpgQuickPrompts__button"
+                      onClick={handlePrimeScenePact}
+                      disabled={!isScenePactReady}
+                      title={isScenePactReady ? 'Prime the pact into the action composer.' : 'Set anchor + tone + seat moves with enough coverage first.'}
+                    >
+                      Prime Scene Pact
+                    </button>
+                  </div>
+                </div>
+
+                <div className="immersiveRpgWorldWeave">
+                  <div className="immersiveRpgWorldWeave__header">
+                    <strong>World Weave</strong>
+                    <span>{worldWeaveStatus}</span>
+                  </div>
+                  <div className="immersiveRpgWorldWeave__meta">
+                    <small>{worldWeaveReadiness} · threshold {worldWeaveThreshold}</small>
+                    <small>Resonance {worldWeaveResonance}/6</small>
+                  </div>
+                  <div className="immersiveRpgWorldWeave__threads">
+                    {activeWorldThreads.length ? activeWorldThreads.slice(0, 6).map((thread) => (
+                      <button
+                        key={`world-weave-thread-${thread.id}`}
+                        type="button"
+                        className={['immersiveRpgWorldWeave__thread', worldWeaveState.threadId === thread.id ? 'is-active' : ''].filter(Boolean).join(' ')}
+                        onClick={() => handleSetWorldWeaveThread(thread.id)}
+                        title={thread.title}
+                      >
+                        <strong>{thread.title}</strong>
+                        <span>{thread.progress}/{thread.maxProgress}</span>
+                      </button>
+                    )) : (
+                      <small>No active world threads yet. Track one from Worldbook Pins first.</small>
+                    )}
+                  </div>
+                  <div className="immersiveRpgWorldWeave__seats">
+                    {tableSeats.map((seatName) => (
+                      <label key={`world-weave-seat-${seatName}`} className="immersiveRpgWorldWeave__seat">
+                        <span>{seatName}</span>
+                        <input
+                          value={worldWeaveSeatEchoes[seatName]}
+                          onChange={(event) => handleSetWorldWeaveEcho(seatName, event.target.value)}
+                          placeholder="One sensory line that roots this thread"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <div className="immersiveRpgWorldWeave__actions">
+                    <button type="button" className="immersiveRpgQuickPrompts__button" onClick={() => handleWorldWeaveResonanceDelta(1)}>
+                      Raise Resonance
+                    </button>
+                    <button type="button" className="immersiveRpgQuickPrompts__button" onClick={() => handleWorldWeaveResonanceDelta(-1)}>
+                      Lower Resonance
+                    </button>
+                    <button
+                      type="button"
+                      className="immersiveRpgQuickPrompts__button"
+                      disabled={!isWorldWeaveReady}
+                      onClick={handlePrimeWorldWeave}
+                      title={isWorldWeaveReady ? 'Prime world thread + seat echoes into composer.' : 'Select a thread and gather seat echoes first.'}
+                    >
+                      Prime World Weave
+                    </button>
+                  </div>
+                </div>
+
                 <div className="immersiveRpgSpotlightRail">
                   <div className="immersiveRpgSpotlightRail__header">
                     <strong>Spotlight Baton</strong>
@@ -1801,6 +2344,9 @@ function ImmersiveRpgPage() {
                     <button type="button" className="immersiveRpgQuickPrompts__button" onClick={handlePassTurn}>
                       Pass Turn
                     </button>
+                    <button type="button" className="immersiveRpgQuickPrompts__button" onClick={handlePrimeHandoff}>
+                      Prime Handoff
+                    </button>
                     <label className="immersiveRpgTurnRail__toggle">
                       <input
                         type="checkbox"
@@ -1809,6 +2355,35 @@ function ImmersiveRpgPage() {
                       />
                       <span>Auto-pass after send</span>
                     </label>
+                  </div>
+                </div>
+
+                <div className="immersiveRpgPresenceSync">
+                  <div className="immersiveRpgPresenceSync__header">
+                    <strong>Presence Sync</strong>
+                    <span>{seatedPresenceSummary}</span>
+                  </div>
+                  <div className="immersiveRpgPresenceSync__seats">
+                    {tableSeats.map((seatName) => (
+                      <article key={`presence-${seatName}`} className="immersiveRpgPresenceSync__seat">
+                        <strong>{seatName}</strong>
+                        <div className="immersiveRpgPresenceSync__modes">
+                          {PRESENCE_STATES.map((state) => (
+                            <button
+                              key={`${seatName}-${state.id}`}
+                              type="button"
+                              className={[
+                                'immersiveRpgPresenceSync__mode',
+                                normalizedPresenceState[seatName] === state.id ? 'is-active' : ''
+                              ].filter(Boolean).join(' ')}
+                              onClick={() => handleSetSeatPresence(seatName, state.id)}
+                            >
+                              {state.label}
+                            </button>
+                          ))}
+                        </div>
+                      </article>
+                    ))}
                   </div>
                 </div>
 
@@ -1933,6 +2508,44 @@ function ImmersiveRpgPage() {
                   </article>
                 ))}
               </div>
+
+              {transcriptSeedCandidates.length ? (
+                <div className="immersiveRpgTranscriptEchoes">
+                  <div className="immersiveRpgTranscriptEchoes__header">
+                    <strong>Transcript Echo Seeds</strong>
+                    <span>Promote live lines into persistent world threads</span>
+                  </div>
+                  <div className="immersiveRpgTranscriptEchoes__list">
+                    {transcriptSeedCandidates.map((candidate) => (
+                      <article key={`echo-seed-${candidate.id}`} className="immersiveRpgTranscriptEchoes__entry">
+                        <header>
+                          <span>{candidate.role}</span>
+                        </header>
+                        <p>{candidate.text}</p>
+                        <div className="immersiveRpgTranscriptEchoes__actions">
+                          <button
+                            type="button"
+                            className="immersiveRpgQuickPrompts__button"
+                            onClick={() => handleTrackTranscriptSeed(candidate)}
+                          >
+                            Track Thread
+                          </button>
+                          <button
+                            type="button"
+                            className="immersiveRpgQuickPrompts__button"
+                            onClick={() => handlePrimeThreadToComposer({
+                              ...defaultWorldThreadState,
+                              title: candidate.text
+                            })}
+                          >
+                            Prime Composer
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               {recentCanonEcho.length ? (
                 <div className="immersiveRpgCanonEcho">

@@ -1221,6 +1221,10 @@ const SeerReadingPage = () => {
                   <span>{reading?.metadata?.cardConfig?.generationMode || 'pending'}</span>
                 </div>
                 <div className="seerFieldChip">
+                  <strong>Decision Source</strong>
+                  <span>{reading?.lastTurn?.decisionSource || 'pending'}</span>
+                </div>
+                <div className="seerFieldChip">
                   <strong>Beat</strong>
                   <span>{reading?.beat || 'idle'}</span>
                 </div>
@@ -1268,6 +1272,62 @@ const SeerReadingPage = () => {
                       <span className="seerPresenceEmpty">No tool calls recorded yet.</span>
                     )}
                   </div>
+                </div>
+              </div>
+
+              <div className="seerPresenceRails">
+                <div>
+                  <div className="seerPanelHeader seerPanelHeader-sub">
+                    <h2>Execution Trace</h2>
+                    <span>{reading?.lastTurn?.executionTrace?.length || 0}</span>
+                  </div>
+                  <div className="seerDebugToolList">
+                    {(reading?.lastTurn?.executionTrace || []).map((entry, index) => (
+                      <article key={`${entry.toolId || 'trace'}-${index}`} className="seerDebugToolCall">
+                        <strong>{entry.toolId || 'unknown_tool'} · {entry.status || 'unknown'}</strong>
+                        <span>{entry.reason || entry.error || 'No trace detail recorded.'}</span>
+                        {entry?.output?.summary && (
+                          <span>{entry.output.summary}</span>
+                        )}
+                      </article>
+                    ))}
+                    {!reading?.lastTurn?.executionTrace?.length && (
+                      <span className="seerPresenceEmpty">No execution trace recorded yet.</span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="seerPanelHeader seerPanelHeader-sub">
+                    <h2>Prompt / Response</h2>
+                    <span>{reading?.lastTurn?.orchestratorError ? 'fallback' : 'ok'}</span>
+                  </div>
+                  <div className="seerFocusFields">
+                    <div className="seerFieldChip">
+                      <strong>Error</strong>
+                      <span>{reading?.lastTurn?.orchestratorError || 'none'}</span>
+                    </div>
+                    <div className="seerFieldChip">
+                      <strong>Notes</strong>
+                      <span>{(reading?.lastTurn?.executionNotes || []).join(', ') || 'none'}</span>
+                    </div>
+                  </div>
+                  <label className="seerStructuredField">
+                    <span>Compiled orchestrator prompt</span>
+                    <textarea
+                      readOnly
+                      value={reading?.lastTurn?.orchestratorPromptText || ''}
+                      rows={10}
+                    />
+                  </label>
+                  <label className="seerStructuredField">
+                    <span>Structured orchestrator response</span>
+                    <textarea
+                      readOnly
+                      value={reading?.lastTurn?.orchestratorResponseText || ''}
+                      rows={10}
+                    />
+                  </label>
                 </div>
               </div>
             </section>

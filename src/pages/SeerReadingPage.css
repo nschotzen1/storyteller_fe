@@ -695,6 +695,30 @@
   line-height: 1.35;
 }
 
+.seerStructuredField {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.9rem;
+}
+
+.seerStructuredField span {
+  color: var(--seer-muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.seerStructuredField textarea {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(6, 8, 16, 0.78);
+  color: var(--seer-ink);
+  padding: 0.9rem 1rem;
+  resize: vertical;
+  font: 0.82rem/1.45 'IBM Plex Mono', 'SFMono-Regular', ui-monospace, monospace;
+}
+
 @media (max-width: 1180px) {
   .seerReadingLayout {
     grid-template-columns: 1fr;

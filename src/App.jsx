@@ -3,6 +3,7 @@ import './FlipCard.css';
 import './App.css';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import AppIntroOverlay from './AppIntroOverlay';
 import CurtainIntro from './CurtainIntro';
 import CurtainOutro from './CurtainOutro';
 import StorytellerArenaConsole from './components/storyteller/StorytellerArenaConsole';
@@ -77,8 +78,15 @@ const readInitialView = () => {
   return VIEW.ARENA;
 };
 
+const shouldSkipAppIntro = () => {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('skipAppIntro') === '1';
+};
+
 function App() {
   const [view, setView] = useState(readInitialView);
+  const [appIntroComplete, setAppIntroComplete] = useState(shouldSkipAppIntro);
   const [pendingView, setPendingView] = useState(null);
   const [typewriterCurtainPhase, setTypewriterCurtainPhase] = useState(() => (
     readInitialView() === VIEW.TYPEWRITER ? TYPEWRITER_CURTAIN_PHASE.INTRO : TYPEWRITER_CURTAIN_PHASE.IDLE
@@ -142,6 +150,14 @@ function App() {
       pendingView === VIEW.TYPEWRITER ? TYPEWRITER_CURTAIN_PHASE.INTRO : TYPEWRITER_CURTAIN_PHASE.IDLE
     );
   };
+
+  if (!appIntroComplete) {
+    return (
+      <div className="appShell">
+        <AppIntroOverlay onComplete={() => setAppIntroComplete(true)} />
+      </div>
+    );
+  }
 
   return (
     <div className="appShell">

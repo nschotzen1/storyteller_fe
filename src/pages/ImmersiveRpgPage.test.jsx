@@ -682,4 +682,161 @@ describe('ImmersiveRpgPage notebook wiring', () => {
       }));
     });
   });
+
+  it('tracks seat presence modes and reflects multiplayer handoff readiness', async () => {
+    window.localStorage.setItem('typewriterAdminApiBaseUrl', 'http://localhost:5001');
+    window.localStorage.setItem('sessionId', 'shared-session-1');
+    window.localStorage.setItem('immersiveRpgPlayerName', 'Iris Vale');
+
+    const freeformNotebook = {
+      mode: 'story',
+      title: 'Shared Table',
+      prompt: 'Multiple voices are available.',
+      instruction: '',
+      scratchLines: [],
+      focusTags: [],
+      pendingRoll: null,
+      diceFaces: [],
+      successTrack: null,
+      resultSummary: 'Standing by.'
+    };
+    fetchImmersiveRpgScene.mockResolvedValue(buildSceneEnvelope(freeformNotebook));
+
+    render(<ImmersiveRpgPage />);
+    await screen.findByText('Presence Sync');
+
+    fireEvent.change(screen.getByPlaceholderText('Serin Vale'), { target: { value: 'Bram Ash' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add Seat/i }));
+
+    const presencePanel = screen.getAllByText('Presence Sync').find((node) => node.closest('.immersiveRpgPresenceSync'))?.closest('.immersiveRpgPresenceSync');
+    expect(presencePanel).not.toBeNull();
+    const presenceScope = within(presencePanel);
+    const bramSeat = presenceScope.getByText('Bram Ash').closest('.immersiveRpgPresenceSync__seat');
+    expect(bramSeat).not.toBeNull();
+
+    fireEvent.click(within(bramSeat).getByRole('button', { name: 'Away' }));
+    expect(presenceScope.getByText(/Away: 1/i)).toBeInTheDocument();
+  });
+
+  it('can promote transcript echoes into world threads', async () => {
+    window.localStorage.setItem('typewriterAdminApiBaseUrl', 'http://localhost:5001');
+    window.localStorage.setItem('sessionId', 'shared-session-1');
+    window.localStorage.setItem('immersiveRpgPlayerName', 'Iris Vale');
+
+    const freeformNotebook = {
+      mode: 'story',
+      title: 'Shared Table',
+      prompt: 'Multiple voices are available.',
+      instruction: '',
+      scratchLines: [],
+      focusTags: [],
+      pendingRoll: null,
+      diceFaces: [],
+      successTrack: null,
+      resultSummary: 'Standing by.'
+    };
+    fetchImmersiveRpgScene.mockResolvedValue(buildSceneEnvelope(freeformNotebook));
+
+    render(<ImmersiveRpgPage />);
+
+    const echoSection = await screen.findByText('Transcript Echo Seeds');
+    const echoScope = within(echoSection.closest('.immersiveRpgTranscriptEchoes'));
+    fireEvent.click(echoScope.getByRole('button', { name: /Track Thread/i }));
+
+    const worldThreadsSection = screen.getByText('World Threads').closest('.immersiveRpgWorldThreads');
+    expect(worldThreadsSection).not.toBeNull();
+    expect(within(worldThreadsSection).getByText(/The stranger is still searching\./i)).toBeInTheDocument();
+  });
+
+  it('primes an immersive scene pact into the composer when anchor, tone, and role coverage are set', async () => {
+    window.localStorage.setItem('typewriterAdminApiBaseUrl', 'http://localhost:5001');
+    window.localStorage.setItem('sessionId', 'shared-session-1');
+    window.localStorage.setItem('immersiveRpgPlayerName', 'Iris Vale');
+    window.localStorage.setItem('immersiveRpgObjectiveState', JSON.stringify({
+      title: 'Hold the lantern line',
+      stakes: 'If the line breaks, the watcher sees us.',
+      progress: 1,
+      maxProgress: 4
+    }));
+
+    const freeformNotebook = {
+      mode: 'story',
+      title: 'Shared Table',
+      prompt: 'Multiple voices are available.',
+      instruction: '',
+      scratchLines: [],
+      focusTags: [],
+      pendingRoll: null,
+      diceFaces: [],
+      successTrack: null,
+      resultSummary: 'Standing by.'
+    };
+    fetchImmersiveRpgScene.mockResolvedValue(buildSceneEnvelope(freeformNotebook));
+
+    render(<ImmersiveRpgPage />);
+
+    const scenePactTitle = await screen.findByText('Scene Pact');
+    const scenePactPanel = scenePactTitle.closest('.immersiveRpgScenePact');
+    expect(scenePactPanel).not.toBeNull();
+    const scenePactScope = within(scenePactPanel);
+
+    fireEvent.click(scenePactScope.getByRole('button', { name: /Objective: Hold the lantern line/i }));
+    fireEvent.change(scenePactScope.getByPlaceholderText('hushed urgency'), { target: { value: 'hushed urgency' } });
+    fireEvent.click(scenePactScope.getByRole('button', { name: 'Scout' }));
+    fireEvent.click(scenePactScope.getByRole('button', { name: /Prime Scene Pact/i }));
+
+    expect(screen.getByDisplayValue(/Scene pact\. Anchor: Hold the lantern line\./i)).toBeInTheDocument();
+  });
+
+  it('bridges world thread lore into multiplayer action through world weave', async () => {
+    window.localStorage.setItem('typewriterAdminApiBaseUrl', 'http://localhost:5001');
+    window.localStorage.setItem('sessionId', 'shared-session-1');
+    window.localStorage.setItem('immersiveRpgPlayerName', 'Iris Vale');
+
+    const freeformNotebook = {
+      mode: 'story',
+      title: 'Shared Table',
+      prompt: 'Multiple voices are available.',
+      instruction: '',
+      scratchLines: [],
+      focusTags: [],
+      pendingRoll: null,
+      diceFaces: [],
+      successTrack: null,
+      resultSummary: 'Standing by.'
+    };
+    fetchImmersiveRpgScene.mockResolvedValue(buildSceneEnvelope(freeformNotebook));
+    sendImmersiveRpgChat.mockResolvedValue(buildSceneEnvelope(freeformNotebook));
+
+    render(<ImmersiveRpgPage />);
+    await screen.findByText('World Weave');
+
+    fireEvent.click(screen.getByRole('button', { name: /Pin Current Beat/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Track As Thread/i }));
+    fireEvent.change(screen.getByPlaceholderText('Serin Vale'), { target: { value: 'Bram Ash' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add Seat/i }));
+
+    const worldWeavePanel = screen.getByText('World Weave').closest('.immersiveRpgWorldWeave');
+    expect(worldWeavePanel).not.toBeNull();
+    const worldWeaveScope = within(worldWeavePanel);
+
+    fireEvent.click(worldWeaveScope.getByRole('button', { name: /truth: Scene 3: The Mysterious Encounter/i }));
+
+    const echoInputs = worldWeaveScope.getAllByPlaceholderText('One sensory line that roots this thread');
+    fireEvent.change(echoInputs[0], { target: { value: 'Lantern oil stings the air by the gate.' } });
+    fireEvent.change(echoInputs[1], { target: { value: 'Footsteps skip every third stone in the lane.' } });
+
+    const primeButton = worldWeaveScope.getByRole('button', { name: /Prime World Weave/i });
+    expect(primeButton).not.toBeDisabled();
+    fireEvent.click(primeButton);
+
+    expect(screen.getByDisplayValue(/World weave\. Thread:/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Send Action/i }));
+
+    await waitFor(() => {
+      expect(sendImmersiveRpgChat).toHaveBeenCalledWith('http://localhost:5001', expect.objectContaining({
+        message: expect.stringContaining('World weave. Thread:')
+      }));
+    });
+  });
 });
