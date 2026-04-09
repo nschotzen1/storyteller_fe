@@ -63,6 +63,15 @@ const MONTAGE_BEATS = Object.freeze([
   }
 ]);
 
+const OPENING_SEQUENCE_PHASES = new Set([
+  'device',
+  'society-message',
+  'link-bridge',
+  'riddle',
+  'riddle-success',
+  'montage'
+]);
+
 const normalizeAnswer = (value = '') => (
   value
     .toLowerCase()
@@ -70,6 +79,17 @@ const normalizeAnswer = (value = '') => (
     .replace(/\s+/g, ' ')
     .trim()
 );
+
+const normalizeInitialPhase = (value = '') => {
+  const normalized = String(value || '').trim().toLowerCase();
+  return OPENING_SEQUENCE_PHASES.has(normalized) ? normalized : 'device';
+};
+
+const normalizeInitialMontageIndex = (value = 0) => {
+  const normalized = Number.parseInt(value, 10);
+  if (!Number.isFinite(normalized)) return 0;
+  return Math.max(0, Math.min(MONTAGE_BEATS.length - 1, normalized));
+};
 
 const getSequenceLabel = (phase, montageIndex) => {
   if (phase === 'device') return 'Act I: Weak Carrier';
@@ -105,15 +125,21 @@ const getDirectionHint = (phase, montageBeat, triesRemaining) => {
 
 function RoseCourtOpeningSequence({
   onComplete,
-  onStateChange
+  onStateChange,
+  initialPhase = 'device',
+  initialMontageIndex = 0
 }) {
-  const [phase, setPhase] = useState('device');
+  const [phase, setPhase] = useState(() => normalizeInitialPhase(initialPhase));
   const [deviceTurning, setDeviceTurning] = useState(false);
   const [riddleAnswer, setRiddleAnswer] = useState('');
   const [attemptsUsed, setAttemptsUsed] = useState(0);
   const [riddleFlipped, setRiddleFlipped] = useState(false);
   const [riddleFeedback, setRiddleFeedback] = useState('');
-  const [montageIndex, setMontageIndex] = useState(0);
+  const [montageIndex, setMontageIndex] = useState(() => (
+    normalizeInitialPhase(initialPhase) === 'montage'
+      ? normalizeInitialMontageIndex(initialMontageIndex)
+      : 0
+  ));
   const timeoutIdsRef = useRef([]);
   const riddleInputRef = useRef(null);
 
@@ -423,40 +449,51 @@ function RoseCourtOpeningSequence({
   return (
     <section className="roseIntro roseIntro--montage" aria-label="Memory montage">
       <div key={montageBeat.id} className="roseIntro__montageCard">
+        <div className="roseIntro__projectorAura" aria-hidden="true" />
         <div className="roseIntro__montageCopy">
-          <p className="roseIntro__sceneMark roseIntro__sceneMark--montage">Act V · Returning Traces</p>
-          <p className="roseIntro__chapterTitle roseIntro__chapterTitle--montage">The Shape Refuses to Leave</p>
-          <p className="roseIntro__eyebrow">{montageBeat.eyebrow}</p>
-          <h2>{montageBeat.title}</h2>
-          <p>{montageBeat.body}</p>
+          <div className="roseIntro__montageTitleCard">
+            <p className="roseIntro__sceneMark roseIntro__sceneMark--montage">Act V · Returning Traces</p>
+            <p className="roseIntro__chapterTitle roseIntro__chapterTitle--montage">The Shape Refuses to Leave</p>
+            <p className="roseIntro__eyebrow roseIntro__eyebrow--montage">{montageBeat.eyebrow}</p>
+            <h2>{montageBeat.title}</h2>
+            <p className="roseIntro__montageBody">{montageBeat.body}</p>
+          </div>
           <p className="roseIntro__directorNote roseIntro__directorNote--montage">
             {getDirectionHint(phase, montageBeat, triesRemaining)}
           </p>
           <div className="roseIntro__riddleActions">
-            <button type="button" className="roseIntro__cta" onClick={handleMontageAdvance}>
+            <button type="button" className="roseIntro__cta roseIntro__cta--montage" onClick={handleMontageAdvance}>
               {montageBeat.ctaLabel || 'Continue'}
             </button>
-            <span className="roseIntro__riddleMeta">
+            <span className="roseIntro__riddleMeta roseIntro__riddleMeta--montage">
               Trace {montageCounter}
             </span>
           </div>
         </div>
-        {montageBeat.image ? (
-          <figure className="roseIntro__montageFigure">
-            <img src={montageBeat.image} alt="" />
-            <figcaption className="roseIntro__montagePlate">
-              <span className="roseIntro__montagePlateLabel">Trace {montageCounter}</span>
-              <span>{montageBeat.eyebrow}</span>
-            </figcaption>
-          </figure>
-        ) : (
-          <div className="roseIntro__memoryVeil" aria-hidden="true">
-            <div className="roseIntro__intertitle">
-              <span className="roseIntro__intertitleMark">Intertitle</span>
-              <p>The question went quiet.</p>
-            </div>
+        <div className="roseIntro__projectionStage">
+          <div className="roseIntro__projectionHeader" aria-hidden="true">
+            <span className="roseIntro__projectionBadge">Archive transfer</span>
+            <span className="roseIntro__projectionCounter">Slide {montageCounter}</span>
           </div>
-        )}
+          <div className="roseIntro__projectionFrame">
+            {montageBeat.image ? (
+              <figure className="roseIntro__montageFigure">
+                <img src={montageBeat.image} alt="" />
+                <figcaption className="roseIntro__montagePlate">
+                  <span className="roseIntro__montagePlateLabel">Trace {montageCounter}</span>
+                  <span>{montageBeat.eyebrow}</span>
+                </figcaption>
+              </figure>
+            ) : (
+              <div className="roseIntro__memoryVeil" aria-hidden="true">
+                <div className="roseIntro__intertitle">
+                  <span className="roseIntro__intertitleMark">Intertitle</span>
+                  <p>The question went quiet.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </section>
   );

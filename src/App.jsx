@@ -3,6 +3,7 @@ import './FlipCard.css';
 import './App.css';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import AppIntroOverlay from './AppIntroOverlay';
 import CurtainIntro from './CurtainIntro';
 import CurtainOutro from './CurtainOutro';
 import StorytellerArenaConsole from './components/storyteller/StorytellerArenaConsole';
@@ -11,6 +12,7 @@ import QuestAdminPage from './pages/QuestAdminPage';
 import MemorySpreadPage from './pages/MemorySpreadPage';
 import ImmersiveRpgPage from './pages/ImmersiveRpgPage';
 import RoseCourtProloguePage from './pages/RoseCourtProloguePage';
+import RoseCourtMontagePage from './pages/RoseCourtMontagePage';
 import WellDemoPage from './pages/WellDemoPage';
 import TypewriterAdminPage from './pages/TypewriterAdminPage';
 import TypewriterFramework from './TypewriterFramework';
@@ -25,6 +27,7 @@ const VIEW = {
   MESSANGER: 'messanger',
   IMMERSIVE_RPG: 'immersive-rpg',
   ROSE_COURT_PROLOGUE: 'rose-court-prologue',
+  MONTAGE: 'montage',
   WELL: 'well'
 };
 
@@ -34,9 +37,10 @@ const VIEW_OPTIONS = [
   { id: VIEW.STORY_ADMIN, label: 'Story Admin' },
   { id: VIEW.MESSANGER, label: 'Messanger' },
   { id: VIEW.ROSE_COURT_PROLOGUE, label: 'Rose Court' },
+  { id: VIEW.MONTAGE, label: 'Montage' },
   { id: VIEW.WELL, label: 'Well' },
   { id: VIEW.QUEST_ADMIN, label: 'Quest Admin' },
-  { id: VIEW.MEMORY_SPREAD, label: 'Memory Spread' },
+  { id: VIEW.MEMORY_SPREAD, label: 'Seer Reading' },
   { id: VIEW.IMMERSIVE_RPG, label: 'Immersive RPG' }
 ];
 
@@ -45,6 +49,21 @@ const TYPEWRITER_CURTAIN_PHASE = {
   INTRO: 'intro',
   OUTRO: 'outro'
 };
+
+function applyDefaultViewQueryParams(params, view) {
+  if (!(params instanceof URLSearchParams)) return;
+
+  if (view === VIEW.MEMORY_SPREAD) {
+    params.set('memoryDebug', '1');
+    if (!`${params.get('readingId') || ''}`.trim() && !`${params.get('seerFixture') || ''}`.trim()) {
+      params.set('seerFixture', 'authority');
+    }
+    const mode = `${params.get('mode') || ''}`.trim().toLowerCase();
+    if (!mode || ['seer', 'legacy', 'classic', 'spread'].includes(mode)) {
+      params.delete('mode');
+    }
+  }
+}
 
 const readInitialView = () => {
   if (typeof window === 'undefined') return VIEW.ARENA;
@@ -59,8 +78,15 @@ const readInitialView = () => {
   return VIEW.ARENA;
 };
 
+const shouldSkipAppIntro = () => {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('skipAppIntro') === '1';
+};
+
 function App() {
   const [view, setView] = useState(readInitialView);
+  const [appIntroComplete, setAppIntroComplete] = useState(shouldSkipAppIntro);
   const [pendingView, setPendingView] = useState(null);
   const [typewriterCurtainPhase, setTypewriterCurtainPhase] = useState(() => (
     readInitialView() === VIEW.TYPEWRITER ? TYPEWRITER_CURTAIN_PHASE.INTRO : TYPEWRITER_CURTAIN_PHASE.IDLE
@@ -71,6 +97,7 @@ function App() {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     params.set('view', view);
+    applyDefaultViewQueryParams(params, view);
     const nextQuery = params.toString();
     const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`;
     window.history.replaceState({}, '', nextUrl);
@@ -124,6 +151,14 @@ function App() {
     );
   };
 
+  if (!appIntroComplete) {
+    return (
+      <div className="appShell">
+        <AppIntroOverlay onComplete={() => setAppIntroComplete(true)} />
+      </div>
+    );
+  }
+
   return (
     <div className="appShell">
       <nav className={`appViewSwitch ${isTypewriterCurtainActive ? 'appViewSwitch-obscured' : ''}`} aria-label="App views">
@@ -154,6 +189,7 @@ function App() {
         )}
         {view === VIEW.STORY_ADMIN && <TypewriterAdminPage />}
         {view === VIEW.ROSE_COURT_PROLOGUE && <RoseCourtProloguePage />}
+        {view === VIEW.MONTAGE && <RoseCourtMontagePage />}
         {view === VIEW.WELL && <WellDemoPage />}
         {view === VIEW.QUEST_ADMIN && <QuestAdminPage />}
         {view === VIEW.MEMORY_SPREAD && <MemorySpreadPage />}

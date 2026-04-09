@@ -34,6 +34,10 @@ vi.mock('./pages/RoseCourtProloguePage', () => ({
   default: () => <div data-testid="rose-court-page">Rose Court</div>
 }));
 
+vi.mock('./pages/RoseCourtMontagePage', () => ({
+  default: () => <div data-testid="rose-court-montage-page">Montage</div>
+}));
+
 vi.mock('./pages/WellDemoPage', () => ({
   default: () => <div data-testid="well-page">Well</div>
 }));
@@ -54,8 +58,16 @@ vi.mock('./Messanger', () => ({
   default: () => <div data-testid="messanger-page">Messanger</div>
 }));
 
-const renderAppAt = (search = '') => {
-  const nextUrl = search ? `/${search.startsWith('?') ? search : `?${search}`}` : '/';
+const renderAppAt = (search = '', { skipAppIntro = true } = {}) => {
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  if (skipAppIntro && !params.has('skipAppIntro')) {
+    params.set('skipAppIntro', '1');
+  }
+  if (!skipAppIntro) {
+    params.delete('skipAppIntro');
+  }
+  const nextQuery = params.toString();
+  const nextUrl = nextQuery ? `/?${nextQuery}` : '/';
   window.history.replaceState({}, '', nextUrl);
   return render(<App />);
 };
@@ -111,5 +123,31 @@ describe('App curtain view orchestration', () => {
     renderAppAt('?view=well');
 
     expect(screen.getByTestId('well-page')).toBeInTheDocument();
+  });
+
+  it('shows the montage view from the startup selector', () => {
+    renderAppAt();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Montage' }));
+
+    expect(screen.getByTestId('rose-court-montage-page')).toBeInTheDocument();
+  });
+
+  it('exposes seer reading directly from the top-level navigation', () => {
+    renderAppAt();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Seer Reading' }));
+
+    expect(screen.getByTestId('memory-spread-page')).toBeInTheDocument();
+    expect(window.location.search).toContain('view=memory-spread');
+    expect(window.location.search).toContain('memoryDebug=1');
+    expect(window.location.search).toContain('seerFixture=authority');
+  });
+
+  it('blocks the app behind the intro overlay until the intro is dismissed', () => {
+    renderAppAt('', { skipAppIntro: false });
+
+    expect(screen.getByLabelText('Game introduction')).toBeInTheDocument();
+    expect(screen.queryByLabelText('App views')).not.toBeInTheDocument();
   });
 });

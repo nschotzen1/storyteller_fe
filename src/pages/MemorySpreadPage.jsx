@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './MemorySpreadPage.css';
+import SeerReadingPage from './SeerReadingPage';
 
 const SCREEN = {
   MEMORIES: 'memories',
@@ -8,12 +9,22 @@ const SCREEN = {
 
 const DEFAULT_API_BASE_URL = 'http://localhost:5001';
 const DEFAULT_REQUEST_TIMEOUT_MS = 12000;
+const DEFAULT_GENERATION_TIMEOUT_MS = 45000;
 const TYPEWRITER_SESSION_STORAGE_KEY = 'sessionId';
 const MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY = 'memorySpreadAdminMode';
+const MEMORY_SPREAD_DEBUG_STORAGE_KEY = 'memorySpreadDebug';
+const MEMORY_SPREAD_API_BASE_STORAGE_KEY = 'memorySpreadApiBaseUrl';
+const MEMORY_SPREAD_MOCK_STORAGE_KEY = 'memorySpreadMock';
+const MEMORY_SPREAD_MOCK_IMAGES_STORAGE_KEY = 'memorySpreadMockImages';
+const MEMORY_SPREAD_TIMEOUT_STORAGE_KEY = 'memorySpreadRequestTimeoutMs';
 const DEFAULT_SESSION_ID = 'memory-spread-demo';
 const DEFAULT_PLAYER_ID = 'memory-spread-player';
 const DEFAULT_FRAGMENT_TEXT =
   'A wind-scoured pass with a rusted watchtower and a lone courier arriving at dusk.';
+const MAX_MEMORY_SPREAD_TRACE_EVENTS = 32;
+const pendingJsonRequests = new Map();
+const recentMemorySpreadTraceFingerprints = new Map();
+
 const readMemorySpreadAdminMode = () => {
   if (typeof window === 'undefined') return false;
   const params = new URLSearchParams(window.location.search);
@@ -24,6 +35,77 @@ const readMemorySpreadAdminMode = () => {
   const stored = window.localStorage.getItem(MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY);
   const normalized = `${stored || ''}`.trim().toLowerCase();
   return normalized === '1' || normalized === 'true' || normalized === 'yes';
+};
+
+const readMemorySpreadDebugMode = () => {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  const debugMode = `${params.get('memoryDebug') || ''}`.trim().toLowerCase();
+  if (debugMode === '1' || debugMode === 'true' || debugMode === 'yes') {
+    return true;
+  }
+  const stored = window.localStorage.getItem(MEMORY_SPREAD_DEBUG_STORAGE_KEY);
+  const normalized = `${stored || ''}`.trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes';
+};
+
+const readMemorySpreadApiBaseUrl = () => {
+  if (typeof window === 'undefined') return DEFAULT_API_BASE_URL;
+  const params = new URLSearchParams(window.location.search);
+  const queryValue = `${params.get('memoryApiBaseUrl') || params.get('apiBaseUrl') || ''}`.trim();
+  if (queryValue) {
+    return queryValue;
+  }
+  const stored = `${window.localStorage.getItem(MEMORY_SPREAD_API_BASE_STORAGE_KEY) || ''}`.trim();
+  return stored || DEFAULT_API_BASE_URL;
+};
+
+const readMemorySpreadMockMode = () => {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  const queryValue = `${params.get('memoryMock') || params.get('mock') || ''}`.trim().toLowerCase();
+  if (queryValue === '1' || queryValue === 'true' || queryValue === 'yes') {
+    return true;
+  }
+  const stored = `${window.localStorage.getItem(MEMORY_SPREAD_MOCK_STORAGE_KEY) || ''}`.trim().toLowerCase();
+  return stored === '1' || stored === 'true' || stored === 'yes';
+};
+
+const readMemorySpreadMockImagesMode = () => {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  const queryValue = `${params.get('memoryMockImages') || params.get('mockImages') || ''}`.trim().toLowerCase();
+  if (queryValue === '1' || queryValue === 'true' || queryValue === 'yes') {
+    return true;
+  }
+  const stored = `${window.localStorage.getItem(MEMORY_SPREAD_MOCK_IMAGES_STORAGE_KEY) || ''}`.trim().toLowerCase();
+  return stored === '1' || stored === 'true' || stored === 'yes';
+};
+
+const readMemorySpreadRequestTimeoutMs = () => {
+  if (typeof window === 'undefined') return DEFAULT_GENERATION_TIMEOUT_MS;
+  const params = new URLSearchParams(window.location.search);
+  const rawValue = `${params.get('memoryTimeoutMs') || params.get('requestTimeoutMs') || ''}`.trim();
+  const storedValue = `${window.localStorage.getItem(MEMORY_SPREAD_TIMEOUT_STORAGE_KEY) || ''}`.trim();
+  const candidate = rawValue || storedValue;
+  const parsed = Number(candidate);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_GENERATION_TIMEOUT_MS;
+  }
+  return Math.min(300000, Math.max(1000, Math.round(parsed)));
+};
+
+const readMemorySpreadSeerMode = () => {
+  if (typeof window === 'undefined') return true;
+  const params = new URLSearchParams(window.location.search);
+  const mode = `${params.get('mode') || ''}`.trim().toLowerCase();
+  if (!mode || mode === 'seer') {
+    return true;
+  }
+  if (mode === 'legacy' || mode === 'classic' || mode === 'spread') {
+    return false;
+  }
+  return true;
 };
 
 const MEMORY_FALLBACK_CARDS = [
@@ -201,6 +283,76 @@ const firstNonEmptyString = (...values) => {
     if (typeof value === 'string' && value.trim()) return value.trim();
   }
   return '';
+};
+
+const truncateTraceText = (value, maxLength = 120) => {
+  if (value === undefined || value === null) return '';
+  const normalized = `${value}`.trim().replace(/\s+/g, ' ');
+  if (!normalized) return '';
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxLength - 1))}\u2026`;
+};
+
+const summarizeTraceValue = (value) => {
+  if (value === undefined || value === null || value === '') return '';
+  if (Array.isArray(value)) {
+    return value.length === 0 ? '[]' : truncateTraceText(value.join(', '), 80);
+  }
+  if (typeof value === 'object') {
+    return truncateTraceText(JSON.stringify(value), 120);
+  }
+  return truncateTraceText(value, 80);
+};
+
+const formatTraceSummary = (summary) => {
+  if (!summary) return '';
+  if (typeof summary === 'string') return truncateTraceText(summary, 180);
+  if (typeof summary !== 'object') return truncateTraceText(summary, 180);
+
+  const parts = Object.entries(summary)
+    .map(([key, value]) => {
+      const formatted = summarizeTraceValue(value);
+      if (!formatted) return '';
+      return `${key}: ${formatted}`;
+    })
+    .filter(Boolean);
+
+  return truncateTraceText(parts.join(' | '), 220);
+};
+
+const summarizePayloadForTrace = (payload) => {
+  if (!payload || typeof payload !== 'object') {
+    return truncateTraceText(payload, 180);
+  }
+
+  const parts = [];
+  if (Array.isArray(payload?.memories)) parts.push(`memories: ${payload.memories.length}`);
+  if (Array.isArray(payload?.entities)) parts.push(`entities: ${payload.entities.length}`);
+  if (Array.isArray(payload?.cards)) parts.push(`cards: ${payload.cards.length}`);
+  if (Array.isArray(payload?.storytellers)) parts.push(`storytellers: ${payload.storytellers.length}`);
+  if (Array.isArray(payload?.items)) parts.push(`items: ${payload.items.length}`);
+  if (payload?.mockedMemories || payload?.mockedEntities || payload?.mockedStorytellers) parts.push('mock text');
+  if (payload?.mockedTextures || payload?.mockedIllustrations) parts.push('mock images');
+  if (payload?.runtime?.mission?.mocked) parts.push('mock mission');
+  if (
+    parts.every((part) => !part.startsWith('mock '))
+    && payload?.mocked
+  ) {
+    parts.push('mocked');
+  }
+  if (parts.length > 0) return parts.join(' | ');
+
+  const keys = Object.keys(payload).slice(0, 6);
+  return keys.length > 0 ? `keys: ${keys.join(', ')}` : 'empty response';
+};
+
+const normalizeRequestError = (error, timeoutMs) => {
+  if (error?.name === 'AbortError') {
+    const timeoutError = new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s.`);
+    timeoutError.name = 'TimeoutError';
+    return timeoutError;
+  }
+  return error;
 };
 
 const resolveAssetUrl = (baseUrl, url) => {
@@ -436,37 +588,116 @@ const mapStorytellerRoster = ({ listPayload, generatedPayload, detailsById = {},
 };
 
 const requestJson = async (baseUrl, path, options = {}) => {
-  const { timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS, ...fetchOptions } = options;
+  const { timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS, trace, dedupeKey, ...fetchOptions } = options;
   const normalizedBase = (baseUrl || '').replace(/\/$/, '');
   const url = path.startsWith('http')
     ? path
     : `${normalizedBase}${path.startsWith('/') ? '' : '/'}${path}`;
+  const method = firstNonEmptyString(fetchOptions.method, 'GET').toUpperCase();
+  const normalizedDedupeKey = dedupeKey ? `${method}:${url}:${dedupeKey}` : '';
+
+  if (normalizedDedupeKey && pendingJsonRequests.has(normalizedDedupeKey)) {
+    trace?.onEvent?.({
+      kind: 'request',
+      stage: 'joined',
+      label: trace?.label || path,
+      method,
+      path: url,
+      timeoutMs,
+      bodySummary: formatTraceSummary(trace?.bodySummary),
+      detail: 'joined existing in-flight request'
+    });
+    return pendingJsonRequests.get(normalizedDedupeKey);
+  }
 
   const controller =
     typeof AbortController !== 'undefined' && !fetchOptions.signal ? new AbortController() : null;
-  const timeoutId =
+  let timeoutId =
     controller && Number.isFinite(timeoutMs) && timeoutMs > 0
       ? globalThis.setTimeout(() => controller.abort(), timeoutMs)
       : null;
+  const clearRequestTimeout = () => {
+    if (timeoutId !== null) {
+      globalThis.clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
 
-  try {
+  const startedAt = Date.now();
+  trace?.onEvent?.({
+    kind: 'request',
+    stage: 'started',
+    label: trace?.label || path,
+    method,
+    path: url,
+    timeoutMs,
+    bodySummary: formatTraceSummary(trace?.bodySummary)
+  });
+
+  const requestPromise = (async () => {
     const response = await fetch(url, {
       ...fetchOptions,
       signal: fetchOptions.signal || controller?.signal
     });
-    const payload = await response.json().catch(() => ({}));
+    clearRequestTimeout();
+    const clonedResponse = typeof response.clone === 'function' ? response.clone() : null;
+    const payload = await response.json().catch(async (error) => {
+      if (error?.name === 'AbortError') {
+        throw error;
+      }
+      const fallbackText = clonedResponse ? await clonedResponse.text().catch(() => '') : '';
+      if (!fallbackText) {
+        return {};
+      }
+      const parseError = new Error('Response body was not valid JSON.');
+      parseError.payloadSummary = truncateTraceText(fallbackText, 180);
+      throw parseError;
+    });
     if (!response.ok) {
-      throw new Error(payload?.error || payload?.message || `Request failed (${response.status}).`);
+      const requestError = new Error(payload?.error || payload?.message || `Request failed (${response.status}).`);
+      requestError.status = response.status;
+      requestError.payloadSummary = summarizePayloadForTrace(payload);
+      throw requestError;
     }
+    trace?.onEvent?.({
+      kind: 'request',
+      stage: 'succeeded',
+      label: trace?.label || path,
+      method,
+      path: url,
+      statusCode: response.status,
+      durationMs: Date.now() - startedAt,
+      payloadSummary: summarizePayloadForTrace(payload)
+    });
     return payload;
+  })();
+  const normalizedRequestPromise = requestPromise.catch((error) => {
+    throw normalizeRequestError(error, timeoutMs);
+  });
+
+  if (normalizedDedupeKey) {
+    pendingJsonRequests.set(normalizedDedupeKey, normalizedRequestPromise);
+  }
+
+  try {
+    return await normalizedRequestPromise;
   } catch (error) {
-    if (error?.name === 'AbortError') {
-      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s.`);
-    }
+    trace?.onEvent?.({
+      kind: 'request',
+      stage: 'failed',
+      label: trace?.label || path,
+      method,
+      path: url,
+      statusCode: error?.status || null,
+      durationMs: Date.now() - startedAt,
+      payloadSummary: firstNonEmptyString(error?.payloadSummary),
+      error: firstNonEmptyString(error?.message, 'Unknown request error.')
+    });
     throw error;
   } finally {
-    if (timeoutId !== null) {
-      globalThis.clearTimeout(timeoutId);
+    clearRequestTimeout();
+    if (normalizedDedupeKey) {
+      pendingJsonRequests.delete(normalizedDedupeKey);
     }
   }
 };
@@ -482,8 +713,50 @@ const buildQuery = (params = {}) => {
   return serialized ? `?${serialized}` : '';
 };
 
-const MemorySpreadPage = () => {
+const withMockedApiCalls = (payload, enabled) =>
+  enabled
+    ? {
+      ...payload,
+      mocked_api_calls: true
+    }
+    : payload;
+
+const withMockedImageCalls = (payload, enabled, mode = 'textures') => {
+  if (!enabled) return payload;
+  if (mode === 'storyteller') {
+    return {
+      ...payload,
+      mockImage: true,
+      mockIllustrations: true
+    };
+  }
+  return {
+    ...payload,
+    mockImage: true,
+    mockTextures: true
+  };
+};
+
+const resolveGenerationSource = ({ mockText = false, mockImages = false } = {}) => {
+  if (mockText && mockImages) {
+    return { source: 'mock', detail: 'mock' };
+  }
+  if (!mockText && !mockImages) {
+    return { source: 'api', detail: 'live' };
+  }
+  if (!mockText && mockImages) {
+    return { source: 'hybrid', detail: 'live text + mock images' };
+  }
+  return { source: 'hybrid', detail: 'mixed live/mock' };
+};
+
+const LegacyMemorySpreadPage = () => {
   const [isAdminMode] = useState(() => readMemorySpreadAdminMode());
+  const [isDebugMode] = useState(() => readMemorySpreadDebugMode());
+  const [apiBaseUrl] = useState(() => readMemorySpreadApiBaseUrl());
+  const [isForceMockMode] = useState(() => readMemorySpreadMockMode());
+  const [isForceMockImagesMode] = useState(() => readMemorySpreadMockImagesMode());
+  const [generationTimeoutMs] = useState(() => readMemorySpreadRequestTimeoutMs());
   const [sessionId] = useState(() => getStoredTypewriterSessionId() || DEFAULT_SESSION_ID);
   const hasTypewriterSession = sessionId && sessionId !== DEFAULT_SESSION_ID;
   const [phase, setPhase] = useState(SCREEN.MEMORIES);
@@ -528,6 +801,8 @@ const MemorySpreadPage = () => {
   const [isSendingMission, setIsSendingMission] = useState(false);
   const [lastMissionResult, setLastMissionResult] = useState(null);
   const [storytellerAssignmentsByEntityId, setStorytellerAssignmentsByEntityId] = useState({});
+  const [debugEvents, setDebugEvents] = useState([]);
+  const [isTracePanelOpen, setIsTracePanelOpen] = useState(() => readMemorySpreadDebugMode());
   const [notice, setNotice] = useState(
     isAdminMode
       ? 'Admin mode: generate memories from the saved typewriter fragment.'
@@ -540,6 +815,74 @@ const MemorySpreadPage = () => {
   const viewportRef = useRef(viewport);
   const panStateRef = useRef(null);
   const hasSpreadCenteredRef = useRef(false);
+
+  const appendDebugEvent = useCallback((event) => {
+    if (!isDebugMode) return;
+    const nextEvent = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      at: new Date().toISOString(),
+      ...event
+    };
+    const fingerprint = JSON.stringify({
+      kind: nextEvent.kind,
+      stage: nextEvent.stage,
+      label: nextEvent.label,
+      detail: nextEvent.detail,
+      bodySummary: nextEvent.bodySummary,
+      payloadSummary: nextEvent.payloadSummary,
+      error: nextEvent.error,
+      source: nextEvent.source
+    });
+    const nowMs = Date.parse(nextEvent.at);
+    const lastSeenAt = recentMemorySpreadTraceFingerprints.get(fingerprint);
+    if (lastSeenAt && nowMs - lastSeenAt < 180) {
+      return;
+    }
+    recentMemorySpreadTraceFingerprints.set(fingerprint, nowMs);
+    recentMemorySpreadTraceFingerprints.forEach((seenAt, key) => {
+      if (nowMs - seenAt >= 1000) {
+        recentMemorySpreadTraceFingerprints.delete(key);
+      }
+    });
+
+    setDebugEvents((prev) => {
+      const lastEvent = prev[prev.length - 1];
+      if (
+        lastEvent &&
+        Date.parse(nextEvent.at) - Date.parse(lastEvent.at) < 180 &&
+        lastEvent.kind === nextEvent.kind &&
+        lastEvent.stage === nextEvent.stage &&
+        lastEvent.label === nextEvent.label &&
+        lastEvent.detail === nextEvent.detail &&
+        lastEvent.bodySummary === nextEvent.bodySummary &&
+        lastEvent.payloadSummary === nextEvent.payloadSummary &&
+        lastEvent.error === nextEvent.error &&
+        lastEvent.source === nextEvent.source
+      ) {
+        return prev;
+      }
+      return [...prev.slice(-(MAX_MEMORY_SPREAD_TRACE_EVENTS - 1)), nextEvent];
+    });
+    if (typeof window !== 'undefined' && window.console?.debug) {
+      window.console.debug('[MemorySpread]', nextEvent);
+    }
+  }, [isDebugMode]);
+
+  const logFlowEvent = useCallback((label, detail = '', extras = {}) => {
+    appendDebugEvent({
+      kind: 'flow',
+      stage: 'info',
+      label,
+      detail: truncateTraceText(detail, 220),
+      ...extras
+    });
+  }, [appendDebugEvent]);
+
+  const createRequestTrace = useCallback((label, bodySummary) => ({
+    label,
+    bodySummary,
+    onEvent: appendDebugEvent
+  }), [appendDebugEvent]);
 
   const applyFallbackMissionResult = useCallback((storyteller, targetEntity, missionText, fallbackReason) => {
     const payload = {
@@ -590,7 +933,11 @@ const MemorySpreadPage = () => {
     });
     setSelectedArenaEntityId(targetEntity.id);
     setNotice(`${storyteller.name} mission saved locally for ${targetEntity.label}.`);
-  }, []);
+    logFlowEvent(
+      'Mission fallback stored',
+      `${storyteller.name} -> ${targetEntity.label}: ${fallbackReason}`
+    );
+  }, [logFlowEvent]);
 
   const selectedMemory = useMemo(
     () => memoryCards.find((card) => card.id === selectedMemoryId) || null,
@@ -791,6 +1138,7 @@ const MemorySpreadPage = () => {
     if (isAdminMode && !hasTypewriterSession) {
       setMemoryError('A stored session is required.');
       setNotice('Use Story Admin to seed a session, or visit the typewriter first.');
+      logFlowEvent('Memory load blocked', 'Stored session missing in admin mode.');
       return;
     }
 
@@ -813,35 +1161,71 @@ const MemorySpreadPage = () => {
     }
 
     try {
-      const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/fragmentToMemories', {
+      const tracedRequestBody = withMockedImageCalls(
+        withMockedApiCalls(requestBody, isForceMockMode),
+        isForceMockImagesMode,
+        'textures'
+      );
+      const payload = await requestJson(apiBaseUrl, '/api/fragmentToMemories', {
         method: 'POST',
+        timeoutMs: generationTimeoutMs,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(tracedRequestBody),
+        dedupeKey: JSON.stringify(tracedRequestBody),
+        trace: createRequestTrace('/api/fragmentToMemories', {
+          sessionId,
+          count: requestBody.count || 'default',
+          includeFront: requestBody.includeFront,
+          includeBack: requestBody.includeBack,
+          text: requestBody.text ? `${requestBody.text.length} chars` : 'stored session fragment',
+          mock: isForceMockMode ? 'forced' : 'runtime',
+          imageMock: isForceMockImagesMode ? 'forced' : 'runtime'
+        })
       });
 
-      const mapped = ensureTriptych(mapMemoryCards(payload?.memories, DEFAULT_API_BASE_URL));
-      const usedMock = Boolean(payload?.mocked || payload?.mockedMemories || payload?.mockedTextures);
+      const mapped = ensureTriptych(mapMemoryCards(payload?.memories, apiBaseUrl));
+      const sourceState = resolveGenerationSource({
+        mockText: Boolean(payload?.mockedMemories),
+        mockImages: Boolean(payload?.mockedTextures)
+      });
       setMemoryCards(mapped);
-      setMemorySource(usedMock ? 'mock' : 'api');
+      setMemorySource(sourceState.source);
+      logFlowEvent(
+        'Memory load completed',
+        `${mapped.length} cards ready (${sourceState.detail}).`,
+        {
+          source: sourceState.source
+        }
+      );
       setNotice(
-        usedMock
-          ? 'Memories generated in mock mode from the saved runtime settings.'
-          : 'Choose a memory to begin the reading.'
+        sourceState.source === 'mock'
+          ? 'Memories generated in full mock mode from the saved runtime settings.'
+          : sourceState.source === 'hybrid'
+            ? 'Memories generated with live text and mock card PNGs.'
+            : 'Choose a memory to begin the reading.'
       );
     } catch (error) {
       setMemoryCards(ensureTriptych([]));
       setMemorySource('fallback');
       setMemoryError(firstNonEmptyString(error?.message));
+      logFlowEvent(
+        'Memory load failed',
+        firstNonEmptyString(error?.message, 'Demo memory fallback restored.'),
+        {
+          source: 'fallback'
+        }
+      );
       setNotice('Memory generation stalled, so demo memories were restored to keep the spread usable.');
     } finally {
       setIsLoadingMemories(false);
     }
-  }, [hasTypewriterSession, isAdminMode, sessionId]);
+  }, [apiBaseUrl, createRequestTrace, generationTimeoutMs, hasTypewriterSession, isAdminMode, isForceMockImagesMode, isForceMockMode, logFlowEvent, sessionId]);
 
   const loadEntityDeckForMemory = useCallback(async (memoryCard) => {
     if (isAdminMode && !hasTypewriterSession) {
       setDeckError('A stored session is required.');
       setNotice('Use Story Admin to seed a session, or visit the typewriter first.');
+      logFlowEvent('Entity load blocked', 'Stored session missing in admin mode.');
       return;
     }
 
@@ -886,32 +1270,58 @@ const MemorySpreadPage = () => {
       if (source === 'fallback') {
         setNotice('Entity generation stalled, so demo entity cards were restored.');
       } else if (nextDeckCards.length > 0) {
-        setNotice('Entity deck is ready. Drag a card into the constellation to anchor it.');
+        setNotice(
+          source === 'hybrid'
+            ? 'Entity deck is ready. Live text is paired with mock card PNGs.'
+            : 'Entity deck is ready. Drag a card into the constellation to anchor it.'
+        );
       }
+      logFlowEvent(
+        source === 'fallback' ? 'Entity load failed' : 'Entity load completed',
+        source === 'fallback'
+          ? firstNonEmptyString(errorMessage, 'Demo entity deck restored.')
+          : `${nextDeckCards.length} entity cards ready (${source}).`,
+        { source }
+      );
       setIsLoadingDeck(false);
     };
 
     try {
-      const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/textToEntity', {
+      const tracedRequestBody = withMockedImageCalls(
+        withMockedApiCalls(requestBody, isForceMockMode),
+        isForceMockImagesMode,
+        'textures'
+      );
+      const payload = await requestJson(apiBaseUrl, '/api/textToEntity', {
         method: 'POST',
+        timeoutMs: generationTimeoutMs,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(tracedRequestBody),
+        trace: createRequestTrace('/api/textToEntity', {
+          sessionId,
+          memory: memoryCard?.title || 'unknown',
+          includeFront: requestBody.includeFront,
+          includeBack: requestBody.includeBack,
+          text: requestBody.text ? `${requestBody.text.length} chars` : 'stored session fragment',
+          mock: isForceMockMode ? 'forced' : 'runtime',
+          imageMock: isForceMockImagesMode ? 'forced' : 'runtime'
+        })
       });
 
-      const mapped = mapEntityDeck(payload, DEFAULT_API_BASE_URL);
+      const mapped = mapEntityDeck(payload, apiBaseUrl);
       if (mapped.length === 0) {
         throw new Error('Entity API returned no cards.');
       }
 
-      safelyApplyDeck(
-        mapped,
-        payload?.mocked || payload?.mockedEntities || payload?.mockedTextures ? 'mock' : 'api',
-        ''
-      );
+      const sourceState = resolveGenerationSource({
+        mockText: Boolean(payload?.mockedEntities),
+        mockImages: Boolean(payload?.mockedTextures)
+      });
+      safelyApplyDeck(mapped, sourceState.source, '');
     } catch (error) {
       safelyApplyDeck(ENTITY_FALLBACK_DECK, 'fallback', firstNonEmptyString(error?.message));
     }
-  }, [hasTypewriterSession, isAdminMode, sessionId]);
+  }, [apiBaseUrl, createRequestTrace, generationTimeoutMs, hasTypewriterSession, isAdminMode, isForceMockImagesMode, isForceMockMode, logFlowEvent, sessionId]);
 
   const loadStorytellerDetail = useCallback(
     async (storytellerId, { force = false, suppressNotice = false } = {}) => {
@@ -926,8 +1336,12 @@ const MemorySpreadPage = () => {
       })}`;
 
       try {
-        const payload = await requestJson(DEFAULT_API_BASE_URL, requestPath, {
-          method: 'GET'
+        const payload = await requestJson(apiBaseUrl, requestPath, {
+          method: 'GET',
+          trace: createRequestTrace(requestPath, {
+            sessionId,
+            storytellerId
+          })
         });
         const detail = payload?.storyteller || payload || null;
         if (!detail || typeof detail !== 'object') return null;
@@ -945,7 +1359,7 @@ const MemorySpreadPage = () => {
               status: firstNonEmptyString(detail?.status, item.status, 'active'),
               level: Number.isFinite(level) ? level : item.level,
               iconUrl: resolveAssetUrl(
-                DEFAULT_API_BASE_URL,
+                apiBaseUrl,
                 firstNonEmptyString(
                   detail?.keyImageUrl,
                   detail?.illustration,
@@ -963,10 +1377,14 @@ const MemorySpreadPage = () => {
         if (!suppressNotice) {
           setStorytellerError(firstNonEmptyString(error?.message, 'Failed loading storyteller details.'));
         }
+        logFlowEvent(
+          'Storyteller detail failed',
+          `${storytellerId}: ${firstNonEmptyString(error?.message, 'detail fetch failed')}`
+        );
         return null;
       }
     },
-    [isAdminMode, sessionId, storytellerDetailsById]
+    [apiBaseUrl, createRequestTrace, isAdminMode, logFlowEvent, sessionId, storytellerDetailsById]
   );
 
   const loadStorytellersForMemory = useCallback(
@@ -974,6 +1392,7 @@ const MemorySpreadPage = () => {
       if (isAdminMode && !hasTypewriterSession) {
         setStorytellerError('A stored session is required.');
         setNotice('Use Story Admin to seed a session, or visit the typewriter first.');
+        logFlowEvent('Storyteller load blocked', 'Stored session missing in admin mode.');
         return;
       }
 
@@ -1013,7 +1432,7 @@ const MemorySpreadPage = () => {
           listPayload,
           generatedPayload,
           detailsById: storytellerDetailsById,
-          baseUrl: DEFAULT_API_BASE_URL
+          baseUrl: apiBaseUrl
         });
 
         if (mapped.length === 0) {
@@ -1025,6 +1444,11 @@ const MemorySpreadPage = () => {
             firstNonEmptyString(errorMessage, 'Storyteller APIs returned no results.')
           );
           setNotice('Storyteller generation stalled, so demo storytellers were restored.');
+          logFlowEvent(
+            'Storyteller load failed',
+            firstNonEmptyString(errorMessage, 'Storyteller APIs returned no results.'),
+            { source: 'fallback' }
+          );
           return;
         }
 
@@ -1032,24 +1456,49 @@ const MemorySpreadPage = () => {
         setActiveStorytellerId(mapped[0]?.id || '');
         setStorytellerSource(sourceLabel);
         setStorytellerError(errorMessage);
-        setNotice('Storytellers are ready. Click a round icon to open actions.');
+        setNotice(
+          sourceLabel === 'hybrid'
+            ? 'Storytellers are ready. Live text is paired with mock portrait/key PNGs.'
+            : 'Storytellers are ready. Click a round icon to open actions.'
+        );
+        logFlowEvent(
+          'Storyteller load completed',
+          `${mapped.length} storytellers ready (${sourceLabel}).`,
+          { source: sourceLabel }
+        );
       };
 
       try {
-        const generatedPayload = await requestJson(DEFAULT_API_BASE_URL, '/api/textToStoryteller', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(generatePayload)
-        });
-        const listPayload = await requestJson(DEFAULT_API_BASE_URL, listPath, { method: 'GET' });
-        applyRoster(
-          listPayload,
-          generatedPayload,
-          generatedPayload?.mocked || generatedPayload?.mockedStorytellers || generatedPayload?.mockedIllustrations
-            ? 'mock'
-            : 'api',
-          ''
+        const tracedGeneratePayload = withMockedImageCalls(
+          withMockedApiCalls(generatePayload, isForceMockMode),
+          isForceMockImagesMode,
+          'storyteller'
         );
+        const generatedPayload = await requestJson(apiBaseUrl, '/api/textToStoryteller', {
+          method: 'POST',
+          timeoutMs: generationTimeoutMs,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(tracedGeneratePayload),
+          trace: createRequestTrace('/api/textToStoryteller', {
+            sessionId,
+            memory: memoryCard?.title || 'unknown',
+            generateKeyImages: generatePayload.generateKeyImages,
+            text: generatePayload.text ? `${generatePayload.text.length} chars` : 'stored session fragment',
+            mock: isForceMockMode ? 'forced' : 'runtime',
+            imageMock: isForceMockImagesMode ? 'forced' : 'runtime'
+          })
+        });
+        const listPayload = await requestJson(apiBaseUrl, listPath, {
+          method: 'GET',
+          trace: createRequestTrace(listPath, {
+            sessionId
+          })
+        });
+        const sourceState = resolveGenerationSource({
+          mockText: Boolean(generatedPayload?.mockedStorytellers),
+          mockImages: Boolean(generatedPayload?.mockedIllustrations)
+        });
+        applyRoster(listPayload, generatedPayload, sourceState.source, '');
       } catch (error) {
         applyRoster(
           null,
@@ -1061,7 +1510,7 @@ const MemorySpreadPage = () => {
         setIsLoadingStorytellers(false);
       }
     },
-    [hasTypewriterSession, isAdminMode, sessionId, storytellerDetailsById]
+    [apiBaseUrl, createRequestTrace, generationTimeoutMs, hasTypewriterSession, isAdminMode, isForceMockImagesMode, isForceMockMode, logFlowEvent, sessionId, storytellerDetailsById]
   );
 
   const refreshStorytellersFromList = useCallback(
@@ -1071,18 +1520,23 @@ const MemorySpreadPage = () => {
 
       try {
         const listPayload = await requestJson(
-          DEFAULT_API_BASE_URL,
+          apiBaseUrl,
           `/api/storytellers${buildQuery({
             sessionId,
             playerId: isAdminMode ? undefined : DEFAULT_PLAYER_ID
           })}`,
-          { method: 'GET' }
+          {
+            method: 'GET',
+            trace: createRequestTrace('/api/storytellers', {
+              sessionId
+            })
+          }
         );
         const mapped = mapStorytellerRoster({
           listPayload,
           generatedPayload: storytellers,
           detailsById: storytellerDetailsById,
-          baseUrl: DEFAULT_API_BASE_URL
+          baseUrl: apiBaseUrl
         });
         if (mapped.length > 0) {
           setStorytellers(mapped);
@@ -1092,11 +1546,15 @@ const MemorySpreadPage = () => {
         }
       } catch (error) {
         setStorytellerError(firstNonEmptyString(error?.message, 'Could not refresh storyteller list.'));
+        logFlowEvent(
+          'Storyteller refresh failed',
+          firstNonEmptyString(error?.message, 'Could not refresh storyteller list.')
+        );
       } finally {
         setIsLoadingStorytellers(false);
       }
     },
-    [isAdminMode, sessionId, storytellers, storytellerDetailsById]
+    [apiBaseUrl, createRequestTrace, isAdminMode, logFlowEvent, sessionId, storytellers, storytellerDetailsById]
   );
 
   const handleStorytellerIconClick = useCallback(
@@ -1170,7 +1628,6 @@ const MemorySpreadPage = () => {
     setNotice(
       `Sending ${storytellerMenuStoryteller.name} to ${missionTargetEntity.label}...`
     );
-
     const applyMission = (payload, sourceLabel) => {
       const outcome = firstNonEmptyString(payload?.outcome, 'pending');
       const assignment = {
@@ -1229,12 +1686,25 @@ const MemorySpreadPage = () => {
         );
         return;
       }
-      const payload = await requestJson(DEFAULT_API_BASE_URL, '/api/sendStorytellerToEntity', {
+      const tracedRequestBody = withMockedApiCalls(requestBody, isForceMockMode);
+      const payload = await requestJson(apiBaseUrl, '/api/sendStorytellerToEntity', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(tracedRequestBody),
+        trace: createRequestTrace('/api/sendStorytellerToEntity', {
+          sessionId,
+          storytellerId: storytellerMenuStoryteller.id,
+          entityId: entityApiId,
+          duration: requestBody.duration,
+          storytellingPoints: requestBody.storytellingPoints,
+          mock: isForceMockMode ? 'forced' : 'runtime'
+        })
       });
       applyMission(payload, payload?.runtime?.mission?.mocked ? 'mock' : 'api');
+      logFlowEvent(
+        'Mission completed',
+        `${storytellerMenuStoryteller.name} -> ${missionTargetEntity.label} (${payload?.outcome || 'pending'})`
+      );
       void loadStorytellerDetail(storytellerMenuStoryteller.id, { force: true, suppressNotice: true });
       void refreshStorytellersFromList({ suppressNotice: true });
       setSelectedArenaEntityId(missionTargetEntity.id);
@@ -1260,7 +1730,11 @@ const MemorySpreadPage = () => {
     sessionId,
     storytellerMenuStoryteller,
     loadStorytellerDetail,
-    applyFallbackMissionResult
+    applyFallbackMissionResult,
+    apiBaseUrl,
+    createRequestTrace,
+    isForceMockMode,
+    logFlowEvent
   ]);
 
   useEffect(() => {
@@ -1270,8 +1744,8 @@ const MemorySpreadPage = () => {
       }
       return;
     }
-    loadMemoryCards();
-  }, [hasTypewriterSession, loadMemoryCards]);
+    void loadMemoryCards();
+  }, [hasTypewriterSession, isAdminMode, loadMemoryCards]);
 
   useEffect(() => {
     if (selectedArenaEntity?.kind === 'entity') {
@@ -1296,6 +1770,51 @@ const MemorySpreadPage = () => {
         : targetableArenaEntities[0].id
     );
   }, [missionTargetEntityId, selectedArenaEntity, targetableArenaEntities]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    window.__memorySpreadDebug = {
+      enabled: isDebugMode,
+      events: debugEvents,
+      snapshot: {
+        apiBaseUrl,
+        forceMock: isForceMockMode,
+        forceMockImages: isForceMockImagesMode,
+        generationTimeoutMs,
+        phase,
+        notice,
+        memorySource,
+        deckSource,
+        storytellerSource,
+        selectedMemoryId,
+        selectedArenaEntityId,
+        isLoadingMemories,
+        isLoadingDeck,
+        isLoadingStorytellers
+      }
+    };
+
+    return () => {
+      delete window.__memorySpreadDebug;
+    };
+  }, [
+    apiBaseUrl,
+    debugEvents,
+    deckSource,
+    isDebugMode,
+    isLoadingDeck,
+    isLoadingMemories,
+    isLoadingStorytellers,
+    isForceMockImagesMode,
+    isForceMockMode,
+    generationTimeoutMs,
+    memorySource,
+    notice,
+    phase,
+    selectedArenaEntityId,
+    selectedMemoryId,
+    storytellerSource
+  ]);
 
   useEffect(() => {
     const renderState = () =>
@@ -1417,6 +1936,7 @@ const MemorySpreadPage = () => {
     });
     setIsViewportAnimating(false);
     setNotice(nextNotice);
+    logFlowEvent('Returned to memory selection', nextNotice);
   };
   const openMemory = (memoryId) => {
     if (phase !== SCREEN.MEMORIES || isCollapsing || isLoadingMemories) return;
@@ -1424,6 +1944,7 @@ const MemorySpreadPage = () => {
     const memory = memoryCards.find((card) => card.id === memoryId);
     if (!memory) return;
 
+    logFlowEvent('Memory selected', memory.title);
     clearScheduled();
     setSelectedMemoryId(memory.id);
     setIsCollapsing(true);
@@ -1554,6 +2075,7 @@ const MemorySpreadPage = () => {
     setIsSubmittingConnection(false);
     setConnectionRejection(null);
     setNotice(`Define how ${entity.name} is woven to a star already in the constellation.`);
+    logFlowEvent('Entity placement started', entity.name);
   };
 
   const onDeckDragStart = (event, entityId) => {
@@ -1669,23 +2191,32 @@ const MemorySpreadPage = () => {
     let pointsAwarded = 0;
     let judgedPredicate = '';
     let usedLocalFallback = false;
+    const proposalRequestBody = {
+      sessionId,
+      playerId: DEFAULT_PLAYER_ID,
+      arenaId: selectedMemoryId || 'memory-spread',
+      source: { cardId: sourceCardId, entityId: sourceCardId },
+      targets: [{ cardId: targetCardId, entityId: targetCardId }],
+      relationship: {
+        surfaceText: relation
+      },
+      options: {
+        dryRun: false
+      }
+    };
 
     try {
-      const proposalPayload = await requestJson(DEFAULT_API_BASE_URL, '/api/arena/relationships/propose', {
+      const tracedProposalRequestBody = withMockedApiCalls(proposalRequestBody, isForceMockMode);
+      const proposalPayload = await requestJson(apiBaseUrl, '/api/arena/relationships/propose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId,
-          playerId: DEFAULT_PLAYER_ID,
-          arenaId: selectedMemoryId || 'memory-spread',
-          source: { cardId: sourceCardId, entityId: sourceCardId },
-          targets: [{ cardId: targetCardId, entityId: targetCardId }],
-          relationship: {
-            surfaceText: relation
-          },
-          options: {
-            dryRun: false
-          }
+        body: JSON.stringify(tracedProposalRequestBody),
+        trace: createRequestTrace('/api/arena/relationships/propose', {
+          arenaId: proposalRequestBody.arenaId,
+          sourceId: sourceCardId,
+          targetId: targetCardId,
+          relation,
+          mock: isForceMockMode ? 'forced' : 'runtime'
         })
       });
 
@@ -1696,6 +2227,7 @@ const MemorySpreadPage = () => {
         setConnectionRejection({ reasons });
         setNotice(`Thread severed: ${reasons[0]}`);
         setIsSubmittingConnection(false);
+        logFlowEvent('Relationship rejected', reasons[0]);
         return;
       }
 
@@ -1718,6 +2250,7 @@ const MemorySpreadPage = () => {
         reasons: [`Local fallback used because the relationship API was unavailable: ${fallbackReason}`]
       });
       setNotice(`Relationship judge unavailable, so ${pendingEntity.name} was anchored locally.`);
+      logFlowEvent('Relationship fallback used', fallbackReason);
     }
 
     const placementPoint = computePlacementFromConnection(
@@ -1776,6 +2309,10 @@ const MemorySpreadPage = () => {
     setIsSubmittingConnection(false);
     setSelectedArenaEntityId(placedEntity.id);
     setMissionTargetEntityId(placedEntity.id);
+    logFlowEvent(
+      'Relationship anchored',
+      `${pendingEntity.name} -> ${targetEntity.label} (${usedLocalFallback ? 'fallback' : 'api'})`
+    );
     schedule(() => fitViewportToArena(true), 80);
   };
 
@@ -1783,6 +2320,7 @@ const MemorySpreadPage = () => {
     if (!pendingEntity) return;
     if (isSubmittingConnection) return;
     setNotice(`${pendingEntity.name} returns to the deck.`);
+    logFlowEvent('Entity placement cancelled', pendingEntity.name);
     setPendingEntity(null);
     setPendingWorldPosition(null);
     setConnectToId('');
@@ -1912,6 +2450,7 @@ const MemorySpreadPage = () => {
         <p>{notice}</p>
         <div className="memorySpreadMeta">
           {isAdminMode && <span className="memorySpreadModeTag">Admin mode</span>}
+          {isDebugMode && <span className="memorySpreadModeTag">Trace mode</span>}
           <span className="memorySpreadSessionTag">
             Session: {hasTypewriterSession ? sessionId : 'stored session required'}
           </span>
@@ -1932,6 +2471,11 @@ const MemorySpreadPage = () => {
               Generate memories
             </button>
           )}
+          {isDebugMode && (
+            <button type="button" onClick={() => setIsTracePanelOpen((prev) => !prev)}>
+              {isTracePanelOpen ? 'Hide Trace' : 'Show Trace'}
+            </button>
+          )}
         </div>
         {(memoryError || deckError || storytellerError) && (
           <p className="memorySpreadError">
@@ -1943,6 +2487,52 @@ const MemorySpreadPage = () => {
           </p>
         )}
       </header>
+
+      {isDebugMode && (
+        <section className="memorySpreadTracePanel" aria-label="Memory spread request trace">
+          <div className="memorySpreadTraceHeader">
+            <div>
+              <strong>Trace</strong>
+              <span>Use `?view=memory-spread&memoryDebug=1` to keep this visible while debugging.</span>
+            </div>
+            <span>
+              {debugEvents.length} event{debugEvents.length === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          {isTracePanelOpen && (
+            <>
+              <div className="memorySpreadTraceSnapshot">
+                <span>Phase: {phase}</span>
+                <span>Memory source: {isLoadingMemories ? 'loading' : memorySource}</span>
+                <span>Deck source: {isLoadingDeck ? 'loading' : deckSource}</span>
+                <span>Storytellers: {isLoadingStorytellers ? 'loading' : storytellerSource}</span>
+              </div>
+              <ol className="memorySpreadTraceList">
+                {debugEvents.length === 0 && <li className="memorySpreadTraceEmpty">No trace events yet.</li>}
+                {debugEvents.slice().reverse().map((event) => (
+                  <li key={event.id} className={`memorySpreadTraceItem stage-${event.stage || 'info'}`}>
+                    <div className="memorySpreadTraceRow">
+                      <strong>{event.label || 'Memory Spread'}</strong>
+                      <span>{event.stage || 'info'}</span>
+                    </div>
+                    <div className="memorySpreadTraceMeta">
+                      {event.method && <span>{event.method}</span>}
+                      {event.durationMs !== undefined && <span>{event.durationMs} ms</span>}
+                      {event.statusCode ? <span>Status {event.statusCode}</span> : null}
+                      {event.source ? <span>{event.source}</span> : null}
+                    </div>
+                    {event.detail && <p>{event.detail}</p>}
+                    {event.bodySummary && <p>Request: {event.bodySummary}</p>}
+                    {event.payloadSummary && <p>Response: {event.payloadSummary}</p>}
+                    {event.error && <p>Error: {event.error}</p>}
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
+        </section>
+      )}
 
       {phase === SCREEN.MEMORIES && (
         <>
@@ -2698,6 +3288,16 @@ const MemorySpreadPage = () => {
       )}
     </div>
   );
+};
+
+const MemorySpreadPage = () => {
+  const [isSeerMode] = useState(() => readMemorySpreadSeerMode());
+
+  if (isSeerMode) {
+    return <SeerReadingPage />;
+  }
+
+  return <LegacyMemorySpreadPage />;
 };
 
 export default MemorySpreadPage;

@@ -190,6 +190,127 @@
   font-size: 0.82rem !important;
 }
 
+.memorySpreadTracePanel {
+  position: relative;
+  z-index: 1;
+  margin: 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(166, 154, 123, 0.22);
+  border-top: none;
+  background: rgba(10, 10, 12, 0.82);
+  backdrop-filter: blur(6px);
+  display: grid;
+  gap: 0.65rem;
+}
+
+.memorySpreadTraceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.memorySpreadTraceHeader strong,
+.memorySpreadTraceHeader span,
+.memorySpreadTraceSnapshot span,
+.memorySpreadTraceRow span,
+.memorySpreadTraceMeta span {
+  font-family: 'Cinzel', 'Georgia', serif;
+  letter-spacing: 0.06em;
+}
+
+.memorySpreadTraceHeader strong {
+  display: block;
+  color: var(--parchment);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.memorySpreadTraceHeader span {
+  color: var(--text-dim);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+}
+
+.memorySpreadTraceSnapshot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.memorySpreadTraceSnapshot span,
+.memorySpreadTraceMeta span {
+  border: 1px solid rgba(166, 154, 123, 0.16);
+  background: rgba(13, 15, 20, 0.74);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  color: var(--gold-pale);
+  font-size: 0.56rem;
+  text-transform: uppercase;
+}
+
+.memorySpreadTraceList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.memorySpreadTraceItem {
+  border: 1px solid rgba(166, 154, 123, 0.16);
+  border-radius: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  background: rgba(13, 15, 20, 0.66);
+  display: grid;
+  gap: 0.32rem;
+}
+
+.memorySpreadTraceItem.stage-failed {
+  border-color: rgba(160, 68, 68, 0.36);
+}
+
+.memorySpreadTraceItem.stage-succeeded {
+  border-color: rgba(166, 154, 123, 0.26);
+}
+
+.memorySpreadTraceItem.stage-joined {
+  border-color: rgba(139, 156, 175, 0.28);
+}
+
+.memorySpreadTraceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.memorySpreadTraceRow strong {
+  color: var(--parchment);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.memorySpreadTraceRow span {
+  color: var(--text-dim);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+}
+
+.memorySpreadTraceMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.memorySpreadTraceItem p,
+.memorySpreadTraceEmpty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 .memorySpreadAdminSeed {
   flex-shrink: 0;
   padding: 0.6rem 1rem;

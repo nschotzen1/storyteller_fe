@@ -248,4 +248,24 @@ export const startOrSeedTypewriterSession = async (
   });
 };
 
+export const inspectTypewriterSession = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  { sessionId, playerId = '', adminKey } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  const normalizedSessionId = typeof sessionId === 'string' ? sessionId.trim() : '';
+  if (!normalizedSessionId) {
+    throw new Error('sessionId is required.');
+  }
+  const params = new URLSearchParams();
+  params.set('sessionId', normalizedSessionId);
+  if (typeof playerId === 'string' && playerId.trim()) {
+    params.set('playerId', playerId.trim());
+  }
+  return requestJson(`${safeBaseUrl}/api/typewriter/session/inspect?${params.toString()}`, {
+    method: 'GET',
+    headers: buildAdminHeaders(adminKey)
+  });
+};
+
 export { DEFAULT_API_BASE_URL };

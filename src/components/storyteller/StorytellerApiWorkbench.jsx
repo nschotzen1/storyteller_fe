@@ -101,6 +101,13 @@ const THEMES = {
 
 const DEFAULT_FRAGMENT_TEXT =
   'A wind-scoured pass with a rusted watchtower and a lone courier arriving at dusk.';
+const DEFAULT_ENTITY_CATEGORIES_TEXT = 'LOCATION, ITEM, NPC, FLORA, FAUNA, EVENT, FACTION';
+
+const parseDesiredEntityCategories = (value) =>
+  `${value || ''}`
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 
 const coerceStorytellers = (payload) => {
   if (!payload) return [];
@@ -120,6 +127,7 @@ const createPlayerState = (index, options = {}) => {
     id,
     label,
     fragmentText: DEFAULT_FRAGMENT_TEXT,
+    desiredEntityCategoriesText: DEFAULT_ENTITY_CATEGORIES_TEXT,
     includeCards: true,
     includeFront: true,
     includeBack: true,
@@ -335,6 +343,7 @@ const StorytellerApiWorkbench = ({
           sessionId,
           playerId,
           text: player.fragmentText,
+          desiredEntityCategories: parseDesiredEntityCategories(player.desiredEntityCategoriesText),
           includeCards: player.includeCards,
           includeFront: player.includeFront,
           includeBack: player.includeBack,
@@ -833,6 +842,20 @@ const StorytellerApiWorkbench = ({
                   fragmentText: event.target.value
                 }))
               }
+            />
+          </label>
+          <label>
+            Desired Entity Categories
+            <input
+              type="text"
+              value={activePlayer.desiredEntityCategoriesText}
+              onChange={(event) =>
+                updatePlayerAt(activePlayerIndex, (prev) => ({
+                  ...prev,
+                  desiredEntityCategoriesText: event.target.value
+                }))
+              }
+              placeholder={DEFAULT_ENTITY_CATEGORIES_TEXT}
             />
           </label>
           <div className="toggleRow">

@@ -1,25 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import './CurtainIntro.css';
 
-const CurtainIntro = ({ onReveal }) => {
+const CurtainIntro = ({
+  onReveal,
+  onLiftStart,
+  lightDelayMs = 1000,
+  revealDelayMs = 7000
+}) => {
   const [lightOn, setLightOn] = useState(false);
   const [lift, setLift] = useState(false);
   const [hide, setHide] = useState(false);
 
   useEffect(() => {
-    const timeout = setTimeout(() => setLightOn(true), 1000);
+    const timeout = setTimeout(() => setLightOn(true), lightDelayMs);
     return () => clearTimeout(timeout);
-  }, []);
+  }, [lightDelayMs]);
 
   const handleClick = () => {
     if (lift || hide) return;
 
+    onLiftStart?.();
     setLift(true);
 
     setTimeout(() => {
       setHide(true);
       if (onReveal) onReveal();
-    }, 7000);
+    }, revealDelayMs);
   };
 
   if (hide) return null;
