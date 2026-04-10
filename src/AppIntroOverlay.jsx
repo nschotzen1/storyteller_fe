@@ -4,7 +4,8 @@ import './AppIntroOverlay.css';
 
 const APP_INTRO_VIDEO_SOURCES = Object.freeze([
   '/videos/rose-court-intro.mp4',
-  '/videos/rose-court-intro-alt.mp4'
+  '/videos/rose-court-intro-alt.mp4',
+  '/videos/rose-court-intro-third.mp4'
 ]);
 const APP_INTRO_AUDIO_SRC = '/audio/app-intro-background.mp3';
 const APP_INTRO_OPENING_STILL_SRC = '/images/app-intro-opening-still.png';
