@@ -1,4 +1,5 @@
 .curtain-stage {
+    --curtain-lift-duration: 7000ms;
     position: absolute;
     inset: 0;
     z-index: 50;
@@ -53,17 +54,20 @@
     object-fit: cover; /* <-- changed from "contain" to "cover" */
     border-radius: 12px;
     z-index: 10;
-    transition: transform 6s ease-in-out, opacity 5s ease-in-out, filter 6s ease-in-out;
+    transform-origin: center top;
+    transition:
+      transform var(--curtain-lift-duration) cubic-bezier(0.18, 0.78, 0.18, 1),
+      opacity var(--curtain-lift-duration) ease-in-out,
+      filter var(--curtain-lift-duration) ease-in-out;
     transform: translateY(0%);
     opacity: 1;
     filter: none;
   }
   
   .lifted {
-    transform: translateY(-100%) scale(1.05);
+    transform: translateY(-114%) scale(1.04);
     opacity: 0;
     filter: blur(45px);
-    transition-duration: 7s;
   }
 
   .curtain-stage.lifting {

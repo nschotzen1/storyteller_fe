@@ -24,6 +24,15 @@ export const playEnterSound = () => {
   audio.play();
 };
 
+export const playPageIntroSound = () => {
+  const audio = new Audio('/sounds/typewriter_paperfeed.mp3');
+  audio.volume = 0.34;
+  const playPromise = audio.play();
+  if (playPromise !== undefined) {
+    playPromise.catch((error) => console.log('Page intro sound prevented', error));
+  }
+};
+
 export const playXerofagHowl = () => {
   const roll = Math.floor(Math.random() * 20) + 1;
   let audioSrc;

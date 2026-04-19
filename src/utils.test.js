@@ -3,6 +3,7 @@ import {
   getRandomTexture,
   playKeySound,
   playEnterSound,
+  playPageIntroSound,
   playXerofagHowl,
   playEndOfPageSound,
   playPreGhostSound,
@@ -123,6 +124,15 @@ describe('Sound Functions', () => {
       playEnterSound();
       expect(Audio).toHaveBeenCalledWith('/sounds/typewriter-enter.mp3');
       expect(mockAudioInstance.volume).toBe(0.3);
+      expect(mockAudioInstance.play).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('playPageIntroSound', () => {
+    it('should play the paper feed sound with correct volume', () => {
+      playPageIntroSound();
+      expect(Audio).toHaveBeenCalledWith('/sounds/typewriter_paperfeed.mp3');
+      expect(mockAudioInstance.volume).toBe(0.34);
       expect(mockAudioInstance.play).toHaveBeenCalledTimes(1);
     });
   });

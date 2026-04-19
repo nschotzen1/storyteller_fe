@@ -523,6 +523,8 @@ const PaperDisplay = ({
 
   return (
     <div className="typewriter-paper-frame" data-testid="paper-frame" style={{ height: `${FRAME_HEIGHT}px` }}>
+      <div className="side-frame side-left" aria-hidden="true" />
+      <div className="side-frame side-right" aria-hidden="true" />
       <div className="paper-scroll-area" ref={scrollRef}
         style={{
           height: `${scrollAreaHeight}px`,
