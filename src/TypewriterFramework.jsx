@@ -5,7 +5,7 @@ import Keyboard from './components/typewriter/Keyboard.jsx';
 import PaperDisplay from './components/typewriter/PaperDisplay.jsx';
 import PageNavigation from './components/typewriter/PageNavigation.jsx'; // Import the new PageNavigation component
 import OrreryComponent from './OrreryComponent.jsx';
-import { getRandomTexture, playKeySound, playEnterSound, playXerofagHowl, playEndOfPageSound, countLines, playGhostWriterSound, ambientSoundManager, playPreGhostSound, fetchAndPlayElevenLabsTTS, playStorytellerKeyPressSound } from './utils.js';
+import { getRandomTexture, playKeySound, playEnterSound, playPageIntroSound, playXerofagHowl, playEndOfPageSound, countLines, playGhostWriterSound, ambientSoundManager, playPreGhostSound, fetchAndPlayElevenLabsTTS, playStorytellerKeyPressSound } from './utils.js';
 import {
   fetchNextFilmImage,
   fetchShouldAllowTypewriterKey,
@@ -35,11 +35,13 @@ const TYPEWRITER_DEBUG_STORAGE_KEY = 'typewriterDebugSettings';
 
 // Durations & Timeouts
 const CINEMATIC_SCROLL_INTRO_DELAY = 650; // ms
+const PAGE_INTRO_PREP_DELAY = 90; // ms
 const CINEMATIC_SCROLL_INTRO_SCROLL_TO_TOP_TIMEOUT = 120; //ms
 const CINEMATIC_SCROLL_INTRO_DURATION = 1600; // ms
 const CINEMATIC_SCROLL_TO_NORMAL_MODE_TIMEOUT = 1600; // ms
 const CINEMATIC_SCROLL_DEFAULT_DURATION = 1700; // ms
 const PAGE_TURN_SCROLL_ANIMATION_DURATION = 900; // ms
+const STRIKER_INTRO_ANIMATION_DURATION = 820; // ms
 const STRIKER_RETURN_ANIMATION_DURATION = 600; // ms
 const TYPING_ANIMATION_INTERVAL = 100; // ms
 const LAST_PRESSED_KEY_TIMEOUT = 120; // ms
@@ -234,8 +236,8 @@ const BUILTIN_XEROFAG_TYPEWRITER_KEY = {
   entityName: 'The Xerofag',
   keyText: SPECIAL_KEY_TEXT,
   insertText: SPECIAL_KEY_INSERT_TEXT.trim(),
-  description: 'The Xerofag are a group of undead canines.',
-  summary: 'The Xerofag are a group of undead canines.',
+  description: 'A pack of eerie undead dogs trained to find storytellers and devour them.',
+  summary: 'A pack of eerie undead dogs trained to find storytellers and devour them.',
   sourceType: 'builtin',
   storytellerId: '',
   storytellerName: '',
@@ -1505,11 +1507,28 @@ const TypewriterFramework = (props) => {
   useEffect(() => {
     if (pageTransitionState.scrollMode !== INITIAL_SCROLL_MODE || !scrollRef.current) return;
     scrollRef.current.scrollTop = 0;
+    const introPrepTimer = setTimeout(() => {
+      playPageIntroSound();
+      if (strikerRef.current) {
+        strikerRef.current.classList.remove('striker-intro');
+        void strikerRef.current.offsetWidth;
+        strikerRef.current.classList.add('striker-intro');
+      }
+    }, PAGE_INTRO_PREP_DELAY);
+    const introCleanupTimer = setTimeout(() => {
+      if (strikerRef.current) {
+        strikerRef.current.classList.remove('striker-intro');
+      }
+    }, PAGE_INTRO_PREP_DELAY + STRIKER_INTRO_ANIMATION_DURATION);
     const timer = setTimeout(() => {
       cinematicScrollTo(scrollRef, CINEMATIC_SCROLL_INTRO_SCROLL_TO_TOP_TIMEOUT, CINEMATIC_SCROLL_INTRO_DURATION);
       setTimeout(() => dispatchPageTransition({ type: pageTransitionActionTypes.SET_SCROLL_MODE, payload: { scrollMode: NORMAL_SCROLL_MODE } }), CINEMATIC_SCROLL_TO_NORMAL_MODE_TIMEOUT);
     }, CINEMATIC_SCROLL_INTRO_DELAY);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(introPrepTimer);
+      clearTimeout(introCleanupTimer);
+      clearTimeout(timer);
+    };
   }, [pageTransitionState.scrollMode]);
 
   function cinematicScrollTo(ref, to, duration = CINEMATIC_SCROLL_DEFAULT_DURATION) {

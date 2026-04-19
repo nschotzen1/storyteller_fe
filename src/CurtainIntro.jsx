@@ -5,7 +5,8 @@ const CurtainIntro = ({
   onReveal,
   onLiftStart,
   lightDelayMs = 1000,
-  revealDelayMs = 7000
+  revealDelayMs = 7000,
+  liftDurationMs = revealDelayMs
 }) => {
   const [lightOn, setLightOn] = useState(false);
   const [lift, setLift] = useState(false);
@@ -31,7 +32,11 @@ const CurtainIntro = ({
   if (hide) return null;
 
   return (
-    <div className={`curtain-stage ${lift ? 'lifting' : ''}`} onClick={handleClick}>
+    <div
+      className={`curtain-stage ${lift ? 'lifting' : ''}`}
+      style={{ '--curtain-lift-duration': `${liftDurationMs}ms` }}
+      onClick={handleClick}
+    >
       {lightOn && <div className="projector-beam" />}
       <img
         src="/tapestries/curtain.png"

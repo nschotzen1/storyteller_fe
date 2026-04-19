@@ -27,6 +27,7 @@ vi.mock('./utils', async () => {
     ...originalUtils,
     playKeySound: vi.fn(),
     playEnterSound: vi.fn(),
+    playPageIntroSound: vi.fn(),
     playXerofagHowl: vi.fn(),
     playEndOfPageSound: vi.fn(),
     playGhostWriterSound: vi.fn(),
@@ -43,7 +44,7 @@ import {
   fetchShouldGenerateContinuation,
   startTypewriterSession,
 } from './apiService';
-import { playEndOfPageSound } from './utils';
+import { playEndOfPageSound, playPageIntroSound } from './utils';
 
 const buildStorytellerSlotPayload = (overrides = {}) => ([
   {
@@ -276,6 +277,16 @@ describe('TypewriterFramework integration', () => {
 
     expect(fetchNextFilmImage).not.toHaveBeenCalled();
     expect(playEndOfPageSound).not.toHaveBeenCalled();
+  });
+
+  test('plays the page intro sound when the typewriter view first settles in', () => {
+    render(<TypewriterFramework />);
+
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+
+    expect(playPageIntroSound).toHaveBeenCalledTimes(1);
   });
 
   test('turn page lever fetches next film image once lever is enabled', async () => {

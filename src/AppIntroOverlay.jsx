@@ -5,17 +5,39 @@ import './AppIntroOverlay.css';
 const APP_INTRO_VIDEO_SOURCES = Object.freeze([
   '/videos/rose-court-intro.mp4',
   '/videos/rose-court-intro-alt.mp4',
-  '/videos/rose-court-intro-third.mp4'
+  '/videos/rose-court-intro-third.mp4',
+  '/videos/rose-court-intro-fourth.mp4'
 ]);
 const APP_INTRO_AUDIO_SRC = '/audio/app-intro-background.mp3';
 const APP_INTRO_OPENING_STILL_SRC = '/images/app-intro-opening-still.png';
 const APP_INTRO_CLOSING_STILL_SRC = '/images/app-intro-still.png';
 const APP_INTRO_OPENING_STILL_HOLD_MS = 1200;
+const APP_INTRO_VIDEO_INDEX_STORAGE_KEY = 'appIntroVideoRotationIndex';
 
-const pickRandomIntroVideo = () => (
-  APP_INTRO_VIDEO_SOURCES[Math.floor(Math.random() * APP_INTRO_VIDEO_SOURCES.length)]
-    || APP_INTRO_VIDEO_SOURCES[0]
-);
+const pickNextIntroVideo = () => {
+  const fallback = APP_INTRO_VIDEO_SOURCES[0];
+  if (typeof window === 'undefined') {
+    return fallback;
+  }
+
+  const storage = window.localStorage;
+  if (!storage || typeof storage.getItem !== 'function' || typeof storage.setItem !== 'function') {
+    return fallback;
+  }
+
+  const rawStoredIndex = storage.getItem(APP_INTRO_VIDEO_INDEX_STORAGE_KEY);
+  const parsedStoredIndex = Number.parseInt(rawStoredIndex || '0', 10);
+  const normalizedIndex = Number.isFinite(parsedStoredIndex)
+    ? Math.max(0, parsedStoredIndex % APP_INTRO_VIDEO_SOURCES.length)
+    : 0;
+
+  storage.setItem(
+    APP_INTRO_VIDEO_INDEX_STORAGE_KEY,
+    String((normalizedIndex + 1) % APP_INTRO_VIDEO_SOURCES.length)
+  );
+
+  return APP_INTRO_VIDEO_SOURCES[normalizedIndex] || fallback;
+};
 
 function AppIntroOverlay({ onComplete }) {
   const audioRef = useRef(null);
@@ -23,7 +45,7 @@ function AppIntroOverlay({ onComplete }) {
   const phaseTimeoutRef = useRef(null);
   const [phase, setPhase] = useState('curtain');
   const [videoReady, setVideoReady] = useState(false);
-  const [videoSrc] = useState(pickRandomIntroVideo);
+  const [videoSrc] = useState(pickNextIntroVideo);
 
   useEffect(() => {
     if (phase !== 'opening-still') return undefined;
@@ -141,7 +163,8 @@ function AppIntroOverlay({ onComplete }) {
       {phase === 'curtain' ? (
         <CurtainIntro
           lightDelayMs={500}
-          revealDelayMs={2600}
+          revealDelayMs={3200}
+          liftDurationMs={3200}
           onLiftStart={handleLiftStart}
           onReveal={() => setPhase('opening-still')}
         />
