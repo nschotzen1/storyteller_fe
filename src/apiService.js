@@ -62,6 +62,12 @@ export const fetchTypewriterReply = async (text, sessionId, options = {}) => {
   }
   try {
     const payload = { sessionId, message: text };
+    if (typeof options?.userBeat === 'string') {
+      payload.userBeat = options.userBeat;
+    }
+    if (typeof options?.latestAddition === 'string') {
+      payload.latestAddition = options.latestAddition;
+    }
     if (Number.isFinite(options?.fadeTimingScale)) {
       payload.fadeTimingScale = options.fadeTimingScale;
     }

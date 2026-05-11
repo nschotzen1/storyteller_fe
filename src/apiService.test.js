@@ -116,6 +116,33 @@ describe('apiService', () => {
       expect(result).toEqual({ data: mockApiResponse, error: null });
     });
 
+    it('should include the latest user beat when provided', async () => {
+      const mockApiResponse = { content: 'This is a typewriter reply.' };
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockApiResponse,
+      });
+
+      await fetchTypewriterReply(text, sessionId, {
+        userBeat: 'latest human beat',
+        latestAddition: 'latest human beat',
+        fadeTimingScale: 1.4,
+      });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        endpoint,
+        expect.objectContaining({
+          body: JSON.stringify({
+            sessionId,
+            message: text,
+            userBeat: 'latest human beat',
+            latestAddition: 'latest human beat',
+            fadeTimingScale: 1.4,
+          }),
+        })
+      );
+    });
+
     it('should handle API error for fetchTypewriterReply', async () => {
       global.fetch.mockResolvedValueOnce({
         ok: false,

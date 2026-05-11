@@ -1006,6 +1006,14 @@ const asStringArray = (value) => {
     .filter(Boolean);
 };
 
+const asOptionalString = (value) => (typeof value === 'string' && value.trim() ? value.trim() : '');
+
+const asRating = (value, min = 1, max = 10) => {
+  const numericValue = toFiniteNumber(value);
+  if (numericValue === null) return null;
+  return Math.min(max, Math.max(min, numericValue));
+};
+
 const normalizeEntityInsights = (value) => {
   if (!Array.isArray(value)) return [];
   return value
@@ -1039,13 +1047,60 @@ export const normalizeContinuationInsights = (reply, fallbackStyle = null) => {
   const contextualStrengthening = typeof source.contextual_strengthening === 'string'
     ? source.contextual_strengthening.trim()
     : '';
+  const glimpse = asOptionalString(source.glimpse);
+  const inspiredBy = asStringArray(
+    Array.isArray(source.style)
+      ? source.style
+      : source.inspired_by || source.inspiredBy || source.style_inspirations || source.styleInspirations
+  );
+  const genre = asOptionalString(source.genre);
+  const surprising = asRating(source.surprising);
+  const grounded = asRating(source.grounded);
+  const ascopePmessiAwareness = asRating(
+    source['ascope/pmessi_awareness']
+      ?? source.ascope_pmessi_awareness
+      ?? source.ascope_pmesii_awareness
+  );
+  const pivotal = asRating(source.pivotal);
+  const genericRating = asRating(source.are_you_being_generic_on_me);
+  const dareToNameNames = asRating(source['dare_to_name_names?'] ?? source.dare_to_name_names);
+  const specificity = asRating(source.specificity);
+  const surroundingsClear = asRating(source.are_the_surroundings_clear);
+  const culturalReferences = asRating(source.are_you_imposing_cultural_references, 1, 5);
+  const readable = asRating(source.readable);
+  const easyToFollow = asRating(source.easy_to_follow);
+  const narrationStyle = asStringArray(source.narration_style || source.narrationStyle);
+  const itchyFingers = asRating(source.itchy_fingers);
+  const proudRating = asRating(source.are_you_proud_of_yourself, 1, 5);
+  const newNamedEntities = asStringArray(source.new_named_entities || source.newNamedEntities);
   const continuationWordCount = toFiniteNumber(source.continuation_word_count);
   const storytellingPool = toFiniteNumber(source.current_storytelling_points_pool);
   const pointsEarned = toFiniteNumber(source.points_earned);
   const entities = normalizeEntityInsights(source.Entities || source.entities);
-  const style = normalizeFontMetadata(source.style || source.metadata || fallbackStyle);
+  const rawFontStyle = source.style && !Array.isArray(source.style)
+    ? source.style
+    : source.metadata || fallbackStyle;
+  const style = normalizeFontMetadata(rawFontStyle);
   const hasContent = Boolean(
-    meaning.length
+    glimpse
+    || inspiredBy.length
+    || genre
+    || surprising !== null
+    || grounded !== null
+    || ascopePmessiAwareness !== null
+    || pivotal !== null
+    || genericRating !== null
+    || dareToNameNames !== null
+    || specificity !== null
+    || surroundingsClear !== null
+    || culturalReferences !== null
+    || newNamedEntities.length
+    || readable !== null
+    || easyToFollow !== null
+    || narrationStyle.length
+    || itchyFingers !== null
+    || proudRating !== null
+    || meaning.length
     || contextualStrengthening
     || continuationWordCount !== null
     || storytellingPool !== null
@@ -1055,6 +1110,24 @@ export const normalizeContinuationInsights = (reply, fallbackStyle = null) => {
   );
   if (!hasContent) return null;
   return {
+    glimpse,
+    inspired_by: inspiredBy,
+    genre,
+    surprising,
+    grounded,
+    'ascope/pmessi_awareness': ascopePmessiAwareness,
+    pivotal,
+    are_you_being_generic_on_me: genericRating,
+    'dare_to_name_names?': dareToNameNames,
+    specificity,
+    are_the_surroundings_clear: surroundingsClear,
+    are_you_imposing_cultural_references: culturalReferences,
+    new_named_entities: newNamedEntities,
+    readable,
+    easy_to_follow: easyToFollow,
+    narration_style: narrationStyle,
+    itchy_fingers: itchyFingers,
+    are_you_proud_of_yourself: proudRating,
     meaning,
     contextual_strengthening: contextualStrengthening,
     continuation_word_count: continuationWordCount,
@@ -2038,6 +2111,8 @@ const TypewriterFramework = (props) => {
 
           // 2. Fetch the ghostwriter reply
           const response = await fetchTypewriterReply(currentFullText, sessionId, {
+            userBeat: additionText,
+            latestAddition: additionText,
             fadeTimingScale: debugSettings.fadeTimingScale
           });
           const sequenceStarted = applyTypewriterReply(response.data, currentFullText);
@@ -2486,6 +2561,18 @@ const TypewriterFramework = (props) => {
                 Delta {lastContinuationInsights.points_earned >= 0 ? `+${lastContinuationInsights.points_earned}` : lastContinuationInsights.points_earned}
               </span>
             ) : null}
+            {lastContinuationInsights.genre ? (
+              <span>Genre {lastContinuationInsights.genre}</span>
+            ) : null}
+            {lastContinuationInsights.surprising !== null ? (
+              <span>Surprise {lastContinuationInsights.surprising}</span>
+            ) : null}
+            {lastContinuationInsights.grounded !== null ? (
+              <span>Grounded {lastContinuationInsights.grounded}</span>
+            ) : null}
+            {lastContinuationInsights.pivotal !== null ? (
+              <span>Pivotal {lastContinuationInsights.pivotal}</span>
+            ) : null}
             {debugGhostStyle?.font ? (
               <span>Font {debugGhostStyle.font}</span>
             ) : null}
@@ -2497,6 +2584,9 @@ const TypewriterFramework = (props) => {
             ) : null}
             {lastContinuationInsights.entities.length ? (
               <span>Entities {lastContinuationInsights.entities.length}</span>
+            ) : null}
+            {lastContinuationInsights.new_named_entities.length ? (
+              <span>Names {lastContinuationInsights.new_named_entities.join(', ')}</span>
             ) : null}
             {debugSettings.showTimingDetails && Number.isFinite(lastContinuationTiming?.fade_interval_ms) ? (
               <span>Fade interval {formatTimingWithMs(lastContinuationTiming.fade_interval_ms)}</span>
@@ -2511,10 +2601,22 @@ const TypewriterFramework = (props) => {
               <span>Scale x{lastContinuationTiming.timing_scale.toFixed(2)}</span>
             ) : null}
           </div>
+          {lastContinuationInsights.glimpse ? (
+            <p className="typewriter-continuation-insights-context">
+              {lastContinuationInsights.glimpse}
+            </p>
+          ) : null}
           {lastContinuationInsights.contextual_strengthening ? (
             <p className="typewriter-continuation-insights-context">
               {lastContinuationInsights.contextual_strengthening}
             </p>
+          ) : null}
+          {lastContinuationInsights.inspired_by.length ? (
+            <div className="typewriter-continuation-insights-meaning">
+              {lastContinuationInsights.inspired_by.slice(0, 3).map((line, index) => (
+                <span key={`${line}-${index}`}>{line}</span>
+              ))}
+            </div>
           ) : null}
           {lastContinuationInsights.meaning.length ? (
             <div className="typewriter-continuation-insights-meaning">

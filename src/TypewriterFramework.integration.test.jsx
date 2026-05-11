@@ -744,7 +744,7 @@ describe('TypewriterFramework integration', () => {
       },
     });
 
-    expect(normalized).toEqual({
+    expect(normalized).toEqual(expect.objectContaining({
       meaning: ['Signal implies shelter.', 'Approach raises stakes.'],
       contextual_strengthening: 'The cue connects bell, smoke, and movement.',
       continuation_word_count: 7,
@@ -760,7 +760,46 @@ describe('TypewriterFramework integration', () => {
         },
       ],
       style: null,
-    });
+    }));
+  });
+
+  test('normalizes revised glimpse-style continuation insights', () => {
+    const normalized = normalizeContinuationInsights({
+      continuation_insights: {
+        glimpse: 'A brass latch sliding through a blur of green paint.',
+        style: ['soft focus', 'worn enamel'],
+        genre: 'threshold fantasy',
+        surprising: 6,
+        grounded: 9,
+        'ascope/pmessi_awareness': 8,
+        pivotal: 7,
+        are_you_being_generic_on_me: 2,
+        'dare_to_name_names?': 5,
+        specificity: 9,
+        are_the_surroundings_clear: 8,
+        are_you_imposing_cultural_references: 1,
+        new_named_entities: ['green latch'],
+        readable: 10,
+        easy_to_follow: 10,
+        narration_style: ['Third-person limited'],
+        itchy_fingers: 8,
+        are_you_proud_of_yourself: 4,
+      },
+    }, { font: 'Fallback Serif', font_size: '30px', font_color: '#111111' });
+
+    expect(normalized).toEqual(expect.objectContaining({
+      glimpse: 'A brass latch sliding through a blur of green paint.',
+      inspired_by: ['soft focus', 'worn enamel'],
+      genre: 'threshold fantasy',
+      'ascope/pmessi_awareness': 8,
+      new_named_entities: ['green latch'],
+      narration_style: ['Third-person limited'],
+      style: {
+        font: 'Fallback Serif',
+        font_size: '30px',
+        font_color: '#111111',
+      },
+    }));
   });
 
   test('renders fade phase when a typewriter sequence includes fade actions', async () => {
