@@ -527,144 +527,155 @@ const PaperDisplay = ({
       <div className="side-frame side-right" aria-hidden="true" />
       <div className="paper-scroll-area" ref={scrollRef}
         style={{
-          height: `${scrollAreaHeight}px`,
+          height: `${FRAME_HEIGHT}px`,
           maxHeight: `${FRAME_HEIGHT}px`,
-          overflowY: neededHeight > FRAME_HEIGHT ? 'auto' : 'hidden',
+          overflowY: 'auto',
           position: 'relative',
           width: '100%',
         }}
       >
-        {isSliding && renderSlideWrapper()}
+        <div
+          className="paper-scroll-content"
+          data-testid="paper-scroll-content"
+          style={{
+            minHeight: `${scrollAreaHeight}px`,
+            height: `${scrollAreaHeight}px`,
+            position: 'relative',
+            width: '100%',
+          }}
+        >
+          {isSliding && renderSlideWrapper()}
 
-        {!isSliding && (
-          <>
-            <div
-              className="film-background"
-              data-testid="film-background-div"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: `${FILM_HEIGHT}px`,
-                zIndex: FILM_BACKGROUND_Z_INDEX,
-                pointerEvents: 'none',
-                backgroundImage: `url('${pageBg}')`,
-                backgroundSize: 'cover',
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'top center',
-                opacity: FILM_BACKGROUND_OPACITY,
-              }}
-            />
-            {preGhostAtmosphere && <div className="pre-ghost-overlay" />}
-            <div
-              className="typewriter-text film-overlay-text"
-              style={textStyles} // Apply the combined styles here
-            >
-              {fadeState && fadeState.isActive ? (
-                renderFadeLines()
-              ) : (
-                (() => {
-                  const pageTextString = String(pageText ?? '');
-                  const pageTextLength = pageTextString.length;
-                  const ghostTextString = Array.isArray(ghostText)
-                    ? ghostText.map(g => g.char).join('')
-                    : String(ghostText || '');
+          {!isSliding && (
+            <>
+              <div
+                className="film-background"
+                data-testid="film-background-div"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: `${FILM_HEIGHT}px`,
+                  zIndex: FILM_BACKGROUND_Z_INDEX,
+                  pointerEvents: 'none',
+                  backgroundImage: `url('${pageBg}')`,
+                  backgroundSize: 'cover',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'top center',
+                  opacity: FILM_BACKGROUND_OPACITY,
+                }}
+              />
+              {preGhostAtmosphere && <div className="pre-ghost-overlay" />}
+              <div
+                className="typewriter-text film-overlay-text"
+                style={textStyles} // Apply the combined styles here
+              >
+                {fadeState && fadeState.isActive ? (
+                  renderFadeLines()
+                ) : (
+                  (() => {
+                    const pageTextString = String(pageText ?? '');
+                    const pageTextLength = pageTextString.length;
+                    const ghostTextString = Array.isArray(ghostText)
+                      ? ghostText.map(g => g.char).join('')
+                      : String(ghostText || '');
 
-                  if (ghostTextString.length > ghostAnimationClassesRef.current.length) {
-                    for (let i = ghostAnimationClassesRef.current.length; i < ghostTextString.length; i++) {
-                      ghostAnimationClassesRef.current.push(getRandomAnimationClass());
+                    if (ghostTextString.length > ghostAnimationClassesRef.current.length) {
+                      for (let i = ghostAnimationClassesRef.current.length; i < ghostTextString.length; i++) {
+                        ghostAnimationClassesRef.current.push(getRandomAnimationClass());
+                      }
+                    } else if (ghostTextString.length < ghostAnimationClassesRef.current.length) {
+                      ghostAnimationClassesRef.current = ghostAnimationClassesRef.current.slice(0, ghostTextString.length);
                     }
-                  } else if (ghostTextString.length < ghostAnimationClassesRef.current.length) {
-                    ghostAnimationClassesRef.current = ghostAnimationClassesRef.current.slice(0, ghostTextString.length);
-                  }
 
-                  const sequenceUserTextString = String(sequenceUserText || '');
-                  const fullCombinedText = pageTextString + ghostTextString + sequenceUserTextString;
-                  const originalLines = fullCombinedText.split('\n');
+                    const sequenceUserTextString = String(sequenceUserText || '');
+                    const fullCombinedText = pageTextString + ghostTextString + sequenceUserTextString;
+                    const originalLines = fullCombinedText.split('\n');
 
-                  const allLinesToRender = originalLines.slice(0, MAX_LINES);
+                    const allLinesToRender = originalLines.slice(0, MAX_LINES);
 
-                  return allLinesToRender.map((line, lineIdx) => {
-                    const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
+                    return allLinesToRender.map((line, lineIdx) => {
+                      const isLastLineOfRenderedSet = lineIdx === allLinesToRender.length - 1;
 
-                    const currentLineGlobalStartOffset = getLineGlobalStartOffset(originalLines, lineIdx);
+                      const currentLineGlobalStartOffset = getLineGlobalStartOffset(originalLines, lineIdx);
 
-                    let currentOffsetWithinLine = 0;
+                      let currentOffsetWithinLine = 0;
 
-                    const segments = line.includes(SPECIAL_KEY_TEXT)
-                      ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
-                      : [line];
+                      const segments = line.includes(SPECIAL_KEY_TEXT)
+                        ? line.split(new RegExp(`(${SPECIAL_KEY_TEXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'))
+                        : [line];
 
-                    const processedSegments = segments.map((segment, segmentIdx) => {
-                      if (segment === SPECIAL_KEY_TEXT) {
-                        const segmentKey = `seg-${lineIdx}-${segmentIdx}-xerofag`;
-                        currentOffsetWithinLine += segment.length;
-                        return <span key={segmentKey} className="xerofag-highlight">{segment}</span>;
-                      } else {
-                        const segmentChars = segment.split('').map((char, charIdxInSegment) => {
-                          const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
-                          const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
+                      const processedSegments = segments.map((segment, segmentIdx) => {
+                        if (segment === SPECIAL_KEY_TEXT) {
+                          const segmentKey = `seg-${lineIdx}-${segmentIdx}-xerofag`;
+                          currentOffsetWithinLine += segment.length;
+                          return <span key={segmentKey} className="xerofag-highlight">{segment}</span>;
+                        } else {
+                          const segmentChars = segment.split('').map((char, charIdxInSegment) => {
+                            const charGlobalIndex = currentLineGlobalStartOffset + currentOffsetWithinLine + charIdxInSegment;
+                            const charKey = `char-${lineIdx}-${segmentIdx}-${charIdxInSegment}-${charGlobalIndex}`;
 
-                          const ghostStart = pageTextLength;
-                          const ghostEnd = pageTextLength + ghostTextString.length;
-                          if (charGlobalIndex >= ghostStart && charGlobalIndex < ghostEnd) {
-                            const ghostIdx = charGlobalIndex - ghostStart;
-                            const animClass = ghostAnimationClassesRef.current[ghostIdx] || 'ghost-char-materialize';
-                            return (
-                              <span
-                                key={charKey}
-                                className={`ghost-char ${animClass}`}
-                                style={{ display: 'inline-block', ...ghostTextStyles }}
-                              >
-                                {ghostTextString[ghostIdx]}
-                              </span>
-                            );
-                          } else {
-                            const persistedStyle = charGlobalIndex < pageTextLength
-                              ? buildFontMetadataStyle(getPersistedCharStyle(charGlobalIndex))
-                              : null;
-                            if (persistedStyle) {
+                            const ghostStart = pageTextLength;
+                            const ghostEnd = pageTextLength + ghostTextString.length;
+                            if (charGlobalIndex >= ghostStart && charGlobalIndex < ghostEnd) {
+                              const ghostIdx = charGlobalIndex - ghostStart;
+                              const animClass = ghostAnimationClassesRef.current[ghostIdx] || 'ghost-char-materialize';
                               return (
                                 <span
-                                  key={`${charKey}-persisted`}
-                                  className="typewriter-page-styled-char"
-                                  style={persistedStyle}
+                                  key={charKey}
+                                  className={`ghost-char ${animClass}`}
+                                  style={{ display: 'inline-block', ...ghostTextStyles }}
                                 >
-                                  {char}
+                                  {ghostTextString[ghostIdx]}
                                 </span>
                               );
+                            } else {
+                              const persistedStyle = charGlobalIndex < pageTextLength
+                                ? buildFontMetadataStyle(getPersistedCharStyle(charGlobalIndex))
+                                : null;
+                              if (persistedStyle) {
+                                return (
+                                  <span
+                                    key={`${charKey}-persisted`}
+                                    className="typewriter-page-styled-char"
+                                    style={persistedStyle}
+                                  >
+                                    {char}
+                                  </span>
+                                );
+                              }
+                              return char;
                             }
-                            return char;
-                          }
 
-                        });
-                        currentOffsetWithinLine += segment.length;
-                        return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
-                      }
+                          });
+                          currentOffsetWithinLine += segment.length;
+                          return <React.Fragment key={`seg-${lineIdx}-${segmentIdx}-normal`}>{segmentChars}</React.Fragment>;
+                        }
+                      });
+
+                      return (
+                        <div
+                          key={lineIdx}
+                          className="typewriter-line"
+                          ref={isLastLineOfRenderedSet ? lastLineRef : null}
+                        >
+                          <span className="last-line-content">
+                            {processedSegments}
+
+
+                            {isLastLineOfRenderedSet && shouldRenderCursor && renderCursor()}
+
+                          </span>
+                        </div>
+                      );
                     });
-
-                    return (
-                      <div
-                        key={lineIdx}
-                        className="typewriter-line"
-                        ref={isLastLineOfRenderedSet ? lastLineRef : null}
-                      >
-                        <span className="last-line-content">
-                          {processedSegments}
-
-
-                          {isLastLineOfRenderedSet && shouldRenderCursor && renderCursor()}
-
-                        </span>
-                      </div>
-                    );
-                  });
-                })()
-              )}
-            </div>
-          </>
-        )}
+                  })()
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

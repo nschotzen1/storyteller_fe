@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import TypewriterFramework, {
   FIRST_FADE_HANDOFF_DELAY,
   MAX_LINES,
+  buildTypewriterNarrativeFromPages,
   normalizeContinuationInsights,
   normalizeFontMetadata,
   normalizeTypewriterReply,
@@ -289,6 +290,38 @@ describe('TypewriterFramework integration', () => {
     expect(playPageIntroSound).toHaveBeenCalledTimes(1);
   });
 
+  test('builds full narrative context across page history', () => {
+    expect(buildTypewriterNarrativeFromPages([
+      { text: 'first page' },
+      { text: 'second page' },
+    ])).toBe('first page\n\nsecond page');
+    expect(buildTypewriterNarrativeFromPages([
+      { text: 'first page' },
+      { text: '' },
+    ])).toBe('first page');
+    expect(buildTypewriterNarrativeFromPages([
+      { text: 'first page' },
+      { text: '' },
+    ], {
+      currentPageIndex: 1,
+      currentPageSuffix: 'ghost line',
+      includeTrailingBlankPages: true,
+    })).toBe('first page\n\nghost line');
+  });
+
+  test('paper viewport keeps the full page height scrollable before the user reaches the bottom', () => {
+    const { container } = render(<TypewriterFramework />);
+
+    expect(container.querySelector('.paper-scroll-area')).toHaveStyle({
+      height: '700px',
+      overflowY: 'auto',
+    });
+    expect(screen.getByTestId('paper-scroll-content')).toHaveStyle({
+      height: '1400px',
+      minHeight: '1400px',
+    });
+  });
+
   test('turn page lever fetches next film image once lever is enabled', async () => {
     fetchNextFilmImage.mockResolvedValue({ data: { image_url: 'new_page_specific.png' }, error: null });
     fetchShouldGenerateContinuation.mockResolvedValue({ shouldGenerate: false });
@@ -317,6 +350,61 @@ describe('TypewriterFramework integration', () => {
       expect(fetchNextFilmImage).toHaveBeenCalled();
       const nextSlide = screen.getByTestId('next-bg-slide');
       expect(nextSlide).toHaveStyle('background-image: url("new_page_specific.png")');
+    });
+  });
+
+  test('top next control creates a new page and persists the full narrative across pages', async () => {
+    fetchNextFilmImage.mockResolvedValue({ data: { image_url: 'new_page_specific.png' }, error: null });
+    fetchShouldGenerateContinuation.mockResolvedValue({ shouldGenerate: false });
+
+    const { container } = render(<TypewriterFramework />);
+
+    for (let i = 0; i < 31; i += 1) {
+      clickKey('A');
+      act(() => {
+        vi.advanceTimersByTime(120);
+      });
+      clickKey(' ');
+      act(() => {
+        vi.advanceTimersByTime(120);
+      });
+    }
+
+    const nextButton = screen.getByRole('button', { name: /Next/i });
+    await waitFor(() => {
+      expect(nextButton).toBeEnabled();
+    });
+
+    fireEvent.click(nextButton);
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    await waitFor(() => {
+      expect(fetchNextFilmImage).toHaveBeenCalledWith(expect.stringContaining('A A'), 'test-session-id-123');
+      expect(screen.getByText('Page 2 / 2')).toBeInTheDocument();
+    });
+
+    const keyboardReady = await advanceUntil(
+      () => !screen.getByAltText('Key B').closest('.typewriter-key-wrapper')?.classList.contains('key-disabled'),
+      6000,
+      100
+    );
+    expect(keyboardReady).toBe(true);
+
+    clickKey('B');
+    act(() => {
+      vi.advanceTimersByTime(700);
+    });
+
+    await waitFor(() => {
+      expect(container.querySelector('.typewriter-line .last-line-content')?.textContent).toContain('B');
+      expect(startTypewriterSession.mock.calls.some(([calledSessionId, fragment]) => (
+        calledSessionId === 'test-session-id-123'
+        && typeof fragment === 'string'
+        && fragment.includes('\n\nB')
+        && fragment.startsWith('A A')
+      ))).toBe(true);
     });
   });
 

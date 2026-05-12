@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useReducer, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useReducer, useCallback, useMemo } from 'react';
 import './TypeWriter.css';
 import TurnPageLever from './TurnPageLever.jsx';
 import Keyboard from './components/typewriter/Keyboard.jsx';
@@ -72,8 +72,8 @@ const FILM_FLICKER_OVERLAY_GRADIENT = 'linear-gradient(90deg,rgba(0,0,0,0.09),rg
 const FILM_FLICKER_OVERLAY_OPACITY = 0.15;
 const FILM_FLICKER_OVERLAY_BLEND_MODE = 'multiply';
 const FILM_FLICKER_OVERLAY_ANIMATION = 'filmFlicker 1.1s infinite linear alternate';
-const PAGE_NAVIGATION_BUTTONS_TOP = '3vh';
-const PAGE_NAVIGATION_BUTTONS_Z_INDEX = 20;
+const PAGE_NAVIGATION_BUTTONS_TOP = '5.35rem';
+const PAGE_NAVIGATION_BUTTONS_Z_INDEX = 1300;
 const PAGE_NAVIGATION_BUTTONS_PADDING = '0 3vw';
 const PAGE_NAVIGATION_BUTTON_FONT_SIZE = 24; // pixels
 const PAGE_NAVIGATION_BUTTON_DISABLED_OPACITY = 0.3;
@@ -842,6 +842,33 @@ const removeTrailingCharacterFromPage = (page = {}) => {
   };
 };
 
+const TYPEWRITER_PAGE_SEPARATOR = '\n\n';
+
+export const buildTypewriterNarrativeFromPages = (pageList = [], options = {}) => {
+  const {
+    currentPageIndex = -1,
+    currentPageSuffix = '',
+    includeTrailingBlankPages = false
+  } = options || {};
+  const normalizedPages = Array.isArray(pageList) ? pageList : [];
+  if (!normalizedPages.length) return '';
+
+  const pageTexts = normalizedPages.map((page, index) => {
+    const baseText = typeof page?.text === 'string' ? page.text : '';
+    const suffix = index === currentPageIndex ? String(currentPageSuffix || '') : '';
+    return `${baseText}${suffix}`;
+  });
+
+  let lastNarrativePageIndex = pageTexts.length - 1;
+  if (!includeTrailingBlankPages) {
+    while (lastNarrativePageIndex >= 0 && pageTexts[lastNarrativePageIndex].length === 0) {
+      lastNarrativePageIndex -= 1;
+    }
+  }
+  if (lastNarrativePageIndex < 0) return '';
+  return pageTexts.slice(0, lastNarrativePageIndex + 1).join(TYPEWRITER_PAGE_SEPARATOR);
+};
+
 const getFirstSequenceStyle = (sequence = []) => {
   if (!Array.isArray(sequence)) return null;
   for (const step of sequence) {
@@ -1366,6 +1393,23 @@ const TypewriterFramework = (props) => {
     pageStyleRanges = []
   } = pages[currentPage] || {};
   const visibleGhostText = `${typingState.currentGhostText || ''}${typingState.sequenceUserText || ''}`;
+  const persistedNarrativeText = useMemo(() => (
+    buildTypewriterNarrativeFromPages(pages)
+  ), [pages]);
+  const visibleNarrativeText = useMemo(() => (
+    buildTypewriterNarrativeFromPages(pages, {
+      currentPageIndex: currentPage,
+      currentPageSuffix: visibleGhostText,
+      includeTrailingBlankPages: true
+    })
+  ), [pages, currentPage, visibleGhostText]);
+  const draftNarrativeText = useMemo(() => (
+    buildTypewriterNarrativeFromPages(pages, {
+      currentPageIndex: currentPage,
+      currentPageSuffix: `${visibleGhostText}${typingState.inputBuffer || ''}`,
+      includeTrailingBlankPages: true
+    })
+  ), [pages, currentPage, visibleGhostText, typingState.inputBuffer]);
   const typingInteractionAllowed = typingAllowed && !isTextKeyVerificationPending;
   const displayedKeyTextures = keys.map((key, index) => {
     const storytellerSlot = storytellerSlots.find((slot) => slot.slotKey === key);
@@ -1375,20 +1419,14 @@ const TypewriterFramework = (props) => {
     return keyTextures[index];
   });
   const visibleLineCount = Math.min(countLines(pageText, visibleGhostText), MAX_LINES);
-  const neededHeight = TOP_OFFSET + visibleLineCount * LINE_HEIGHT + NEEDED_HEIGHT_OFFSET;
-  const scrollAreaHeight = Math.max(FRAME_HEIGHT, neededHeight);
+  const neededHeight = TOP_OFFSET + visibleLineCount * LINE_HEIGHT + BOTTOM_PADDING + NEEDED_HEIGHT_OFFSET;
+  const scrollAreaHeight = Math.max(FILM_HEIGHT, neededHeight);
   const canPullTurnPageLever =
     leverLevel === LEVER_LEVEL_WORD_THRESHOLDS.length - 1
     && !pageChangeInProgress
     && typingInteractionAllowed;
 
-  const getCurrentNarrativeSnapshot = useCallback(() => (
-    `${pageText || ''}${visibleGhostText || ''}${typingState.inputBuffer || ''}`
-  ), [
-    pageText,
-    visibleGhostText,
-    typingState.inputBuffer
-  ]);
+  const getCurrentNarrativeSnapshot = useCallback(() => draftNarrativeText, [draftNarrativeText]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -1440,7 +1478,7 @@ const TypewriterFramework = (props) => {
     if (!isSessionReady || !sessionId) return;
     if (storytellerInitialSyncSessionRef.current === sessionId) return;
 
-    const currentWordInterval = Math.floor(countWordsInNarrative(pageText || '') / STORYTELLER_KEY_CHECK_INTERVAL_WORDS);
+    const currentWordInterval = Math.floor(countWordsInNarrative(persistedNarrativeText || '') / STORYTELLER_KEY_CHECK_INTERVAL_WORDS);
     const timeoutId = window.setTimeout(() => {
       syncTypewriterStorytellerSlots(currentWordInterval).then((didSync) => {
         if (didSync) {
@@ -1450,12 +1488,12 @@ const TypewriterFramework = (props) => {
     }, STORYTELLER_KEY_CHECK_DELAY_MS);
 
     return () => window.clearTimeout(timeoutId);
-  }, [isSessionReady, pageText, sessionId, syncTypewriterStorytellerSlots]);
+  }, [isSessionReady, persistedNarrativeText, sessionId, syncTypewriterStorytellerSlots]);
 
   useEffect(() => {
     if (!isSessionReady || !sessionId) return;
 
-    const wordIntervalIndex = Math.floor(countWordsInNarrative(pageText || '') / STORYTELLER_KEY_CHECK_INTERVAL_WORDS);
+    const wordIntervalIndex = Math.floor(countWordsInNarrative(persistedNarrativeText || '') / STORYTELLER_KEY_CHECK_INTERVAL_WORDS);
     if (wordIntervalIndex <= 0) return;
     if (wordIntervalIndex <= lastStorytellerCheckIntervalRef.current) return;
 
@@ -1464,19 +1502,19 @@ const TypewriterFramework = (props) => {
     }, STORYTELLER_KEY_CHECK_DELAY_MS);
 
     return () => window.clearTimeout(timeoutId);
-  }, [isSessionReady, pageText, sessionId, syncTypewriterStorytellerSlots]);
+  }, [isSessionReady, persistedNarrativeText, sessionId, syncTypewriterStorytellerSlots]);
 
   useEffect(() => {
     if (!isSessionReady || !sessionId) return;
 
     const timeoutId = window.setTimeout(() => {
-      startTypewriterSession(sessionId, pageText).catch((error) => {
+      startTypewriterSession(sessionId, persistedNarrativeText).catch((error) => {
         console.error('Error persisting typewriter fragment:', error);
       });
     }, 450);
 
     return () => window.clearTimeout(timeoutId);
-  }, [isSessionReady, pageText, sessionId]);
+  }, [isSessionReady, persistedNarrativeText, sessionId]);
 
   const applyTypewriterReply = useCallback((reply, fullText, options = {}) => {
     if (isProcessingSequenceRef.current) {
@@ -1664,10 +1702,19 @@ const TypewriterFramework = (props) => {
         } else {
           scrollRef.current.scrollTop = 0;
 
+          const narrativeBeforeTurn = visibleNarrativeText;
+
           // Fetch next film image then prepare for slide
-          fetchNextFilmImage(pageText + visibleGhostText, sessionId).then(data => {
+          fetchNextFilmImage(narrativeBeforeTurn, sessionId).then(data => {
             const newUrl = data?.data?.image_url || data?.data?.image_path || null;
             const newFilm = newUrl || DEFAULT_FILM_BG_URL;
+            const nextPages = [
+              ...pages.slice(0, currentPage + 1),
+              { text: '', filmBgUrl: newFilm, pageStyleRanges: [] }
+            ];
+            const nextNarrativeCursorLength = buildTypewriterNarrativeFromPages(nextPages, {
+              includeTrailingBlankPages: true
+            }).length;
 
             dispatchPageTransition({
               type: pageTransitionActionTypes.PREPARE_SLIDE,
@@ -1681,11 +1728,8 @@ const TypewriterFramework = (props) => {
             });
 
             // Update pages: Add new blank page, move to it
-            setPages(prev => [
-              ...prev.slice(0, currentPage + 1),
-              { text: '', filmBgUrl: newFilm, pageStyleRanges: [] }
-            ]);
-            setCurrentPage(prev => prev + 1);
+            setPages(nextPages);
+            setCurrentPage(currentPage + 1);
 
             requestAnimationFrame(() => {
               dispatchPageTransition({
@@ -1704,6 +1748,10 @@ const TypewriterFramework = (props) => {
               dispatchTyping({ type: typingActionTypes.SET_SHOW_CURSOR, payload: true });
               dispatchTyping({ type: typingActionTypes.RESET_TYPING_STATE_FOR_NEW_PAGE });
               dispatchGhostwriter({ type: ghostwriterActionTypes.RESET_GHOSTWRITER_STATE });
+              dispatchGhostwriter({
+                type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH,
+                payload: nextNarrativeCursorLength
+              });
             }, SLIDE_DURATION_MS);
           });
         }
@@ -1715,12 +1763,16 @@ const TypewriterFramework = (props) => {
   // --- PAGE TURN: Slide right (BACK/NEXT in history) ---
   const handleHistoryNavigation = (targetIdx) => {
     if (pageTransitionState.pageChangeInProgress || pageTransitionState.isSliding) return;
+    if (targetIdx < 0 || targetIdx >= pages.length) return;
 
     dispatchTyping({ type: typingActionTypes.SET_TYPING_ALLOWED, payload: false });
     dispatchTyping({ type: typingActionTypes.SET_SHOW_CURSOR, payload: false });
 
     const toNext = targetIdx > currentPage;
     const targetPage = pages[targetIdx];
+    const narrativeCursorLength = buildTypewriterNarrativeFromPages(pages, {
+      includeTrailingBlankPages: true
+    }).length;
 
     dispatchPageTransition({
       type: pageTransitionActionTypes.START_HISTORY_NAVIGATION,
@@ -1751,6 +1803,10 @@ const TypewriterFramework = (props) => {
       dispatchTyping({ type: typingActionTypes.SET_SHOW_CURSOR, payload: true });
       dispatchTyping({ type: typingActionTypes.RESET_TYPING_STATE_FOR_NEW_PAGE });
       dispatchGhostwriter({ type: ghostwriterActionTypes.RESET_GHOSTWRITER_STATE });
+      dispatchGhostwriter({
+        type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH,
+        payload: narrativeCursorLength
+      });
     }, SLIDE_DURATION_MS);
   };
 
@@ -1930,12 +1986,17 @@ const TypewriterFramework = (props) => {
       if (activeStorytellerPress) {
         setActiveStorytellerPress(null);
       }
+      const acknowledgedNarrativeLength = buildTypewriterNarrativeFromPages(pages, {
+        currentPageIndex: currentPage,
+        currentPageSuffix: `${persistedGhostText}${userSuffix}`,
+        includeTrailingBlankPages: true
+      }).length;
       dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
       dispatchGhostwriter({
         type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH,
-        payload: pageText.length + persistedGhostText.length + userSuffix.length
+        payload: acknowledgedNarrativeLength
       });
       dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_AWAITING_USER_INPUT_AFTER_SEQUENCE, payload: true });
@@ -2080,6 +2141,7 @@ const TypewriterFramework = (props) => {
     activeStorytellerPress,
     dispatchTyping,
     dispatchGhostwriter,
+    pages,
     pageText,
     currentPage,
     setPages,
@@ -2094,7 +2156,7 @@ const TypewriterFramework = (props) => {
     const interval = setInterval(async () => {
       if (!sessionId) return;
 
-      const fullText = pages[currentPage]?.text || '';
+      const fullText = visibleNarrativeText;
       const addition = fullText.slice(ghostwriterState.lastGeneratedLength);
       const pauseSeconds = (Date.now() - ghostwriterState.lastUserInputTime) / 1000;
 
@@ -2171,8 +2233,7 @@ const TypewriterFramework = (props) => {
 
     return () => clearInterval(interval);
   }, [
-    pages,
-    currentPage,
+    visibleNarrativeText,
     typingState.typingAllowed,
     typingState.isProcessingSequence,
     typingState.inputBuffer,
@@ -2233,15 +2294,22 @@ const TypewriterFramework = (props) => {
     setActiveStorytellerPress(null);
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
-    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH, payload: pageText.length + frozenText.length });
+    dispatchGhostwriter({
+      type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH,
+      payload: buildTypewriterNarrativeFromPages(pages, {
+        currentPageIndex: currentPage,
+        currentPageSuffix: frozenText,
+        includeTrailingBlankPages: true
+      }).length
+    });
     dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_AWAITING_USER_INPUT_AFTER_SEQUENCE, payload: false });
   }, [
     typingState.isProcessingSequence,
     typingState.currentGhostText,
     typingState.sequenceUserText,
+    pages,
     currentPage,
-    pageText,
     setPages,
     setActiveStorytellerPress,
     dispatchTyping,
@@ -2381,7 +2449,7 @@ const TypewriterFramework = (props) => {
         setTypewriterTextKeys((prev) => mergeTypewriterTextKeys(prev, returnedTypewriterKeys));
       }
 
-      const sequenceStarted = applyTypewriterReply(response.data, pageText, {
+      const sequenceStarted = applyTypewriterReply(response.data, visibleNarrativeText, {
         disableFadeActions: true,
         persistToPage: true
       });
@@ -2399,6 +2467,20 @@ const TypewriterFramework = (props) => {
     }
   };
 
+  const handleCreateNextPage = () => {
+    if (!canPullTurnPageLever) return;
+    setLeverLevel(0);
+    handlePageTurnScroll();
+  };
+
+  const handleNextPageNavigation = () => {
+    if (currentPage < pages.length - 1) {
+      handleHistoryNavigation(currentPage + 1);
+      return;
+    }
+    handleCreateNextPage();
+  };
+
   const debugGhostStyle = mergeFontMetadata(lastContinuationInsights?.style, currentFontStyles);
   const storytellerSlotDebugStates = storytellerSlots.map((slot) => getStorytellerSlotDebugState(slot));
 
@@ -2414,7 +2496,8 @@ const TypewriterFramework = (props) => {
         currentPage={currentPage}
         totalPages={pages.length}
         onPrevPage={() => handleHistoryNavigation(currentPage - 1)}
-        onNextPage={() => handleHistoryNavigation(currentPage + 1)}
+        onNextPage={handleNextPageNavigation}
+        canCreateNextPage={canPullTurnPageLever}
         isSliding={isSliding} // Directly from pageTransitionState
         // Pass relevant styling constants
         PAGE_NAVIGATION_BUTTONS_TOP={PAGE_NAVIGATION_BUTTONS_TOP}
@@ -2726,10 +2809,7 @@ const TypewriterFramework = (props) => {
           level={leverLevel}
           canPull={canPullTurnPageLever}
           disabled={pageChangeInProgress}
-          onPull={() => {
-            setLeverLevel(0);
-            handlePageTurnScroll();
-          }}
+          onPull={handleCreateNextPage}
         />
       </div>
       <OrreryComponent />
