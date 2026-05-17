@@ -430,6 +430,7 @@ const ghostwriterActionTypes = {
   RESET_GHOSTWRITER_STATE: 'RESET_GHOSTWRITER_STATE',
   SET_LAST_GHOSTWRITER_WORD_COUNT: 'SET_LAST_GHOSTWRITER_WORD_COUNT',
   SET_IS_AWAITING_API_REPLY: 'SET_IS_AWAITING_API_REPLY', // New action type
+  SET_CONTINUATION_REPLY_IN_FLIGHT: 'SET_CONTINUATION_REPLY_IN_FLIGHT',
   SET_AWAITING_USER_INPUT_AFTER_SEQUENCE: 'SET_AWAITING_USER_INPUT_AFTER_SEQUENCE',
 };
 
@@ -439,6 +440,7 @@ const initialGhostwriterState = {
   lastGeneratedLength: 0,
   lastGhostwriterWordCount: 0, // NEW: Track last ghostwriter addition size
   isAwaitingApiReply: false, // New state variable
+  continuationReplyInFlight: false,
   awaitingUserInputAfterSequence: false,
 };
 
@@ -459,6 +461,8 @@ function ghostwriterReducer(state, action) {
       return { ...state, lastGhostwriterWordCount: action.payload };
     case ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY: // Handle new action
       return { ...state, isAwaitingApiReply: action.payload };
+    case ghostwriterActionTypes.SET_CONTINUATION_REPLY_IN_FLIGHT:
+      return { ...state, continuationReplyInFlight: action.payload };
     case ghostwriterActionTypes.SET_AWAITING_USER_INPUT_AFTER_SEQUENCE:
       return { ...state, awaitingUserInputAfterSequence: action.payload };
     default:
@@ -898,6 +902,11 @@ const getStorytellerSlotDebugState = (slot) => {
   };
 };
 
+const isMockStorytellerSlot = (slot) => (
+  typeof slot?.keyImageUrl === 'string'
+  && slot.keyImageUrl.includes('/assets/mocks/storyteller_keys/')
+);
+
 export const normalizeTypewriterReply = (reply) => {
   if (!reply || typeof reply !== 'object') {
     return { sequence: [], hasFadeActions: false, metadata: null };
@@ -1265,6 +1274,7 @@ const TypewriterFramework = (props) => {
   const [storytellerSlots, setStorytellerSlots] = useState(() => createInitialStorytellerSlots());
   const [typewriterTextKeys, setTypewriterTextKeys] = useState(() => createInitialTypewriterTextKeys());
   const [activeStorytellerPress, setActiveStorytellerPress] = useState(null);
+  const [storytellerInterventionError, setStorytellerInterventionError] = useState('');
   const storytellerPressInFlightRef = useRef(false);
   const [ghostPressedKey, setGhostPressedKey] = useState(null);
   const [preGhostAtmosphere, setPreGhostAtmosphere] = useState(false);
@@ -1298,6 +1308,7 @@ const TypewriterFramework = (props) => {
   const wasProcessingSequenceRef = useRef(false);
   const sequencePersistenceRef = useRef({ persistToPage: false, persistStyle: null });
   const currentGhostTextRef = useRef('');
+  const latestDraftNarrativeTextRef = useRef('');
 
   const [sessionId, setSessionId] = useState(() => readStoredSessionId());
   const [isFreshSession, setIsFreshSession] = useState(false);
@@ -1410,7 +1421,11 @@ const TypewriterFramework = (props) => {
       includeTrailingBlankPages: true
     })
   ), [pages, currentPage, visibleGhostText, typingState.inputBuffer]);
-  const typingInteractionAllowed = typingAllowed && !isTextKeyVerificationPending;
+  latestDraftNarrativeTextRef.current = draftNarrativeText;
+  const typingInteractionAllowed =
+    typingAllowed &&
+    !isTextKeyVerificationPending &&
+    !ghostwriterState.continuationReplyInFlight;
   const displayedKeyTextures = keys.map((key, index) => {
     const storytellerSlot = storytellerSlots.find((slot) => slot.slotKey === key);
     if (storytellerSlot) {
@@ -1520,6 +1535,7 @@ const TypewriterFramework = (props) => {
     if (isProcessingSequenceRef.current) {
       sequencePersistenceRef.current = { persistToPage: false, persistStyle: null };
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
+      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_CONTINUATION_REPLY_IN_FLIGHT, payload: false });
       return false;
     }
 
@@ -1530,6 +1546,7 @@ const TypewriterFramework = (props) => {
     if (!sequence.length) {
       sequencePersistenceRef.current = { persistToPage: false, persistStyle: null };
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
+      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_CONTINUATION_REPLY_IN_FLIGHT, payload: false });
       return false;
     }
 
@@ -1580,6 +1597,7 @@ const TypewriterFramework = (props) => {
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_LAST_GHOSTWRITER_WORD_COUNT, payload: generatedWordCount });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
+    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_CONTINUATION_REPLY_IN_FLIGHT, payload: false });
     return true;
   }, [dispatchTyping, dispatchGhostwriter, setCurrentFontStyles, debugSettings.fadeVisualScale]);
 
@@ -1994,6 +2012,7 @@ const TypewriterFramework = (props) => {
       dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
+      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_CONTINUATION_REPLY_IN_FLIGHT, payload: false });
       dispatchGhostwriter({
         type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH,
         payload: acknowledgedNarrativeLength
@@ -2165,6 +2184,10 @@ const TypewriterFramework = (props) => {
       // --- Helper to execute ghostwriter takeover with TTS ---
       const triggerGhostwriter = async (additionText, currentFullText) => {
         try {
+          dispatchGhostwriter({
+            type: ghostwriterActionTypes.SET_CONTINUATION_REPLY_IN_FLIGHT,
+            payload: true
+          });
           dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: true });
           dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
 
@@ -2187,6 +2210,11 @@ const TypewriterFramework = (props) => {
           console.error("Error triggering ghostwriter sequence:", error);
           dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
           dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+        } finally {
+          dispatchGhostwriter({
+            type: ghostwriterActionTypes.SET_CONTINUATION_REPLY_IN_FLIGHT,
+            payload: false
+          });
         }
       };
 
@@ -2208,7 +2236,12 @@ const TypewriterFramework = (props) => {
           )
         )
           .then(shouldGenerateData => {
-            // On server, shouldGenerateData.shouldGenerate (no .data)
+            if (latestDraftNarrativeTextRef.current !== fullText) {
+              dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
+              dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+              return;
+            }
+
             const shouldGenerate = shouldGenerateData.shouldGenerate;
             if (shouldGenerate) {
               dispatchGhostwriter({
@@ -2258,6 +2291,7 @@ const TypewriterFramework = (props) => {
     dispatchTyping({ type: typingActionTypes.SEQUENCE_COMPLETE });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
+    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_CONTINUATION_REPLY_IN_FLIGHT, payload: false });
     setCurrentFontStyles(null);
   };
 
@@ -2294,6 +2328,7 @@ const TypewriterFramework = (props) => {
     setActiveStorytellerPress(null);
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
+    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_CONTINUATION_REPLY_IN_FLIGHT, payload: false });
     dispatchGhostwriter({
       type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH,
       payload: buildTypewriterNarrativeFromPages(pages, {
@@ -2414,6 +2449,7 @@ const TypewriterFramework = (props) => {
     }
     storytellerPressInFlightRef.current = true;
     ensureAmbientStarted();
+    setStorytellerInterventionError('');
     setActiveStorytellerPress({ slotKey: slot.slotKey });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: true });
     dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: true });
@@ -2426,12 +2462,16 @@ const TypewriterFramework = (props) => {
     try {
       const response = await fetchStorytellerTypewriterReply(sessionId, slot.storytellerId, {
         slotIndex: slot.slotIndex,
-        fadeTimingScale: debugSettings.fadeTimingScale
+        fadeTimingScale: debugSettings.fadeTimingScale,
+        mocked_api_calls: isMockStorytellerSlot(slot) ? true : undefined
       });
       if (Array.isArray(response?.data?.slots)) {
         setStorytellerSlots((prev) => mergeStorytellerSlots(prev, response.data.slots));
       }
       if (response?.error || !response?.data) {
+        setStorytellerInterventionError(
+          response?.error?.message || response?.data?.error || 'Storyteller intervention failed.'
+        );
         setActiveStorytellerPress(null);
         dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
         dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
@@ -2461,6 +2501,7 @@ const TypewriterFramework = (props) => {
       }
     } catch (error) {
       console.error('Error triggering storyteller intervention:', error);
+      setStorytellerInterventionError(error?.message || 'Storyteller intervention failed.');
       setActiveStorytellerPress(null);
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
       dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
@@ -2522,6 +2563,12 @@ const TypewriterFramework = (props) => {
             {isFreshSession ? 'New session' : 'Session'}
           </span>
           <strong>{sessionId || 'assigning...'}</strong>
+        </div>
+      ) : null}
+
+      {storytellerInterventionError ? (
+        <div className="typewriter-status-alert" role="status" aria-live="polite">
+          {storytellerInterventionError}
         </div>
       ) : null}
 
@@ -2599,6 +2646,9 @@ const TypewriterFramework = (props) => {
           </label>
           {debugSettings.showTimingDetails || storytellerSlotDebugStates.length ? (
             <div className="typewriter-debug-runtime">
+              {storytellerInterventionError ? (
+                <span className="typewriter-debug-error">{storytellerInterventionError}</span>
+              ) : null}
               {debugSettings.showTimingDetails && lastContinuationTiming ? (
                 <>
                   <span>Last fade interval {formatTimingWithMs(lastContinuationTiming.fade_interval_ms) || 'n/a'}</span>

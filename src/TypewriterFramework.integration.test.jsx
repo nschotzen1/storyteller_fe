@@ -631,6 +631,19 @@ describe('TypewriterFramework integration', () => {
     );
     expect(document.querySelector('.typewriter-page-styled-char')).toHaveStyle('font-family: Cinzel Decorative');
     expect(document.querySelector('.fade-ghost-container')).not.toBeInTheDocument();
+
+    fetchShouldAllowTypewriterKey.mockClear();
+    fireEvent.click(screen.getByAltText('Key Buraha Light').closest('.typewriter-key-wrapper'));
+    await waitFor(() => {
+      expect(fetchShouldAllowTypewriterKey).toHaveBeenCalledWith(
+        'test-session-id-123',
+        expect.stringMatching(/Aster Vell/i),
+        expect.objectContaining({
+          keyId: 'key-1',
+          keyText: 'Buraha Light'
+        })
+      );
+    });
   });
 
   test('ignores repeated storyteller clicks while the intervention request is in flight', async () => {
@@ -698,6 +711,98 @@ describe('TypewriterFramework integration', () => {
 
     await waitFor(() => {
       expect(playEndOfPageSound).not.toHaveBeenCalled();
+    });
+  });
+
+  test('pressing a mock storyteller key keeps the intervention request on the mock path', async () => {
+    fetchShouldCreateStorytellerKey.mockResolvedValue({
+      data: {
+        slots: buildStorytellerSlotPayload({
+          0: {
+            filled: true,
+            storytellerId: 'storyteller-1',
+            storytellerName: 'Aster Vell',
+            keyImageUrl: '/assets/mocks/storyteller_keys/aster_vell_key.png',
+            symbol: 'ink moth',
+            description: 'Weathered brass and smoky enamel.',
+            canPress: true,
+          },
+        }),
+        typewriterKeys: [],
+      },
+      error: null
+    });
+    fetchStorytellerTypewriterReply.mockResolvedValue({
+      data: { sequence: [] },
+      error: null,
+    });
+
+    render(<TypewriterFramework />);
+
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByAltText('Storyteller key Aster Vell')).toBeInTheDocument();
+    });
+
+    const storytellerKey = screen.getByAltText('Storyteller key Aster Vell').closest('.typewriter-key-wrapper');
+    fireEvent.click(storytellerKey);
+
+    await waitFor(() => {
+      expect(fetchStorytellerTypewriterReply).toHaveBeenCalledWith(
+        'test-session-id-123',
+        'storyteller-1',
+        expect.objectContaining({
+          slotIndex: 0,
+          mocked_api_calls: true,
+        })
+      );
+    });
+  });
+
+  test('shows storyteller intervention API failures in the typewriter UI', async () => {
+    fetchShouldCreateStorytellerKey.mockResolvedValue({
+      data: {
+        slots: buildStorytellerSlotPayload({
+          0: {
+            filled: true,
+            storytellerId: 'storyteller-1',
+            storytellerName: 'Aster Vell',
+            keyImageUrl: 'http://localhost:5001/assets/demo/aster_vell_key.png',
+            symbol: 'ink moth',
+            description: 'Weathered brass and smoky enamel.',
+            canPress: true,
+          },
+        }),
+        typewriterKeys: [],
+      },
+      error: null
+    });
+    fetchStorytellerTypewriterReply.mockResolvedValue({
+      data: { error: 'Live storyteller intervention failed.' },
+      error: {
+        message: 'Live storyteller intervention failed.',
+        status: 502,
+      },
+    });
+
+    render(<TypewriterFramework />);
+
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByAltText('Storyteller key Aster Vell')).toBeInTheDocument();
+    });
+
+    const storytellerKey = screen.getByAltText('Storyteller key Aster Vell').closest('.typewriter-key-wrapper');
+    fireEvent.click(storytellerKey);
+
+    await waitFor(() => {
+      expect(screen.getByText('Live storyteller intervention failed.')).toBeInTheDocument();
     });
   });
 
@@ -1073,6 +1178,103 @@ describe('TypewriterFramework integration', () => {
       const line = container.querySelector('.typewriter-line .last-line-content');
       expect(String(line?.textContent || '')).toContain('HI AZ');
     });
+  });
+
+  test('keeps typing enabled while the continuation decision check is pending', async () => {
+    let resolveShouldGenerate;
+    const decisionPromise = new Promise((resolve) => {
+      resolveShouldGenerate = resolve;
+    });
+    fetchShouldGenerateContinuation
+      .mockImplementationOnce(() => decisionPromise)
+      .mockResolvedValue({ shouldGenerate: false });
+
+    const { container } = render(<TypewriterFramework />);
+
+    clickKey('H');
+    clickKey('I');
+    act(() => {
+      vi.advanceTimersByTime(320);
+    });
+
+    const decisionStarted = await advanceUntil(
+      () => fetchShouldGenerateContinuation.mock.calls.length === 1,
+      2500
+    );
+    expect(decisionStarted).toBe(true);
+
+    const zKey = screen.getByAltText('Key Z').closest('.typewriter-key-wrapper');
+    expect(zKey).not.toHaveClass('key-disabled');
+
+    clickKey('Z');
+    act(() => {
+      vi.advanceTimersByTime(320);
+    });
+
+    await waitFor(() => {
+      const line = container.querySelector('.typewriter-line .last-line-content');
+      expect(String(line?.textContent || '')).toContain('HIZ');
+    });
+
+    await act(async () => {
+      resolveShouldGenerate({ shouldGenerate: true });
+      await Promise.resolve();
+    });
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+    await Promise.resolve();
+
+    expect(fetchTypewriterReply).not.toHaveBeenCalled();
+  });
+
+  test('blocks typing while the continuation reply request is in flight', async () => {
+    fetchShouldGenerateContinuation.mockResolvedValue({ shouldGenerate: true });
+    let resolveReply;
+    const replyPromise = new Promise((resolve) => {
+      resolveReply = resolve;
+    });
+    fetchTypewriterReply.mockImplementation(() => replyPromise);
+
+    const { container } = render(<TypewriterFramework />);
+
+    clickKey('H');
+    clickKey('I');
+    act(() => {
+      vi.advanceTimersByTime(320);
+    });
+
+    const requestStarted = await advanceUntil(
+      () => fetchTypewriterReply.mock.calls.length === 1,
+      5000
+    );
+    expect(requestStarted).toBe(true);
+
+    const zKey = screen.getByAltText('Key Z').closest('.typewriter-key-wrapper');
+    expect(zKey).toHaveClass('key-disabled');
+
+    clickKey('Z');
+    act(() => {
+      vi.advanceTimersByTime(320);
+    });
+
+    await waitFor(() => {
+      const line = container.querySelector('.typewriter-line .last-line-content');
+      const lineText = String(line?.textContent || '');
+      expect(lineText).toContain('HI');
+      expect(lineText).not.toContain('Z');
+    });
+
+    await act(async () => {
+      resolveReply({ data: { sequence: [] }, error: null });
+      await Promise.resolve();
+    });
+
+    const inputUnlocked = await advanceUntil(
+      () => !screen.getByAltText('Key Z').closest('.typewriter-key-wrapper')?.classList.contains('key-disabled'),
+      1000
+    );
+    expect(inputUnlocked).toBe(true);
   });
 
 });
