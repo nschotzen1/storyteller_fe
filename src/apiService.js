@@ -136,6 +136,18 @@ export const fetchShouldAllowTypewriterKey = async (sessionId, currentNarrative,
   if (typeof options?.candidateNarrative === 'string' && options.candidateNarrative.trim()) {
     payload.candidateNarrative = options.candidateNarrative;
   }
+  if (typeof options?.transactionText === 'string' && options.transactionText.trim()) {
+    payload.transactionText = options.transactionText;
+  }
+  if (typeof options?.beforeContext === 'string') {
+    payload.beforeContext = options.beforeContext;
+  }
+  if (typeof options?.afterContext === 'string') {
+    payload.afterContext = options.afterContext;
+  }
+  if (typeof options?.transactionId === 'string' && options.transactionId.trim()) {
+    payload.transactionId = options.transactionId.trim();
+  }
   if (options?.playerId) {
     payload.playerId = options.playerId;
   }

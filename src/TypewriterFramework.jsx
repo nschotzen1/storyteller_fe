@@ -50,6 +50,10 @@ const GHOSTWRITER_AI_TRIGGER_INTERVAL = 1000; // ms
 export const FIRST_FADE_HANDOFF_DELAY = 1400; // ms
 const STORYTELLER_KEY_CHECK_INTERVAL_WORDS = 5;
 const STORYTELLER_KEY_CHECK_DELAY_MS = 700;
+const ENTITY_KEY_VALIDATION_IDLE_MS = 1800;
+const ENTITY_KEY_VALIDATION_IMMEDIATE_DELAY_MS = 120;
+const ENTITY_KEY_REJECTION_FADE_MS = 850;
+const ENTITY_KEY_CONTEXT_CHARS = 280;
 
 // Animation & Style Values
 const PAGE_SLIDE_X_OFFSET = -50; // Percentage for left slide
@@ -124,6 +128,8 @@ const STORYTELLER_KEY_SLOT_DEFINITIONS = [
     keyShape: 'rect_horizontal'
   }
 ];
+const ENTITY_TRANSACTION_BOUNDARY_PATTERN = /[.!?;:\n]/;
+const ENTITY_TRANSACTION_VALIDATION_TRIGGER_PATTERN = /[.!?;:\n]/;
 const DEFAULT_TYPEWRITER_DEBUG_SETTINGS = {
   panelOpen: false,
   showInsightsPanel: true,
@@ -846,6 +852,73 @@ const removeTrailingCharacterFromPage = (page = {}) => {
   };
 };
 
+const removePageTextRange = (page = {}, startIndex = 0, endIndex = 0) => {
+  const existingText = String(page?.text || '');
+  const start = Math.max(0, Math.min(existingText.length, Math.floor(Number(startIndex) || 0)));
+  const end = Math.max(start, Math.min(existingText.length, Math.floor(Number(endIndex) || 0)));
+  if (end <= start) return page;
+
+  const removedLength = end - start;
+  const nextRanges = normalizePageStyleRanges(page?.pageStyleRanges || [])
+    .map((range) => {
+      if (range.end <= start) return range;
+      if (range.start >= end) {
+        return {
+          ...range,
+          start: range.start - removedLength,
+          end: range.end - removedLength
+        };
+      }
+      if (range.start < start) {
+        return {
+          ...range,
+          end: start
+        };
+      }
+      if (range.end > end) {
+        return {
+          ...range,
+          start,
+          end: range.end - removedLength
+        };
+      }
+      return null;
+    })
+    .filter((range) => range && range.end > range.start);
+
+  return {
+    ...page,
+    text: `${existingText.slice(0, start)}${existingText.slice(end)}`,
+    pageStyleRanges: mergePageStyleRanges(nextRanges)
+  };
+};
+
+const findEntityTransactionStart = (text = '') => {
+  const source = String(text || '');
+  let boundaryIndex = -1;
+  for (let index = source.length - 1; index >= 0; index -= 1) {
+    if (ENTITY_TRANSACTION_BOUNDARY_PATTERN.test(source[index])) {
+      boundaryIndex = index;
+      break;
+    }
+  }
+  let start = boundaryIndex >= 0 ? boundaryIndex + 1 : 0;
+  while (start < source.length && /\s/.test(source[start])) {
+    start += 1;
+  }
+  return start;
+};
+
+const buildEntityKeyInsertionText = (baseText = '', insertText = '') => {
+  const normalizedInsert = String(insertText || '').trim();
+  if (!normalizedInsert) return '';
+  const base = String(baseText || '');
+  if (!base || /\s$/.test(base) || /^\s/.test(normalizedInsert)) {
+    return normalizedInsert;
+  }
+  return ` ${normalizedInsert}`;
+};
+
 const TYPEWRITER_PAGE_SEPARATOR = '\n\n';
 
 export const buildTypewriterNarrativeFromPages = (pageList = [], options = {}) => {
@@ -1279,6 +1352,7 @@ const TypewriterFramework = (props) => {
   const [ghostPressedKey, setGhostPressedKey] = useState(null);
   const [preGhostAtmosphere, setPreGhostAtmosphere] = useState(false);
   const [isTextKeyVerificationPending, setIsTextKeyVerificationPending] = useState(false);
+  const [entityKeyTransactions, setEntityKeyTransactions] = useState([]);
   // lastUserInputTime, responseQueued, lastGeneratedLength are now in ghostwriterState
   // Level: 0 = empty, 3 = full (ready for page turn)
   const [leverLevel, setLeverLevel] = useState(0);
@@ -1309,6 +1383,11 @@ const TypewriterFramework = (props) => {
   const sequencePersistenceRef = useRef({ persistToPage: false, persistStyle: null });
   const currentGhostTextRef = useRef('');
   const latestDraftNarrativeTextRef = useRef('');
+  const pagesRef = useRef(pages);
+  const currentPageRef = useRef(currentPage);
+  const entityKeyTransactionsRef = useRef([]);
+  const entityValidationTimerRef = useRef(null);
+  const entityValidationInFlightRef = useRef(false);
 
   const [sessionId, setSessionId] = useState(() => readStoredSessionId());
   const [isFreshSession, setIsFreshSession] = useState(false);
@@ -1382,6 +1461,31 @@ const TypewriterFramework = (props) => {
     };
   }, [dispatchGhostwriter, initialFragment, persistSessionToStorage, sessionIdOverride]);
 
+  const syncEntityKeyTransactions = useCallback((updater) => {
+    const currentTransactions = entityKeyTransactionsRef.current;
+    const nextTransactions = typeof updater === 'function'
+      ? updater(currentTransactions)
+      : updater;
+    entityKeyTransactionsRef.current = Array.isArray(nextTransactions) ? nextTransactions : [];
+    setEntityKeyTransactions(entityKeyTransactionsRef.current);
+    return entityKeyTransactionsRef.current;
+  }, []);
+
+  useEffect(() => {
+    pagesRef.current = pages;
+  }, [pages]);
+
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
+  useEffect(() => () => {
+    if (entityValidationTimerRef.current) {
+      clearTimeout(entityValidationTimerRef.current);
+      entityValidationTimerRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     currentGhostTextRef.current = String(typingState.currentGhostText || '');
   }, [typingState.currentGhostText]);
@@ -1403,6 +1507,17 @@ const TypewriterFramework = (props) => {
     filmBgUrl: pageBg,
     pageStyleRanges = []
   } = pages[currentPage] || {};
+  const currentPageEntityKeyTransactions = useMemo(() => (
+    entityKeyTransactions.filter((transaction) => transaction.pageIndex === currentPage)
+  ), [entityKeyTransactions, currentPage]);
+  const hasOpenEntityKeyTransaction = useMemo(() => (
+    entityKeyTransactions.some((transaction) =>
+      ['pending', 'validating', 'rejected'].includes(transaction.status)
+    )
+  ), [entityKeyTransactions]);
+  const hasRejectedEntityKeyTransaction = useMemo(() => (
+    entityKeyTransactions.some((transaction) => transaction.status === 'rejected')
+  ), [entityKeyTransactions]);
   const visibleGhostText = `${typingState.currentGhostText || ''}${typingState.sequenceUserText || ''}`;
   const persistedNarrativeText = useMemo(() => (
     buildTypewriterNarrativeFromPages(pages)
@@ -1425,6 +1540,7 @@ const TypewriterFramework = (props) => {
   const typingInteractionAllowed =
     typingAllowed &&
     !isTextKeyVerificationPending &&
+    !hasRejectedEntityKeyTransaction &&
     !ghostwriterState.continuationReplyInFlight;
   const displayedKeyTextures = keys.map((key, index) => {
     const storytellerSlot = storytellerSlots.find((slot) => slot.slotKey === key);
@@ -1440,8 +1556,6 @@ const TypewriterFramework = (props) => {
     leverLevel === LEVER_LEVEL_WORD_THRESHOLDS.length - 1
     && !pageChangeInProgress
     && typingInteractionAllowed;
-
-  const getCurrentNarrativeSnapshot = useCallback(() => draftNarrativeText, [draftNarrativeText]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -1521,6 +1635,7 @@ const TypewriterFramework = (props) => {
 
   useEffect(() => {
     if (!isSessionReady || !sessionId) return;
+    if (hasOpenEntityKeyTransaction) return;
 
     const timeoutId = window.setTimeout(() => {
       startTypewriterSession(sessionId, persistedNarrativeText).catch((error) => {
@@ -1529,7 +1644,7 @@ const TypewriterFramework = (props) => {
     }, 450);
 
     return () => window.clearTimeout(timeoutId);
-  }, [isSessionReady, persistedNarrativeText, sessionId]);
+  }, [hasOpenEntityKeyTransaction, isSessionReady, persistedNarrativeText, sessionId]);
 
   const applyTypewriterReply = useCallback((reply, fullText, options = {}) => {
     if (isProcessingSequenceRef.current) {
@@ -1696,8 +1811,160 @@ const TypewriterFramework = (props) => {
     }
   }, [pageText, visibleGhostText, pageTransitionState.scrollMode, typingState.fadeState.isActive, typingState.isProcessingSequence]);
 
+  const clearEntityValidationTimer = useCallback(() => {
+    if (entityValidationTimerRef.current) {
+      clearTimeout(entityValidationTimerRef.current);
+      entityValidationTimerRef.current = null;
+    }
+  }, []);
+
+  const removeRejectedEntityTransaction = useCallback((transaction) => {
+    if (!transaction) return;
+    const currentPages = pagesRef.current;
+    const page = currentPages[transaction.pageIndex];
+    if (!page) {
+      syncEntityKeyTransactions((transactions) => transactions.filter((item) => item.id !== transaction.id));
+      return;
+    }
+
+    const nextPages = [...currentPages];
+    nextPages[transaction.pageIndex] = removePageTextRange(page, transaction.start, transaction.end);
+    pagesRef.current = nextPages;
+    setPages(nextPages);
+    syncEntityKeyTransactions((transactions) => transactions.filter((item) => item.id !== transaction.id));
+    dispatchGhostwriter({
+      type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH,
+      payload: buildTypewriterNarrativeFromPages(nextPages).length
+    });
+    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: false });
+  }, [dispatchGhostwriter, syncEntityKeyTransactions]);
+
+  const rejectEntityTransaction = useCallback((transaction) => {
+    if (!transaction) return;
+    syncEntityKeyTransactions((transactions) => transactions.map((item) => (
+      item.id === transaction.id ? { ...item, status: 'rejected' } : item
+    )));
+    window.setTimeout(() => {
+      removeRejectedEntityTransaction(transaction);
+    }, ENTITY_KEY_REJECTION_FADE_MS);
+  }, [removeRejectedEntityTransaction, syncEntityKeyTransactions]);
+
+  const validateEntityTransaction = useCallback(async (transactionId = '') => {
+    clearEntityValidationTimer();
+    if (entityValidationInFlightRef.current || !sessionId) return false;
+
+    const transaction = entityKeyTransactionsRef.current.find((item) => (
+      item
+      && item.status === 'pending'
+      && (!transactionId || item.id === transactionId)
+    ));
+    if (!transaction) return false;
+
+    const currentPages = pagesRef.current;
+    const page = currentPages[transaction.pageIndex];
+    const pageTextForTransaction = String(page?.text || '');
+    const start = Math.max(0, Math.min(pageTextForTransaction.length, transaction.start));
+    const end = Math.max(start, Math.min(pageTextForTransaction.length, transaction.end));
+    const transactionText = pageTextForTransaction.slice(start, end);
+    if (!transactionText.trim()) {
+      syncEntityKeyTransactions((transactions) => transactions.filter((item) => item.id !== transaction.id));
+      return false;
+    }
+
+    entityValidationInFlightRef.current = true;
+    setIsTextKeyVerificationPending(true);
+    syncEntityKeyTransactions((transactions) => transactions.map((item) => (
+      item.id === transaction.id ? { ...item, start, end, status: 'validating' } : item
+    )));
+
+    const candidateNarrative = buildTypewriterNarrativeFromPages(currentPages, {
+      includeTrailingBlankPages: true
+    });
+    const beforeContext = pageTextForTransaction.slice(Math.max(0, start - ENTITY_KEY_CONTEXT_CHARS), start);
+    const afterContext = pageTextForTransaction.slice(end, Math.min(pageTextForTransaction.length, end + ENTITY_KEY_CONTEXT_CHARS));
+
+    try {
+      const verdict = await fetchShouldAllowTypewriterKey(sessionId, candidateNarrative, {
+        keyId: transaction.keyId,
+        keyText: transaction.keyText,
+        transactionId: transaction.id,
+        transactionText,
+        beforeContext,
+        afterContext,
+        candidateNarrative
+      });
+
+      const latest = entityKeyTransactionsRef.current.find((item) => item.id === transaction.id);
+      if (!latest || latest.status !== 'validating') {
+        return false;
+      }
+
+      if (verdict?.allowed) {
+        syncEntityKeyTransactions((transactions) => transactions.filter((item) => item.id !== transaction.id));
+        return true;
+      }
+
+      rejectEntityTransaction({ ...latest, start, end });
+      return false;
+    } catch (error) {
+      console.error('Error validating entity key transaction:', error);
+      const latest = entityKeyTransactionsRef.current.find((item) => item.id === transaction.id);
+      if (latest) {
+        rejectEntityTransaction({ ...latest, start, end });
+      }
+      return false;
+    } finally {
+      entityValidationInFlightRef.current = false;
+      setIsTextKeyVerificationPending(false);
+    }
+  }, [
+    clearEntityValidationTimer,
+    rejectEntityTransaction,
+    sessionId,
+    syncEntityKeyTransactions
+  ]);
+
+  const scheduleEntityTransactionValidation = useCallback((transactionId, delay = ENTITY_KEY_VALIDATION_IDLE_MS) => {
+    if (!transactionId) return;
+    clearEntityValidationTimer();
+    entityValidationTimerRef.current = window.setTimeout(() => {
+      validateEntityTransaction(transactionId);
+    }, Math.max(0, delay));
+  }, [clearEntityValidationTimer, validateEntityTransaction]);
+
+  const extendActiveEntityTransaction = useCallback((text = '') => {
+    const addition = String(text || '');
+    if (!addition) return;
+    const activeTransaction = entityKeyTransactionsRef.current.find((transaction) => (
+      transaction.status === 'pending'
+      && transaction.pageIndex === currentPageRef.current
+    ));
+    if (!activeTransaction) return;
+
+    syncEntityKeyTransactions((transactions) => transactions.map((transaction) => (
+      transaction.id === activeTransaction.id
+        ? { ...transaction, end: transaction.end + addition.length }
+        : transaction
+    )));
+
+    const validationDelay = ENTITY_TRANSACTION_VALIDATION_TRIGGER_PATTERN.test(addition)
+      ? ENTITY_KEY_VALIDATION_IMMEDIATE_DELAY_MS
+      : ENTITY_KEY_VALIDATION_IDLE_MS;
+    scheduleEntityTransactionValidation(activeTransaction.id, validationDelay);
+  }, [scheduleEntityTransactionValidation, syncEntityKeyTransactions]);
+
   // --- PAGE TURN: Scroll up, then slide left (NEW PAGE) ---
   const handlePageTurnScroll = async () => {
+    const activeEntityTransaction = entityKeyTransactionsRef.current.find((transaction) =>
+      ['pending', 'validating', 'rejected'].includes(transaction.status)
+    );
+    if (activeEntityTransaction) {
+      if (activeEntityTransaction.status === 'pending') {
+        validateEntityTransaction(activeEntityTransaction.id);
+      }
+      return;
+    }
     if (pageTransitionState.pageChangeInProgress) return;
     dispatchPageTransition({ type: pageTransitionActionTypes.START_PAGE_TURN_SCROLL });
     dispatchTyping({ type: typingActionTypes.SET_TYPING_ALLOWED, payload: false });
@@ -1780,6 +2047,15 @@ const TypewriterFramework = (props) => {
 
   // --- PAGE TURN: Slide right (BACK/NEXT in history) ---
   const handleHistoryNavigation = (targetIdx) => {
+    const activeEntityTransaction = entityKeyTransactionsRef.current.find((transaction) =>
+      ['pending', 'validating', 'rejected'].includes(transaction.status)
+    );
+    if (activeEntityTransaction) {
+      if (activeEntityTransaction.status === 'pending') {
+        validateEntityTransaction(activeEntityTransaction.id);
+      }
+      return;
+    }
     if (pageTransitionState.pageChangeInProgress || pageTransitionState.isSliding) return;
     if (targetIdx < 0 || targetIdx >= pages.length) return;
 
@@ -1882,11 +2158,19 @@ const TypewriterFramework = (props) => {
         if (updatedPages[currentPage] && updatedPages[currentPage].text.length > 0) {
           updatedPages[currentPage] = removeTrailingCharacterFromPage(updatedPages[currentPage]);
         }
+        pagesRef.current = updatedPages;
         return updatedPages;
       });
+      syncEntityKeyTransactions((transactions) => transactions.map((transaction) => {
+        if (transaction.status !== 'pending' || transaction.pageIndex !== currentPage) {
+          return transaction;
+        }
+        const nextEnd = Math.max(transaction.start, transaction.end - 1);
+        return { ...transaction, end: nextEnd };
+      }).filter((transaction) => transaction.status !== 'pending' || transaction.end > transaction.start));
       dispatchTyping({ type: typingActionTypes.RESET_PAGE_TEXT_UPDATE_REQUEST });
     }
-  }, [typingState.requestPageTextUpdate, dispatchTyping, setPages, currentPage]);
+  }, [typingState.requestPageTextUpdate, dispatchTyping, setPages, currentPage, syncEntityKeyTransactions]);
 
 
   // --- Typing: apply inputBuffer to current page text ---
@@ -1900,8 +2184,10 @@ const TypewriterFramework = (props) => {
         setPages(prev => {
           const updatedPages = [...prev];
           updatedPages[currentPage] = appendTextToPage(updatedPages[currentPage], charToCommit);
+          pagesRef.current = updatedPages;
           return updatedPages;
         });
+        extendActiveEntityTransaction(charToCommit);
       }
       dispatchTyping({ type: typingActionTypes.CONSUME_INPUT_BUFFER });
       if (charToCommit === '\n' && strikerRef.current) {
@@ -1914,7 +2200,7 @@ const TypewriterFramework = (props) => {
       }
     }, TYPING_ANIMATION_INTERVAL);
     return () => clearTimeout(timeout);
-  }, [typingState.inputBuffer, typingState.typingAllowed, typingState.isProcessingSequence, currentPage, setPages]);
+  }, [typingState.inputBuffer, typingState.typingAllowed, typingState.isProcessingSequence, currentPage, setPages, extendActiveEntityTransaction]);
 
   // --- Key Visual State ---
   useEffect(() => {
@@ -2218,11 +2504,22 @@ const TypewriterFramework = (props) => {
         }
       };
 
+      const activeEntityTransaction = entityKeyTransactionsRef.current.find((transaction) => transaction.status === 'pending');
+      if (
+        activeEntityTransaction
+        && typingState.inputBuffer.length === 0
+        && pauseSeconds >= ENTITY_KEY_VALIDATION_IDLE_MS / 1000
+      ) {
+        validateEntityTransaction(activeEntityTransaction.id);
+        return;
+      }
+
       // --- Continuation gating via /api/shouldGenerateContinuation ---
       if (
         !typingState.isProcessingSequence &&
         typingState.inputBuffer.length === 0 && // Not while user is typing or ghostwriting
         addition.trim() &&
+        !hasOpenEntityKeyTransaction &&
         !ghostwriterState.isAwaitingApiReply // Add condition here
       ) {
         dispatchGhostwriter({ type: ghostwriterActionTypes.SET_IS_AWAITING_API_REPLY, payload: true });
@@ -2276,11 +2573,13 @@ const TypewriterFramework = (props) => {
     ghostwriterState.lastGhostwriterWordCount, // ← ADD to deps!
     ghostwriterState.isAwaitingApiReply, // Add new state to dependency array
     ghostwriterState.awaitingUserInputAfterSequence,
+    hasOpenEntityKeyTransaction,
     debugSettings.fadeTimingScale,
     sessionId,
     dispatchTyping,
     dispatchGhostwriter,
-    applyTypewriterReply
+    applyTypewriterReply,
+    validateEntityTransaction
   ]);
 
 
@@ -2387,42 +2686,62 @@ const TypewriterFramework = (props) => {
     playKeySound();
   };
 
-  const handleTypewriterTextKeyPress = async (typewriterKey) => {
+  const handleTypewriterTextKeyPress = (typewriterKey) => {
     if (!typingInteractionAllowed || !sessionId) return;
     if (!typewriterKey?.keyText) return;
+    const activeEntityTransaction = entityKeyTransactionsRef.current.find((transaction) =>
+      ['pending', 'validating', 'rejected'].includes(transaction.status)
+    );
+    if (activeEntityTransaction) {
+      if (activeEntityTransaction.status === 'pending') {
+        validateEntityTransaction(activeEntityTransaction.id);
+      }
+      return;
+    }
+    if (typingState.inputBuffer.length > 0) {
+      playEndOfPageSound();
+      return;
+    }
     ensureAmbientStarted();
-    const currentNarrative = getCurrentNarrativeSnapshot();
-    if (!currentNarrative.trim()) return;
     if (typingState.isProcessingSequence) {
       takeOverSequenceAtCursor();
     } else if (typingState.currentGhostText) {
       commitGhostText();
     }
 
-    setIsTextKeyVerificationPending(true);
-    try {
-      const verdict = await fetchShouldAllowTypewriterKey(sessionId, currentNarrative, {
-        keyId: typewriterKey.id,
-        keyText: typewriterKey.keyText
-      });
-      if (!verdict?.allowed) return;
-      const appendedText = typeof verdict?.appendedText === 'string'
-        ? verdict.appendedText
-        : '';
-      if (!appendedText) return;
-      dispatchTyping({ type: typingActionTypes.ADD_TO_INPUT_BUFFER, payload: appendedText });
-      dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: typewriterKey.keyText });
-      dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
-      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
-      if (typewriterKey.keyText === SPECIAL_KEY_TEXT) {
-        playXerofagHowl();
-      } else {
-        playKeySound();
-      }
-    } catch (error) {
-      console.error('Error triggering typewriter text key verification:', error);
-    } finally {
-      setIsTextKeyVerificationPending(false);
+    const insertionText = buildEntityKeyInsertionText(
+      pageText,
+      typewriterKey.insertText || typewriterKey.entityName || typewriterKey.keyText
+    );
+    if (!insertionText) return;
+
+    const transactionId = `entity-key-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const transaction = {
+      id: transactionId,
+      keyId: typewriterKey.id || '',
+      keyText: typewriterKey.keyText,
+      entityId: typewriterKey.entityId || '',
+      pageIndex: currentPage,
+      start: findEntityTransactionStart(pageText),
+      end: String(pageText || '').length + insertionText.length,
+      status: 'pending'
+    };
+
+    syncEntityKeyTransactions((transactions) => [...transactions, transaction]);
+    setPages(prev => {
+      const updatedPages = [...prev];
+      updatedPages[currentPage] = appendTextToPage(updatedPages[currentPage], insertionText);
+      pagesRef.current = updatedPages;
+      return updatedPages;
+    });
+    scheduleEntityTransactionValidation(transaction.id, ENTITY_KEY_VALIDATION_IDLE_MS);
+    dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: typewriterKey.keyText });
+    dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
+    dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+    if (typewriterKey.keyText === SPECIAL_KEY_TEXT) {
+      playXerofagHowl();
+    } else {
+      playKeySound();
     }
   };
 
@@ -2764,6 +3083,7 @@ const TypewriterFramework = (props) => {
       <PaperDisplay
         pageText={pageText}
         pageStyleRanges={pageStyleRanges}
+        entityKeyTransactions={currentPageEntityKeyTransactions}
         ghostText={currentGhostText}
         sequenceUserText={sequenceUserText}
         currentFontStyles={currentFontStyles}

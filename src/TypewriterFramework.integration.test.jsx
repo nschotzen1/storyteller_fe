@@ -408,7 +408,7 @@ describe('TypewriterFramework integration', () => {
     });
   });
 
-  test('xerofag key inserts the term only when the backend allows it', async () => {
+  test('xerofag key inserts provisionally and validates the full phrase', async () => {
     const { container } = render(<TypewriterFramework />);
 
     clickKey('H');
@@ -422,25 +422,40 @@ describe('TypewriterFramework integration', () => {
 
     fireEvent.click(screen.getByAltText('Key THE XEROFAG').closest('.typewriter-key-wrapper'));
 
-    await waitFor(() => {
-      expect(fetchShouldAllowTypewriterKey).toHaveBeenCalledWith(
-        'test-session-id-123',
-        'H ',
-        expect.objectContaining({
-          keyText: 'THE XEROFAG'
-        })
-      );
-    });
-
     const inserted = await advanceUntil(() => {
       const lines = container.querySelectorAll('.typewriter-line .last-line-content');
       return lines[0]?.textContent?.includes('H The Xerofag');
-    }, 4000, 100);
+    }, 1000, 100);
 
     expect(inserted).toBe(true);
+
+    clickKey(' ');
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+    clickKey('O');
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(1900);
+    });
+    await Promise.resolve();
+
+    await waitFor(() => {
+      expect(fetchShouldAllowTypewriterKey).toHaveBeenCalledWith(
+        'test-session-id-123',
+        expect.stringContaining('H The Xerofag O'),
+        expect.objectContaining({
+          keyText: 'THE XEROFAG',
+          transactionText: 'H The Xerofag O'
+        })
+      );
+    });
   });
 
-  test('xerofag key does nothing when the backend rejects the term', async () => {
+  test('xerofag key fades the provisional phrase when the backend rejects it', async () => {
     fetchShouldAllowTypewriterKey.mockResolvedValueOnce({ allowed: false });
     const { container } = render(<TypewriterFramework />);
 
@@ -451,17 +466,29 @@ describe('TypewriterFramework integration', () => {
 
     fireEvent.click(screen.getByAltText('Key THE XEROFAG').closest('.typewriter-key-wrapper'));
 
+    const inserted = await advanceUntil(() => {
+      const lines = container.querySelectorAll('.typewriter-line .last-line-content');
+      return lines[0]?.textContent?.includes('H The Xerofag');
+    }, 1000, 100);
+
+    expect(inserted).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(1900);
+    });
+    await Promise.resolve();
+
     await waitFor(() => {
       expect(fetchShouldAllowTypewriterKey).toHaveBeenCalled();
     });
 
     act(() => {
-      vi.advanceTimersByTime(240);
+      vi.advanceTimersByTime(900);
     });
 
     await waitFor(() => {
       const lines = container.querySelectorAll('.typewriter-line .last-line-content');
-      expect(lines[0].textContent).toBe('H');
+      expect(lines[0].textContent).toBe('');
     });
   });
 
@@ -634,13 +661,19 @@ describe('TypewriterFramework integration', () => {
 
     fetchShouldAllowTypewriterKey.mockClear();
     fireEvent.click(screen.getByAltText('Key Buraha Light').closest('.typewriter-key-wrapper'));
+    act(() => {
+      vi.advanceTimersByTime(1900);
+    });
+    await Promise.resolve();
+
     await waitFor(() => {
       expect(fetchShouldAllowTypewriterKey).toHaveBeenCalledWith(
         'test-session-id-123',
         expect.stringMatching(/Aster Vell/i),
         expect.objectContaining({
           keyId: 'key-1',
-          keyText: 'Buraha Light'
+          keyText: 'Buraha Light',
+          transactionText: expect.stringMatching(/Buraha Light/i)
         })
       );
     });

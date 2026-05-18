@@ -828,6 +828,36 @@
   mix-blend-mode: multiply;
 }
 
+.typewriter-entity-transaction {
+  border-bottom: 1px dotted rgba(122, 24, 24, 0.32);
+  transition: opacity 0.25s ease, filter 0.25s ease;
+}
+
+.typewriter-entity-transaction--pending {
+  text-shadow: 0 0 4px rgba(122, 24, 24, 0.18);
+}
+
+.typewriter-entity-transaction--validating {
+  opacity: 0.82;
+  filter: saturate(0.8);
+}
+
+.typewriter-entity-transaction--rejected {
+  animation: entityTransactionFadeAway 0.85s ease-in forwards;
+}
+
+@keyframes entityTransactionFadeAway {
+  0% {
+    opacity: 1;
+    filter: blur(0);
+  }
+
+  100% {
+    opacity: 0;
+    filter: blur(5px);
+  }
+}
+
 
 
 

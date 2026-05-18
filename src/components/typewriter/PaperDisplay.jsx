@@ -77,6 +77,7 @@ const PaperDisplay = ({
   // Text and content props
   pageText,
   pageStyleRanges = [],
+  entityKeyTransactions = [],
   ghostText,
   sequenceUserText,
   currentFontStyles, // New prop
@@ -174,6 +175,24 @@ const PaperDisplay = ({
       }))
       .sort((left, right) => left.start - right.start || left.end - right.end),
     [pageStyleRanges]
+  );
+  const normalizedEntityKeyTransactions = React.useMemo(
+    () => (Array.isArray(entityKeyTransactions) ? entityKeyTransactions : [])
+      .filter((transaction) =>
+        transaction
+        && Number.isFinite(Number(transaction.start))
+        && Number.isFinite(Number(transaction.end))
+        && Number(transaction.end) > Number(transaction.start)
+        && ['pending', 'validating', 'rejected'].includes(transaction.status)
+      )
+      .map((transaction) => ({
+        id: String(transaction.id || ''),
+        start: Math.floor(Number(transaction.start)),
+        end: Math.floor(Number(transaction.end)),
+        status: transaction.status
+      }))
+      .sort((left, right) => left.start - right.start || left.end - right.end),
+    [entityKeyTransactions]
   );
 
   // Apply font styles
@@ -282,6 +301,13 @@ const PaperDisplay = ({
     )?.style || null;
   }, [normalizedPageStyleRanges]);
 
+  const getEntityTransactionAt = React.useCallback((globalIndex) => {
+    if (!Number.isFinite(Number(globalIndex))) return null;
+    return normalizedEntityKeyTransactions.find((transaction) =>
+      globalIndex >= transaction.start && globalIndex < transaction.end
+    ) || null;
+  }, [normalizedEntityKeyTransactions]);
+
   const getLineGlobalStartOffset = React.useCallback((lines, lineIdx) => {
     let offset = 0;
     for (let index = 0; index < lineIdx; index += 1) {
@@ -302,11 +328,12 @@ const PaperDisplay = ({
         const highlightStyle = buildFontMetadataStyle(
           getPersistedCharStyle(globalStartOffset + currentOffsetWithinLine)
         ) || undefined;
+        const transaction = getEntityTransactionAt(globalStartOffset + currentOffsetWithinLine);
         currentOffsetWithinLine += segment.length;
         return (
           <span
             key={`${keyPrefix}-xerofag-${segmentIdx}`}
-            className="xerofag-highlight"
+            className={`xerofag-highlight${transaction ? ` typewriter-entity-transaction typewriter-entity-transaction--${transaction.status}` : ''}`}
             style={highlightStyle}
           >
             {segment}
@@ -314,16 +341,21 @@ const PaperDisplay = ({
         );
       }
 
-        const renderedChars = segment.split('').map((char, charIdx) => {
-          const charGlobalIndex = globalStartOffset + currentOffsetWithinLine + charIdx;
-          const persistedStyle = buildFontMetadataStyle(getPersistedCharStyle(charGlobalIndex));
-          if (!persistedStyle) {
-            return char;
-          }
+      const renderedChars = segment.split('').map((char, charIdx) => {
+        const charGlobalIndex = globalStartOffset + currentOffsetWithinLine + charIdx;
+        const persistedStyle = buildFontMetadataStyle(getPersistedCharStyle(charGlobalIndex));
+        const transaction = getEntityTransactionAt(charGlobalIndex);
+        if (!persistedStyle && !transaction) {
+          return char;
+        }
         return (
           <span
             key={`${keyPrefix}-styled-${segmentIdx}-${charIdx}-${charGlobalIndex}`}
-            className="typewriter-page-styled-char"
+            className={[
+              persistedStyle ? 'typewriter-page-styled-char' : '',
+              transaction ? 'typewriter-entity-transaction' : '',
+              transaction ? `typewriter-entity-transaction--${transaction.status}` : ''
+            ].filter(Boolean).join(' ')}
             style={persistedStyle}
           >
             {char}
@@ -334,7 +366,7 @@ const PaperDisplay = ({
       currentOffsetWithinLine += segment.length;
       return <React.Fragment key={`${keyPrefix}-segment-${segmentIdx}`}>{renderedChars}</React.Fragment>;
     });
-  }, [SPECIAL_KEY_TEXT, getPersistedCharStyle]);
+  }, [SPECIAL_KEY_TEXT, getPersistedCharStyle, getEntityTransactionAt]);
 
   const renderFadeLines = () => {
     const baseText = String(pageText ?? '');
