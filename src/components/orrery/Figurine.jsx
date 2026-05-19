@@ -1,6 +1,19 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 
-function Figurine({ image, angle, radius, centerX, centerY, maxRadius, onMove }) {
+function Figurine({
+  id,
+  name,
+  image,
+  angle,
+  radius,
+  centerX,
+  centerY,
+  maxRadius,
+  disabled = false,
+  onMove,
+  onMoveStart,
+  onMoveEnd
+}) {
   const ref = useRef(null);
   const [dragging, setDragging] = useState(false);
 
@@ -9,16 +22,20 @@ function Figurine({ image, angle, radius, centerX, centerY, maxRadius, onMove })
   const y = centerY + r * Math.sin(angle);
 
   const startDrag = (e) => {
+    if (disabled) return;
     e.preventDefault();
     setDragging(true);
+    onMoveStart?.(id);
   };
 
-  const stopDrag = () => {
-    setDragging(false);
-  };
-
-  const doDrag = (e) => {
+  const stopDrag = useCallback(() => {
     if (!dragging) return;
+    setDragging(false);
+    onMoveEnd?.(id);
+  }, [dragging, id, onMoveEnd]);
+
+  const doDrag = useCallback((e) => {
+    if (!dragging || disabled) return;
     const rect = ref.current?.parentElement?.getBoundingClientRect();
     if (!rect) return;
 
@@ -32,7 +49,7 @@ function Figurine({ image, angle, radius, centerX, centerY, maxRadius, onMove })
     const newRadius = clamped / maxRadius;
 
     onMove(newRadius);
-  };
+  }, [angle, centerX, centerY, disabled, dragging, maxRadius, onMove]);
 
   useEffect(() => {
     window.addEventListener('mousemove', doDrag);
@@ -41,12 +58,19 @@ function Figurine({ image, angle, radius, centerX, centerY, maxRadius, onMove })
       window.removeEventListener('mousemove', doDrag);
       window.removeEventListener('mouseup', stopDrag);
     };
-  });
+  }, [doDrag, stopDrag]);
 
   return (
     <div
       ref={ref}
       onMouseDown={startDrag}
+      role="slider"
+      aria-label={name || id}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(radius * 100)}
+      aria-disabled={disabled}
+      data-testid={`orrery-figurine-${id}`}
       style={{
         position: 'absolute',
         left: x - 32,
@@ -56,7 +80,8 @@ function Figurine({ image, angle, radius, centerX, centerY, maxRadius, onMove })
         backgroundImage: `url(${image})`,
         backgroundSize: 'contain',
         backgroundRepeat: 'no-repeat',
-        cursor: 'grab',
+        cursor: disabled ? 'not-allowed' : 'grab',
+        opacity: disabled ? 0.55 : 1,
         userSelect: 'none',
         zIndex: 5,
       }}

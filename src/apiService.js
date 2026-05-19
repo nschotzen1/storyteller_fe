@@ -56,6 +56,34 @@ export const startTypewriterSession = async (sessionId, fragment) => {
   }
 };
 
+export const saveTypewriterVibeState = async (sessionId, vibeState = {}) => {
+  if (!sessionId) {
+    return { data: null, error: { message: 'Missing sessionId' } };
+  }
+  try {
+    const response = await fetch(`${SERVER}/api/typewriter/session/vibe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId,
+        current_vibe: typeof vibeState.current_vibe === 'string' ? vibeState.current_vibe : '',
+        orrery_positions: vibeState.orrery_positions || {},
+        orrery_radial_distance_budget: vibeState.orrery_radial_distance_budget,
+        number_of_available_slides: vibeState.number_of_available_slides
+      })
+    });
+    if (!response.ok) {
+      console.error(`API error in saveTypewriterVibeState: ${response.status} ${response.statusText}`);
+      return { data: null, error: { message: `API error: ${response.status} ${response.statusText}`, status: response.status } };
+    }
+    const data = await response.json();
+    return { data, error: null };
+  } catch (error) {
+    console.error('Network error saving typewriter vibe state:', error);
+    return { data: null, error: { message: error.message } };
+  }
+};
+
 export const fetchTypewriterReply = async (text, sessionId, options = {}) => {
   if (!text) {
     return { data: null, error: null };
