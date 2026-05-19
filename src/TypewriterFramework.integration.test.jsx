@@ -10,6 +10,7 @@ import TypewriterFramework, {
   normalizeTypewriterReply,
   sanitizeTypewriterFontColor,
 } from './TypewriterFramework';
+import { ORRERY_VIBES } from './components/orrery/vibes';
 import '@testing-library/jest-dom';
 
 vi.mock('./apiService', () => ({
@@ -19,6 +20,7 @@ vi.mock('./apiService', () => ({
   fetchStorytellerTypewriterReply: vi.fn(),
   fetchTypewriterReply: vi.fn().mockResolvedValue({ data: { content: 'mock AI reply' }, error: null }),
   fetchShouldGenerateContinuation: vi.fn().mockResolvedValue({ shouldGenerate: false }),
+  saveTypewriterVibeState: vi.fn().mockResolvedValue({ data: {}, error: null }),
   startTypewriterSession: vi.fn().mockResolvedValue({ data: { sessionId: 'test-session-id-123' }, error: null }),
 }));
 
@@ -43,6 +45,7 @@ import {
   fetchStorytellerTypewriterReply,
   fetchTypewriterReply,
   fetchShouldGenerateContinuation,
+  saveTypewriterVibeState,
   startTypewriterSession,
 } from './apiService';
 import { playEndOfPageSound, playPageIntroSound } from './utils';
@@ -167,6 +170,7 @@ describe('TypewriterFramework integration', () => {
     });
     fetchStorytellerTypewriterReply.mockResolvedValue({ data: { sequence: [] }, error: null });
     fetchTypewriterReply.mockResolvedValue({ data: { sequence: [] }, error: null });
+    saveTypewriterVibeState.mockResolvedValue({ data: {}, error: null });
     startTypewriterSession.mockResolvedValue({ data: { sessionId: 'test-session-id-123' }, error: null });
   });
 
@@ -230,6 +234,70 @@ describe('TypewriterFramework integration', () => {
       expect(lines.length).toBeGreaterThan(0);
       expect(lines[0].textContent).toContain('one two three four five');
     });
+  });
+
+  test('orrery slide consumes a tuning point, changes paper on a matching vibe, and persists session world state', async () => {
+    const forgeVibe = ORRERY_VIBES.find((vibe) => vibe.id === 'forge_ember');
+    startTypewriterSession.mockResolvedValueOnce({
+      data: {
+        sessionId: 'test-session-id-123',
+        fragment: '',
+        worldState: {
+          orrery_radial_distance_budget: 2,
+          orrery_positions: {
+            verdant: 0.8,
+            warden: 0.8,
+            veil: 0.8,
+            forge: 0.8,
+            hollow: 0.8,
+            crown: 0.8,
+            rift: 0.8,
+            sigil: 0.8
+          }
+        }
+      },
+      error: null
+    });
+
+    render(<TypewriterFramework />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('orrery-slide-budget')).toHaveTextContent('2');
+    });
+
+    const orrery = screen.getByTestId('orrery-control');
+    vi.spyOn(orrery, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      right: 300,
+      bottom: 300,
+      width: 300,
+      height: 300,
+      x: 0,
+      y: 0,
+      toJSON: () => ({})
+    });
+
+    fireEvent.mouseDown(screen.getByTestId('orrery-figurine-forge'), { clientX: 76, clientY: 224 });
+    fireEvent.mouseMove(window, { clientX: 144, clientY: 156 });
+    fireEvent.mouseUp(window);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('orrery-slide-budget')).toHaveTextContent('0');
+      expect(screen.getByTestId('film-background-div')).toHaveStyle(`background-image: url(${forgeVibe.backgroundUrl})`);
+    });
+
+    expect(saveTypewriterVibeState).toHaveBeenCalledWith(
+      'test-session-id-123',
+      expect.objectContaining({
+        current_vibe: 'forge_ember',
+        orrery_radial_distance_budget: 0,
+        number_of_available_slides: 0,
+        orrery_positions: expect.objectContaining({
+          forge: expect.any(Number)
+        })
+      })
+    );
   });
 
   test('falls back to initialFragment when the session payload omits fragment', async () => {

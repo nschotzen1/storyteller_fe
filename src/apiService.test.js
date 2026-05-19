@@ -4,6 +4,7 @@ import {
   fetchStorytellerTypewriterReply,
   fetchTypewriterReply,
   fetchShouldGenerateContinuation,
+  saveTypewriterVibeState,
   // SERVER constant is not explicitly exported by apiService.js,
   // but it's used internally. We'll construct the expected URL based on the path.
 } from './apiService';
@@ -177,6 +178,49 @@ describe('apiService', () => {
 
       expect(global.fetch).not.toHaveBeenCalled();
       expect(result).toEqual({ data: null, error: null });
+    });
+  });
+
+  describe('saveTypewriterVibeState', () => {
+    const endpoint = `${SERVER_URL}/api/typewriter/session/vibe`;
+
+    it('persists the current vibe state for a typewriter session', async () => {
+      const mockApiResponse = {
+        sessionId: 'session123',
+        worldState: {
+          current_vibe: 'forge_ember',
+          orrery_positions: { forge: 0.12 },
+          orrery_radial_distance_budget: 2,
+          number_of_available_slides: 2
+        }
+      };
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockApiResponse,
+      });
+
+      const result = await saveTypewriterVibeState('session123', {
+        current_vibe: 'forge_ember',
+        orrery_positions: { forge: 0.12 },
+        orrery_radial_distance_budget: 2,
+        number_of_available_slides: 2
+      });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        endpoint,
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'session123',
+            current_vibe: 'forge_ember',
+            orrery_positions: { forge: 0.12 },
+            orrery_radial_distance_budget: 2,
+            number_of_available_slides: 2
+          }),
+        })
+      );
+      expect(result).toEqual({ data: mockApiResponse, error: null });
     });
   });
 

@@ -63,6 +63,29 @@ const Keyboard = ({
     return `Blank storyteller slot ${storytellerSlot.slotIndex + 1}`;
   };
 
+  const getStorytellerTitle = (storytellerSlot) => {
+    if (!storytellerSlot) return '';
+    const titleParts = [];
+    if (storytellerSlot.storytellerName) {
+      titleParts.push(storytellerSlot.storytellerName);
+    }
+    const stageLabel = typeof storytellerSlot.pressPolicy?.stageLabel === 'string'
+      ? storytellerSlot.pressPolicy.stageLabel.trim()
+      : '';
+    const archetypeLabel = typeof storytellerSlot.archetype?.label === 'string'
+      ? storytellerSlot.archetype.label.trim()
+      : typeof storytellerSlot.pressPolicy?.archetype?.label === 'string'
+        ? storytellerSlot.pressPolicy.archetype.label.trim()
+        : '';
+    if (archetypeLabel) {
+      titleParts.push(archetypeLabel);
+    }
+    if (stageLabel) {
+      titleParts.push(`Next: ${stageLabel}`);
+    }
+    return titleParts.join(' - ');
+  };
+
   const renderTextualKey = (typewriterKey, wrapperClassName = '') => {
     if (!typewriterKey) return null;
     const keyImageUrl = typeof typewriterKey.keyImageUrl === 'string' ? typewriterKey.keyImageUrl.trim() : '';
@@ -140,7 +163,7 @@ const Keyboard = ({
             key={storytellerSlot?.slotKey || key}
             className={`typewriter-key-wrapper ${storytellerSlot ? 'storyteller-slot-key' : ''} ${storytellerSlot?.filled ? 'storyteller-slot-filled' : ''} ${storytellerSlot?.filled ? 'storyteller-slot-pressable' : ''} ${lastPressedKey === key || isStorytellerPressed ? 'key-pressed' : ''} ${isStorytellerPressed ? 'storyteller-key-held' : ''} ${ghostPressedKey === key ? 'ghost-key-glow' : ''} ${!typingAllowed && !storytellerSlot ? 'key-disabled' : ''}`}
             style={getRandomizedWrapperStyle()}
-            title={storytellerSlot?.storytellerName || ''}
+            title={getStorytellerTitle(storytellerSlot)}
             onClick={() => {
               if (storytellerSlot) {
                 if (!storytellerSlot.filled || !onStorytellerPress) {

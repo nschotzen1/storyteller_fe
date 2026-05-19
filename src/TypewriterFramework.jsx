@@ -13,8 +13,14 @@ import {
   fetchShouldGenerateContinuation,
   fetchStorytellerTypewriterReply,
   fetchTypewriterReply,
+  saveTypewriterVibeState,
   startTypewriterSession
 } from './apiService.js';
+import {
+  getOrreryVibeById,
+  normalizeOrrerySessionState,
+  ORRERY_INITIAL_RADIAL_DISTANCE_BUDGET
+} from './components/orrery/vibes.js';
 
 // --- Constants ---
 const FILM_HEIGHT = 1400;
@@ -169,6 +175,9 @@ const readStoredTypewriterDebugSettings = () => {
 const getStorytellerSlotDefinitionByKey = (key) =>
   STORYTELLER_KEY_SLOT_DEFINITIONS.find((slot) => slot.slotKey === key) || null;
 
+const normalizePlainObject = (value) =>
+  value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+
 const getInitialKeyTexture = (key) => {
   const storytellerSlot = getStorytellerSlotDefinitionByKey(key);
   if (storytellerSlot) {
@@ -193,7 +202,9 @@ const createInitialStorytellerSlots = () =>
     requiredFragmentLength: 0,
     fragmentGrowthNeeded: 0,
     lastTypewriterPressAt: null,
-    typewriterInterventionInFlight: false
+    typewriterInterventionInFlight: false,
+    archetype: null,
+    pressPolicy: null
   }));
 
 const normalizeStorytellerSlot = (slot = {}) => {
@@ -219,7 +230,9 @@ const normalizeStorytellerSlot = (slot = {}) => {
     requiredFragmentLength: Number.isFinite(Number(slot.requiredFragmentLength)) ? Math.max(0, Math.floor(Number(slot.requiredFragmentLength))) : 0,
     fragmentGrowthNeeded: Number.isFinite(Number(slot.fragmentGrowthNeeded)) ? Math.max(0, Math.floor(Number(slot.fragmentGrowthNeeded))) : 0,
     lastTypewriterPressAt: slot.lastTypewriterPressAt || null,
-    typewriterInterventionInFlight: Boolean(slot.typewriterInterventionInFlight)
+    typewriterInterventionInFlight: Boolean(slot.typewriterInterventionInFlight),
+    archetype: normalizePlainObject(slot.archetype),
+    pressPolicy: normalizePlainObject(slot.pressPolicy)
   };
 };
 
@@ -957,21 +970,29 @@ const getFirstSequenceStyle = (sequence = []) => {
 
 const getStorytellerSlotDebugState = (slot) => {
   const slotLabel = `Slot ${Number.isInteger(slot?.slotIndex) ? slot.slotIndex + 1 : '?'}`;
+  const stageLabel = typeof slot?.pressPolicy?.stageLabel === 'string' ? slot.pressPolicy.stageLabel : '';
+  const archetypeLabel = typeof slot?.archetype?.label === 'string'
+    ? slot.archetype.label
+    : typeof slot?.pressPolicy?.archetype?.label === 'string'
+      ? slot.pressPolicy.archetype.label
+      : '';
   if (!slot?.filled || !slot?.keyImageUrl) {
-    return { label: slotLabel, status: 'empty', storytellerName: '' };
+    return { label: slotLabel, status: 'empty', storytellerName: '', stageLabel, archetypeLabel };
   }
   if (slot?.typewriterInterventionInFlight) {
-    return { label: slotLabel, status: 'busy', storytellerName: slot.storytellerName || '' };
+    return { label: slotLabel, status: 'busy', storytellerName: slot.storytellerName || '', stageLabel, archetypeLabel };
   }
   if (slot?.canPress === false && slot?.pressLockedReason === 'growth_required') {
-    return { label: slotLabel, status: 'waiting', storytellerName: slot.storytellerName || '' };
+    return { label: slotLabel, status: 'waiting', storytellerName: slot.storytellerName || '', stageLabel, archetypeLabel };
   }
   const isMock = typeof slot.keyImageUrl === 'string'
     && slot.keyImageUrl.includes('/assets/mocks/storyteller_keys/');
   return {
     label: slotLabel,
     status: isMock ? 'mock' : 'live',
-    storytellerName: slot.storytellerName || ''
+    storytellerName: slot.storytellerName || '',
+    stageLabel,
+    archetypeLabel
   };
 };
 
@@ -1348,6 +1369,7 @@ const TypewriterFramework = (props) => {
   const [typewriterTextKeys, setTypewriterTextKeys] = useState(() => createInitialTypewriterTextKeys());
   const [activeStorytellerPress, setActiveStorytellerPress] = useState(null);
   const [storytellerInterventionError, setStorytellerInterventionError] = useState('');
+  const [storytellerKeyCheckIntervalWords, setStorytellerKeyCheckIntervalWords] = useState(STORYTELLER_KEY_CHECK_INTERVAL_WORDS);
   const storytellerPressInFlightRef = useRef(false);
   const [ghostPressedKey, setGhostPressedKey] = useState(null);
   const [preGhostAtmosphere, setPreGhostAtmosphere] = useState(false);
@@ -1356,6 +1378,9 @@ const TypewriterFramework = (props) => {
   // lastUserInputTime, responseQueued, lastGeneratedLength are now in ghostwriterState
   // Level: 0 = empty, 3 = full (ready for page turn)
   const [leverLevel, setLeverLevel] = useState(0);
+  const [orreryState, setOrreryState] = useState(() => normalizeOrrerySessionState({
+    orrery_radial_distance_budget: ORRERY_INITIAL_RADIAL_DISTANCE_BUDGET
+  }));
   const [currentFontStyles, setCurrentFontStyles] = useState(null);
   const [lastContinuationInsights, setLastContinuationInsights] = useState(null);
   const [lastContinuationTiming, setLastContinuationTiming] = useState(null);
@@ -1416,6 +1441,10 @@ const TypewriterFramework = (props) => {
         setSessionId(nextSessionId);
       }
 
+      const restoredOrreryState = normalizeOrrerySessionState(data?.worldState);
+      const restoredVibe = getOrreryVibeById(restoredOrreryState.current_vibe);
+      setOrreryState(restoredOrreryState);
+
       const restoredFragment = typeof data?.fragment === 'string'
         ? data.fragment
         : (typeof data?.initialFragment === 'string' ? data.initialFragment : null);
@@ -1425,6 +1454,17 @@ const TypewriterFramework = (props) => {
           ? data.entityKeys
           : [];
       setTypewriterTextKeys((prev) => mergeTypewriterTextKeys(prev, returnedTypewriterKeys));
+
+      if (restoredVibe?.backgroundUrl) {
+        setPages((prev) => {
+          if (!Array.isArray(prev) || !prev.length) return prev;
+          return prev.map((page, index) => (
+            index === 0
+              ? { ...page, filmBgUrl: restoredVibe.backgroundUrl }
+              : page
+          ));
+        });
+      }
 
       if (error || typeof restoredFragment !== 'string') {
         setIsSessionReady(true);
@@ -1439,6 +1479,7 @@ const TypewriterFramework = (props) => {
           {
             ...prev[0],
             text: restoredFragment,
+            filmBgUrl: restoredVibe?.backgroundUrl || prev[0]?.filmBgUrl || DEFAULT_FILM_BG_URL,
             pageStyleRanges: []
           }
         ];
@@ -1519,6 +1560,9 @@ const TypewriterFramework = (props) => {
     entityKeyTransactions.some((transaction) => transaction.status === 'rejected')
   ), [entityKeyTransactions]);
   const visibleGhostText = `${typingState.currentGhostText || ''}${typingState.sequenceUserText || ''}`;
+  const activeOrreryVibe = useMemo(() => (
+    getOrreryVibeById(orreryState.current_vibe)
+  ), [orreryState.current_vibe]);
   const persistedNarrativeText = useMemo(() => (
     buildTypewriterNarrativeFromPages(pages)
   ), [pages]);
@@ -1566,6 +1610,7 @@ const TypewriterFramework = (props) => {
     setStorytellerSlots(createInitialStorytellerSlots());
     setTypewriterTextKeys(createInitialTypewriterTextKeys());
     setActiveStorytellerPress(null);
+    setStorytellerKeyCheckIntervalWords(STORYTELLER_KEY_CHECK_INTERVAL_WORDS);
     setKeyTextures(keys.map(getInitialKeyTexture));
   }, [sessionId]);
 
@@ -1581,6 +1626,9 @@ const TypewriterFramework = (props) => {
         return false;
       }
 
+      if (Number.isFinite(Number(data.checkIntervalWords))) {
+        setStorytellerKeyCheckIntervalWords(Math.max(1, Math.floor(Number(data.checkIntervalWords))));
+      }
       setStorytellerSlots((prev) => mergeStorytellerSlots(prev, data.slots));
       const returnedTypewriterKeys = Array.isArray(data.typewriterKeys)
         ? data.typewriterKeys
@@ -1607,7 +1655,7 @@ const TypewriterFramework = (props) => {
     if (!isSessionReady || !sessionId) return;
     if (storytellerInitialSyncSessionRef.current === sessionId) return;
 
-    const currentWordInterval = Math.floor(countWordsInNarrative(persistedNarrativeText || '') / STORYTELLER_KEY_CHECK_INTERVAL_WORDS);
+    const currentWordInterval = Math.floor(countWordsInNarrative(persistedNarrativeText || '') / storytellerKeyCheckIntervalWords);
     const timeoutId = window.setTimeout(() => {
       syncTypewriterStorytellerSlots(currentWordInterval).then((didSync) => {
         if (didSync) {
@@ -1617,12 +1665,12 @@ const TypewriterFramework = (props) => {
     }, STORYTELLER_KEY_CHECK_DELAY_MS);
 
     return () => window.clearTimeout(timeoutId);
-  }, [isSessionReady, persistedNarrativeText, sessionId, syncTypewriterStorytellerSlots]);
+  }, [isSessionReady, persistedNarrativeText, sessionId, storytellerKeyCheckIntervalWords, syncTypewriterStorytellerSlots]);
 
   useEffect(() => {
     if (!isSessionReady || !sessionId) return;
 
-    const wordIntervalIndex = Math.floor(countWordsInNarrative(persistedNarrativeText || '') / STORYTELLER_KEY_CHECK_INTERVAL_WORDS);
+    const wordIntervalIndex = Math.floor(countWordsInNarrative(persistedNarrativeText || '') / storytellerKeyCheckIntervalWords);
     if (wordIntervalIndex <= 0) return;
     if (wordIntervalIndex <= lastStorytellerCheckIntervalRef.current) return;
 
@@ -1631,7 +1679,7 @@ const TypewriterFramework = (props) => {
     }, STORYTELLER_KEY_CHECK_DELAY_MS);
 
     return () => window.clearTimeout(timeoutId);
-  }, [isSessionReady, persistedNarrativeText, sessionId, syncTypewriterStorytellerSlots]);
+  }, [isSessionReady, persistedNarrativeText, sessionId, storytellerKeyCheckIntervalWords, syncTypewriterStorytellerSlots]);
 
   useEffect(() => {
     if (!isSessionReady || !sessionId) return;
@@ -1992,7 +2040,7 @@ const TypewriterFramework = (props) => {
           // Fetch next film image then prepare for slide
           fetchNextFilmImage(narrativeBeforeTurn, sessionId).then(data => {
             const newUrl = data?.data?.image_url || data?.data?.image_path || null;
-            const newFilm = newUrl || DEFAULT_FILM_BG_URL;
+            const newFilm = activeOrreryVibe?.backgroundUrl || newUrl || DEFAULT_FILM_BG_URL;
             const nextPages = [
               ...pages.slice(0, currentPage + 1),
               { text: '', filmBgUrl: newFilm, pageStyleRanges: [] }
@@ -2833,6 +2881,44 @@ const TypewriterFramework = (props) => {
     handlePageTurnScroll();
   };
 
+  const handleOrrerySlideCommit = useCallback(({ positions, vibe, radialDistanceCost = 1 }) => {
+    const availableRadialDistance = Math.max(0, Math.floor(Number(orreryState.orrery_radial_distance_budget) || 0));
+    const committedRadialDistance = Math.max(1, Math.floor(Number(radialDistanceCost) || 1));
+    if (availableRadialDistance <= 0 || committedRadialDistance > availableRadialDistance) return;
+
+    const nextOrreryState = normalizeOrrerySessionState({
+      ...orreryState,
+      current_vibe: vibe?.id || orreryState.current_vibe,
+      orrery_positions: positions,
+      orrery_radial_distance_budget: availableRadialDistance - committedRadialDistance
+    });
+
+    setOrreryState(nextOrreryState);
+
+    if (vibe?.backgroundUrl) {
+      setPages((prev) => {
+        const updatedPages = [...prev];
+        const existingPage = updatedPages[currentPage] || {
+          text: '',
+          filmBgUrl: DEFAULT_FILM_BG_URL,
+          pageStyleRanges: []
+        };
+        updatedPages[currentPage] = {
+          ...existingPage,
+          filmBgUrl: vibe.backgroundUrl
+        };
+        pagesRef.current = updatedPages;
+        return updatedPages;
+      });
+    }
+
+    if (sessionId) {
+      saveTypewriterVibeState(sessionId, nextOrreryState).catch((error) => {
+        console.error('Error saving typewriter orrery vibe state:', error);
+      });
+    }
+  }, [currentPage, orreryState, sessionId]);
+
   const handleNextPageNavigation = () => {
     if (currentPage < pages.length - 1) {
       handleHistoryNavigation(currentPage + 1);
@@ -2977,7 +3063,7 @@ const TypewriterFramework = (props) => {
               ) : null}
               {storytellerSlotDebugStates.map((slotState) => (
                 <span key={`${slotState.label}-${slotState.status}`}>
-                  {slotState.label} {slotState.status}{slotState.storytellerName ? ` (${slotState.storytellerName})` : ''}
+                  {slotState.label} {slotState.status}{slotState.storytellerName ? ` (${slotState.storytellerName})` : ''}{slotState.stageLabel ? ` -> ${slotState.stageLabel}` : ''}{slotState.archetypeLabel ? ` / ${slotState.archetypeLabel}` : ''}
                 </span>
               ))}
             </div>
@@ -3182,7 +3268,12 @@ const TypewriterFramework = (props) => {
           onPull={handleCreateNextPage}
         />
       </div>
-      <OrreryComponent />
+      <OrreryComponent
+        positions={orreryState.orrery_positions}
+        radialDistanceBudget={orreryState.orrery_radial_distance_budget}
+        currentVibe={activeOrreryVibe?.label || orreryState.current_vibe}
+        onSlideCommit={handleOrrerySlideCommit}
+      />
 
     </div>
   );
