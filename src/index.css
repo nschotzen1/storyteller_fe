@@ -292,7 +292,7 @@ body {
 
 
 .bg-paper-grid {
-  background-image: url('/textures/paper_texture_rugged.jpg'), url('/textures/math_notebook_grid.png');
+  background-image: url('/textures/paper_texture_rugged.png'), url('/textures/math_notebook_grid.png');
   background-size: cover, contain;
   background-repeat: no-repeat, repeat;
   background-blend-mode: multiply;
@@ -384,6 +384,5 @@ body {
 .perspective-3d {
   perspective: 1600px;
 }
-
 
 

@@ -68,6 +68,8 @@ export const saveTypewriterVibeState = async (sessionId, vibeState = {}) => {
         sessionId,
         current_vibe: typeof vibeState.current_vibe === 'string' ? vibeState.current_vibe : '',
         orrery_positions: vibeState.orrery_positions || {},
+        orrery_vector: vibeState.orrery_vector || {},
+        page_texture_identity: vibeState.page_texture_identity || null,
         orrery_radial_distance_budget: vibeState.orrery_radial_distance_budget,
         number_of_available_slides: vibeState.number_of_available_slides
       })
@@ -80,6 +82,30 @@ export const saveTypewriterVibeState = async (sessionId, vibeState = {}) => {
     return { data, error: null };
   } catch (error) {
     console.error('Network error saving typewriter vibe state:', error);
+    return { data: null, error: { message: error.message } };
+  }
+};
+
+export const resolveOrreryPageTextureIdentity = async (sessionId, vector = {}, options = {}) => {
+  try {
+    const response = await fetch(`${SERVER}/api/typewriter/orrery/page-texture`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId,
+        vector,
+        persistToSession: options.persistToSession !== false,
+        persistAlignment: options.persistAlignment !== false
+      })
+    });
+    if (!response.ok) {
+      console.error(`API error in resolveOrreryPageTextureIdentity: ${response.status} ${response.statusText}`);
+      return { data: null, error: { message: `API error: ${response.status} ${response.statusText}`, status: response.status } };
+    }
+    const data = await response.json();
+    return { data, error: null };
+  } catch (error) {
+    console.error('Network error resolving Orrery page texture identity:', error);
     return { data: null, error: { message: error.message } };
   }
 };
@@ -320,21 +346,6 @@ export const fetchStorytellerTypewriterReply = async (sessionId, storytellerId, 
     return { data, error: null };
   } catch (error) {
     console.error('Network error fetching storyteller typewriter reply:', error);
-    return { data: null, error: { message: error.message } };
-  }
-};
-
-export const fetchSeerCards = async () => {
-  try {
-    const response = await fetch(`/mock-seer-cards.json`); // Files in public are served at root
-    if (!response.ok) {
-      console.error(`API error in fetchSeerCards: ${response.status} ${response.statusText}`);
-      return { data: null, error: { message: `API error: ${response.status} ${response.statusText}`, status: response.status } };
-    }
-    const parsedJson = await response.json();
-    return { data: parsedJson, error: null };
-  } catch (error) {
-    console.error("Network error fetching seer cards:", error);
     return { data: null, error: { message: error.message } };
   }
 };

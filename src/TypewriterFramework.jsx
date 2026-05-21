@@ -13,6 +13,7 @@ import {
   fetchShouldGenerateContinuation,
   fetchStorytellerTypewriterReply,
   fetchTypewriterReply,
+  resolveOrreryPageTextureIdentity,
   saveTypewriterVibeState,
   startTypewriterSession
 } from './apiService.js';
@@ -1455,12 +1456,13 @@ const TypewriterFramework = (props) => {
           : [];
       setTypewriterTextKeys((prev) => mergeTypewriterTextKeys(prev, returnedTypewriterKeys));
 
-      if (restoredVibe?.backgroundUrl) {
+      const restoredPageTextureUrl = restoredOrreryState.page_texture_identity?.assetPngUrl || restoredVibe?.backgroundUrl;
+      if (restoredPageTextureUrl) {
         setPages((prev) => {
           if (!Array.isArray(prev) || !prev.length) return prev;
           return prev.map((page, index) => (
             index === 0
-              ? { ...page, filmBgUrl: restoredVibe.backgroundUrl }
+              ? { ...page, filmBgUrl: restoredPageTextureUrl }
               : page
           ));
         });
@@ -2040,7 +2042,8 @@ const TypewriterFramework = (props) => {
           // Fetch next film image then prepare for slide
           fetchNextFilmImage(narrativeBeforeTurn, sessionId).then(data => {
             const newUrl = data?.data?.image_url || data?.data?.image_path || null;
-            const newFilm = activeOrreryVibe?.backgroundUrl || newUrl || DEFAULT_FILM_BG_URL;
+            const tunedTextureUrl = orreryState.page_texture_identity?.assetPngUrl || activeOrreryVibe?.backgroundUrl;
+            const newFilm = tunedTextureUrl || newUrl || DEFAULT_FILM_BG_URL;
             const nextPages = [
               ...pages.slice(0, currentPage + 1),
               { text: '', filmBgUrl: newFilm, pageStyleRanges: [] }
@@ -2881,7 +2884,7 @@ const TypewriterFramework = (props) => {
     handlePageTurnScroll();
   };
 
-  const handleOrrerySlideCommit = useCallback(({ positions, vibe, radialDistanceCost = 1 }) => {
+  const handleOrrerySlideCommit = useCallback(({ positions, vector, vibe, radialDistanceCost = 1 }) => {
     const availableRadialDistance = Math.max(0, Math.floor(Number(orreryState.orrery_radial_distance_budget) || 0));
     const committedRadialDistance = Math.max(1, Math.floor(Number(radialDistanceCost) || 1));
     if (availableRadialDistance <= 0 || committedRadialDistance > availableRadialDistance) return;
@@ -2890,12 +2893,14 @@ const TypewriterFramework = (props) => {
       ...orreryState,
       current_vibe: vibe?.id || orreryState.current_vibe,
       orrery_positions: positions,
+      orrery_vector: vector,
       orrery_radial_distance_budget: availableRadialDistance - committedRadialDistance
     });
 
     setOrreryState(nextOrreryState);
 
-    if (vibe?.backgroundUrl) {
+    const applyPageTexture = (backgroundUrl) => {
+      if (!backgroundUrl) return;
       setPages((prev) => {
         const updatedPages = [...prev];
         const existingPage = updatedPages[currentPage] || {
@@ -2910,11 +2915,32 @@ const TypewriterFramework = (props) => {
         pagesRef.current = updatedPages;
         return updatedPages;
       });
+    };
+
+    if (vibe?.backgroundUrl) {
+      applyPageTexture(vibe.backgroundUrl);
     }
 
     if (sessionId) {
       saveTypewriterVibeState(sessionId, nextOrreryState).catch((error) => {
         console.error('Error saving typewriter orrery vibe state:', error);
+      });
+      resolveOrreryPageTextureIdentity(sessionId, nextOrreryState.orrery_vector).then(({ data, error }) => {
+        if (error || !data) {
+          if (error) console.error('Error resolving Orrery page texture identity:', error);
+          return;
+        }
+        setOrreryState((prev) => normalizeOrrerySessionState({
+          ...prev,
+          current_vibe: data.alignmentKey || prev.current_vibe,
+          orrery_vector: data.vector || prev.orrery_vector,
+          page_texture_identity: data
+        }));
+        if (data.assetPngUrl) {
+          applyPageTexture(data.assetPngUrl);
+        }
+      }).catch((error) => {
+        console.error('Error resolving Orrery page texture identity:', error);
       });
     }
   }, [currentPage, orreryState, sessionId]);
@@ -3269,9 +3295,10 @@ const TypewriterFramework = (props) => {
         />
       </div>
       <OrreryComponent
+        vector={orreryState.orrery_vector}
         positions={orreryState.orrery_positions}
         radialDistanceBudget={orreryState.orrery_radial_distance_budget}
-        currentVibe={activeOrreryVibe?.label || orreryState.current_vibe}
+        currentVibe={activeOrreryVibe?.label || orreryState.page_texture_identity?.title || orreryState.current_vibe}
         onSlideCommit={handleOrrerySlideCommit}
       />
 

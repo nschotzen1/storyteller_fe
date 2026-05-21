@@ -6,9 +6,14 @@ function Figurine({
   image,
   angle,
   radius,
+  level = 0,
+  stageLabel = '',
+  maxLevel = 5,
+  active = false,
   centerX,
   centerY,
   maxRadius,
+  size = 64,
   disabled = false,
   onMove,
   onMoveStart,
@@ -20,6 +25,7 @@ function Figurine({
   const r = radius * maxRadius;
   const x = centerX + r * Math.cos(angle);
   const y = centerY + r * Math.sin(angle);
+  const halfSize = size / 2;
 
   const startDrag = (e) => {
     if (disabled) return;
@@ -63,27 +69,29 @@ function Figurine({
   return (
     <div
       ref={ref}
+      className={`orrery-figurine ${active ? 'orrery-figurine--active' : ''}`.trim()}
       onMouseDown={startDrag}
       role="slider"
-      aria-label={name || id}
+      aria-label={`${name || id}: ${stageLabel || `level ${level}`}`}
       aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(radius * 100)}
+      aria-valuemax={maxLevel}
+      aria-valuenow={level}
+      aria-valuetext={stageLabel || `Level ${level}`}
       aria-disabled={disabled}
       data-testid={`orrery-figurine-${id}`}
+      title={`${name || id} - ${stageLabel || `Level ${level}`}`}
       style={{
         position: 'absolute',
-        left: x - 32,
-        top: y - 32,
-        width: 64,
-        height: 64,
+        left: x - halfSize,
+        top: y - halfSize,
+        width: size,
+        height: size,
         backgroundImage: `url(${image})`,
         backgroundSize: 'contain',
         backgroundRepeat: 'no-repeat',
         cursor: disabled ? 'not-allowed' : 'grab',
-        opacity: disabled ? 0.55 : 1,
+        opacity: disabled ? 0.48 : 1,
         userSelect: 'none',
-        zIndex: 5,
       }}
     />
   );

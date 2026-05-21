@@ -1,47 +1,20 @@
 import './index.css';
-import './FlipCard.css';
 import './App.css';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import AppIntroOverlay from './AppIntroOverlay';
+import React, { useEffect, useState } from 'react';
 import CurtainIntro from './CurtainIntro';
 import CurtainOutro from './CurtainOutro';
-import StorytellerArenaConsole from './components/storyteller/StorytellerArenaConsole';
-import PlayerLogin from './pages/PlayerLogin';
-import QuestAdminPage from './pages/QuestAdminPage';
-import MemorySpreadPage from './pages/MemorySpreadPage';
-import ImmersiveRpgPage from './pages/ImmersiveRpgPage';
-import RoseCourtProloguePage from './pages/RoseCourtProloguePage';
-import RoseCourtMontagePage from './pages/RoseCourtMontagePage';
-import WellDemoPage from './pages/WellDemoPage';
 import TypewriterAdminPage from './pages/TypewriterAdminPage';
 import TypewriterFramework from './TypewriterFramework';
-import Messanger from './Messanger';
 
 const VIEW = {
-  ARENA: 'arena',
   TYPEWRITER: 'typewriter',
-  STORY_ADMIN: 'story-admin',
-  QUEST_ADMIN: 'quest-admin',
-  MEMORY_SPREAD: 'memory-spread',
-  MESSANGER: 'messanger',
-  IMMERSIVE_RPG: 'immersive-rpg',
-  ROSE_COURT_PROLOGUE: 'rose-court-prologue',
-  MONTAGE: 'montage',
-  WELL: 'well'
+  STORY_ADMIN: 'story-admin'
 };
 
 const VIEW_OPTIONS = [
-  { id: VIEW.ARENA, label: 'Arena' },
   { id: VIEW.TYPEWRITER, label: 'Typewriter' },
-  { id: VIEW.STORY_ADMIN, label: 'Story Admin' },
-  { id: VIEW.MESSANGER, label: 'Messanger' },
-  { id: VIEW.ROSE_COURT_PROLOGUE, label: 'Rose Court' },
-  { id: VIEW.MONTAGE, label: 'Montage' },
-  { id: VIEW.WELL, label: 'Well' },
-  { id: VIEW.QUEST_ADMIN, label: 'Quest Admin' },
-  { id: VIEW.MEMORY_SPREAD, label: 'Seer Reading' },
-  { id: VIEW.IMMERSIVE_RPG, label: 'Immersive RPG' }
+  { id: VIEW.STORY_ADMIN, label: 'Story Admin' }
 ];
 
 const TYPEWRITER_CURTAIN_PHASE = {
@@ -50,23 +23,8 @@ const TYPEWRITER_CURTAIN_PHASE = {
   OUTRO: 'outro'
 };
 
-function applyDefaultViewQueryParams(params, view) {
-  if (!(params instanceof URLSearchParams)) return;
-
-  if (view === VIEW.MEMORY_SPREAD) {
-    params.set('memoryDebug', '1');
-    if (!`${params.get('readingId') || ''}`.trim() && !`${params.get('seerFixture') || ''}`.trim()) {
-      params.set('seerFixture', 'authority');
-    }
-    const mode = `${params.get('mode') || ''}`.trim().toLowerCase();
-    if (!mode || ['seer', 'legacy', 'classic', 'spread'].includes(mode)) {
-      params.delete('mode');
-    }
-  }
-}
-
 const readInitialView = () => {
-  if (typeof window === 'undefined') return VIEW.ARENA;
+  if (typeof window === 'undefined') return VIEW.TYPEWRITER;
   const params = new URLSearchParams(window.location.search);
   const requested = params.get('view');
   if (requested === 'typewriter-admin') {
@@ -75,49 +33,24 @@ const readInitialView = () => {
   if (requested && Object.values(VIEW).includes(requested)) {
     return requested;
   }
-  return VIEW.ARENA;
-};
-
-const shouldSkipAppIntro = () => {
-  if (typeof window === 'undefined') return false;
-  const params = new URLSearchParams(window.location.search);
-  return params.get('skipAppIntro') === '1';
+  return VIEW.TYPEWRITER;
 };
 
 function App() {
   const [view, setView] = useState(readInitialView);
-  const [appIntroComplete, setAppIntroComplete] = useState(shouldSkipAppIntro);
   const [pendingView, setPendingView] = useState(null);
   const [typewriterCurtainPhase, setTypewriterCurtainPhase] = useState(() => (
     readInitialView() === VIEW.TYPEWRITER ? TYPEWRITER_CURTAIN_PHASE.INTRO : TYPEWRITER_CURTAIN_PHASE.IDLE
   ));
-  const [login, setLogin] = useState(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     params.set('view', view);
-    applyDefaultViewQueryParams(params, view);
     const nextQuery = params.toString();
     const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`;
     window.history.replaceState({}, '', nextUrl);
   }, [view]);
-
-  const arenaContent = useMemo(() => {
-    if (!login) {
-      return <PlayerLogin onSubmit={setLogin} />;
-    }
-
-    return (
-      <StorytellerArenaConsole
-        key={`${login.sessionId}-${login.playerName}`}
-        initialSessionId={login.sessionId}
-        initialPlayerName={login.playerName}
-        initialPlayerId={login.playerId}
-        lockPrimaryPlayerId
-      />
-    );
-  }, [login]);
 
   const isTypewriterCurtainActive = view === VIEW.TYPEWRITER && typewriterCurtainPhase !== TYPEWRITER_CURTAIN_PHASE.IDLE;
 
@@ -151,14 +84,6 @@ function App() {
     );
   };
 
-  if (!appIntroComplete) {
-    return (
-      <div className="appShell">
-        <AppIntroOverlay onComplete={() => setAppIntroComplete(true)} />
-      </div>
-    );
-  }
-
   return (
     <div className="appShell">
       <nav className={`appViewSwitch ${isTypewriterCurtainActive ? 'appViewSwitch-obscured' : ''}`} aria-label="App views">
@@ -175,7 +100,6 @@ function App() {
       </nav>
 
       <main className="appMain">
-        {view === VIEW.ARENA && arenaContent}
         {view === VIEW.TYPEWRITER && (
           <div className="typewriterViewShell">
             <TypewriterFramework />
@@ -188,13 +112,6 @@ function App() {
           </div>
         )}
         {view === VIEW.STORY_ADMIN && <TypewriterAdminPage />}
-        {view === VIEW.ROSE_COURT_PROLOGUE && <RoseCourtProloguePage />}
-        {view === VIEW.MONTAGE && <RoseCourtMontagePage />}
-        {view === VIEW.WELL && <WellDemoPage />}
-        {view === VIEW.QUEST_ADMIN && <QuestAdminPage />}
-        {view === VIEW.MEMORY_SPREAD && <MemorySpreadPage />}
-        {view === VIEW.MESSANGER && <Messanger />}
-        {view === VIEW.IMMERSIVE_RPG && <ImmersiveRpgPage />}
       </main>
     </div>
   );

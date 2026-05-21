@@ -320,6 +320,322 @@
   margin-right: 0.35rem;
 }
 
+.typewriterControlRoom {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #5e4b3b;
+  border-radius: 12px;
+  background:
+    linear-gradient(145deg, rgba(25, 18, 14, 0.96), rgba(14, 10, 8, 0.94)),
+    radial-gradient(circle at 15% 0%, rgba(180, 138, 82, 0.12), transparent 38%);
+}
+
+.typewriterControlRoomGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 0.9rem;
+}
+
+.typewriterControlRoomBottomGrid {
+  margin-top: 0.9rem;
+}
+
+.typewriterControlRoomPanel,
+.typewriterControlRoomEditor {
+  border: 1px solid rgba(112, 86, 62, 0.7);
+  border-radius: 10px;
+  background: rgba(18, 13, 10, 0.78);
+  padding: 0.95rem;
+}
+
+.typewriterControlRoomPanelWide {
+  grid-column: 1 / -1;
+}
+
+.typewriterControlRoomSessionForm {
+  margin: 0.85rem 0;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.typewriterControlRoomSessionForm label {
+  display: grid;
+  gap: 0.35rem;
+  color: #d9c9b3;
+  font-size: 0.82rem;
+}
+
+.typewriterControlRoomSessionForm input {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #7d6653;
+  background: rgba(16, 12, 9, 0.96);
+  color: #efe5d7;
+  padding: 0 0.55rem;
+}
+
+.typewriterControlRoomSlotList,
+.typewriterControlRoomArchetypes {
+  margin-top: 0.85rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.typewriterControlRoomSlot,
+.typewriterControlRoomArchetype {
+  border: 1px solid rgba(112, 86, 62, 0.5);
+  border-radius: 10px;
+  background: rgba(13, 10, 8, 0.74);
+  padding: 0.8rem;
+}
+
+.typewriterControlRoomSlot strong,
+.typewriterControlRoomArchetype strong {
+  display: block;
+}
+
+.typewriterControlRoomSlot small,
+.typewriterControlRoomArchetype small {
+  display: block;
+  margin-top: 0.2rem;
+  color: #bcae98;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.typewriterControlRoomArchetype p {
+  margin: 0.45rem 0 0;
+  color: #d4c6b4;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.typewriterControlRoomStages {
+  margin-top: 0.9rem;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(170px, 1fr));
+  gap: 0.75rem;
+}
+
+.typewriterControlRoomStage {
+  border: 1px solid rgba(112, 86, 62, 0.65);
+  border-radius: 10px;
+  background: rgba(15, 11, 9, 0.78);
+  padding: 0.8rem;
+}
+
+.typewriterControlRoomStage.isCurrentScene {
+  border-color: rgba(176, 132, 76, 0.95);
+  background: rgba(35, 24, 16, 0.84);
+}
+
+.typewriterControlRoomStageHeader {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.typewriterControlRoomStageHeader > span {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(161, 122, 76, 0.78);
+  color: #f3e6d2;
+  background: rgba(49, 35, 24, 0.82);
+  font-weight: 700;
+}
+
+.typewriterControlRoomStageHeader strong,
+.typewriterControlRoomStageHeader small {
+  display: block;
+}
+
+.typewriterControlRoomStageHeader small {
+  margin-top: 0.14rem;
+  color: #bfae97;
+  font-size: 0.76rem;
+}
+
+.typewriterControlRoomStage p {
+  min-height: 5.6rem;
+  margin: 0.65rem 0 0;
+  color: #d7c9b6;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.typewriterControlRoomEditor {
+  margin-top: 0.9rem;
+}
+
+.typewriterPlayground {
+  margin-top: 0.9rem;
+  border: 1px solid rgba(112, 86, 62, 0.7);
+  border-radius: 10px;
+  background: rgba(18, 13, 10, 0.78);
+  padding: 0.95rem;
+}
+
+.typewriterPlayground h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.typewriterPlaygroundGuide {
+  margin: 0.9rem 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 0.65rem;
+}
+
+.typewriterPlaygroundStep {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.55rem;
+  min-height: 6.7rem;
+  border: 1px solid rgba(112, 86, 62, 0.56);
+  border-radius: 10px;
+  background: rgba(13, 10, 8, 0.68);
+  padding: 0.72rem;
+}
+
+.typewriterPlaygroundStep > span {
+  width: 1.8rem;
+  height: 1.8rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(161, 122, 76, 0.78);
+  background: rgba(49, 35, 24, 0.82);
+  color: #f3e6d2;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.typewriterPlaygroundStep strong,
+.typewriterPlaygroundStep small,
+.typewriterPlaygroundStep em {
+  display: block;
+}
+
+.typewriterPlaygroundStep small {
+  margin-top: 0.24rem;
+  color: #bfae97;
+  font-size: 0.76rem;
+  font-style: normal;
+  line-height: 1.42;
+}
+
+.typewriterPlaygroundStep em {
+  margin-top: 0.42rem;
+  color: #ead8bd;
+  font-size: 0.76rem;
+  font-style: normal;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.typewriterPlaygroundGrid,
+.typewriterPlaygroundPreviewGrid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.1fr) minmax(260px, 0.9fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.typewriterPlaygroundControls {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.typewriterPlaygroundControls label {
+  display: grid;
+  gap: 0.35rem;
+  color: #d9c9b3;
+  font-size: 0.82rem;
+}
+
+.typewriterPlaygroundControls input,
+.typewriterPlaygroundControls select {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #7d6653;
+  background: rgba(16, 12, 9, 0.96);
+  color: #efe5d7;
+  padding: 0 0.55rem;
+}
+
+.typewriterPlaygroundStoryteller {
+  border: 1px solid rgba(112, 86, 62, 0.56);
+  border-radius: 10px;
+  background: rgba(13, 10, 8, 0.68);
+  padding: 0.75rem;
+}
+
+.typewriterPlaygroundStoryteller.isFilled {
+  border-color: rgba(176, 132, 76, 0.9);
+  background: rgba(34, 24, 16, 0.78);
+}
+
+.typewriterPlaygroundStoryteller > span,
+.typewriterPlaygroundStoryteller > strong,
+.typewriterPlaygroundStoryteller > small {
+  display: block;
+}
+
+.typewriterPlaygroundStoryteller > span {
+  color: #bfae97;
+  font-size: 0.76rem;
+}
+
+.typewriterPlaygroundStoryteller > strong {
+  margin-top: 0.22rem;
+  color: #f3e6d2;
+  overflow-wrap: anywhere;
+}
+
+.typewriterPlaygroundStoryteller > small {
+  margin-top: 0.42rem;
+  color: #bfae97;
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.typewriterPlaygroundActions,
+.typewriterPlaygroundPromptButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.typewriterPlaygroundHint {
+  margin: 0;
+  color: #c3b39d;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.typewriterPlaygroundPreviewGrid {
+  margin-top: 0.9rem;
+}
+
+.typewriterPlaygroundPreviewGrid > .typewriterControlRoomPanel {
+  grid-column: 1 / -1;
+}
+
+.typewriterPlaygroundResult {
+  margin-top: 0.9rem;
+}
+
+.typewriterPlaygroundResult .typewriterAdminInspectorText + .typewriterAdminInspectorText {
+  margin-top: 0.75rem;
+}
+
 .typewriterAdminDisclosureIntro {
   display: flex;
   justify-content: space-between;
@@ -1070,6 +1386,23 @@
 
   .typewriterAdminInspectorGrid {
     grid-template-columns: 1fr;
+  }
+
+  .typewriterControlRoomGrid,
+  .typewriterControlRoomStages,
+  .typewriterControlRoomSessionForm,
+  .typewriterPlaygroundGuide,
+  .typewriterPlaygroundGrid,
+  .typewriterPlaygroundPreviewGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .typewriterControlRoomPanelWide {
+    grid-column: auto;
+  }
+
+  .typewriterPlaygroundPreviewGrid > .typewriterControlRoomPanel {
+    grid-column: auto;
   }
 
   .typewriterAdminTableWrap {

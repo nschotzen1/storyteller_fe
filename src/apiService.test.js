@@ -5,6 +5,7 @@ import {
   fetchTypewriterReply,
   fetchShouldGenerateContinuation,
   saveTypewriterVibeState,
+  resolveOrreryPageTextureIdentity,
   // SERVER constant is not explicitly exported by apiService.js,
   // but it's used internally. We'll construct the expected URL based on the path.
 } from './apiService';
@@ -190,6 +191,8 @@ describe('apiService', () => {
         worldState: {
           current_vibe: 'forge_ember',
           orrery_positions: { forge: 0.12 },
+          orrery_vector: { forge: 4 },
+          page_texture_identity: { alignmentKey: 'forge4' },
           orrery_radial_distance_budget: 2,
           number_of_available_slides: 2
         }
@@ -202,6 +205,8 @@ describe('apiService', () => {
       const result = await saveTypewriterVibeState('session123', {
         current_vibe: 'forge_ember',
         orrery_positions: { forge: 0.12 },
+        orrery_vector: { forge: 4 },
+        page_texture_identity: { alignmentKey: 'forge4' },
         orrery_radial_distance_budget: 2,
         number_of_available_slides: 2
       });
@@ -215,8 +220,52 @@ describe('apiService', () => {
             sessionId: 'session123',
             current_vibe: 'forge_ember',
             orrery_positions: { forge: 0.12 },
+            orrery_vector: { forge: 4 },
+            page_texture_identity: { alignmentKey: 'forge4' },
             orrery_radial_distance_budget: 2,
             number_of_available_slides: 2
+          }),
+        })
+      );
+      expect(result).toEqual({ data: mockApiResponse, error: null });
+    });
+  });
+
+  describe('resolveOrreryPageTextureIdentity', () => {
+    const endpoint = `${SERVER_URL}/api/typewriter/orrery/page-texture`;
+
+    it('posts an Orrery level vector and returns a page texture identity', async () => {
+      const mockApiResponse = {
+        alignmentKey: 'crown4_veil3_warden2',
+        title: 'The Haunted Border Kingdom',
+        assetStatus: 'missing'
+      };
+      const vector = {
+        crown: 4,
+        veil: 3,
+        warden: 2,
+        forge: 0,
+        hollow: 0,
+        rift: 0,
+        verdant: 0
+      };
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockApiResponse,
+      });
+
+      const result = await resolveOrreryPageTextureIdentity('session123', vector);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        endpoint,
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'session123',
+            vector,
+            persistToSession: true,
+            persistAlignment: true
           }),
         })
       );

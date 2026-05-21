@@ -1,32 +1,34 @@
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_API_BASE_URL,
+  createTypewriterStorytellerKey,
   inspectTypewriterSession,
   loadLlmRouteConfigs,
   loadLlmRouteConfigVersions,
   loadOpenAiModels,
   loadTypewriterPrompts,
   loadTypewriterAiSettings,
+  loadTypewriterStorytellerPolicy,
   loadTypewriterPromptVersions,
+  previewTypewriterStorytellerPrompt,
   resetLlmRouteConfig,
   resetTypewriterAiSettings,
   saveLlmRouteConfigVersion,
+  saveTypewriterStorytellerPolicy,
   seedCurrentTypewriterPrompts,
   saveTypewriterPrompt,
   setLatestLlmRouteConfigVersion,
   setLatestTypewriterPromptVersion,
   saveTypewriterAiSettings,
-  startOrSeedTypewriterSession
+  startOrSeedTypewriterSession,
+  triggerTypewriterStorytellerIntervention
 } from '../api/typewriterAdmin';
-import WellAdminWorkspace from '../components/well/WellAdminWorkspace';
 import { STORY_ADMIN_CONTROL_COMPONENTS } from './storyAdminControlCenterRegistry';
 import './TypewriterAdminPage.css';
 
 const TYPEWRITER_ADMIN_API_BASE_STORAGE_KEY = 'typewriterAdminApiBaseUrl';
 const TYPEWRITER_ADMIN_KEY_STORAGE_KEY = 'typewriterAdminApiKey';
 const TYPEWRITER_SESSION_STORAGE_KEY = 'sessionId';
-const IMMERSIVE_RPG_PLAYER_NAME_STORAGE_KEY = 'immersiveRpgPlayerName';
-const MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY = 'memorySpreadAdminMode';
 const STORY_ADMIN_SECTION_STORAGE_KEY = 'storyAdminSection';
 const DEFAULT_SESSION_SEED_FRAGMENT =
   'At dusk the courier reached the wind-scoured pass below a rusted watchtower, carrying a rain-dark satchel sealed with ash. No one answered the signal bell, but boot prints ringed the threshold and vanished into the shale. When the courier touched the gate, a hidden mechanism groaned awake beneath the stone.';
@@ -68,72 +70,6 @@ const SETTING_PIPELINES = [
     defaultProvider: 'openai'
   },
   {
-    key: 'messenger_chat',
-    label: 'Messenger chat',
-    description: '/api/messenger/chat',
-    modelKind: 'text',
-    supportedProviders: ['openai', 'anthropic'],
-    defaultProvider: 'openai'
-  },
-  {
-    key: 'immersive_rpg_gm',
-    label: 'Immersive RPG GM',
-    description: '/api/immersive-rpg/chat',
-    modelKind: 'text',
-    supportedProviders: ['openai', 'anthropic'],
-    defaultProvider: 'openai'
-  },
-  {
-    key: 'seer_reading_orchestrator',
-    label: 'Seer Reading Orchestrator',
-    description: '/api/seer/readings/:readingId/turn',
-    modelKind: 'text',
-    supportedProviders: ['openai', 'anthropic'],
-    defaultProvider: 'openai'
-  },
-  {
-    key: 'seer_reading_card_generation',
-    label: 'Seer Reading Card Generation',
-    description: 'internal://seer-reading/cards/generate',
-    modelKind: 'text',
-    supportedProviders: ['openai', 'anthropic'],
-    defaultProvider: 'openai',
-    supportsCount: true,
-    countProperty: 'cardCount',
-    countLabel: 'Default card count',
-    minCount: 1,
-    maxCount: 10,
-    defaultCount: 3
-  },
-  {
-    key: 'memory_creation',
-    label: 'Memory creation',
-    description: '/api/fragmentToMemories',
-    modelKind: 'text',
-    supportedProviders: ['openai', 'anthropic'],
-    defaultProvider: 'openai',
-    supportsCount: true,
-    countProperty: 'memoryCount',
-    countLabel: 'Default memory count',
-    minCount: 1,
-    maxCount: 10,
-    defaultCount: 3
-  },
-  {
-    key: 'entity_creation',
-    label: 'Entity creation',
-    description: '/api/textToEntity',
-    modelKind: 'text',
-    supportedProviders: ['openai', 'anthropic'],
-    defaultProvider: 'openai',
-    supportsCount: true,
-    countProperty: 'entityCount',
-    countLabel: 'Default entity count',
-    minCount: 1,
-    maxCount: 12,
-    defaultCount: 8
-  },
-  {
     key: 'storyteller_creation',
     label: 'Storyteller creation',
     description: '/api/textToStoryteller (persona stage)',
@@ -164,30 +100,6 @@ const SETTING_PIPELINES = [
     defaultProvider: 'openai'
   },
   {
-    key: 'storyteller_mission',
-    label: 'Storyteller mission',
-    description: '/api/sendStorytellerToEntity',
-    modelKind: 'text',
-    supportedProviders: ['openai', 'anthropic'],
-    defaultProvider: 'openai'
-  },
-  {
-    key: 'relationship_evaluation',
-    label: 'Relationship evaluation',
-    description: '/api/arena/relationships/propose',
-    modelKind: 'text',
-    supportedProviders: ['openai', 'anthropic'],
-    defaultProvider: 'openai'
-  },
-  {
-    key: 'texture_creation',
-    label: 'Texture creation',
-    description: 'Card/front/back image generation',
-    modelKind: 'image',
-    supportedProviders: ['openai'],
-    defaultProvider: 'openai'
-  },
-  {
     key: 'illustration_creation',
     label: 'Illustration creation',
     description: '/api/textToStoryteller (illustration stage)',
@@ -211,66 +123,6 @@ const PROMPT_PIPELINES = [
     settingsKey: 'xerofag_inspection'
   },
   {
-    key: 'messenger_chat',
-    label: 'Messenger chat',
-    description: '/api/messenger/chat assistant prompt',
-    settingsKey: 'messenger_chat'
-  },
-  {
-    key: 'immersive_rpg_gm',
-    label: 'Immersive RPG GM',
-    description: '/api/immersive-rpg/chat GM orchestration prompt',
-    settingsKey: 'immersive_rpg_gm'
-  },
-  {
-    key: 'seer_reading_orchestrator',
-    label: 'Seer Reading Orchestrator',
-    description: '/api/seer/readings/:readingId/turn orchestration prompt',
-    settingsKey: 'seer_reading_orchestrator'
-  },
-  {
-    key: 'seer_reading_card_generation',
-    label: 'Seer Reading Card Generation',
-    description: 'internal://seer-reading/cards/generate opening card-generation prompt',
-    settingsKey: 'seer_reading_card_generation'
-  },
-  {
-    key: 'memory_creation',
-    label: 'Memory creation',
-    description: '/api/fragmentToMemories memory extraction',
-    settingsKey: 'memory_creation'
-  },
-  {
-    key: 'memory_card_front',
-    label: 'Memory card front',
-    description: '/api/memories/:memoryId/textToImage/front',
-    settingsKey: 'texture_creation'
-  },
-  {
-    key: 'memory_card_back',
-    label: 'Memory card back',
-    description: '/api/memories/:memoryId/textToImage/back',
-    settingsKey: 'texture_creation'
-  },
-  {
-    key: 'entity_creation',
-    label: 'Entity creation',
-    description: '/api/textToEntity entity extraction',
-    settingsKey: 'entity_creation'
-  },
-  {
-    key: 'entity_card_front',
-    label: 'Entity card front',
-    description: '/api/textToEntity front image generation',
-    settingsKey: 'texture_creation'
-  },
-  {
-    key: 'texture_creation',
-    label: 'Entity card back texture',
-    description: '/api/textToEntity back texture generation',
-    settingsKey: 'texture_creation'
-  },
-  {
     key: 'storyteller_creation',
     label: 'Storyteller creation',
     description: '/api/textToStoryteller persona generation',
@@ -287,18 +139,6 @@ const PROMPT_PIPELINES = [
     label: 'Typewriter key verification',
     description: '/api/typewriter/keys/shouldAllow textual key insertion judge',
     settingsKey: 'typewriter_key_verification'
-  },
-  {
-    key: 'storyteller_mission',
-    label: 'Storyteller mission',
-    description: '/api/sendStorytellerToEntity mission evaluation',
-    settingsKey: 'storyteller_mission'
-  },
-  {
-    key: 'relationship_evaluation',
-    label: 'Relationship evaluation',
-    description: '/api/arena/relationships/* judgment prompt',
-    settingsKey: 'relationship_evaluation'
   },
   {
     key: 'storyteller_key_creation',
@@ -376,19 +216,6 @@ const getInitialStoredSessionId = () => {
   if (typeof window === 'undefined') return '';
   const stored = window.localStorage.getItem(TYPEWRITER_SESSION_STORAGE_KEY);
   return stored && stored.trim() ? stored.trim() : '';
-};
-
-const getInitialStoredPlayerName = () => {
-  if (typeof window === 'undefined') return '';
-  const stored = window.localStorage.getItem(IMMERSIVE_RPG_PLAYER_NAME_STORAGE_KEY);
-  return stored && stored.trim() ? stored.trim() : '';
-};
-
-const getInitialMemorySpreadAdminMode = () => {
-  if (typeof window === 'undefined') return false;
-  const stored = window.localStorage.getItem(MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY);
-  const normalized = `${stored || ''}`.trim().toLowerCase();
-  return normalized === '1' || normalized === 'true' || normalized === 'yes';
 };
 
 const getInitialAdminSection = () => {
@@ -630,9 +457,7 @@ const TypewriterAdminPage = () => {
   const [refreshingModels, setRefreshingModels] = useState(false);
   const [sessionSaving, setSessionSaving] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(getInitialStoredSessionId);
-  const [currentPlayerCharacterName, setCurrentPlayerCharacterName] = useState(getInitialStoredPlayerName);
   const [sessionFragmentDraft, setSessionFragmentDraft] = useState(DEFAULT_SESSION_SEED_FRAGMENT);
-  const [memorySpreadAdminEnabled, setMemorySpreadAdminEnabled] = useState(getInitialMemorySpreadAdminMode);
   const [activeSection, setActiveSection] = useState(getInitialAdminSection);
   const [selectedControlComponentKey, setSelectedControlComponentKey] = useState('all');
   const [isSessionToolsExpanded, setIsSessionToolsExpanded] = useState(false);
@@ -642,6 +467,22 @@ const TypewriterAdminPage = () => {
   const [sessionInspector, setSessionInspector] = useState(null);
   const [sessionInspectorLoading, setSessionInspectorLoading] = useState(false);
   const [sessionInspectorError, setSessionInspectorError] = useState('');
+  const [sessionInspectorAutoLoadKey, setSessionInspectorAutoLoadKey] = useState('');
+  const [storytellerPolicyPayload, setStorytellerPolicyPayload] = useState(null);
+  const [storytellerPolicyDraft, setStorytellerPolicyDraft] = useState('');
+  const [storytellerPolicySaving, setStorytellerPolicySaving] = useState(false);
+  const [storytellerPolicyError, setStorytellerPolicyError] = useState('');
+  const [playgroundSessionId, setPlaygroundSessionId] = useState(getInitialStoredSessionId);
+  const [playgroundNarrativeDraft, setPlaygroundNarrativeDraft] = useState(DEFAULT_SESSION_SEED_FRAGMENT);
+  const [playgroundSlotIndex, setPlaygroundSlotIndex] = useState('0');
+  const [playgroundStorytellerId, setPlaygroundStorytellerId] = useState('');
+  const [playgroundUseMock, setPlaygroundUseMock] = useState(true);
+  const [playgroundContinuationPromptDraft, setPlaygroundContinuationPromptDraft] = useState('');
+  const [playgroundStorytellerPromptDraft, setPlaygroundStorytellerPromptDraft] = useState('');
+  const [playgroundPreview, setPlaygroundPreview] = useState(null);
+  const [playgroundResult, setPlaygroundResult] = useState(null);
+  const [playgroundLoading, setPlaygroundLoading] = useState(false);
+  const [playgroundError, setPlaygroundError] = useState('');
   const [promptFilter, setPromptFilter] = useState('');
   const [contractFilter, setContractFilter] = useState('');
   const [selectedControlRoutesByComponent, setSelectedControlRoutesByComponent] = useState({
@@ -676,31 +517,21 @@ const TypewriterAdminPage = () => {
   useEffect(() => {
     if (!currentSessionId) return;
     setSessionInspectorTargetId((prev) => prev || currentSessionId);
+    setPlaygroundSessionId((prev) => prev || currentSessionId);
   }, [currentSessionId]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (currentPlayerCharacterName) {
-      window.localStorage.setItem(IMMERSIVE_RPG_PLAYER_NAME_STORAGE_KEY, currentPlayerCharacterName);
-      return;
-    }
-    window.localStorage.removeItem(IMMERSIVE_RPG_PLAYER_NAME_STORAGE_KEY);
-  }, [currentPlayerCharacterName]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(
-      MEMORY_SPREAD_ADMIN_MODE_STORAGE_KEY,
-      memorySpreadAdminEnabled ? 'true' : 'false'
-    );
-  }, [memorySpreadAdminEnabled]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(STORY_ADMIN_SECTION_STORAGE_KEY, activeSection);
   }, [activeSection]);
 
-  const applyLoadedAdminData = useCallback((settingsPayload, modelsPayload, promptsPayload, llmRouteConfigsPayload) => {
+  const applyLoadedAdminData = useCallback((
+    settingsPayload,
+    modelsPayload,
+    promptsPayload,
+    llmRouteConfigsPayload,
+    storytellerPolicyAdminPayload
+  ) => {
     const nextSettingDefinitions = Array.isArray(settingsPayload?.pipelinesMeta) && settingsPayload.pipelinesMeta.length
       ? settingsPayload.pipelinesMeta
       : SETTING_PIPELINES;
@@ -727,21 +558,38 @@ const TypewriterAdminPage = () => {
       });
       return nextDrafts;
     });
+    setStorytellerPolicyPayload(storytellerPolicyAdminPayload || null);
+    setStorytellerPolicyDraft(stringifyJsonDraft(storytellerPolicyAdminPayload?.policy || {}));
+    setStorytellerPolicyError('');
   }, []);
 
   const reloadAdminData = useCallback(async () => {
-    const [settingsPayload, modelsPayload, promptsPayload, llmRouteConfigsPayload] = await Promise.all([
+    const [
+      settingsPayload,
+      modelsPayload,
+      promptsPayload,
+      llmRouteConfigsPayload,
+      storytellerPolicyAdminPayload
+    ] = await Promise.all([
       loadTypewriterAiSettings(apiBaseUrl, { adminKey }),
       loadOpenAiModels(apiBaseUrl, { adminKey }),
       loadTypewriterPrompts(apiBaseUrl, { adminKey }),
-      loadLlmRouteConfigs(apiBaseUrl, { adminKey })
+      loadLlmRouteConfigs(apiBaseUrl, { adminKey }),
+      loadTypewriterStorytellerPolicy(apiBaseUrl, { adminKey })
     ]);
-    applyLoadedAdminData(settingsPayload, modelsPayload, promptsPayload, llmRouteConfigsPayload);
+    applyLoadedAdminData(
+      settingsPayload,
+      modelsPayload,
+      promptsPayload,
+      llmRouteConfigsPayload,
+      storytellerPolicyAdminPayload
+    );
     return {
       settingsPayload,
       modelsPayload,
       promptsPayload,
-      llmRouteConfigsPayload
+      llmRouteConfigsPayload,
+      storytellerPolicyAdminPayload
     };
   }, [adminKey, apiBaseUrl, applyLoadedAdminData]);
 
@@ -780,6 +628,22 @@ const TypewriterAdminPage = () => {
   );
 
   useEffect(() => {
+    const targetSessionId = `${sessionInspectorTargetId || ''}`.trim();
+    if (activeSection !== 'runtime' || !targetSessionId || sessionInspectorLoading) return;
+    const nextAutoLoadKey = `${apiBaseUrl}|${targetSessionId}`;
+    if (sessionInspectorAutoLoadKey === nextAutoLoadKey) return;
+    setSessionInspectorAutoLoadKey(nextAutoLoadKey);
+    void loadSessionInspector(targetSessionId, { silentStatus: true });
+  }, [
+    activeSection,
+    apiBaseUrl,
+    loadSessionInspector,
+    sessionInspectorAutoLoadKey,
+    sessionInspectorLoading,
+    sessionInspectorTargetId
+  ]);
+
+  useEffect(() => {
     let active = true;
     const run = async () => {
       setLoading(true);
@@ -790,7 +654,8 @@ const TypewriterAdminPage = () => {
           loadTypewriterAiSettings(apiBaseUrl, { adminKey }),
           loadOpenAiModels(apiBaseUrl, { adminKey }),
           loadTypewriterPrompts(apiBaseUrl, { adminKey }),
-          loadLlmRouteConfigs(apiBaseUrl, { adminKey })
+          loadLlmRouteConfigs(apiBaseUrl, { adminKey }),
+          loadTypewriterStorytellerPolicy(apiBaseUrl, { adminKey })
         ]);
         if (!active) return;
         applyLoadedAdminData(...payload);
@@ -843,6 +708,17 @@ const TypewriterAdminPage = () => {
     () => Object.fromEntries(pipelineRows.map((row) => [row.key, row])),
     [pipelineRows]
   );
+
+  const storytellerPolicy = storytellerPolicyPayload?.policy || null;
+  const storytellerPolicyStages = Array.isArray(storytellerPolicy?.progression?.stages)
+    ? storytellerPolicy.progression.stages
+    : [];
+  const storytellerPolicyArchetypes = Array.isArray(storytellerPolicy?.archetypes)
+    ? storytellerPolicy.archetypes
+    : [];
+  const storytellerPolicyThresholds = Array.isArray(storytellerPolicy?.keyEmergence?.wordThresholds)
+    ? storytellerPolicy.keyEmergence.wordThresholds
+    : [];
 
   const promptDefinitionMap = useMemo(
     () => Object.fromEntries(promptDefinitions.map((definition) => [definition.key, definition])),
@@ -1131,6 +1007,251 @@ const TypewriterAdminPage = () => {
         ...patch
       }
     }));
+  };
+
+  const applyStorytellerPolicyPayload = (payload) => {
+    setStorytellerPolicyPayload(payload || null);
+    setStorytellerPolicyDraft(stringifyJsonDraft(payload?.policy || {}));
+    setStorytellerPolicyError('');
+  };
+
+  const handleReloadStorytellerPolicy = async () => {
+    setStorytellerPolicySaving(true);
+    setStorytellerPolicyError('');
+    setStatus('');
+    try {
+      const payload = await loadTypewriterStorytellerPolicy(apiBaseUrl, { adminKey });
+      applyStorytellerPolicyPayload(payload);
+      setStatus('Reloaded storyteller progression policy.');
+    } catch (err) {
+      setStorytellerPolicyError(err.message || 'Unable to reload storyteller policy.');
+    } finally {
+      setStorytellerPolicySaving(false);
+    }
+  };
+
+  const handleResetStorytellerPolicyDraft = () => {
+    setStorytellerPolicyDraft(stringifyJsonDraft(storytellerPolicyPayload?.policy || {}));
+    setStorytellerPolicyError('');
+  };
+
+  const handleSaveStorytellerPolicy = async () => {
+    setStorytellerPolicySaving(true);
+    setStorytellerPolicyError('');
+    setStatus('');
+    try {
+      const policy = parseJsonDraft('Storyteller policy JSON', storytellerPolicyDraft, { fallback: {} });
+      const payload = await saveTypewriterStorytellerPolicy(apiBaseUrl, policy, {
+        adminKey,
+        updatedBy: 'story-admin-ui'
+      });
+      applyStorytellerPolicyPayload(payload);
+      setStatus('Saved storyteller progression policy.');
+    } catch (err) {
+      setStorytellerPolicyError(err.message || 'Unable to save storyteller policy.');
+    } finally {
+      setStorytellerPolicySaving(false);
+    }
+  };
+
+  const getPlaygroundPromptDraftsFromAdminState = () => {
+    let storytellerPrompt = promptDrafts.storyteller_intervention || '';
+    const storytellerRouteDraft = llmRouteConfigDrafts?.storyteller_typewriter_intervention;
+    if (storytellerRouteDraft) {
+      try {
+        storytellerPrompt = buildSyncedPromptTemplate(storytellerRouteDraft);
+      } catch {
+        storytellerPrompt = promptDrafts.storyteller_intervention || '';
+      }
+    }
+    return {
+      continuationPrompt: promptDrafts.story_continuation || '',
+      storytellerPrompt
+    };
+  };
+
+  const handleLoadPlaygroundPromptDrafts = () => {
+    const drafts = getPlaygroundPromptDraftsFromAdminState();
+    setPlaygroundContinuationPromptDraft(drafts.continuationPrompt);
+    setPlaygroundStorytellerPromptDraft(drafts.storytellerPrompt);
+    setPlaygroundError('');
+    setStatus('Loaded saved prompt templates into the playground draft.');
+  };
+
+  const getPlaygroundSlotIndex = () => {
+    const numeric = Number(playgroundSlotIndex);
+    return Number.isInteger(numeric) && numeric >= 0 ? numeric : null;
+  };
+
+  const ensurePlaygroundSessionWithNarrative = async () => {
+    const requestedSessionId = `${playgroundSessionId || currentSessionId || ''}`.trim();
+    const fragment = `${playgroundNarrativeDraft || ''}`.trim();
+    if (!requestedSessionId && !fragment) {
+      throw new Error('Enter a session id or a current narrative first.');
+    }
+    const payload = await startOrSeedTypewriterSession(apiBaseUrl, {
+      sessionId: requestedSessionId || undefined,
+      fragment,
+      setInitialFragment: Boolean(fragment)
+    });
+    const nextSessionId = typeof payload?.sessionId === 'string' && payload.sessionId.trim()
+      ? payload.sessionId.trim()
+      : requestedSessionId;
+    if (!nextSessionId) {
+      throw new Error('Session creation did not return a sessionId.');
+    }
+    setPlaygroundSessionId(nextSessionId);
+    setCurrentSessionId(nextSessionId);
+    setSessionInspectorTargetId(nextSessionId);
+    return nextSessionId;
+  };
+
+  const buildPlaygroundStorytellerPayload = (sessionId, { includeNarrative = false } = {}) => {
+    const payload = {
+      sessionId,
+      mocked_api_calls: playgroundUseMock
+    };
+    const storytellerId = `${playgroundStorytellerId || ''}`.trim();
+    if (storytellerId) {
+      payload.storytellerId = storytellerId;
+    } else {
+      const slotIndex = getPlaygroundSlotIndex();
+      if (slotIndex !== null) {
+        payload.slotIndex = slotIndex;
+      }
+    }
+    if (includeNarrative) {
+      payload.currentNarrative = playgroundNarrativeDraft || '';
+    }
+    if (`${playgroundContinuationPromptDraft || ''}`.trim()) {
+      payload.continuationPromptTemplate = playgroundContinuationPromptDraft;
+    }
+    if (`${playgroundStorytellerPromptDraft || ''}`.trim()) {
+      payload.storytellerPromptTemplate = playgroundStorytellerPromptDraft;
+    }
+    return payload;
+  };
+
+  const handleSeedPlaygroundNarrative = async () => {
+    setPlaygroundLoading(true);
+    setPlaygroundError('');
+    setStatus('');
+    try {
+      const nextSessionId = await ensurePlaygroundSessionWithNarrative();
+      await loadSessionInspector(nextSessionId, { silentStatus: true });
+      setStatus(`Seeded playground narrative into session ${nextSessionId}.`);
+    } catch (err) {
+      setPlaygroundError(err.message || 'Unable to seed playground narrative.');
+    } finally {
+      setPlaygroundLoading(false);
+    }
+  };
+
+  const handleCreatePlaygroundStorytellerKey = async () => {
+    setPlaygroundLoading(true);
+    setPlaygroundError('');
+    setStatus('');
+    try {
+      const nextSessionId = await ensurePlaygroundSessionWithNarrative();
+      const payload = await createTypewriterStorytellerKey(apiBaseUrl, {
+        sessionId: nextSessionId,
+        mocked_api_calls: playgroundUseMock
+      }, { adminKey });
+      setPlaygroundResult(payload || null);
+      const createdId = payload?.createdStoryteller?.id || payload?.createdStoryteller?._id || '';
+      if (createdId) {
+        setPlaygroundStorytellerId(String(createdId));
+      }
+      await loadSessionInspector(nextSessionId, { silentStatus: true });
+      setStatus(payload?.created ? 'Created a storyteller key for the playground session.' : 'Checked storyteller key creation; no new key was created.');
+    } catch (err) {
+      setPlaygroundError(err.message || 'Unable to create storyteller key.');
+    } finally {
+      setPlaygroundLoading(false);
+    }
+  };
+
+  const handlePreviewPlaygroundPrompt = async () => {
+    setPlaygroundLoading(true);
+    setPlaygroundError('');
+    setPlaygroundPreview(null);
+    setStatus('');
+    try {
+      const nextSessionId = await ensurePlaygroundSessionWithNarrative();
+      const payload = buildPlaygroundStorytellerPayload(nextSessionId, { includeNarrative: true });
+      const preview = await previewTypewriterStorytellerPrompt(apiBaseUrl, payload, { adminKey });
+      setPlaygroundPreview(preview || null);
+      setStatus('Rendered composed storyteller prompt preview.');
+    } catch (err) {
+      setPlaygroundError(err.message || 'Unable to preview composed storyteller prompt.');
+    } finally {
+      setPlaygroundLoading(false);
+    }
+  };
+
+  const handlePressPlaygroundStoryteller = async () => {
+    setPlaygroundLoading(true);
+    setPlaygroundError('');
+    setPlaygroundResult(null);
+    setStatus('');
+    try {
+      const nextSessionId = await ensurePlaygroundSessionWithNarrative();
+      const payload = buildPlaygroundStorytellerPayload(nextSessionId);
+      const response = await triggerTypewriterStorytellerIntervention(apiBaseUrl, payload, { adminKey });
+      setPlaygroundResult(response || null);
+      await loadSessionInspector(nextSessionId, { silentStatus: true });
+      setStatus('Pressed storyteller key through the real backend route.');
+    } catch (err) {
+      setPlaygroundError(err.message || 'Unable to press storyteller key.');
+    } finally {
+      setPlaygroundLoading(false);
+    }
+  };
+
+  const handleSavePlaygroundPromptDrafts = async () => {
+    const continuationPrompt = `${playgroundContinuationPromptDraft || ''}`.trim();
+    const storytellerPrompt = `${playgroundStorytellerPromptDraft || ''}`.trim();
+    if (!continuationPrompt && !storytellerPrompt) {
+      setPlaygroundError('Load or enter at least one prompt draft before saving.');
+      return;
+    }
+
+    setPlaygroundLoading(true);
+    setPlaygroundError('');
+    setStatus('');
+    try {
+      const saveCalls = [];
+      if (continuationPrompt) {
+        saveCalls.push(saveTypewriterPrompt(apiBaseUrl, 'story_continuation', playgroundContinuationPromptDraft, {
+          adminKey,
+          updatedBy: 'story-admin-playground',
+          markLatest: true
+        }));
+      }
+      if (storytellerPrompt) {
+        saveCalls.push(saveTypewriterPrompt(apiBaseUrl, 'storyteller_intervention', playgroundStorytellerPromptDraft, {
+          adminKey,
+          updatedBy: 'story-admin-playground',
+          markLatest: true,
+          meta: {
+            source: 'typewriter-control-room-playground'
+          }
+        }));
+      }
+      await Promise.all(saveCalls);
+      const latestPrompts = await loadTypewriterPrompts(apiBaseUrl, { adminKey });
+      setPrompts(latestPrompts || { pipelines: {} });
+      setPromptDrafts((prev) => ({
+        ...prev,
+        story_continuation: latestPrompts?.pipelines?.story_continuation?.promptTemplate || prev.story_continuation || '',
+        storyteller_intervention: latestPrompts?.pipelines?.storyteller_intervention?.promptTemplate || prev.storyteller_intervention || ''
+      }));
+      setStatus('Saved playground prompt drafts as latest prompt templates.');
+    } catch (err) {
+      setPlaygroundError(err.message || 'Unable to save playground prompt drafts.');
+    } finally {
+      setPlaygroundLoading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -1594,65 +1715,6 @@ const TypewriterAdminPage = () => {
     }
   };
 
-  const openSeerReadingForSession = useCallback((sessionIdToOpen) => {
-    const normalizedSessionId = typeof sessionIdToOpen === 'string' ? sessionIdToOpen.trim() : '';
-    if (!normalizedSessionId || typeof window === 'undefined') return;
-    window.localStorage.setItem(TYPEWRITER_SESSION_STORAGE_KEY, normalizedSessionId);
-    const params = new URLSearchParams(window.location.search);
-    params.set('view', 'memory-spread');
-    params.set('memoryDebug', '1');
-    params.set('seerFixture', 'triad');
-    params.set('sessionId', normalizedSessionId);
-    params.set('memoryApiBaseUrl', apiBaseUrl);
-    params.delete('readingId');
-    params.delete('mode');
-    const nextUrl = `${window.location.pathname}?${params.toString()}`;
-    window.location.assign(nextUrl);
-  }, [apiBaseUrl]);
-
-  const handleOpenSeerReading = async () => {
-    const fragment = `${sessionFragmentDraft || ''}`.trim();
-    let nextSessionId = `${currentSessionId || ''}`.trim();
-
-    if (!nextSessionId && !fragment) {
-      setError('Enter a fragment or generate a session before opening Seer Reading.');
-      setStatus('');
-      return;
-    }
-
-    setSessionSaving(true);
-    setError('');
-    setStatus('');
-
-    try {
-      if (!nextSessionId) {
-        const payload = await startOrSeedTypewriterSession(apiBaseUrl, {
-          fragment,
-          setInitialFragment: true
-        });
-        const resolvedSessionId = typeof payload?.sessionId === 'string' ? payload.sessionId.trim() : '';
-        if (!resolvedSessionId) {
-          throw new Error('Session creation did not return a sessionId.');
-        }
-        nextSessionId = resolvedSessionId;
-        setCurrentSessionId(resolvedSessionId);
-        setSessionInspectorTargetId(resolvedSessionId);
-        await loadSessionInspector(resolvedSessionId, { silentStatus: true });
-      }
-
-      if (!nextSessionId) {
-        throw new Error('Session creation did not return a sessionId.');
-      }
-
-      setStatus(`Opening Seer Reading for session ${nextSessionId}.`);
-      openSeerReadingForSession(nextSessionId);
-    } catch (err) {
-      setError(err.message || 'Unable to open Seer Reading from Story Admin.');
-    } finally {
-      setSessionSaving(false);
-    }
-  };
-
   const handleClearStoredSession = () => {
     setCurrentSessionId('');
     setSessionInspectorTargetId('');
@@ -1662,31 +1724,11 @@ const TypewriterAdminPage = () => {
     setError('');
   };
 
-  const sessionModeToggle = (
-    <label className="typewriterAdminModeToggle">
-      <input
-        type="checkbox"
-        checked={memorySpreadAdminEnabled}
-        onChange={(event) => setMemorySpreadAdminEnabled(event.target.checked)}
-      />
-      <span>Enable Memory Spread admin tools</span>
-    </label>
-  );
-
   const sessionToolsGrid = (
     <div className="typewriterAdminSessionGrid">
       <label>
         Current stored session
         <input type="text" value={currentSessionId} readOnly placeholder="No session stored" />
-      </label>
-      <label>
-        Player character name
-        <input
-          type="text"
-          value={currentPlayerCharacterName}
-          onChange={(event) => setCurrentPlayerCharacterName(event.target.value)}
-          placeholder="Optional shared PC name"
-        />
       </label>
       <label>
         Session inspector target
@@ -1743,9 +1785,6 @@ const TypewriterAdminPage = () => {
         <button type="button" onClick={handleClearStoredSession} disabled={sessionSaving}>
           Clear stored session
         </button>
-        <button type="button" onClick={handleOpenSeerReading} disabled={sessionSaving || (!currentSessionId && !`${sessionFragmentDraft || ''}`.trim())}>
-          {sessionSaving ? 'Working...' : 'Open in Seer Reading'}
-        </button>
       </div>
     </div>
   );
@@ -1755,9 +1794,8 @@ const TypewriterAdminPage = () => {
       <div className="typewriterAdminSessionHeader">
         <div>
           <h2>Session Bootstrap</h2>
-          <p>Generate a session, seed a fragment into Mongo, and hand that session directly to Seer Reading.</p>
+          <p>Generate a session and seed a fragment into Mongo for the typewriter runtime.</p>
         </div>
-        {sessionModeToggle}
       </div>
       {sessionToolsGrid}
     </section>
@@ -1999,7 +2037,6 @@ const TypewriterAdminPage = () => {
       <div className="typewriterControlDisclosureBody">
         <div className="typewriterAdminDisclosureIntro">
           <p>Generate a session and optionally seed a fragment into Mongo. Clear the stored session to let the typewriter start fresh.</p>
-          {sessionModeToggle}
         </div>
         {sessionToolsGrid}
       </div>
@@ -2054,6 +2091,566 @@ const TypewriterAdminPage = () => {
         </div>
       </div>
     </details>
+  );
+
+  const typewriterControlRoomRuntimeChips = [
+    { key: 'story_continuation', label: 'Continuation' },
+    { key: 'typewriter_key_verification', label: 'Textual key gate' },
+    { key: 'storyteller_creation', label: 'Storyteller creation' },
+    { key: 'storyteller_intervention', label: 'Storyteller intervention' }
+  ].map((entry) => {
+    const row = pipelineRowMap[entry.key];
+    if (!row) return `${entry.label}: not loaded`;
+    if (row.useMock) return `${entry.label}: Mock`;
+    return `${entry.label}: ${row.provider || 'openai'} / ${row.model || 'unset'}`;
+  });
+
+  const visibleControlRoomSlots = sessionInspector?.slots?.length
+    ? sessionInspector.slots
+    : [];
+  const playgroundPreviewSystemPrompt = playgroundPreview?.prompt?.systemPrompt || '';
+  const playgroundPreviewUserPayload = stringifyJsonDraft(playgroundPreview?.prompt?.userPayload || {});
+  const playgroundResultContinuation = Array.isArray(playgroundResult?.writing_sequence)
+    ? playgroundResult.writing_sequence.map((entry) => entry?.text || '').filter(Boolean).join('\n\n')
+    : playgroundResult?.continuation || playgroundResult?.fragment || '';
+  const playgroundReturnedSlots = Array.isArray(playgroundResult?.slots) && playgroundResult.slots.length
+    ? playgroundResult.slots
+    : Array.isArray(playgroundPreview?.slots) && playgroundPreview.slots.length
+      ? playgroundPreview.slots
+      : [];
+  const playgroundSlots = visibleControlRoomSlots.length ? visibleControlRoomSlots : playgroundReturnedSlots;
+  const playgroundSelectedSlot = playgroundSlots.find(
+    (entry) => Number(entry.slotIndex) === Number(playgroundSlotIndex)
+  );
+  const playgroundVisibleStoryteller = playgroundPreview?.storyteller
+    || playgroundResult?.createdStoryteller
+    || (playgroundSelectedSlot?.filled
+      ? {
+          id: playgroundSelectedSlot.storytellerId,
+          name: playgroundSelectedSlot.storytellerName,
+          archetype: playgroundSelectedSlot.archetype || playgroundSelectedSlot.pressPolicy?.archetype || null,
+          keySlotIndex: playgroundSelectedSlot.slotIndex
+        }
+      : null);
+  const playgroundSelectedStorytellerName = playgroundVisibleStoryteller?.name
+    || '';
+  const playgroundHasStorytellerSelector = Boolean(`${playgroundStorytellerId || ''}`.trim())
+    || Boolean(playgroundSelectedSlot?.filled);
+  const playgroundStorytellerArchetypeLabel = playgroundVisibleStoryteller?.archetype?.label
+    || playgroundSelectedSlot?.pressPolicy?.archetype?.label
+    || playgroundSelectedSlot?.archetype?.label
+    || '';
+  const playgroundStorytellerSlotLabel = Number.isInteger(playgroundVisibleStoryteller?.keySlotIndex)
+    ? `Slot ${playgroundVisibleStoryteller.keySlotIndex}`
+    : Number.isInteger(playgroundSelectedSlot?.slotIndex)
+      ? `Slot ${playgroundSelectedSlot.slotIndex}`
+      : '';
+  const playgroundStorytellerIdLabel = playgroundVisibleStoryteller?.id
+    || playgroundVisibleStoryteller?._id
+    || playgroundSelectedSlot?.storytellerId
+    || playgroundStorytellerId
+    || '';
+  const playgroundStepCards = [
+    {
+      number: 1,
+      title: 'Set the scene',
+      detail: 'Paste the current narrative and save it to a session.',
+      state: playgroundSessionId ? `Session ${playgroundSessionId}` : 'No session yet'
+    },
+    {
+      number: 2,
+      title: 'Choose a storyteller',
+      detail: 'Create a storyteller key, or pick an already-filled slot.',
+      state: playgroundSelectedStorytellerName || (playgroundHasStorytellerSelector ? 'Storyteller selected' : 'No storyteller yet')
+    },
+    {
+      number: 3,
+      title: 'Preview the prompt',
+      detail: 'See the exact composed prompt without writing new story text.',
+      state: playgroundPreview?.pressPolicy?.stageLabel || 'Not previewed'
+    },
+    {
+      number: 4,
+      title: 'Write for real',
+      detail: 'Pressing the storyteller changes the saved session.',
+      state: playgroundResultContinuation ? 'Story text returned' : 'Not pressed'
+    }
+  ];
+
+  const typewriterControlRoomSection = (
+    <section className="typewriterControlRoom">
+      <div className="typewriterPromptEditorHeader">
+        <div>
+          <h2>Typewriter Control Room</h2>
+          <p>Observe and edit the continuation loop, storyteller emergence thresholds, and staged storyteller progression from one place.</p>
+        </div>
+        <div className="typewriterPromptButtons typewriterPromptButtons-inline">
+          <button
+            type="button"
+            onClick={handleReloadStorytellerPolicy}
+            disabled={loading || storytellerPolicySaving}
+          >
+            {storytellerPolicySaving ? 'Working...' : 'Reload Policy'}
+          </button>
+          <button
+            type="button"
+            onClick={handleSaveStorytellerPolicy}
+            disabled={loading || storytellerPolicySaving}
+          >
+            {storytellerPolicySaving ? 'Saving...' : 'Save Storyteller Policy'}
+          </button>
+        </div>
+      </div>
+
+      {storytellerPolicyError ? <p className="typewriterAdminError">{storytellerPolicyError}</p> : null}
+
+      <div className="typewriterControlRoomGrid">
+        <article className="typewriterControlRoomPanel">
+          <header className="typewriterAdminInspectorPanelHeader">
+            <h3>Continuation Policy</h3>
+            <p>The runtime path still decides model/mock mode, while the storyteller policy decides when keys emerge and what each press is allowed to do.</p>
+          </header>
+          <div className="typewriterControlMetaRow">
+            {typewriterControlRoomRuntimeChips.map((chip) => (
+              <span key={chip} className="typewriterControlChip">{chip}</span>
+            ))}
+          </div>
+        </article>
+
+        <article className="typewriterControlRoomPanel">
+          <header className="typewriterAdminInspectorPanelHeader">
+            <h3>Storyteller Emergence</h3>
+            <p>These values control how blank storyteller keys become pressable storyteller presences.</p>
+          </header>
+          <div className="typewriterControlMetaRow">
+            <span className="typewriterControlChip">
+              Check every {storytellerPolicyPayload?.checkIntervalWords || storytellerPolicy?.keyEmergence?.checkIntervalWords || '-'} words
+            </span>
+            <span className="typewriterControlChip">
+              Thresholds: {storytellerPolicyThresholds.length ? storytellerPolicyThresholds.join(', ') : 'not loaded'}
+            </span>
+            <span className="typewriterControlChip">
+              Growth factor: {storytellerPolicy?.progression?.repressGrowthFactor ?? '-'}
+            </span>
+            <span className="typewriterControlChip">
+              Mode: {storytellerPolicy?.progression?.mode || 'not loaded'}
+            </span>
+          </div>
+        </article>
+
+        <article className="typewriterControlRoomPanel typewriterControlRoomPanelWide">
+          <header className="typewriterAdminInspectorPanelHeader">
+            <h3>Live Session Lens</h3>
+            <p>Load a session to see each storyteller key’s next stage, whether it can be pressed, and what is blocking it.</p>
+          </header>
+          <div className="typewriterControlRoomSessionForm">
+            <label>
+              Session id
+              <input
+                type="text"
+                value={sessionInspectorTargetId}
+                onChange={(event) => setSessionInspectorTargetId(event.target.value)}
+                placeholder="session id"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                void loadSessionInspector();
+              }}
+              disabled={sessionInspectorLoading || !sessionInspectorTargetId.trim()}
+            >
+              {sessionInspectorLoading ? 'Inspecting...' : 'Inspect Session'}
+            </button>
+          </div>
+          {sessionInspector ? (
+            <>
+              <div className="typewriterControlMetaRow">
+                <span className="typewriterControlChip">Session: {sessionInspector.sessionId}</span>
+                <span className="typewriterControlChip">Words: {sessionInspector.narrativeWordCount || 0}</span>
+                <span className="typewriterControlChip">Storytellers: {sessionInspector.counts?.storytellerCount || 0}</span>
+                <span className="typewriterControlChip">Textual keys: {sessionInspector.counts?.typewriterKeyCount || 0}</span>
+              </div>
+              <div className="typewriterControlRoomSlotList">
+                {visibleControlRoomSlots.map((slot) => (
+                  <article key={slot.slotKey || slot.slotIndex} className="typewriterControlRoomSlot">
+                    <div>
+                      <strong>{formatInspectorValue(slot.storytellerName, slot.slotKey || `Slot ${slot.slotIndex}`)}</strong>
+                      <small>{slot.filled ? 'Filled storyteller key' : 'Blank storyteller slot'}</small>
+                    </div>
+                    <div className="typewriterControlMetaRow">
+                      <span className="typewriterControlChip">
+                        Stage: {formatInspectorValue(slot.pressPolicy?.stageLabel, 'none')}
+                      </span>
+                      <span className="typewriterControlChip">
+                        Press: {slot.pressPolicy?.pressNumber || '-'}
+                      </span>
+                      <span className="typewriterControlChip">
+                        First person: {slot.pressPolicy?.firstPersonAllowed ? 'yes' : 'no'}
+                      </span>
+                      <span className="typewriterControlChip">
+                        Current scene: {slot.pressPolicy?.currentSceneInterventionAllowed ? 'yes' : 'no'}
+                      </span>
+                      <span className="typewriterControlChip">
+                        Can press: {slot.canPress ? 'yes' : 'no'}
+                      </span>
+                      {slot.fragmentGrowthNeeded ? (
+                        <span className="typewriterControlChip">Needs {slot.fragmentGrowthNeeded} chars</span>
+                      ) : null}
+                      {slot.pressLockedReason ? (
+                        <span className="typewriterControlChip">Blocked: {slot.pressLockedReason}</span>
+                      ) : null}
+                    </div>
+                    <p className="typewriterAdminInspectorMetaLine">
+                      <strong>Archetype</strong> {formatInspectorValue(slot.pressPolicy?.archetype?.label || slot.archetype?.label, 'No archetype assigned')}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="typewriterPromptMeta">Inspect a session here or in the Session tab to see live storyteller stage state.</p>
+          )}
+        </article>
+      </div>
+
+      <section className="typewriterPlayground">
+        <div className="typewriterControlBlockHeader">
+          <div>
+            <h3>Prompt Playground</h3>
+            <p>Run one storyteller experiment from left to right. Preview is safe; the final press writes into the selected session.</p>
+          </div>
+          <label className="typewriterMockToggle">
+            <input
+              type="checkbox"
+              checked={playgroundUseMock}
+              onChange={(event) => setPlaygroundUseMock(event.target.checked)}
+            />
+            <span>{playgroundUseMock ? 'Mock routes' : 'Live routes'}</span>
+          </label>
+        </div>
+
+        {playgroundError ? <p className="typewriterAdminError">{playgroundError}</p> : null}
+
+        <div className="typewriterPlaygroundGuide" aria-label="Prompt playground steps">
+          {playgroundStepCards.map((step) => (
+            <article key={step.number} className="typewriterPlaygroundStep">
+              <span>{step.number}</span>
+              <div>
+                <strong>{step.title}</strong>
+                <small>{step.detail}</small>
+                <em>{step.state}</em>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="typewriterPlaygroundGrid">
+          <label className="typewriterStructuredField">
+            1. Current narrative
+            <textarea
+              value={playgroundNarrativeDraft}
+              onChange={(event) => setPlaygroundNarrativeDraft(event.target.value)}
+              rows={8}
+              placeholder="Type or paste the current narrative used for this playground run."
+            />
+          </label>
+
+          <div className="typewriterPlaygroundControls">
+            <label>
+              Session id for this run
+              <input
+                type="text"
+                value={playgroundSessionId}
+                onChange={(event) => setPlaygroundSessionId(event.target.value)}
+                placeholder="Generated if blank"
+              />
+            </label>
+            <label>
+              2. Storyteller slot
+              <select
+                value={playgroundSlotIndex}
+                onChange={(event) => setPlaygroundSlotIndex(event.target.value)}
+              >
+                {[0, 1, 2].map((slotIndex) => {
+                  const slot = playgroundSlots.find((entry) => Number(entry.slotIndex) === slotIndex);
+                  const label = slot?.storytellerName
+                    ? `Slot ${slotIndex}: ${slot.storytellerName}`
+                    : `Slot ${slotIndex}`;
+                  return (
+                    <option key={slotIndex} value={String(slotIndex)}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+            <label>
+              Storyteller id override
+              <input
+                type="text"
+                value={playgroundStorytellerId}
+                onChange={(event) => setPlaygroundStorytellerId(event.target.value)}
+                placeholder="Usually leave blank; slot is used first"
+              />
+            </label>
+            <article
+              className={
+                playgroundVisibleStoryteller
+                  ? 'typewriterPlaygroundStoryteller isFilled'
+                  : 'typewriterPlaygroundStoryteller'
+              }
+            >
+              <span>Selected Storyteller</span>
+              <strong>{playgroundSelectedStorytellerName || 'No storyteller selected yet'}</strong>
+              <div className="typewriterControlMetaRow">
+                {playgroundStorytellerSlotLabel ? (
+                  <span className="typewriterControlChip">{playgroundStorytellerSlotLabel}</span>
+                ) : null}
+                {playgroundStorytellerArchetypeLabel ? (
+                  <span className="typewriterControlChip">{playgroundStorytellerArchetypeLabel}</span>
+                ) : null}
+                {playgroundPreview?.pressPolicy?.stageLabel ? (
+                  <span className="typewriterControlChip">{playgroundPreview.pressPolicy.stageLabel}</span>
+                ) : null}
+              </div>
+              {playgroundStorytellerIdLabel ? (
+                <small>ID: {String(playgroundStorytellerIdLabel)}</small>
+              ) : (
+                <small>Use step 2 to create one, or inspect a session with an existing filled slot.</small>
+              )}
+            </article>
+            <p className="typewriterPlaygroundHint">
+              Use the first two buttons to prepare the playground. Then preview the prompt. Only the final button asks the storyteller to add text to the story.
+            </p>
+            <div className="typewriterPlaygroundActions">
+              <button type="button" onClick={handleSeedPlaygroundNarrative} disabled={playgroundLoading}>
+                1 Save Narrative To Session
+              </button>
+              <button type="button" onClick={handleCreatePlaygroundStorytellerKey} disabled={playgroundLoading}>
+                2 Create Storyteller Key
+              </button>
+              <button type="button" onClick={handlePreviewPlaygroundPrompt} disabled={playgroundLoading}>
+                3 Preview Prompt
+              </button>
+              <button type="button" onClick={handlePressPlaygroundStoryteller} disabled={playgroundLoading}>
+                4 Press Storyteller For Real
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <details className="typewriterControlDisclosure">
+          <summary className="typewriterControlDisclosureSummary">
+            <span>Editable Prompt Drafts</span>
+            <small>Advanced: temporarily override prompts for preview, or save them as latest when ready.</small>
+          </summary>
+          <div className="typewriterControlDisclosureBody">
+            <p className="typewriterPromptMeta">
+              Leave these blank for normal use. Load drafts only when you want to edit the continuation or storyteller prompt text directly.
+            </p>
+            <div className="typewriterPromptButtons typewriterPromptButtons-inline typewriterPlaygroundPromptButtons">
+              <button type="button" onClick={handleLoadPlaygroundPromptDrafts} disabled={playgroundLoading}>
+                Load Saved Prompt Drafts
+              </button>
+              <button type="button" onClick={handleSavePlaygroundPromptDrafts} disabled={playgroundLoading}>
+                Save Drafts As Latest
+              </button>
+            </div>
+            <div className="typewriterStructuredGrid">
+              <label className="typewriterStructuredField">
+                Continuation prompt override
+                <textarea
+                  value={playgroundContinuationPromptDraft}
+                  onChange={(event) => setPlaygroundContinuationPromptDraft(event.target.value)}
+                  rows={12}
+                  placeholder="Blank uses latest story_continuation prompt."
+                />
+              </label>
+              <label className="typewriterStructuredField">
+                Storyteller intervention prompt override
+                <textarea
+                  value={playgroundStorytellerPromptDraft}
+                  onChange={(event) => setPlaygroundStorytellerPromptDraft(event.target.value)}
+                  rows={12}
+                  placeholder="Blank uses latest storyteller_intervention prompt."
+                />
+              </label>
+            </div>
+          </div>
+        </details>
+
+        {playgroundPreview ? (
+          <div className="typewriterPlaygroundPreviewGrid">
+            <article className="typewriterControlRoomPanel">
+              <header className="typewriterAdminInspectorPanelHeader">
+                <h3>Resolved Stage</h3>
+                <p>The prompt preview uses this resolved storyteller policy state.</p>
+              </header>
+              <div className="typewriterControlMetaRow">
+                <span className="typewriterControlChip">
+                  Stage: {formatInspectorValue(playgroundPreview.pressPolicy?.stageLabel, 'none')}
+                </span>
+                <span className="typewriterControlChip">
+                  Archetype: {formatInspectorValue(playgroundPreview.pressPolicy?.archetype?.label, 'none')}
+                </span>
+                <span className="typewriterControlChip">
+                  Runtime: {playgroundPreview.runtime?.mocked ? 'mock' : 'live'}
+                </span>
+                <span className="typewriterControlChip">
+                  Fragment: {playgroundPreview.fragmentSource}
+                </span>
+                <span className="typewriterControlChip">
+                  Task: {playgroundPreview.prompt?.taskApplied ? 'applied' : 'deferred'}
+                </span>
+                {playgroundPreview.prompt?.composerBreakpoint ? (
+                  <span className="typewriterControlChip">
+                    Breakpoint: {playgroundPreview.prompt.composerBreakpoint}
+                  </span>
+                ) : null}
+              </div>
+              {playgroundPreview.prompt?.stageGuideline ? (
+                <pre className="typewriterAdminInspectorText">
+                  {playgroundPreview.prompt.stageGuideline}
+                </pre>
+              ) : null}
+            </article>
+            <label className="typewriterStructuredField">
+              Composed system prompt
+              <textarea
+                value={playgroundPreviewSystemPrompt}
+                readOnly
+                rows={18}
+                className="typewriterStructuredPreview"
+              />
+            </label>
+            <label className="typewriterStructuredField">
+              User payload
+              <textarea
+                value={playgroundPreviewUserPayload}
+                readOnly
+                rows={18}
+                className="typewriterStructuredPreview"
+              />
+            </label>
+          </div>
+        ) : null}
+
+        {playgroundResult ? (
+          <article className="typewriterControlRoomPanel typewriterPlaygroundResult">
+            <header className="typewriterAdminInspectorPanelHeader">
+              <h3>Latest Playground Result</h3>
+              <p>Real route responses are persisted to the session; creation checks only mutate when a threshold creates a storyteller.</p>
+            </header>
+            {playgroundResultContinuation ? (
+              <pre className="typewriterAdminInspectorText">{playgroundResultContinuation}</pre>
+            ) : null}
+            <pre className="typewriterAdminInspectorText">{stringifyJsonDraft(playgroundResult)}</pre>
+          </article>
+        ) : null}
+      </section>
+
+      <div className="typewriterControlRoomStages">
+        {storytellerPolicyStages.map((stage) => (
+          <article
+            key={stage.id || stage.label}
+            className={
+              stage.currentSceneInterventionAllowed
+                ? 'typewriterControlRoomStage isCurrentScene'
+                : 'typewriterControlRoomStage'
+            }
+          >
+            <div className="typewriterControlRoomStageHeader">
+              <span>{stage.pressNumber}</span>
+              <div>
+                <strong>{stage.label}</strong>
+                <small>{stage.id}</small>
+              </div>
+            </div>
+            <p>{stage.instruction}</p>
+            <div className="typewriterControlMetaRow">
+              <span className="typewriterControlChip">{stage.proximity}</span>
+              <span className="typewriterControlChip">{stage.narrativeAuthority}</span>
+              <span className="typewriterControlChip">First person: {stage.firstPersonAllowed ? 'yes' : 'no'}</span>
+              <span className="typewriterControlChip">Current scene: {stage.currentSceneInterventionAllowed ? 'yes' : 'no'}</span>
+              <span className="typewriterControlChip">{stage.outputWordMin}-{stage.outputWordMax} words</span>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="typewriterControlRoomGrid typewriterControlRoomBottomGrid">
+        <article className="typewriterControlRoomPanel">
+          <header className="typewriterAdminInspectorPanelHeader">
+            <h3>Archetypes</h3>
+            <p>Archetypes bias style and substance so different storyteller keys add different kinds of places, people, events, and objects.</p>
+          </header>
+          <div className="typewriterControlRoomArchetypes">
+            {storytellerPolicyArchetypes.map((archetype) => (
+              <article key={archetype.id || archetype.label} className="typewriterControlRoomArchetype">
+                <strong>{archetype.label}</strong>
+                <small>{archetype.style}</small>
+                <p>{archetype.narrativeRole}</p>
+                <div className="typewriterControlMetaRow">
+                  {(Array.isArray(archetype.substanceBias) ? archetype.substanceBias : []).map((bias) => (
+                    <span key={`${archetype.id}-${bias}`} className="typewriterControlChip">{bias}</span>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </article>
+
+        <article className="typewriterControlRoomPanel">
+          <header className="typewriterAdminInspectorPanelHeader">
+            <h3>Substance Budget</h3>
+            <p>This is the guardrail for how much concrete world truth one storyteller press should introduce.</p>
+          </header>
+          <div className="typewriterControlMetaRow">
+            {Object.entries(storytellerPolicy?.substanceBudget || {}).map(([key, value]) => (
+              <span key={key} className="typewriterControlChip">
+                {key}: {typeof value === 'boolean' ? (value ? 'yes' : 'no') : value}
+              </span>
+            ))}
+          </div>
+        </article>
+      </div>
+
+      <section className="typewriterControlRoomEditor">
+        <div className="typewriterControlBlockHeader">
+          <div>
+            <h4>Policy JSON</h4>
+            <p>Edit the normalized policy directly. Save writes it back to the backend policy config.</p>
+          </div>
+          <div className="typewriterPromptButtons typewriterPromptButtons-inline">
+            <button
+              type="button"
+              onClick={handleResetStorytellerPolicyDraft}
+              disabled={storytellerPolicySaving}
+            >
+              Reset Draft
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveStorytellerPolicy}
+              disabled={storytellerPolicySaving}
+            >
+              {storytellerPolicySaving ? 'Saving...' : 'Save Storyteller Policy'}
+            </button>
+          </div>
+        </div>
+        <label className="typewriterStructuredField">
+          Storyteller policy JSON
+          <textarea
+            value={storytellerPolicyDraft}
+            onChange={(event) => setStorytellerPolicyDraft(event.target.value)}
+            rows={18}
+            spellCheck={false}
+            placeholder='{"keyEmergence":{"wordThresholds":[30,50,100]}}'
+          />
+        </label>
+      </section>
+    </section>
   );
 
   return (
@@ -2386,10 +2983,6 @@ const TypewriterAdminPage = () => {
                       </div>
                     ) : null}
                   </section>
-                ) : null}
-
-                {component.customPanelKey === 'well_scene_config' ? (
-                  <WellAdminWorkspace apiBaseUrl={apiBaseUrl} adminKey={adminKey} />
                 ) : null}
 
                 {component.routes.length ? (
@@ -2738,102 +3331,105 @@ const TypewriterAdminPage = () => {
       ) : null}
 
       {activeSection === 'runtime' ? (
-      <section className="typewriterAdminTableWrap">
-        <table className="typewriterAdminTable">
-          <thead>
-            <tr>
-              <th>Pipeline</th>
-              <th>Use Mock</th>
-              <th>Model</th>
-              <th>Options</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pipelineRows.map((row) => {
-              const options = getModelOptions(row.modelKind, row.model, row.provider);
-              return (
-                <tr key={row.key}>
-                  <td>
-                    <div className="typewriterPipelineCell">
-                      <strong>{row.label}</strong>
-                      <span>{row.description}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <label className="typewriterMockToggle">
-                      <input
-                        type="checkbox"
-                        checked={row.useMock}
-                        onChange={(event) => updatePipeline(row.key, { useMock: event.target.checked })}
-                      />
-                      <span>{row.useMock ? 'Mock' : 'Live'}</span>
-                    </label>
-                  </td>
-                  <td>
-                    {row.supportedProviders?.length > 1 ? (
-                      <label className="typewriterNumericSetting">
-                        <span>Provider</span>
-                        <select
-                          value={row.provider}
-                          onChange={(event) => {
-                            const nextProvider = event.target.value;
-                            const nextOptions = getModelOptions(row.modelKind, '', nextProvider);
-                            updatePipeline(row.key, {
-                              provider: nextProvider,
-                              model: nextOptions[0] || row.model
-                            });
-                          }}
-                        >
-                          {row.supportedProviders.map((providerId) => (
-                            <option key={providerId} value={providerId}>
-                              {providerId}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ) : null}
-                    <select
-                      value={row.model}
-                      onChange={(event) => updatePipeline(row.key, { model: event.target.value })}
-                    >
-                      {options.map((optionId) => (
-                        <option key={optionId} value={optionId}>
-                          {optionId}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    {row.supportsCount ? (
-                      <label className="typewriterNumericSetting">
-                        <span>{row.countLabel}</span>
+      <>
+        {typewriterControlRoomSection}
+        <section className="typewriterAdminTableWrap">
+          <table className="typewriterAdminTable">
+            <thead>
+              <tr>
+                <th>Pipeline</th>
+                <th>Use Mock</th>
+                <th>Model</th>
+                <th>Options</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pipelineRows.map((row) => {
+                const options = getModelOptions(row.modelKind, row.model, row.provider);
+                return (
+                  <tr key={row.key}>
+                    <td>
+                      <div className="typewriterPipelineCell">
+                        <strong>{row.label}</strong>
+                        <span>{row.description}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <label className="typewriterMockToggle">
                         <input
-                          type="number"
-                          min={row.minCount}
-                          max={row.maxCount}
-                          value={row.countValue}
-                          onChange={(event) =>
-                            updatePipeline(row.key, {
-                              [row.countProperty]: normalizeCountDraft(
-                                event.target.value,
-                                row.countValue,
-                                row.minCount,
-                                row.maxCount
-                              )
-                            })
-                          }
+                          type="checkbox"
+                          checked={row.useMock}
+                          onChange={(event) => updatePipeline(row.key, { useMock: event.target.checked })}
                         />
+                        <span>{row.useMock ? 'Mock' : 'Live'}</span>
                       </label>
-                    ) : (
-                      <span className="typewriterSettingPlaceholder">-</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </section>
+                    </td>
+                    <td>
+                      {row.supportedProviders?.length > 1 ? (
+                        <label className="typewriterNumericSetting">
+                          <span>Provider</span>
+                          <select
+                            value={row.provider}
+                            onChange={(event) => {
+                              const nextProvider = event.target.value;
+                              const nextOptions = getModelOptions(row.modelKind, '', nextProvider);
+                              updatePipeline(row.key, {
+                                provider: nextProvider,
+                                model: nextOptions[0] || row.model
+                              });
+                            }}
+                          >
+                            {row.supportedProviders.map((providerId) => (
+                              <option key={providerId} value={providerId}>
+                                {providerId}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
+                      <select
+                        value={row.model}
+                        onChange={(event) => updatePipeline(row.key, { model: event.target.value })}
+                      >
+                        {options.map((optionId) => (
+                          <option key={optionId} value={optionId}>
+                            {optionId}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      {row.supportsCount ? (
+                        <label className="typewriterNumericSetting">
+                          <span>{row.countLabel}</span>
+                          <input
+                            type="number"
+                            min={row.minCount}
+                            max={row.maxCount}
+                            value={row.countValue}
+                            onChange={(event) =>
+                              updatePipeline(row.key, {
+                                [row.countProperty]: normalizeCountDraft(
+                                  event.target.value,
+                                  row.countValue,
+                                  row.minCount,
+                                  row.maxCount
+                                )
+                              })
+                            }
+                          />
+                        </label>
+                      ) : (
+                        <span className="typewriterSettingPlaceholder">-</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </section>
+      </>
       ) : null}
 
       {activeSection === 'prompts' ? (

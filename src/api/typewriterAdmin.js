@@ -268,4 +268,70 @@ export const inspectTypewriterSession = async (
   });
 };
 
+export const loadTypewriterStorytellerPolicy = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  { adminKey } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/typewriter/storyteller-policy`, {
+    method: 'GET',
+    headers: buildAdminHeaders(adminKey)
+  });
+};
+
+export const saveTypewriterStorytellerPolicy = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  policy = {},
+  { adminKey, updatedBy = 'admin' } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/typewriter/storyteller-policy`, {
+    method: 'POST',
+    headers: buildAdminHeaders(adminKey),
+    body: JSON.stringify({
+      policy,
+      updatedBy
+    })
+  });
+};
+
+export const previewTypewriterStorytellerPrompt = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  payload = {},
+  { adminKey } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/typewriter/storyteller-prompt/preview`, {
+    method: 'POST',
+    headers: buildAdminHeaders(adminKey),
+    body: JSON.stringify(payload)
+  });
+};
+
+export const createTypewriterStorytellerKey = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  payload = {},
+  { adminKey } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/shouldCreateStorytellerKey`, {
+    method: 'POST',
+    headers: buildAdminHeaders(adminKey),
+    body: JSON.stringify(payload)
+  });
+};
+
+export const triggerTypewriterStorytellerIntervention = async (
+  baseUrl = DEFAULT_API_BASE_URL,
+  payload = {},
+  { adminKey } = {}
+) => {
+  const safeBaseUrl = normalizeBaseUrl(baseUrl);
+  return requestJson(`${safeBaseUrl}/api/send_storyteller_typewriter_text`, {
+    method: 'POST',
+    headers: buildAdminHeaders(adminKey),
+    body: JSON.stringify(payload)
+  });
+};
+
 export { DEFAULT_API_BASE_URL };

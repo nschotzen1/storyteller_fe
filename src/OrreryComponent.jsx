@@ -2,87 +2,107 @@ import React, { useEffect, useRef, useState } from 'react';
 import { archetypes } from './components/orrery/archetypes';
 import Figurine from './components/orrery/Figurine';
 import {
-  clampOrreryRadiusToBudget,
-  getOrreryBand,
-  getOrreryBandCenter,
+  clampOrreryLevelToBudget,
+  getOrreryLevelFromRadius,
+  getOrreryLevelRadius,
   getOrreryRadialDistanceCost,
-  normalizeOrreryPositions,
-  ORRERY_SLIDE_COMMIT_EPSILON,
-  resolveOrreryVibeForPositions
+  getOrreryStage,
+  normalizeOrreryVector,
+  ORRERY_MAX_LEVEL,
+  ORRERY_STAGE_DEFINITIONS,
+  positionsFromOrreryVector,
+  resolveOrreryVibeForVector
 } from './components/orrery/vibes';
 import './OrreryComponent.css';
 
 function OrreryComponent({
-  positions: controlledPositions,
+  vector: controlledVector,
+  positions: legacyPositions,
   radialDistanceBudget = 0,
   currentVibe = '',
   onSlideCommit
 }) {
-  const size = 300;
+  const size = 280;
+  const figurineSize = Math.round(size * 0.18);
   const centerX = size / 2;
   const centerY = size / 2;
-  const maxRadius = size * 0.35;
+  const maxRadius = size * 0.39;
 
-  const [positions, setPositions] = useState(() => normalizeOrreryPositions(controlledPositions));
-  const positionsRef = useRef(positions);
+  const [vector, setVector] = useState(() => normalizeOrreryVector(controlledVector, legacyPositions));
+  const [activeDrag, setActiveDrag] = useState(null);
+  const vectorRef = useRef(vector);
   const dragStartRef = useRef(null);
   const availableRadialDistance = Math.max(0, Math.floor(Number(radialDistanceBudget) || 0));
   const canSlide = availableRadialDistance > 0;
+  const positions = positionsFromOrreryVector(vector);
+  const activeArchetype = activeDrag?.id
+    ? archetypes.find((archetype) => archetype.id === activeDrag.id)
+    : null;
+  const activeStage = activeDrag
+    ? getOrreryStage(activeDrag.level)
+    : null;
 
   useEffect(() => {
-    const normalized = normalizeOrreryPositions(controlledPositions);
-    positionsRef.current = normalized;
-    setPositions(normalized);
-  }, [controlledPositions]);
+    const normalized = normalizeOrreryVector(controlledVector, legacyPositions);
+    vectorRef.current = normalized;
+    setVector(normalized);
+  }, [controlledVector, legacyPositions]);
 
   const updatePosition = (id, newRadius) => {
     if (!canSlide) return;
-    setPositions((prev) => {
-      const dragStartRadius = dragStartRef.current?.id === id
-        ? dragStartRef.current.radius
+    setVector((prev) => {
+      const dragStartLevel = dragStartRef.current?.id === id
+        ? dragStartRef.current.level
         : prev[id];
-      const clampedRadius = clampOrreryRadiusToBudget(
-        dragStartRadius,
-        newRadius,
+      const targetLevel = getOrreryLevelFromRadius(newRadius);
+      const clampedLevel = clampOrreryLevelToBudget(
+        dragStartLevel,
+        targetLevel,
         availableRadialDistance
       );
-      const next = normalizeOrreryPositions({ ...prev, [id]: clampedRadius });
-      positionsRef.current = next;
+      const next = normalizeOrreryVector({ ...prev, [id]: clampedLevel });
+      vectorRef.current = next;
+      setActiveDrag({ id, level: clampedLevel });
       return next;
     });
   };
 
   const handleMoveStart = (id) => {
     if (!canSlide) return;
+    const startLevel = vectorRef.current[id];
     dragStartRef.current = {
       id,
-      radius: positionsRef.current[id]
+      level: startLevel
     };
+    setActiveDrag({ id, level: startLevel });
   };
 
   const handleMoveEnd = (id) => {
     if (!canSlide) return;
     const dragStart = dragStartRef.current;
     dragStartRef.current = null;
+    setActiveDrag(null);
     if (!dragStart || dragStart.id !== id) return;
 
-    const nextPositions = normalizeOrreryPositions(positionsRef.current);
-    const nextRadius = nextPositions[id];
-    if (Math.abs(nextRadius - dragStart.radius) < ORRERY_SLIDE_COMMIT_EPSILON) return;
-    const radialDistanceCost = getOrreryRadialDistanceCost(dragStart.radius, nextRadius);
+    const nextVector = normalizeOrreryVector(vectorRef.current);
+    const nextLevel = nextVector[id];
+    const radialDistanceCost = getOrreryRadialDistanceCost(dragStart.level, nextLevel);
     if (radialDistanceCost <= 0) return;
-    const snappedPositions = normalizeOrreryPositions({
-      ...nextPositions,
-      [id]: getOrreryBandCenter(getOrreryBand(nextRadius))
+    const snappedVector = normalizeOrreryVector({
+      ...nextVector,
+      [id]: nextLevel
     });
-    positionsRef.current = snappedPositions;
-    setPositions(snappedPositions);
+    vectorRef.current = snappedVector;
+    setVector(snappedVector);
 
     onSlideCommit?.({
       archetypeId: id,
+      level: nextLevel,
+      fromLevel: dragStart.level,
       radialDistanceCost,
-      positions: snappedPositions,
-      vibe: resolveOrreryVibeForPositions(snappedPositions)
+      vector: snappedVector,
+      positions: positionsFromOrreryVector(snappedVector),
+      vibe: resolveOrreryVibeForVector(snappedVector)
     });
   };
 
@@ -93,13 +113,44 @@ function OrreryComponent({
       style={{ width: size, height: size }}
     >
       <div className="orrery-background" />
+      <img
+        className="orrery-base-plate"
+        src="/assets/orrery/octagonal_base.png"
+        alt=""
+        aria-hidden="true"
+      />
+      <div className="orrery-rings" aria-hidden="true">
+        {ORRERY_STAGE_DEFINITIONS.filter((stage) => stage.level > 0).map((stage) => {
+          const ringSize = getOrreryLevelRadius(stage.level) * maxRadius * 2;
+          return (
+            <div
+              key={stage.level}
+              className={`orrery-stage-ring orrery-stage-ring--${stage.level}`}
+              style={{ width: ringSize, height: ringSize }}
+            />
+          );
+        })}
+      </div>
+      <div className="orrery-core" aria-hidden="true">
+        <span>0</span>
+      </div>
+      <div className="orrery-stage-legend" aria-hidden="true">
+        {ORRERY_STAGE_DEFINITIONS.filter((stage) => stage.level > 0).map((stage) => (
+          <span key={stage.level}>{stage.shortLabel}</span>
+        ))}
+      </div>
       <div className="orrery-status" aria-live="polite">
         <span data-testid="orrery-slide-budget">{availableRadialDistance}</span>
         <span>{availableRadialDistance === 1 ? ' radial point' : ' radial points'}</span>
-        {currentVibe ? <strong>{currentVibe}</strong> : <strong>untuned</strong>}
+        <strong>
+          {activeArchetype && activeStage
+            ? `${activeArchetype.name.replace('The ', '')} ${activeStage.shortLabel}`
+            : (currentVibe || 'untuned')}
+        </strong>
       </div>
       {archetypes.map((a, i) => {
         const angle = (i / archetypes.length) * 2 * Math.PI;
+        const stage = getOrreryStage(vector[a.id]);
         return (
           <Figurine
             key={a.id}
@@ -108,9 +159,14 @@ function OrreryComponent({
             image={a.image}
             angle={angle}
             radius={positions[a.id]}
+            level={stage.level}
+            stageLabel={stage.label}
+            maxLevel={ORRERY_MAX_LEVEL}
+            active={activeDrag?.id === a.id}
             centerX={centerX}
             centerY={centerY}
             maxRadius={maxRadius}
+            size={figurineSize}
             disabled={!canSlide}
             onMove={(r) => updatePosition(a.id, r)}
             onMoveStart={handleMoveStart}
@@ -118,19 +174,6 @@ function OrreryComponent({
           />
         );
       })}
-    <img
-  src="/assets/orrery/octagonal_base.png"
-  alt="Orrery Base"
-  style={{
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: size,
-    height: size,
-    pointerEvents: 'none',
-    zIndex: 1,
-  }}
-/>
     </div>
   );
 }
