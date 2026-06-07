@@ -120,7 +120,7 @@ describe('PaperDisplay Component', () => {
       expect(filmBgDiv).toHaveStyle('background-image: url(/specific/bg.png)');
     });
 
-    test('renders place cells as a non-interactive page layer with page font family', () => {
+    test('renders place cells as non-interactive typewriter lines with page font family', () => {
       render(
         <PaperDisplay
           {...defaultProps}
@@ -129,12 +129,14 @@ describe('PaperDisplay Component', () => {
           storyPageCells={[
             {
               id: 'cell_test_001',
-              text: 'A cell appears on the page.',
+              text: 'A cell appears\non the page.',
               depth: 3,
               type: 'memory',
+              writing: { after: 'Hello world' },
               pagePosition: { x: 0.42, y: 0.37, anchor: 'after' },
             },
           ]}
+          storyWritingAnchor={{ cellId: 'cell_test_001', position: 'after' }}
         />
       );
 
@@ -142,9 +144,45 @@ describe('PaperDisplay Component', () => {
       const cell = screen.getByTestId('typewriter-story-cell-cell_test_001');
       const textLayer = layer.parentElement.querySelector('.typewriter-text');
       expect(layer).toBeInTheDocument();
+      expect(cell).toHaveClass('typewriter-line');
       expect(cell).toHaveTextContent('A cell appears on the page.');
+      expect(cell).toHaveAttribute('data-story-active', 'true');
+      expect(within(cell).getByTestId('striker-cursor-element')).toBeInTheDocument();
+      expect(screen.getByTestId('typewriter-story-cell-continuation')).toHaveTextContent('Hello world');
       expect(cell).not.toHaveAttribute('tabindex');
+      expect(cell).toHaveAttribute('data-story-line-index');
+      expect(cell.style.left).toContain('5rem');
+      expect(cell.style.top).toContain(`${TOP_OFFSET}px`);
       expect(textLayer.style.fontFamily).toContain('IM Fell English SC');
+      expect(textLayer).toHaveClass('typewriter-text--story-continuation-source');
+    });
+
+    test('renders the active StoryWell cursor before a page cell without inserting a line break', () => {
+      render(
+        <PaperDisplay
+          {...defaultProps}
+          ghostText=""
+          pageText=""
+          storyPageCells={[
+            {
+              id: 'cell_test_001',
+              text: 'A cell appears\non the page.',
+              depth: 3,
+              type: 'memory',
+              writing: { before: 'Just then' },
+              pagePosition: { x: 0.42, y: 0.37, anchor: 'before' },
+            },
+          ]}
+          storyWritingAnchor={{ cellId: 'cell_test_001', position: 'before' }}
+        />
+      );
+
+      const cell = screen.getByTestId('typewriter-story-cell-cell_test_001');
+      expect(screen.getByTestId('typewriter-story-cell-before')).toHaveTextContent('Just then');
+      expect(cell).toHaveTextContent('Just then A cell appears on the page.');
+      expect(cell.innerHTML).not.toContain('<br');
+      expect(within(cell).getByTestId('striker-cursor-element')).toBeInTheDocument();
+      expect(cell).toHaveAttribute('data-story-anchor-position', 'before');
     });
 
     test('shows striker cursor on the last line when showCursor is true', () => {

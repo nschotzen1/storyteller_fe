@@ -15,10 +15,20 @@ const clampUnit = (value, fallback = 0.5) => {
 function StoryWell({
   place,
   leverState = {},
+  writingAnchor = null,
+  writingCells = [],
   disabled = false,
   onLeverChange,
+  onWritingAnchorCellStep,
+  onWritingAnchorPositionChange,
 }) {
   const cells = Array.isArray(place?.cells) ? place.cells : [];
+  const orderedWritingCells = Array.isArray(writingCells) ? writingCells : [];
+  const activeWritingCellIndex = orderedWritingCells.findIndex((cell) => cell.id === writingAnchor?.cellId);
+  const writingPosition = writingAnchor?.position === 'before' ? 'before' : 'after';
+  const activeWritingCell = activeWritingCellIndex >= 0 ? orderedWritingCells[activeWritingCellIndex] : orderedWritingCells[0];
+  const canStepPrevious = activeWritingCellIndex > 0;
+  const canStepNext = activeWritingCellIndex >= 0 && activeWritingCellIndex < orderedWritingCells.length - 1;
 
   return (
     <section className="story-well-shell" aria-label="StoryWell" data-testid="story-well">
@@ -26,6 +36,54 @@ function StoryWell({
         <strong>{place?.title || 'StoryWell'}</strong>
         <span>{place?.textureId || 'untuned'}</span>
       </div>
+      {orderedWritingCells.length ? (
+        <div className="story-well-writing-controls" data-testid="story-well-writing-controls">
+          <button
+            type="button"
+            className="story-well-writing-button"
+            aria-label="Back one StoryWell cell"
+            disabled={disabled || !canStepPrevious}
+            onClick={() => onWritingAnchorCellStep?.(-1, 'after')}
+            data-testid="story-well-anchor-prev"
+          >
+            ‹
+          </button>
+          <div className="story-well-writing-target" aria-live="polite">
+            <span>{activeWritingCell?.type || 'cell'}</span>
+            <strong>{activeWritingCellIndex >= 0 ? activeWritingCellIndex + 1 : 1}/{orderedWritingCells.length}</strong>
+          </div>
+          <button
+            type="button"
+            className={`story-well-writing-button story-well-writing-button--slot${writingPosition === 'before' ? ' story-well-writing-button--active' : ''}`}
+            aria-pressed={writingPosition === 'before'}
+            disabled={disabled}
+            onClick={() => onWritingAnchorPositionChange?.('before')}
+            data-testid="story-well-anchor-before"
+          >
+            Before
+          </button>
+          <button
+            type="button"
+            className={`story-well-writing-button story-well-writing-button--slot${writingPosition === 'after' ? ' story-well-writing-button--active' : ''}`}
+            aria-pressed={writingPosition === 'after'}
+            disabled={disabled}
+            onClick={() => onWritingAnchorPositionChange?.('after')}
+            data-testid="story-well-anchor-after"
+          >
+            After
+          </button>
+          <button
+            type="button"
+            className="story-well-writing-button"
+            aria-label="Forward one StoryWell cell"
+            disabled={disabled || !canStepNext}
+            onClick={() => onWritingAnchorCellStep?.(1, 'after')}
+            data-testid="story-well-anchor-next"
+          >
+            ›
+          </button>
+        </div>
+      ) : null}
       <div className="story-well-device">
         <div className="story-well-shadow" aria-hidden="true" />
         <div className="story-well-frame" aria-hidden="true">

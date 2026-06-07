@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, cleanup, within } from '@testing-library/react';
 import { vi } from 'vitest';
 import TypewriterFramework, {
   FIRST_FADE_HANDOFF_DELAY,
@@ -200,8 +200,13 @@ describe('TypewriterFramework integration', () => {
     vi.restoreAllMocks();
   });
 
-  test('user typing renders text and Enter creates a new line', async () => {
+  test('user typing on a StoryWell page stays inline and Enter advances the active cell', async () => {
     const { container } = render(<TypewriterFramework />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('typewriter-story-cell-cell_baobab_001')).toBeInTheDocument();
+      expect(screen.getByTestId('typewriter-story-cell-cell_leopards_001')).toBeInTheDocument();
+    });
 
     clickKey('H');
     clickKey('I');
@@ -210,9 +215,10 @@ describe('TypewriterFramework integration', () => {
     });
 
     await waitFor(() => {
-      const lines = container.querySelectorAll('.typewriter-line .last-line-content');
+      const lines = container.querySelectorAll('.typewriter-text .typewriter-line .last-line-content');
       expect(lines.length).toBeGreaterThan(0);
       expect(lines[0].textContent).toContain('HI');
+      expect(screen.getByTestId('typewriter-story-cell-cell_baobab_001')).toHaveTextContent('HI');
     });
 
     fireEvent.keyDown(container.firstChild, { key: 'Enter', code: 'Enter' });
@@ -230,10 +236,12 @@ describe('TypewriterFramework integration', () => {
     });
 
     await waitFor(() => {
-      const lines = container.querySelectorAll('.typewriter-line .last-line-content');
-      expect(lines.length).toBe(2);
-      expect(lines[0].textContent).toContain('HI');
-      expect(lines[1].textContent).toContain('TO');
+      const lines = container.querySelectorAll('.typewriter-text .typewriter-line .last-line-content');
+      expect(lines.length).toBe(1);
+      expect(lines[0].textContent).toContain('HITO');
+      expect(screen.getByTestId('typewriter-story-cell-cell_baobab_001')).toHaveTextContent('HI');
+      expect(screen.getByTestId('typewriter-story-cell-cell_leopards_001')).toHaveTextContent('The pack of white leopards circled the well. TO');
+      expect(within(screen.getByTestId('typewriter-story-cell-cell_leopards_001')).getByTestId('striker-cursor-element')).toBeInTheDocument();
     });
   });
 
@@ -349,6 +357,54 @@ describe('TypewriterFramework integration', () => {
     const textLayer = container.querySelector('.typewriter-text');
     expect(textLayer?.style.fontFamily).toContain('Special Elite');
     expect(screen.getByTestId('film-background-div')).toHaveStyle('background-image: url(/textures/paper_texture_rugged.png)');
+
+    fireEvent.keyDown(container.firstChild, { key: 'A', code: 'KeyA' });
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('typewriter-story-cell-continuation')).toHaveTextContent('A');
+      expect(screen.getByTestId('typewriter-story-cell-cell_bucket_001')).toHaveTextContent('The bucket came up warm. A');
+      expect(within(screen.getByTestId('typewriter-story-cell-cell_bucket_001')).getByTestId('striker-cursor-element')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('story-well-anchor-before'));
+    fireEvent.keyDown(container.firstChild, { key: 'B', code: 'KeyB' });
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('typewriter-story-cell-before')).toHaveTextContent('B');
+      expect(screen.getByTestId('typewriter-story-cell-cell_bucket_001')).toHaveTextContent('B The bucket came up warm. A');
+      expect(screen.getByTestId('typewriter-story-cell-cell_bucket_001')).toHaveAttribute('data-story-anchor-position', 'before');
+    });
+
+    fireEvent.keyDown(container.firstChild, { key: 'Enter', code: 'Enter' });
+    fireEvent.keyDown(container.firstChild, { key: 'C', code: 'KeyC' });
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('typewriter-story-cell-cell_bucket_001')).toHaveTextContent('B The bucket came up warm. AC');
+      expect(screen.getByTestId('typewriter-story-cell-cell_bucket_001')).toHaveAttribute('data-story-anchor-position', 'after');
+    });
+
+    fireEvent.keyDown(container.firstChild, { key: 'Enter', code: 'Enter' });
+    fireEvent.keyDown(container.firstChild, { key: 'D', code: 'KeyD' });
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('typewriter-story-cell-cell_bronze_teeth_001')).toHaveTextContent('Bronze teeth clicked below the lip of the stones. D');
+      expect(within(screen.getByTestId('typewriter-story-cell-cell_bronze_teeth_001')).getByTestId('striker-cursor-element')).toBeInTheDocument();
+      const sourceLines = container.querySelectorAll('.typewriter-text .typewriter-line .last-line-content');
+      expect(sourceLines.length).toBe(1);
+      expect(sourceLines[0].textContent).toContain('ABCD');
+    });
   });
 
   test('falls back to initialFragment when the session payload omits fragment', async () => {

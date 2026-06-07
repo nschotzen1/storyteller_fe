@@ -17,6 +17,21 @@ const MIN_GHOST_FONT_SIZE_REM = 1.75;
 const DEFAULT_FADE_TRANSITION_MS = 650;
 const MIN_FADE_TRANSITION_MS = 350;
 const MAX_FADE_TRANSITION_MS = 12000;
+const STORY_CELL_LINE_ADVANCE_REM = 2.7;
+const STORY_CELL_LINE_ADVANCE_PX = STORY_CELL_LINE_ADVANCE_REM * 16;
+const STORY_CELL_VISIBLE_BOTTOM_RESERVE_PX = 72;
+const STORY_CELL_MIN_PAGE_X = 0.28;
+const STORY_CELL_MAX_PAGE_X = 0.92;
+const STORY_CELL_INDENT_COLUMNS = 48;
+const STORY_CELL_INDENT_STEP_CH = 4;
+
+const normalizeStoryWritingPosition = (position) => (
+  position === 'before' ? 'before' : 'after'
+);
+
+const normalizeInlineStoryDraftText = (text = '') => (
+  String(text ?? '').replace(/\s+/g, ' ')
+);
 
 const normalizeGhostFontSize = (fontSize) => {
   if (typeof fontSize === 'number' && Number.isFinite(fontSize)) {
@@ -83,6 +98,7 @@ const PaperDisplay = ({
   currentFontStyles, // New prop
   pageFontStyles,
   storyPageCells = [],
+  storyWritingAnchor = null,
   fadeState, // New prop
   pageBg,
   showCursor,
@@ -199,7 +215,16 @@ const PaperDisplay = ({
 
   const basePageFontStyle = buildFontMetadataStyle(pageFontStyles) || {};
   const normalizedStoryPageCells = React.useMemo(
-    () => (Array.isArray(storyPageCells) ? storyPageCells : [])
+    () => {
+      const maxLines = Math.max(1, Number(MAX_LINES) || 1);
+      const visibleLineBand = Number(FRAME_HEIGHT) - Number(TOP_OFFSET) - STORY_CELL_VISIBLE_BOTTOM_RESERVE_PX;
+      const visibleLineCount = Number.isFinite(visibleLineBand) && visibleLineBand > 0
+        ? Math.max(1, Math.floor(visibleLineBand / STORY_CELL_LINE_ADVANCE_PX) + 1)
+        : maxLines;
+      const lineCount = Math.max(1, Math.min(maxLines, visibleLineCount));
+      let nextAvailableLine = 0;
+
+      return (Array.isArray(storyPageCells) ? storyPageCells : [])
       .filter((cell) => cell && typeof cell === 'object' && typeof cell.text === 'string' && cell.text.trim())
       .map((cell) => {
         const pagePosition = cell.pagePosition && typeof cell.pagePosition === 'object'
@@ -207,13 +232,31 @@ const PaperDisplay = ({
           : {};
         const x = Number(pagePosition.x ?? cell.x);
         const y = Number(pagePosition.y ?? cell.y);
+        const pageX = Number.isFinite(x)
+          ? Math.max(STORY_CELL_MIN_PAGE_X, Math.min(STORY_CELL_MAX_PAGE_X, x))
+          : 0.5;
+        const pageY = Number.isFinite(y) ? Math.max(0, Math.min(1, y)) : 0.5;
+        const rawLineIndex = Math.round(pageY * (lineCount - 1));
+        const unsnappedIndent = Math.max(0, (pageX - STORY_CELL_MIN_PAGE_X) * STORY_CELL_INDENT_COLUMNS);
+        const indentCh = Math.round(unsnappedIndent / STORY_CELL_INDENT_STEP_CH) * STORY_CELL_INDENT_STEP_CH;
         return {
           ...cell,
-          pageX: Number.isFinite(x) ? Math.max(0.28, Math.min(0.92, x)) : 0.5,
-          pageY: Number.isFinite(y) ? Math.max(0.04, Math.min(0.94, y)) : 0.5,
+          text: cell.text.replace(/\s+/g, ' ').trim(),
+          indentCh,
+          rawLineIndex,
         };
-      }),
-    [storyPageCells]
+      })
+      .sort((left, right) => left.rawLineIndex - right.rawLineIndex || left.indentCh - right.indentCh)
+      .map((cell) => {
+        const lineIndex = Math.max(cell.rawLineIndex, nextAvailableLine);
+        nextAvailableLine = lineIndex + 1;
+        return {
+          ...cell,
+          lineIndex,
+        };
+      });
+    },
+    [storyPageCells, MAX_LINES, FRAME_HEIGHT, TOP_OFFSET]
   );
 
   // Apply font styles
@@ -230,6 +273,8 @@ const PaperDisplay = ({
 
   const ghostTextStyles = buildFontMetadataStyle(currentFontStyles) || {};
   const shouldRenderCursor = Boolean(showCursor || isProcessingSequence || fadeState?.isActive);
+  const shouldUseStoryContinuation = normalizedStoryPageCells.length > 0;
+  const shouldRenderCursorInTextLayer = shouldRenderCursor && !shouldUseStoryContinuation;
 
   React.useEffect(() => {
     if (fadeState?.isActive) return;
@@ -464,7 +509,7 @@ const PaperDisplay = ({
                 {renderTextWithLineBreaks(userTailText)}
               </span>
             )}
-            {isLastLine && shouldRenderCursor && renderCursor()}
+            {isLastLine && shouldRenderCursorInTextLayer && renderCursor()}
           </span>
         </div>
       );
@@ -578,26 +623,61 @@ const PaperDisplay = ({
   const renderStoryPageCells = () => {
     if (!normalizedStoryPageCells.length) return null;
     const { fontSize: _placeFontSize, ...cellFontStyle } = buildFontMetadataStyle(pageFontStyles) || {};
-    const writableHeight = Math.max(220, FRAME_HEIGHT - TOP_OFFSET - Math.min(BOTTOM_PADDING, 120));
+    const requestedActiveCellId = storyWritingAnchor?.cellId;
+    const activeCellId = normalizedStoryPageCells.some((cell) => cell.id === requestedActiveCellId)
+      ? requestedActiveCellId
+      : normalizedStoryPageCells[0]?.id;
+    const activePosition = normalizeStoryWritingPosition(storyWritingAnchor?.position);
 
     return (
       <div className="typewriter-story-cells-layer" data-testid="typewriter-story-cells-layer" aria-hidden="true">
         {normalizedStoryPageCells.map((cell) => {
-          const top = TOP_OFFSET + cell.pageY * writableHeight;
           const depth = Math.max(1, Math.min(6, Number(cell.depth) || 1));
+          const isActive = cell.id === activeCellId;
+          const writing = cell.writing && typeof cell.writing === 'object' ? cell.writing : {};
+          const beforeText = normalizeInlineStoryDraftText(writing.before);
+          const afterText = normalizeInlineStoryDraftText(writing.after);
+          const needsBeforeSpace = Boolean(beforeText && !/\s$/.test(beforeText) && !/^\s/.test(cell.text));
+          const needsAfterSpace = Boolean(afterText && !/\s$/.test(cell.text) && !/^\s/.test(afterText));
+          const shouldRenderBeforeCursor = isActive && activePosition === 'before' && shouldRenderCursor;
+          const shouldRenderAfterCursor = isActive && activePosition === 'after' && shouldRenderCursor;
           return (
             <div
               key={cell.id}
-              className={`typewriter-story-cell typewriter-story-cell--${cell.type || 'fragment'} typewriter-story-cell--${cell.pagePosition?.anchor || 'after'}`}
+              className={[
+                'typewriter-line',
+                'typewriter-story-cell',
+                `typewriter-story-cell--${cell.type || 'fragment'}`,
+                `typewriter-story-cell--${cell.pagePosition?.anchor || 'after'}`,
+                isActive ? 'typewriter-story-cell--active' : ''
+              ].filter(Boolean).join(' ')}
               style={{
-                left: `${cell.pageX * 100}%`,
-                top: `${top}px`,
+                left: `calc(5rem + ${cell.indentCh}ch)`,
+                top: `calc(${TOP_OFFSET}px + ${cell.lineIndex} * ${STORY_CELL_LINE_ADVANCE_REM}rem)`,
                 '--story-cell-depth': depth,
                 ...cellFontStyle,
               }}
               data-testid={`typewriter-story-cell-${cell.id}`}
+              data-story-line-index={cell.lineIndex}
+              data-story-indent-ch={cell.indentCh}
+              data-story-active={isActive ? 'true' : 'false'}
+              data-story-anchor-position={isActive ? activePosition : undefined}
             >
-              {cell.text}
+              {beforeText || shouldRenderBeforeCursor ? (
+                <span className="typewriter-story-cell-before" data-testid={isActive ? 'typewriter-story-cell-before' : undefined}>
+                  {beforeText}
+                  {shouldRenderBeforeCursor && renderCursor({ left: '0.15rem' })}
+                  {needsBeforeSpace ? ' ' : ''}
+                </span>
+              ) : null}
+              <span className="typewriter-story-cell-content">{cell.text}</span>
+              {afterText || shouldRenderAfterCursor ? (
+                <span className="typewriter-story-cell-continuation" data-testid={isActive ? 'typewriter-story-cell-continuation' : undefined}>
+                  {needsAfterSpace ? ' ' : ''}
+                  {afterText}
+                  {shouldRenderAfterCursor && renderCursor({ left: '0.15rem' })}
+                </span>
+              ) : null}
             </div>
           );
         })}
@@ -653,7 +733,7 @@ const PaperDisplay = ({
               {renderStoryPageCells()}
               {preGhostAtmosphere && <div className="pre-ghost-overlay" />}
               <div
-                className="typewriter-text film-overlay-text"
+                className={`typewriter-text film-overlay-text${shouldUseStoryContinuation ? ' typewriter-text--story-continuation-source' : ''}`}
                 style={textStyles} // Apply the combined styles here
               >
                 {fadeState && fadeState.isActive ? (
@@ -749,7 +829,7 @@ const PaperDisplay = ({
                             {processedSegments}
 
 
-                            {isLastLineOfRenderedSet && shouldRenderCursor && renderCursor()}
+                            {isLastLineOfRenderedSet && shouldRenderCursorInTextLayer && renderCursor()}
 
                           </span>
                         </div>

@@ -864,6 +864,83 @@ const appendTextToPage = (page = {}, textToAppend = '', style = null) => {
   };
 };
 
+const normalizeStoryWellAnchorPosition = (position) => (
+  position === 'before' ? 'before' : 'after'
+);
+
+const getStoryWellCellPagePosition = (cell = {}) => {
+  const pagePosition = cell?.pagePosition && typeof cell.pagePosition === 'object'
+    ? cell.pagePosition
+    : {};
+  const x = Number(pagePosition.x ?? cell?.x);
+  const y = Number(pagePosition.y ?? cell?.y);
+  return {
+    x: Number.isFinite(x) ? x : 0.5,
+    y: Number.isFinite(y) ? y : 0.5,
+  };
+};
+
+const orderStoryWellCellsForWriting = (cells = []) => (
+  (Array.isArray(cells) ? cells : [])
+    .filter((cell) => cell?.id)
+    .slice()
+    .sort((left, right) => {
+      const leftPosition = getStoryWellCellPagePosition(left);
+      const rightPosition = getStoryWellCellPagePosition(right);
+      return leftPosition.y - rightPosition.y || leftPosition.x - rightPosition.x;
+    })
+);
+
+const getStoryWellAnchorDrafts = (page = {}) => (
+  page?.storyWellAnchorDrafts && typeof page.storyWellAnchorDrafts === 'object'
+    ? page.storyWellAnchorDrafts
+    : {}
+);
+
+const appendTextToStoryWellAnchor = (page = {}, anchor = {}, textToAppend = '') => {
+  const addition = String(textToAppend || '');
+  if (!addition || !anchor?.cellId) return page;
+  const position = normalizeStoryWellAnchorPosition(anchor.position);
+  const drafts = getStoryWellAnchorDrafts(page);
+  const currentCellDraft = drafts[anchor.cellId] && typeof drafts[anchor.cellId] === 'object'
+    ? drafts[anchor.cellId]
+    : {};
+  return {
+    ...page,
+    storyWellAnchorDrafts: {
+      ...drafts,
+      [anchor.cellId]: {
+        ...currentCellDraft,
+        [position]: `${String(currentCellDraft[position] || '')}${addition}`,
+      },
+    },
+  };
+};
+
+const removeTrailingCharacterFromStoryWellAnchor = (page = {}, anchor = {}) => {
+  if (!anchor?.cellId) return { page, removed: false };
+  const position = normalizeStoryWellAnchorPosition(anchor.position);
+  const drafts = getStoryWellAnchorDrafts(page);
+  const currentCellDraft = drafts[anchor.cellId] && typeof drafts[anchor.cellId] === 'object'
+    ? drafts[anchor.cellId]
+    : {};
+  const currentText = String(currentCellDraft[position] || '');
+  if (!currentText) return { page, removed: false };
+  return {
+    page: {
+      ...page,
+      storyWellAnchorDrafts: {
+        ...drafts,
+        [anchor.cellId]: {
+          ...currentCellDraft,
+          [position]: currentText.slice(0, -1),
+        },
+      },
+    },
+    removed: true,
+  };
+};
+
 const removeTrailingCharacterFromPage = (page = {}) => {
   const existingText = String(page?.text || '');
   const nextText = existingText.slice(0, -1);
@@ -1389,6 +1466,7 @@ const TypewriterFramework = (props) => {
   const [entityKeyTransactions, setEntityKeyTransactions] = useState([]);
   const [storyWellLeverState, setStoryWellLeverState] = useState(() => ({ ...STORY_WELL_INITIAL_LEVER_STATE }));
   const [activeStoryWellPlaceId, setActiveStoryWellPlaceId] = useState(STORY_WELL_DEFAULT_PLACE_ID);
+  const [storyWellWritingAnchor, setStoryWellWritingAnchor] = useState({ cellId: '', position: 'after' });
   // lastUserInputTime, responseQueued, lastGeneratedLength are now in ghostwriterState
   // Level: 0 = empty, 3 = full (ready for page turn)
   const [leverLevel, setLeverLevel] = useState(0);
@@ -1428,6 +1506,7 @@ const TypewriterFramework = (props) => {
   const entityValidationTimerRef = useRef(null);
   const entityValidationInFlightRef = useRef(false);
   const storyWellInitialPlaceAppliedRef = useRef(false);
+  const storyWellWritingAnchorRef = useRef(storyWellWritingAnchor);
 
   const [sessionId, setSessionId] = useState(() => readStoredSessionId());
   const [isFreshSession, setIsFreshSession] = useState(false);
@@ -1536,6 +1615,10 @@ const TypewriterFramework = (props) => {
     currentPageRef.current = currentPage;
   }, [currentPage]);
 
+  useEffect(() => {
+    storyWellWritingAnchorRef.current = storyWellWritingAnchor;
+  }, [storyWellWritingAnchor]);
+
   useEffect(() => () => {
     if (entityValidationTimerRef.current) {
       clearTimeout(entityValidationTimerRef.current);
@@ -1566,6 +1649,30 @@ const TypewriterFramework = (props) => {
     pageFontStyles = null,
     storyWellCells = []
   } = pages[currentPage] || {};
+  const orderedStoryWellCells = useMemo(
+    () => orderStoryWellCellsForWriting(storyWellCells),
+    [storyWellCells]
+  );
+  const storyWellAnchorDrafts = useMemo(
+    () => getStoryWellAnchorDrafts(pages[currentPage]),
+    [pages, currentPage]
+  );
+  const storyWellCellsForPage = useMemo(
+    () => orderedStoryWellCells.map((cell) => {
+      const draft = storyWellAnchorDrafts[cell.id] && typeof storyWellAnchorDrafts[cell.id] === 'object'
+        ? storyWellAnchorDrafts[cell.id]
+        : {};
+      return {
+        ...cell,
+        writing: {
+          before: String(draft.before || ''),
+          after: String(draft.after || ''),
+        },
+      };
+    }),
+    [orderedStoryWellCells, storyWellAnchorDrafts]
+  );
+  const hasStoryWellWritingAnchors = orderedStoryWellCells.length > 0;
   const activeStoryWellPlace = useMemo(
     () => getStoryWellPlaceById(activeStoryWellPlaceId),
     [activeStoryWellPlaceId]
@@ -1700,6 +1807,83 @@ const TypewriterFramework = (props) => {
       setActiveStoryWellPlaceId(pagePlaceId);
     }
   }, [activeStoryWellPlaceId, currentPage, pages]);
+
+  useEffect(() => {
+    setStoryWellWritingAnchor((prev) => {
+      if (!orderedStoryWellCells.length) {
+        return prev.cellId ? { cellId: '', position: 'after' } : prev;
+      }
+
+      const normalizedPosition = normalizeStoryWellAnchorPosition(prev.position);
+      const activeCellStillVisible = orderedStoryWellCells.some((cell) => cell.id === prev.cellId);
+      if (activeCellStillVisible) {
+        return prev.position === normalizedPosition ? prev : { ...prev, position: normalizedPosition };
+      }
+
+      return { cellId: orderedStoryWellCells[0].id, position: 'after' };
+    });
+  }, [orderedStoryWellCells]);
+
+  const handleStoryWellAnchorPositionChange = useCallback((position) => {
+    const normalizedPosition = normalizeStoryWellAnchorPosition(position);
+    setStoryWellWritingAnchor((prev) => {
+      const fallbackCellId = prev.cellId || orderedStoryWellCells[0]?.id || '';
+      if (!fallbackCellId) return prev;
+      if (prev.cellId === fallbackCellId && prev.position === normalizedPosition) return prev;
+      return { cellId: fallbackCellId, position: normalizedPosition };
+    });
+    dispatchTyping({ type: typingActionTypes.SET_SHOW_CURSOR, payload: true });
+  }, [orderedStoryWellCells, dispatchTyping]);
+
+  const handleStoryWellAnchorCellStep = useCallback((delta = 1, positionOverride = null) => {
+    const step = Number(delta);
+    setStoryWellWritingAnchor((prev) => {
+      if (!orderedStoryWellCells.length) return prev;
+      const currentIndex = Math.max(0, orderedStoryWellCells.findIndex((cell) => cell.id === prev.cellId));
+      const nextIndex = Math.max(0, Math.min(orderedStoryWellCells.length - 1, currentIndex + (Number.isFinite(step) ? step : 0)));
+      const nextPosition = positionOverride
+        ? normalizeStoryWellAnchorPosition(positionOverride)
+        : normalizeStoryWellAnchorPosition(prev.position);
+      const nextAnchor = { cellId: orderedStoryWellCells[nextIndex].id, position: nextPosition };
+      return prev.cellId === nextAnchor.cellId && prev.position === nextAnchor.position ? prev : nextAnchor;
+    });
+    dispatchTyping({ type: typingActionTypes.SET_SHOW_CURSOR, payload: true });
+  }, [orderedStoryWellCells, dispatchTyping]);
+
+  const advanceStoryWellWritingAnchor = useCallback(() => {
+    setStoryWellWritingAnchor((prev) => {
+      if (!orderedStoryWellCells.length) return prev;
+      const currentIndex = Math.max(0, orderedStoryWellCells.findIndex((cell) => cell.id === prev.cellId));
+      const currentCell = orderedStoryWellCells[currentIndex] || orderedStoryWellCells[0];
+
+      if (normalizeStoryWellAnchorPosition(prev.position) === 'before') {
+        const nextAnchor = { cellId: currentCell.id, position: 'after' };
+        return prev.cellId === nextAnchor.cellId && prev.position === nextAnchor.position ? prev : nextAnchor;
+      }
+
+      const nextIndex = Math.min(orderedStoryWellCells.length - 1, currentIndex + 1);
+      const nextAnchor = { cellId: orderedStoryWellCells[nextIndex].id, position: 'after' };
+      return prev.cellId === nextAnchor.cellId && prev.position === nextAnchor.position ? prev : nextAnchor;
+    });
+    dispatchTyping({ type: typingActionTypes.SET_SHOW_CURSOR, payload: true });
+  }, [orderedStoryWellCells, dispatchTyping]);
+
+  const retreatStoryWellWritingAnchor = useCallback(() => {
+    setStoryWellWritingAnchor((prev) => {
+      if (!orderedStoryWellCells.length) return prev;
+      const currentIndex = Math.max(0, orderedStoryWellCells.findIndex((cell) => cell.id === prev.cellId));
+
+      if (normalizeStoryWellAnchorPosition(prev.position) === 'after') {
+        const nextAnchor = { cellId: orderedStoryWellCells[currentIndex].id, position: 'before' };
+        return prev.cellId === nextAnchor.cellId && prev.position === nextAnchor.position ? prev : nextAnchor;
+      }
+
+      const nextIndex = Math.max(0, currentIndex - 1);
+      const nextAnchor = { cellId: orderedStoryWellCells[nextIndex].id, position: 'after' };
+      return prev.cellId === nextAnchor.cellId && prev.position === nextAnchor.position ? prev : nextAnchor;
+    });
+    dispatchTyping({ type: typingActionTypes.SET_SHOW_CURSOR, payload: true });
+  }, [orderedStoryWellCells, dispatchTyping]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -2260,6 +2444,71 @@ const TypewriterFramework = (props) => {
         playEndOfPageSound();
       return;
     }
+    const isStoryWellWritingMode = hasStoryWellWritingAnchors && !typingState.isProcessingSequence;
+
+    if (isStoryWellWritingMode && e.key === 'Enter') {
+      e.preventDefault();
+      dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: e.key.toUpperCase() });
+      dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
+      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+      ensureAmbientStarted();
+      if (typingState.currentGhostText) {
+        commitGhostText();
+      }
+      advanceStoryWellWritingAnchor();
+      playEnterSound();
+      return;
+    }
+
+    if (isStoryWellWritingMode && e.key === 'Tab') {
+      e.preventDefault();
+      dispatchTyping({ type: typingActionTypes.SET_LAST_PRESSED_KEY, payload: e.shiftKey ? 'SHIFT+TAB' : 'TAB' });
+      dispatchGhostwriter({ type: ghostwriterActionTypes.UPDATE_LAST_USER_INPUT_TIME, payload: Date.now() });
+      dispatchGhostwriter({ type: ghostwriterActionTypes.SET_RESPONSE_QUEUED, payload: false });
+      ensureAmbientStarted();
+      handleStoryWellAnchorCellStep(e.shiftKey ? -1 : 1, 'after');
+      playKeySound();
+      return;
+    }
+
+    if (isStoryWellWritingMode && e.key === 'Backspace') {
+      e.preventDefault();
+      if (typingState.inputBuffer.length > 0) {
+        dispatchTyping({ type: typingActionTypes.HANDLE_BACKSPACE });
+        playKeySound();
+        return;
+      }
+
+      const activeAnchor = storyWellWritingAnchorRef.current;
+      const activeAnchorPosition = normalizeStoryWellAnchorPosition(activeAnchor?.position);
+      const currentPageSnapshot = pagesRef.current[currentPage] || {};
+      const activeAnchorDraft = String(
+        getStoryWellAnchorDrafts(currentPageSnapshot)?.[activeAnchor?.cellId]?.[activeAnchorPosition] || ''
+      );
+
+      if (activeAnchor?.cellId && activeAnchorDraft.length > 0) {
+        setPages((prev) => {
+          const updatedPages = [...prev];
+          const removal = removeTrailingCharacterFromStoryWellAnchor(updatedPages[currentPage], activeAnchor);
+          if (!removal.removed) return prev;
+          updatedPages[currentPage] = removeTrailingCharacterFromPage(removal.page);
+          pagesRef.current = updatedPages;
+          return updatedPages;
+        });
+        syncEntityKeyTransactions((transactions) => transactions.map((transaction) => {
+          if (transaction.status !== 'pending' || transaction.pageIndex !== currentPage) {
+            return transaction;
+          }
+          const nextEnd = Math.max(transaction.start, transaction.end - 1);
+          return { ...transaction, end: nextEnd };
+        }).filter((transaction) => transaction.status !== 'pending' || transaction.end > transaction.start));
+      } else {
+        retreatStoryWellWritingAnchor();
+      }
+      playKeySound();
+      return;
+    }
+
     const char = e.key === "Enter" ? '\n' : e.key;
     // Use typingState.inputBuffer and typingState.currentGhostText for currentLines calculation
 
@@ -2332,7 +2581,11 @@ const TypewriterFramework = (props) => {
       } else {
         setPages(prev => {
           const updatedPages = [...prev];
-          updatedPages[currentPage] = appendTextToPage(updatedPages[currentPage], charToCommit);
+          let nextPage = appendTextToPage(updatedPages[currentPage], charToCommit);
+          if (hasStoryWellWritingAnchors && charToCommit !== '\n') {
+            nextPage = appendTextToStoryWellAnchor(nextPage, storyWellWritingAnchorRef.current, charToCommit);
+          }
+          updatedPages[currentPage] = nextPage;
           pagesRef.current = updatedPages;
           return updatedPages;
         });
@@ -2349,7 +2602,7 @@ const TypewriterFramework = (props) => {
       }
     }, TYPING_ANIMATION_INTERVAL);
     return () => clearTimeout(timeout);
-  }, [typingState.inputBuffer, typingState.typingAllowed, typingState.isProcessingSequence, currentPage, setPages, extendActiveEntityTransaction]);
+  }, [typingState.inputBuffer, typingState.typingAllowed, typingState.isProcessingSequence, currentPage, setPages, extendActiveEntityTransaction, hasStoryWellWritingAnchors]);
 
   // --- Key Visual State ---
   useEffect(() => {
@@ -2879,7 +3132,11 @@ const TypewriterFramework = (props) => {
     syncEntityKeyTransactions((transactions) => [...transactions, transaction]);
     setPages(prev => {
       const updatedPages = [...prev];
-      updatedPages[currentPage] = appendTextToPage(updatedPages[currentPage], insertionText);
+      let nextPage = appendTextToPage(updatedPages[currentPage], insertionText);
+      if (hasStoryWellWritingAnchors) {
+        nextPage = appendTextToStoryWellAnchor(nextPage, storyWellWritingAnchorRef.current, insertionText);
+      }
+      updatedPages[currentPage] = nextPage;
       pagesRef.current = updatedPages;
       return updatedPages;
     });
@@ -3293,8 +3550,12 @@ const TypewriterFramework = (props) => {
       <StoryWell
         place={activeStoryWellPlace}
         leverState={storyWellLeverState}
+        writingAnchor={storyWellWritingAnchor}
+        writingCells={orderedStoryWellCells}
         disabled={pageTransitionState.pageChangeInProgress || pageTransitionState.isSliding || hasOpenEntityKeyTransaction}
         onLeverChange={handleStoryWellLeverChange}
+        onWritingAnchorCellStep={handleStoryWellAnchorCellStep}
+        onWritingAnchorPositionChange={handleStoryWellAnchorPositionChange}
       />
 
       <PaperDisplay
@@ -3305,7 +3566,8 @@ const TypewriterFramework = (props) => {
         sequenceUserText={sequenceUserText}
         currentFontStyles={currentFontStyles}
         pageFontStyles={pageFontStyles}
-        storyPageCells={storyWellCells}
+        storyPageCells={storyWellCellsForPage}
+        storyWritingAnchor={storyWellWritingAnchor}
         fadeState={typingState.fadeState}
         pageBg={pageBg}
         scrollRef={scrollRef}
