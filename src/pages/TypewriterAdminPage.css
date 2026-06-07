@@ -320,6 +320,370 @@
   margin-right: 0.35rem;
 }
 
+.typewriterSimpleAdmin {
+  margin-top: 1rem;
+}
+
+.typewriterSimpleHero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #5e4b3b;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(23, 18, 15, 0.96), rgba(14, 16, 18, 0.9)),
+    radial-gradient(circle at top right, rgba(70, 143, 137, 0.14), transparent 42%);
+}
+
+.typewriterSimpleKicker {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(91, 155, 148, 0.62);
+  background: rgba(27, 63, 61, 0.34);
+  color: #bde7dd;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.typewriterSimpleHero h2 {
+  margin: 0.55rem 0 0;
+  font-size: clamp(1.35rem, 2vw, 2rem);
+}
+
+.typewriterSimpleHero p {
+  max-width: 650px;
+  margin: 0.35rem 0 0;
+  color: #c7bbab;
+  line-height: 1.5;
+}
+
+.typewriterSimpleHeroActions,
+.typewriterSimpleSessionActions,
+.typewriterSimpleAdvancedLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.typewriterSimpleButton {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0 0.85rem;
+  border: 1px solid #7d6653;
+  border-radius: 8px;
+  background: rgba(26, 20, 17, 0.92);
+  color: #efe4d5;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.typewriterSimpleButtonPrimary {
+  border-color: rgba(91, 155, 148, 0.82);
+  background: linear-gradient(135deg, rgba(31, 103, 96, 0.92), rgba(34, 61, 66, 0.92));
+  color: #f1fffb;
+}
+
+.typewriterSimpleButtonCompact {
+  min-height: 34px;
+  padding: 0 0.7rem;
+}
+
+.typewriterSimpleButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.typewriterSimpleGrid {
+  margin-top: 0.9rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 0.9rem;
+}
+
+.typewriterSimplePanel {
+  padding: 0.95rem;
+  border: 1px solid #5e4b3b;
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(24, 18, 15, 0.95), rgba(13, 11, 10, 0.9)),
+    radial-gradient(circle at top left, rgba(55, 104, 124, 0.08), transparent 40%);
+}
+
+.typewriterSimplePanelWide {
+  grid-column: 1 / -1;
+}
+
+.typewriterSimplePanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.typewriterSimplePanelHeader h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.typewriterSimplePanelHeader p {
+  margin: 0.25rem 0 0;
+  color: #c3b39d;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.typewriterSimplePanelIcon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid rgba(91, 155, 148, 0.5);
+  background: rgba(28, 64, 63, 0.3);
+  color: #bfe7dd;
+  flex-shrink: 0;
+}
+
+.typewriterFeatureList {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.typewriterFeatureCard {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(340px, 0.9fr);
+  gap: 0.85rem;
+  align-items: start;
+  padding: 0.85rem;
+  border: 1px solid rgba(112, 86, 62, 0.68);
+  border-radius: 8px;
+  background: rgba(15, 12, 10, 0.78);
+}
+
+.typewriterFeatureCard.isLive {
+  border-color: rgba(91, 155, 148, 0.62);
+  background:
+    linear-gradient(135deg, rgba(18, 37, 36, 0.58), rgba(16, 12, 10, 0.78)),
+    radial-gradient(circle at top right, rgba(91, 155, 148, 0.1), transparent 40%);
+}
+
+.typewriterFeatureMain {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.typewriterFeatureStatusIcon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid rgba(119, 97, 77, 0.78);
+  background: rgba(39, 30, 24, 0.86);
+  color: #dfd1be;
+}
+
+.typewriterFeatureCard.isLive .typewriterFeatureStatusIcon {
+  border-color: rgba(91, 155, 148, 0.78);
+  color: #bde7dd;
+  background: rgba(28, 69, 66, 0.52);
+}
+
+.typewriterFeatureTitleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.typewriterFeatureTitleRow h4 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.typewriterFeatureTitleRow span {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(91, 155, 148, 0.42);
+  background: rgba(26, 50, 52, 0.36);
+  color: #c8ddd8;
+  font-size: 0.72rem;
+}
+
+.typewriterFeatureMain p {
+  margin: 0.3rem 0 0;
+  color: #c8bba9;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.typewriterFeatureControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(130px, 1fr));
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.typewriterSimpleSwitch {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #e7dccd;
+}
+
+.typewriterSimpleSwitch input {
+  width: 18px;
+  height: 18px;
+  accent-color: #58b8aa;
+}
+
+.typewriterSimpleField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+  color: #d8ccb9;
+  font-size: 0.82rem;
+}
+
+.typewriterSimpleFieldSmall {
+  max-width: 170px;
+}
+
+.typewriterSimpleField input,
+.typewriterSimpleField select {
+  width: 100%;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid #7d6653;
+  background: rgba(16, 12, 9, 0.96);
+  color: #efe5d7;
+  padding: 0 0.6rem;
+  font: inherit;
+}
+
+.typewriterPromptWorkbench {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.35fr) minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.typewriterPromptNav {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.typewriterPromptNavButton {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.14rem;
+  min-height: 54px;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(112, 86, 62, 0.62);
+  border-radius: 8px;
+  background: rgba(16, 12, 10, 0.76);
+  color: #e5d8c6;
+  text-align: left;
+  cursor: pointer;
+}
+
+.typewriterPromptNavButton.isActive {
+  border-color: rgba(91, 155, 148, 0.78);
+  background: rgba(28, 64, 63, 0.38);
+  color: #f1fffb;
+}
+
+.typewriterPromptNavButton strong,
+.typewriterPromptNavButton small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.typewriterPromptNavButton strong {
+  font-size: 0.85rem;
+}
+
+.typewriterPromptNavButton small {
+  color: #b9ad9d;
+  font-size: 0.72rem;
+}
+
+.typewriterPromptEditPanel {
+  min-width: 0;
+}
+
+.typewriterPromptEditHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.8rem;
+  margin-bottom: 0.65rem;
+}
+
+.typewriterPromptEditHeader h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.typewriterPromptEditHeader p {
+  margin: 0.22rem 0 0;
+  color: #c3b39d;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.typewriterPromptStats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.typewriterPromptStats span {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(112, 86, 62, 0.6);
+  background: rgba(38, 28, 22, 0.78);
+  color: #ddcfbc;
+  font-size: 0.74rem;
+}
+
+.typewriterPromptStudioActions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.typewriterPromptVersionsCompact {
+  max-height: 190px;
+  overflow: auto;
+}
+
+.typewriterSimpleSession {
+  display: grid;
+  gap: 0.7rem;
+}
+
 .typewriterControlRoom {
   margin-top: 1rem;
   padding: 1rem;
@@ -1368,6 +1732,31 @@
 }
 
 @media (max-width: 820px) {
+  .typewriterSimpleHero,
+  .typewriterSimplePanelHeader,
+  .typewriterPromptEditHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .typewriterSimpleGrid,
+  .typewriterFeatureCard,
+  .typewriterPromptWorkbench {
+    grid-template-columns: 1fr;
+  }
+
+  .typewriterFeatureControls {
+    grid-template-columns: 1fr;
+  }
+
+  .typewriterSimplePanelWide {
+    grid-column: auto;
+  }
+
+  .typewriterPromptStats {
+    justify-content: flex-start;
+  }
+
   .typewriterAdminConnection {
     grid-template-columns: 1fr;
   }
@@ -1562,6 +1951,10 @@
 
 .typewriterPromptButtons button {
   height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   padding: 0 0.8rem;
   border: 1px solid #937458;
   border-radius: 7px;

@@ -1010,6 +1010,58 @@
   opacity: 0.92;
 }
 
+.typewriter-story-cells-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.typewriter-story-cell {
+  position: absolute;
+  width: clamp(9.5rem, 24%, 17rem);
+  max-width: calc(100% - 9rem);
+  padding: 0.55rem 0.65rem 0.5rem;
+  border: 1px solid rgba(83, 45, 19, 0.28);
+  border-radius: 0.42rem;
+  background:
+    linear-gradient(180deg, rgba(248, 230, 184, 0.78), rgba(210, 173, 114, 0.68)),
+    radial-gradient(circle at 30% 25%, rgba(255, 248, 215, 0.32), transparent 58%);
+  box-shadow:
+    0 calc(2px + var(--story-cell-depth) * 0.7px) 8px rgba(47, 24, 10, 0.24),
+    inset 0 0 11px rgba(87, 45, 15, 0.16);
+  color: #3c2116;
+  font-size: clamp(0.76rem, 1.05vw, 1.08rem);
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+  transform: translate(-50%, -50%) rotate(calc((var(--story-cell-depth) - 3) * 0.55deg));
+  opacity: calc(0.74 + var(--story-cell-depth) * 0.035);
+}
+
+.typewriter-story-cell--before {
+  border-style: dashed;
+}
+
+.typewriter-story-cell--creature {
+  background:
+    linear-gradient(180deg, rgba(233, 237, 226, 0.76), rgba(174, 184, 159, 0.68)),
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 242, 0.3), transparent 58%);
+}
+
+.typewriter-story-cell--dialogue {
+  background:
+    linear-gradient(180deg, rgba(231, 226, 197, 0.76), rgba(183, 163, 124, 0.68)),
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 245, 0.28), transparent 58%);
+  font-style: italic;
+}
+
+.typewriter-story-cell--memory,
+.typewriter-story-cell--rumor {
+  background:
+    linear-gradient(180deg, rgba(222, 209, 190, 0.75), rgba(166, 137, 119, 0.67)),
+    radial-gradient(circle at 30% 25%, rgba(253, 238, 220, 0.27), transparent 58%);
+}
+
 .typewriter-text.film-overlay-text {
   position: relative;
   z-index: 2;

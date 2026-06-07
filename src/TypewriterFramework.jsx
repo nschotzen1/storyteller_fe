@@ -5,6 +5,7 @@ import Keyboard from './components/typewriter/Keyboard.jsx';
 import PaperDisplay from './components/typewriter/PaperDisplay.jsx';
 import PageNavigation from './components/typewriter/PageNavigation.jsx'; // Import the new PageNavigation component
 import OrreryComponent from './OrreryComponent.jsx';
+import StoryWell from './components/storywell/StoryWell.jsx';
 import { getRandomTexture, playKeySound, playEnterSound, playPageIntroSound, playXerofagHowl, playEndOfPageSound, countLines, playGhostWriterSound, ambientSoundManager, playPreGhostSound, fetchAndPlayElevenLabsTTS, playStorytellerKeyPressSound } from './utils.js';
 import {
   fetchNextFilmImage,
@@ -22,6 +23,13 @@ import {
   normalizeOrrerySessionState,
   ORRERY_INITIAL_RADIAL_DISTANCE_BUDGET
 } from './components/orrery/vibes.js';
+import {
+  createStoryWellPageFromPlace,
+  getStoryWellPlaceById,
+  resolveStoryWellPlaceForLever,
+  STORY_WELL_DEFAULT_PLACE_ID,
+  STORY_WELL_INITIAL_LEVER_STATE
+} from './components/storywell/storyWellPlaces.js';
 
 // --- Constants ---
 const FILM_HEIGHT = 1400;
@@ -1359,8 +1367,11 @@ const TypewriterFramework = (props) => {
 
   const [ghostwriterState, dispatchGhostwriter] = useReducer(ghostwriterReducer, initialGhostwriterState);
   // --- Page History State (Still useState as per instructions) ---
-  const [pages, setPages] = useState([
-    { text: '', filmBgUrl: DEFAULT_FILM_BG_URL, pageStyleRanges: [] }
+  const [pages, setPages] = useState(() => [
+    createStoryWellPageFromPlace(
+      getStoryWellPlaceById(STORY_WELL_DEFAULT_PLACE_ID),
+      { text: '', filmBgUrl: DEFAULT_FILM_BG_URL, pageStyleRanges: [] }
+    )
   ]);
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -1376,6 +1387,8 @@ const TypewriterFramework = (props) => {
   const [preGhostAtmosphere, setPreGhostAtmosphere] = useState(false);
   const [isTextKeyVerificationPending, setIsTextKeyVerificationPending] = useState(false);
   const [entityKeyTransactions, setEntityKeyTransactions] = useState([]);
+  const [storyWellLeverState, setStoryWellLeverState] = useState(() => ({ ...STORY_WELL_INITIAL_LEVER_STATE }));
+  const [activeStoryWellPlaceId, setActiveStoryWellPlaceId] = useState(STORY_WELL_DEFAULT_PLACE_ID);
   // lastUserInputTime, responseQueued, lastGeneratedLength are now in ghostwriterState
   // Level: 0 = empty, 3 = full (ready for page turn)
   const [leverLevel, setLeverLevel] = useState(0);
@@ -1414,6 +1427,7 @@ const TypewriterFramework = (props) => {
   const entityKeyTransactionsRef = useRef([]);
   const entityValidationTimerRef = useRef(null);
   const entityValidationInFlightRef = useRef(false);
+  const storyWellInitialPlaceAppliedRef = useRef(false);
 
   const [sessionId, setSessionId] = useState(() => readStoredSessionId());
   const [isFreshSession, setIsFreshSession] = useState(false);
@@ -1548,8 +1562,14 @@ const TypewriterFramework = (props) => {
   const {
     text: pageText,
     filmBgUrl: pageBg,
-    pageStyleRanges = []
+    pageStyleRanges = [],
+    pageFontStyles = null,
+    storyWellCells = []
   } = pages[currentPage] || {};
+  const activeStoryWellPlace = useMemo(
+    () => getStoryWellPlaceById(activeStoryWellPlaceId),
+    [activeStoryWellPlaceId]
+  );
   const currentPageEntityKeyTransactions = useMemo(() => (
     entityKeyTransactions.filter((transaction) => transaction.pageIndex === currentPage)
   ), [entityKeyTransactions, currentPage]);
@@ -1602,6 +1622,84 @@ const TypewriterFramework = (props) => {
     leverLevel === LEVER_LEVEL_WORD_THRESHOLDS.length - 1
     && !pageChangeInProgress
     && typingInteractionAllowed;
+
+  const navigateToStoryWellPlace = useCallback((place) => {
+    if (!place || hasOpenEntityKeyTransaction) return;
+    if (pageTransitionState.pageChangeInProgress || pageTransitionState.isSliding) return;
+
+    const currentPages = pagesRef.current;
+    const existingIndex = currentPages.findIndex((page) =>
+      page?.storyWellPlaceId === place.id || page?.storyWellPageId === place.pageId
+    );
+    const targetIndex = existingIndex >= 0 ? existingIndex : currentPages.length;
+
+    setActiveStoryWellPlaceId(place.id);
+    setPages((prev) => {
+      const updatedPages = [...prev];
+      const pageIndex = updatedPages.findIndex((page) =>
+        page?.storyWellPlaceId === place.id || page?.storyWellPageId === place.pageId
+      );
+
+      if (pageIndex >= 0) {
+        updatedPages[pageIndex] = createStoryWellPageFromPlace(place, updatedPages[pageIndex]);
+      } else {
+        updatedPages.push(createStoryWellPageFromPlace(place));
+      }
+
+      pagesRef.current = updatedPages;
+      return updatedPages;
+    });
+
+    setCurrentPage(targetIndex);
+    setCurrentFontStyles(null);
+    dispatchTyping({ type: typingActionTypes.SET_TYPING_ALLOWED, payload: true });
+    dispatchTyping({ type: typingActionTypes.SET_SHOW_CURSOR, payload: true });
+    dispatchTyping({ type: typingActionTypes.RESET_TYPING_STATE_FOR_NEW_PAGE });
+    dispatchGhostwriter({ type: ghostwriterActionTypes.RESET_GHOSTWRITER_STATE });
+    dispatchGhostwriter({
+      type: ghostwriterActionTypes.SET_LAST_GENERATED_LENGTH,
+      payload: buildTypewriterNarrativeFromPages(pagesRef.current, {
+        includeTrailingBlankPages: true
+      }).length
+    });
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  }, [
+    hasOpenEntityKeyTransaction,
+    pageTransitionState.pageChangeInProgress,
+    pageTransitionState.isSliding,
+    dispatchTyping,
+    dispatchGhostwriter,
+  ]);
+
+  const handleStoryWellLeverChange = useCallback((leverId, value) => {
+    setStoryWellLeverState((prev) => ({
+      ...prev,
+      [leverId]: value,
+    }));
+    navigateToStoryWellPlace(resolveStoryWellPlaceForLever(leverId, value));
+  }, [navigateToStoryWellPlace]);
+
+  useEffect(() => {
+    if (!isSessionReady || storyWellInitialPlaceAppliedRef.current) return;
+    storyWellInitialPlaceAppliedRef.current = true;
+    const initialPlace = getStoryWellPlaceById(activeStoryWellPlaceId);
+    setPages((prev) => {
+      const updatedPages = [...prev];
+      const pageIndex = Math.max(0, Math.min(updatedPages.length - 1, currentPageRef.current || 0));
+      updatedPages[pageIndex] = createStoryWellPageFromPlace(initialPlace, updatedPages[pageIndex]);
+      pagesRef.current = updatedPages;
+      return updatedPages;
+    });
+  }, [activeStoryWellPlaceId, isSessionReady]);
+
+  useEffect(() => {
+    const pagePlaceId = pages[currentPage]?.storyWellPlaceId;
+    if (pagePlaceId && pagePlaceId !== activeStoryWellPlaceId) {
+      setActiveStoryWellPlaceId(pagePlaceId);
+    }
+  }, [activeStoryWellPlaceId, currentPage, pages]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -3192,6 +3290,13 @@ const TypewriterFramework = (props) => {
         </div>
       ) : null}
 
+      <StoryWell
+        place={activeStoryWellPlace}
+        leverState={storyWellLeverState}
+        disabled={pageTransitionState.pageChangeInProgress || pageTransitionState.isSliding || hasOpenEntityKeyTransaction}
+        onLeverChange={handleStoryWellLeverChange}
+      />
+
       <PaperDisplay
         pageText={pageText}
         pageStyleRanges={pageStyleRanges}
@@ -3199,6 +3304,8 @@ const TypewriterFramework = (props) => {
         ghostText={currentGhostText}
         sequenceUserText={sequenceUserText}
         currentFontStyles={currentFontStyles}
+        pageFontStyles={pageFontStyles}
+        storyPageCells={storyWellCells}
         fadeState={typingState.fadeState}
         pageBg={pageBg}
         scrollRef={scrollRef}

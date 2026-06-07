@@ -81,6 +81,8 @@ const PaperDisplay = ({
   ghostText,
   sequenceUserText,
   currentFontStyles, // New prop
+  pageFontStyles,
+  storyPageCells = [],
   fadeState, // New prop
   pageBg,
   showCursor,
@@ -195,6 +197,25 @@ const PaperDisplay = ({
     [entityKeyTransactions]
   );
 
+  const basePageFontStyle = buildFontMetadataStyle(pageFontStyles) || {};
+  const normalizedStoryPageCells = React.useMemo(
+    () => (Array.isArray(storyPageCells) ? storyPageCells : [])
+      .filter((cell) => cell && typeof cell === 'object' && typeof cell.text === 'string' && cell.text.trim())
+      .map((cell) => {
+        const pagePosition = cell.pagePosition && typeof cell.pagePosition === 'object'
+          ? cell.pagePosition
+          : {};
+        const x = Number(pagePosition.x ?? cell.x);
+        const y = Number(pagePosition.y ?? cell.y);
+        return {
+          ...cell,
+          pageX: Number.isFinite(x) ? Math.max(0.28, Math.min(0.92, x)) : 0.5,
+          pageY: Number.isFinite(y) ? Math.max(0.04, Math.min(0.94, y)) : 0.5,
+        };
+      }),
+    [storyPageCells]
+  );
+
   // Apply font styles
   const textStyles = {
     zIndex: TYPEWRITER_TEXT_Z_INDEX,
@@ -204,6 +225,7 @@ const PaperDisplay = ({
     fontFamily: "'Special Elite', cursive", // Example default
     fontSize: '1.8rem', // Example default
     color: '#3b1d15', // Example default
+    ...basePageFontStyle,
   };
 
   const ghostTextStyles = buildFontMetadataStyle(currentFontStyles) || {};
@@ -553,6 +575,36 @@ const PaperDisplay = ({
     </div>
   );
 
+  const renderStoryPageCells = () => {
+    if (!normalizedStoryPageCells.length) return null;
+    const { fontSize: _placeFontSize, ...cellFontStyle } = buildFontMetadataStyle(pageFontStyles) || {};
+    const writableHeight = Math.max(220, FRAME_HEIGHT - TOP_OFFSET - Math.min(BOTTOM_PADDING, 120));
+
+    return (
+      <div className="typewriter-story-cells-layer" data-testid="typewriter-story-cells-layer" aria-hidden="true">
+        {normalizedStoryPageCells.map((cell) => {
+          const top = TOP_OFFSET + cell.pageY * writableHeight;
+          const depth = Math.max(1, Math.min(6, Number(cell.depth) || 1));
+          return (
+            <div
+              key={cell.id}
+              className={`typewriter-story-cell typewriter-story-cell--${cell.type || 'fragment'} typewriter-story-cell--${cell.pagePosition?.anchor || 'after'}`}
+              style={{
+                left: `${cell.pageX * 100}%`,
+                top: `${top}px`,
+                '--story-cell-depth': depth,
+                ...cellFontStyle,
+              }}
+              data-testid={`typewriter-story-cell-${cell.id}`}
+            >
+              {cell.text}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="typewriter-paper-frame" data-testid="paper-frame" style={{ height: `${FRAME_HEIGHT}px` }}>
       <div className="side-frame side-left" aria-hidden="true" />
@@ -598,6 +650,7 @@ const PaperDisplay = ({
                   opacity: FILM_BACKGROUND_OPACITY,
                 }}
               />
+              {renderStoryPageCells()}
               {preGhostAtmosphere && <div className="pre-ghost-overlay" />}
               <div
                 className="typewriter-text film-overlay-text"

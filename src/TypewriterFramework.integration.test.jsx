@@ -330,6 +330,27 @@ describe('TypewriterFramework integration', () => {
     });
   });
 
+  test('story well lever navigation loads a place page with its cells and paper style', async () => {
+    const { container } = render(<TypewriterFramework />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('story-well')).toBeInTheDocument();
+      expect(screen.getByTestId('typewriter-story-cell-cell_baobab_001')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('story-well-lever-rift'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Hidden Mechanism')).toBeInTheDocument();
+      expect(screen.getByTestId('story-well-cell-cell_bucket_001')).toBeInTheDocument();
+      expect(screen.getByTestId('typewriter-story-cell-cell_bucket_001')).toHaveTextContent('The bucket came up warm.');
+    });
+
+    const textLayer = container.querySelector('.typewriter-text');
+    expect(textLayer?.style.fontFamily).toContain('Special Elite');
+    expect(screen.getByTestId('film-background-div')).toHaveStyle('background-image: url(/textures/paper_texture_rugged.png)');
+  });
+
   test('falls back to initialFragment when the session payload omits fragment', async () => {
     startTypewriterSession.mockResolvedValueOnce({
       data: {

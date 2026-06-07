@@ -1,4 +1,5 @@
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { FileText, Power, RefreshCw, Save, SlidersHorizontal } from 'lucide-react';
 import {
   DEFAULT_API_BASE_URL,
   createTypewriterStorytellerKey,
@@ -155,11 +156,67 @@ const PROMPT_PIPELINES = [
 ];
 
 const ADMIN_SECTIONS = [
-  { key: 'control', label: 'Control Center' },
+  { key: 'typewriter', label: 'Typewriter' },
+  { key: 'control', label: 'Advanced' },
   { key: 'runtime', label: 'Runtime' },
   { key: 'session', label: 'Session' },
   { key: 'prompts', label: 'Prompt Templates' },
   { key: 'contracts', label: 'Schemas' }
+];
+
+const TYPEWRITER_QUICK_FEATURES = [
+  {
+    key: 'story_continuation',
+    label: 'Story continuation',
+    description: 'Main writing response after the player writes on the page.',
+    promptKey: 'story_continuation',
+    group: 'Core'
+  },
+  {
+    key: 'storyteller_creation',
+    label: 'Storyteller keys',
+    description: 'Creates storyteller personas for empty typewriter slots.',
+    promptKey: 'storyteller_creation',
+    group: 'Storytellers'
+  },
+  {
+    key: 'storyteller_intervention',
+    label: 'Storyteller intervention',
+    description: 'Lets a storyteller enter the current writing session.',
+    promptKey: 'storyteller_intervention',
+    group: 'Storytellers'
+  },
+  {
+    key: 'typewriter_key_verification',
+    label: 'Textual key gate',
+    description: 'Checks whether a saved typewriter key may insert text.',
+    promptKey: 'typewriter_key_verification',
+    group: 'Keys'
+  },
+  {
+    key: 'xerofag_inspection',
+    label: 'Xerofag key',
+    description: 'Controls the legacy Xerofag insertion check.',
+    promptKey: 'xerofag_inspection',
+    group: 'Keys'
+  },
+  {
+    key: 'illustration_creation',
+    label: 'Storyteller art',
+    description: 'Generates visual assets for storyteller keys and portraits.',
+    promptKey: 'illustration_creation',
+    group: 'Images'
+  }
+];
+
+const TYPEWRITER_PROMPT_PRIORITY = [
+  'story_continuation',
+  'storyteller_intervention',
+  'storyteller_creation',
+  'typewriter_key_verification',
+  'xerofag_inspection',
+  'storyteller_key_creation',
+  'illustration_creation'
 ];
 
 const TYPEWRITER_ASSET_FLOW = [
@@ -219,9 +276,9 @@ const getInitialStoredSessionId = () => {
 };
 
 const getInitialAdminSection = () => {
-  if (typeof window === 'undefined') return 'control';
+  if (typeof window === 'undefined') return 'typewriter';
   const stored = window.localStorage.getItem(STORY_ADMIN_SECTION_STORAGE_KEY);
-  return ADMIN_SECTIONS.some((section) => section.key === stored) ? stored : 'control';
+  return ADMIN_SECTIONS.some((section) => section.key === stored) ? stored : 'typewriter';
 };
 
 const buildEmptySettings = (pipelineDefinitions = SETTING_PIPELINES) => {
@@ -490,6 +547,7 @@ const TypewriterAdminPage = () => {
   });
   const [savingControlRouteId, setSavingControlRouteId] = useState('');
   const [savingControlComponentKey, setSavingControlComponentKey] = useState('');
+  const [selectedTypewriterPromptKey, setSelectedTypewriterPromptKey] = useState('story_continuation');
   const [expandedPromptKey, setExpandedPromptKey] = useState('story_continuation');
   const [expandedContractKey, setExpandedContractKey] = useState('');
   const deferredPromptFilter = useDeferredValue(promptFilter);
@@ -880,6 +938,42 @@ const TypewriterAdminPage = () => {
     [visibleControlComponents]
   );
 
+  const typewriterFeatureRows = useMemo(() => {
+    return TYPEWRITER_QUICK_FEATURES
+      .map((feature) => {
+        const runtimeRow = pipelineRowMap[feature.key];
+        if (!runtimeRow) return null;
+        const promptDefinition = feature.promptKey ? promptDefinitionMap[feature.promptKey] : null;
+        return {
+          ...feature,
+          runtimeRow,
+          promptDefinition,
+          latestPrompt: feature.promptKey ? promptMap[feature.promptKey] || null : null
+        };
+      })
+      .filter(Boolean);
+  }, [pipelineRowMap, promptDefinitionMap, promptMap]);
+
+  const typewriterPromptRows = useMemo(() => {
+    const byKey = new Map(promptDefinitions.map((definition) => [definition.key, definition]));
+    const orderedKeys = [
+      ...TYPEWRITER_PROMPT_PRIORITY.filter((key) => byKey.has(key)),
+      ...promptDefinitions
+        .map((definition) => definition.key)
+        .filter((key) => !TYPEWRITER_PROMPT_PRIORITY.includes(key))
+    ];
+    return orderedKeys
+      .map((key) => {
+        const definition = byKey.get(key);
+        if (!definition) return null;
+        return {
+          ...definition,
+          latestPrompt: promptMap[key] || null
+        };
+      })
+      .filter(Boolean);
+  }, [promptDefinitions, promptMap]);
+
   const controlRuntimeUsageMap = useMemo(() => {
     const usageMap = {};
     controlComponents.forEach((component) => {
@@ -946,6 +1040,13 @@ const TypewriterAdminPage = () => {
       setSelectedControlComponentKey('all');
     }
   }, [controlComponents, selectedControlComponentKey]);
+
+  useEffect(() => {
+    if (!typewriterPromptRows.length) return;
+    if (!typewriterPromptRows.some((promptRow) => promptRow.key === selectedTypewriterPromptKey)) {
+      setSelectedTypewriterPromptKey(typewriterPromptRows[0].key);
+    }
+  }, [selectedTypewriterPromptKey, typewriterPromptRows]);
 
   const getModelOptions = (modelKind, currentModel, provider = 'openai') => {
     const normalizedProvider = provider === 'anthropic' ? 'anthropic' : 'openai';
@@ -2093,6 +2194,333 @@ const TypewriterAdminPage = () => {
     </details>
   );
 
+  const selectedTypewriterPrompt = typewriterPromptRows.find((promptRow) => promptRow.key === selectedTypewriterPromptKey)
+    || typewriterPromptRows[0]
+    || null;
+  const selectedTypewriterPromptDraft = selectedTypewriterPrompt
+    ? promptDrafts[selectedTypewriterPrompt.key] || ''
+    : '';
+  const selectedTypewriterPromptWordCount = selectedTypewriterPromptDraft
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+  const selectedTypewriterPromptVersions = selectedTypewriterPrompt
+    ? promptVersions?.[selectedTypewriterPrompt.key] || []
+    : [];
+
+  const typewriterSimpleAdminSection = (
+    <section className="typewriterSimpleAdmin">
+      <div className="typewriterSimpleHero">
+        <div>
+          <span className="typewriterSimpleKicker">Typewriter Admin</span>
+          <h2>Write, toggle, save</h2>
+          <p>One place for the typewriter prompts, live/mock switches, models, and the current session.</p>
+        </div>
+        <div className="typewriterSimpleHeroActions">
+          <button
+            type="button"
+            className="typewriterSimpleButton typewriterSimpleButtonPrimary"
+            onClick={handleSave}
+            disabled={loading || saving}
+          >
+            <Save size={16} aria-hidden="true" />
+            {saving ? 'Saving...' : 'Save Controls'}
+          </button>
+          <button
+            type="button"
+            className="typewriterSimpleButton"
+            onClick={handleRefreshModels}
+            disabled={loading || saving || refreshingModels}
+          >
+            <RefreshCw size={16} aria-hidden="true" />
+            {refreshingModels ? 'Refreshing...' : 'Refresh Models'}
+          </button>
+        </div>
+      </div>
+
+      <div className="typewriterSimpleGrid">
+        <section className="typewriterSimplePanel typewriterSimplePanelWide">
+          <header className="typewriterSimplePanelHeader">
+            <div>
+              <h3>Feature Switches</h3>
+              <p>Live AI means the route calls the selected provider. Mock keeps the feature available without external generation.</p>
+            </div>
+            <span className="typewriterSimplePanelIcon">
+              <SlidersHorizontal size={18} aria-hidden="true" />
+            </span>
+          </header>
+
+          <div className="typewriterFeatureList">
+            {typewriterFeatureRows.map((feature) => {
+              const row = feature.runtimeRow;
+              const options = getModelOptions(row.modelKind, row.model, row.provider);
+              return (
+                <article
+                  key={feature.key}
+                  className={row.useMock ? 'typewriterFeatureCard isMock' : 'typewriterFeatureCard isLive'}
+                >
+                  <div className="typewriterFeatureMain">
+                    <span className="typewriterFeatureStatusIcon">
+                      <Power size={17} aria-hidden="true" />
+                    </span>
+                    <div>
+                      <div className="typewriterFeatureTitleRow">
+                        <h4>{feature.label}</h4>
+                        <span>{feature.group}</span>
+                      </div>
+                      <p>{feature.description}</p>
+                      <div className="typewriterControlMetaRow">
+                        <span className="typewriterControlChip">{row.useMock ? 'Mock' : 'Live AI'}</span>
+                        <span className="typewriterControlChip">{row.provider || 'openai'}</span>
+                        <span className="typewriterControlChip">{row.model || 'No model selected'}</span>
+                        {feature.latestPrompt?.version ? (
+                          <span className="typewriterControlChip">Prompt v{feature.latestPrompt.version}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="typewriterFeatureControls">
+                    <label className="typewriterSimpleSwitch">
+                      <input
+                        type="checkbox"
+                        checked={!row.useMock}
+                        onChange={(event) => updatePipeline(row.key, { useMock: !event.target.checked })}
+                      />
+                      <span>Live AI</span>
+                    </label>
+
+                    {row.supportedProviders?.length > 1 ? (
+                      <label className="typewriterSimpleField">
+                        <span>Provider</span>
+                        <select
+                          value={row.provider}
+                          onChange={(event) => {
+                            const nextProvider = event.target.value;
+                            const nextOptions = getModelOptions(row.modelKind, '', nextProvider);
+                            updatePipeline(row.key, {
+                              provider: nextProvider,
+                              model: nextOptions[0] || row.model
+                            });
+                          }}
+                        >
+                          {row.supportedProviders.map((providerId) => (
+                            <option key={providerId} value={providerId}>
+                              {providerId}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+
+                    <label className="typewriterSimpleField">
+                      <span>Model</span>
+                      <select
+                        value={row.model}
+                        onChange={(event) => updatePipeline(row.key, { model: event.target.value })}
+                      >
+                        {options.map((optionId) => (
+                          <option key={optionId} value={optionId}>
+                            {optionId}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    {row.supportsCount ? (
+                      <label className="typewriterSimpleField typewriterSimpleFieldSmall">
+                        <span>{row.countLabel}</span>
+                        <input
+                          type="number"
+                          min={row.minCount}
+                          max={row.maxCount}
+                          value={row.countValue}
+                          onChange={(event) =>
+                            updatePipeline(row.key, {
+                              [row.countProperty]: normalizeCountDraft(
+                                event.target.value,
+                                row.countValue,
+                                row.minCount,
+                                row.maxCount
+                              )
+                            })
+                          }
+                        />
+                      </label>
+                    ) : null}
+
+                    {feature.promptDefinition ? (
+                      <button
+                        type="button"
+                        className="typewriterSimpleButton typewriterSimpleButtonCompact"
+                        onClick={() => setSelectedTypewriterPromptKey(feature.promptDefinition.key)}
+                      >
+                        <FileText size={15} aria-hidden="true" />
+                        Edit Prompt
+                      </button>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="typewriterSimplePanel typewriterSimplePanelWide">
+          <header className="typewriterSimplePanelHeader">
+            <div>
+              <h3>Prompt Studio</h3>
+              <p>Select one prompt, edit it, and save it as the latest version.</p>
+            </div>
+            <span className="typewriterSimplePanelIcon">
+              <FileText size={18} aria-hidden="true" />
+            </span>
+          </header>
+
+          <div className="typewriterPromptWorkbench">
+            <nav className="typewriterPromptNav" aria-label="Typewriter prompt templates">
+              {typewriterPromptRows.map((promptRow) => (
+                <button
+                  key={promptRow.key}
+                  type="button"
+                  className={
+                    promptRow.key === selectedTypewriterPrompt?.key
+                      ? 'typewriterPromptNavButton isActive'
+                      : 'typewriterPromptNavButton'
+                  }
+                  onClick={() => setSelectedTypewriterPromptKey(promptRow.key)}
+                >
+                  <strong>{promptRow.label}</strong>
+                  <small>{promptRow.key}</small>
+                </button>
+              ))}
+            </nav>
+
+            {selectedTypewriterPrompt ? (
+              <div className="typewriterPromptEditPanel">
+                <div className="typewriterPromptEditHeader">
+                  <div>
+                    <h4>{selectedTypewriterPrompt.label}</h4>
+                    <p>{selectedTypewriterPrompt.description}</p>
+                  </div>
+                  <div className="typewriterPromptStats">
+                    <span>{selectedTypewriterPromptWordCount} words</span>
+                    <span>v{selectedTypewriterPrompt.latestPrompt?.version || 'new'}</span>
+                  </div>
+                </div>
+
+                <label className="typewriterStructuredField">
+                  Prompt template
+                  <textarea
+                    value={selectedTypewriterPromptDraft}
+                    onChange={(event) => updatePromptDraft(selectedTypewriterPrompt.key, event.target.value)}
+                    rows={18}
+                    placeholder={`Enter prompt template for ${selectedTypewriterPrompt.label}.`}
+                  />
+                </label>
+
+                <div className="typewriterPromptButtons typewriterPromptButtons-inline typewriterPromptStudioActions">
+                  <button
+                    type="button"
+                    onClick={() => handleSavePrompt(selectedTypewriterPrompt.key)}
+                    disabled={loading || savingPrompts}
+                  >
+                    <Save size={15} aria-hidden="true" />
+                    {savingPrompts ? 'Saving...' : 'Save Prompt'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleLoadPromptVersions(selectedTypewriterPrompt.key)}
+                    disabled={loading || savingPrompts}
+                  >
+                    <RefreshCw size={15} aria-hidden="true" />
+                    Load Versions
+                  </button>
+                </div>
+
+                {selectedTypewriterPromptVersions.length ? (
+                  <ul className="typewriterPromptVersions typewriterPromptVersionsCompact">
+                    {selectedTypewriterPromptVersions.map((version) => (
+                      <li key={version.id}>
+                        v{version.version} | {formatDate(version.updatedAt)} | {version.createdBy || 'admin'}
+                        {version.isLatest ? (
+                          <strong> (latest)</strong>
+                        ) : (
+                          <button
+                            type="button"
+                            className="typewriterUseVersionBtn"
+                            onClick={() => handleUsePromptVersion(selectedTypewriterPrompt.key, version.id)}
+                            disabled={savingPrompts}
+                          >
+                            Use as latest
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : (
+              <p className="typewriterPromptMeta">No prompt templates are loaded yet.</p>
+            )}
+          </div>
+        </section>
+
+        <section className="typewriterSimplePanel">
+          <header className="typewriterSimplePanelHeader">
+            <div>
+              <h3>Current Session</h3>
+              <p>Inspect or seed the session used by the typewriter page.</p>
+            </div>
+          </header>
+          <div className="typewriterSimpleSession">
+            <label className="typewriterSimpleField">
+              <span>Stored session</span>
+              <input type="text" value={currentSessionId} readOnly placeholder="No session stored" />
+            </label>
+            <div className="typewriterSimpleSessionActions">
+              <button type="button" className="typewriterSimpleButton" onClick={handleGenerateSession} disabled={sessionSaving}>
+                Generate Session
+              </button>
+              <button
+                type="button"
+                className="typewriterSimpleButton"
+                onClick={() => {
+                  if (!currentSessionId) return;
+                  setSessionInspectorTargetId(currentSessionId);
+                  void loadSessionInspector(currentSessionId);
+                }}
+                disabled={sessionSaving || sessionInspectorLoading || !currentSessionId}
+              >
+                Inspect Stored
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="typewriterSimplePanel">
+          <header className="typewriterSimplePanelHeader">
+            <div>
+              <h3>Advanced Access</h3>
+              <p>Route flow, generated schemas, policy JSON, and full session tools stay available.</p>
+            </div>
+          </header>
+          <div className="typewriterSimpleAdvancedLinks">
+            <button type="button" className="typewriterSimpleButton" onClick={() => setActiveSection('control')}>
+              Advanced Routes
+            </button>
+            <button type="button" className="typewriterSimpleButton" onClick={() => setActiveSection('runtime')}>
+              Runtime Lab
+            </button>
+            <button type="button" className="typewriterSimpleButton" onClick={() => setActiveSection('contracts')}>
+              Schemas
+            </button>
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+
   const typewriterControlRoomRuntimeChips = [
     { key: 'story_continuation', label: 'Continuation' },
     { key: 'typewriter_key_verification', label: 'Textual key gate' },
@@ -2723,6 +3151,8 @@ const TypewriterAdminPage = () => {
           </button>
         ))}
       </nav>
+
+      {activeSection === 'typewriter' ? typewriterSimpleAdminSection : null}
 
       {activeSection === 'control' ? (
       <section className="typewriterControlCenter">

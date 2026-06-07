@@ -311,8 +311,77 @@ describe('TypewriterAdminPage control center', () => {
     window.__TYPEWRITER_ADMIN_NAVIGATE__ = undefined;
   });
 
+  it('opens on a simpler typewriter workspace for toggles and prompt editing', async () => {
+    render(<TypewriterAdminPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Write, toggle, save')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Feature Switches')).toBeInTheDocument();
+    expect(screen.getByText('Prompt Studio')).toBeInTheDocument();
+
+    const storyContinuationFeature = screen
+      .getByText('Main writing response after the player writes on the page.')
+      .closest('article');
+    const storyContinuationLiveToggle = within(storyContinuationFeature).getByRole('checkbox', {
+      name: 'Live AI'
+    });
+
+    expect(storyContinuationLiveToggle).toBeChecked();
+    fireEvent.click(storyContinuationLiveToggle);
+    expect(storyContinuationLiveToggle).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole('button', { name: /Save Controls/i }));
+
+    await waitFor(() => {
+      expect(typewriterAdminApi.saveTypewriterAiSettings).toHaveBeenCalledWith(
+        'http://localhost:5001',
+        expect.objectContaining({
+          pipelines: expect.objectContaining({
+            story_continuation: expect.objectContaining({
+              useMock: true,
+              model: 'gpt-4.1-mini',
+              provider: 'openai'
+            })
+          })
+        }),
+        {
+          adminKey: '',
+          updatedBy: 'story-admin-ui'
+        }
+      );
+    });
+
+    fireEvent.change(screen.getByLabelText('Prompt template'), {
+      target: {
+        value: 'A simpler continuation prompt.'
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Save Prompt$/i }));
+
+    await waitFor(() => {
+      expect(typewriterAdminApi.saveTypewriterPrompt).toHaveBeenCalledWith(
+        'http://localhost:5001',
+        'story_continuation',
+        'A simpler continuation prompt.',
+        {
+          adminKey: '',
+          updatedBy: 'story-admin-ui',
+          markLatest: true
+        }
+      );
+    });
+  });
+
   it('can seed a typewriter session fragment from the session tools', async () => {
     render(<TypewriterAdminPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Write, toggle, save')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }));
 
     await waitFor(() => {
       expect(screen.getByText('Component Control Center')).toBeInTheDocument();
@@ -339,6 +408,12 @@ describe('TypewriterAdminPage control center', () => {
     render(<TypewriterAdminPage />);
 
     await waitFor(() => {
+      expect(screen.getByText('Write, toggle, save')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }));
+
+    await waitFor(() => {
       expect(screen.getByText('Component Control Center')).toBeInTheDocument();
     });
 
@@ -346,7 +421,10 @@ describe('TypewriterAdminPage control center', () => {
     fireEvent.click(screen.getByText('Session Bootstrap'));
     expect(screen.getByLabelText('Current stored session')).toBeVisible();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Typewriter' }));
+    fireEvent.click(
+      within(screen.getByRole('tablist', { name: 'Story Admin components' }))
+        .getByRole('button', { name: 'Typewriter' })
+    );
 
     expect(screen.getByText('Session hydration')).not.toBeVisible();
     fireEvent.click(screen.getByText('Typewriter Asset Flow'));
@@ -381,10 +459,19 @@ describe('TypewriterAdminPage control center', () => {
     render(<TypewriterAdminPage />);
 
     await waitFor(() => {
+      expect(screen.getByText('Write, toggle, save')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }));
+
+    await waitFor(() => {
       expect(screen.getByText('Component Control Center')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Typewriter' }));
+    fireEvent.click(
+      within(screen.getByRole('tablist', { name: 'Story Admin components' }))
+        .getByRole('button', { name: 'Typewriter' })
+    );
 
     const routeSummaryTable = screen.getByRole('table', { name: /Typewriter route summary/i });
     const storyContinuationMockToggle = within(routeSummaryTable).getByRole('checkbox', {
@@ -421,7 +508,7 @@ describe('TypewriterAdminPage control center', () => {
     render(<TypewriterAdminPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Component Control Center')).toBeInTheDocument();
+      expect(screen.getByText('Write, toggle, save')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Runtime' }));
@@ -468,7 +555,7 @@ describe('TypewriterAdminPage control center', () => {
     render(<TypewriterAdminPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Component Control Center')).toBeInTheDocument();
+      expect(screen.getByText('Write, toggle, save')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Runtime' }));

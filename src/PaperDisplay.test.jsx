@@ -120,6 +120,33 @@ describe('PaperDisplay Component', () => {
       expect(filmBgDiv).toHaveStyle('background-image: url(/specific/bg.png)');
     });
 
+    test('renders place cells as a non-interactive page layer with page font family', () => {
+      render(
+        <PaperDisplay
+          {...defaultProps}
+          ghostText=""
+          pageFontStyles={{ font: 'IM Fell English SC', font_size: '1.7rem', font_color: '#3d2114' }}
+          storyPageCells={[
+            {
+              id: 'cell_test_001',
+              text: 'A cell appears on the page.',
+              depth: 3,
+              type: 'memory',
+              pagePosition: { x: 0.42, y: 0.37, anchor: 'after' },
+            },
+          ]}
+        />
+      );
+
+      const layer = screen.getByTestId('typewriter-story-cells-layer');
+      const cell = screen.getByTestId('typewriter-story-cell-cell_test_001');
+      const textLayer = layer.parentElement.querySelector('.typewriter-text');
+      expect(layer).toBeInTheDocument();
+      expect(cell).toHaveTextContent('A cell appears on the page.');
+      expect(cell).not.toHaveAttribute('tabindex');
+      expect(textLayer.style.fontFamily).toContain('IM Fell English SC');
+    });
+
     test('shows striker cursor on the last line when showCursor is true', () => {
       // Render with text that ensures the last line is distinct
       render(<PaperDisplay {...defaultProps} pageText="Line1\nLast Line" ghostText="" showCursor={true} />);
