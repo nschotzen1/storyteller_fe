@@ -1,4 +1,5 @@
 import React from 'react';
+import TurnPageLever from '../../TurnPageLever';
 import StoryLever from './StoryLever';
 import {
   STORY_WELL_LEVER_IDS,
@@ -17,10 +18,20 @@ function StoryWell({
   leverState = {},
   writingAnchor = null,
   writingCells = [],
+  pageIndex = 0,
+  pageCount = 1,
+  pageTurnLevel = 0,
+  canGoPreviousPage = false,
+  canGoNextPage = false,
+  canCreateNextPage = false,
+  pageTurnDisabled = false,
   disabled = false,
   onLeverChange,
   onWritingAnchorCellStep,
   onWritingAnchorPositionChange,
+  onPreviousPage,
+  onNextPage,
+  onTurnPage,
 }) {
   const cells = Array.isArray(place?.cells) ? place.cells : [];
   const orderedWritingCells = Array.isArray(writingCells) ? writingCells : [];
@@ -29,12 +40,52 @@ function StoryWell({
   const activeWritingCell = activeWritingCellIndex >= 0 ? orderedWritingCells[activeWritingCellIndex] : orderedWritingCells[0];
   const canStepPrevious = activeWritingCellIndex > 0;
   const canStepNext = activeWritingCellIndex >= 0 && activeWritingCellIndex < orderedWritingCells.length - 1;
+  const pageControlsDisabled = disabled || pageTurnDisabled;
+  const previousPageDisabled = pageControlsDisabled || !canGoPreviousPage;
+  const nextPageDisabled = pageControlsDisabled || (!canGoNextPage && !canCreateNextPage);
+  const normalizedPageIndex = Math.max(0, Number(pageIndex) || 0);
+  const normalizedPageCount = Math.max(1, Number(pageCount) || 1);
 
   return (
     <section className="story-well-shell" aria-label="StoryWell" data-testid="story-well">
       <div className="story-well-readout" aria-live="polite">
         <strong>{place?.title || 'StoryWell'}</strong>
         <span>{place?.textureId || 'untuned'}</span>
+      </div>
+      <div className="story-well-page-controls" data-testid="story-well-page-controls">
+        <button
+          type="button"
+          className="story-well-page-button"
+          disabled={previousPageDisabled}
+          onClick={() => onPreviousPage?.()}
+          data-testid="story-well-page-prev"
+        >
+          Prev
+        </button>
+        <div className="story-well-page-count" aria-live="polite">
+          Page {normalizedPageIndex + 1}/{normalizedPageCount}
+        </div>
+        <button
+          type="button"
+          className="story-well-page-button"
+          disabled={nextPageDisabled}
+          onClick={() => onNextPage?.()}
+          data-testid="story-well-page-next"
+        >
+          Next
+        </button>
+      </div>
+      <div className="story-well-turn-page" data-testid="story-well-turn-page">
+        <TurnPageLever
+          level={pageTurnLevel}
+          canPull={canCreateNextPage}
+          disabled={pageControlsDisabled}
+          onPull={onTurnPage}
+          className="turn-page-lever--compact"
+          size={92}
+          label="Turn"
+          testId="story-well-turn-page-lever"
+        />
       </div>
       {orderedWritingCells.length ? (
         <div className="story-well-writing-controls" data-testid="story-well-writing-controls">

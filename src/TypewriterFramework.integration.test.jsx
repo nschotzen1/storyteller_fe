@@ -10,7 +10,6 @@ import TypewriterFramework, {
   normalizeTypewriterReply,
   sanitizeTypewriterFontColor,
 } from './TypewriterFramework';
-import { ORRERY_VIBES } from './components/orrery/vibes';
 import '@testing-library/jest-dom';
 
 vi.mock('./apiService', () => ({
@@ -20,16 +19,6 @@ vi.mock('./apiService', () => ({
   fetchStorytellerTypewriterReply: vi.fn(),
   fetchTypewriterReply: vi.fn().mockResolvedValue({ data: { content: 'mock AI reply' }, error: null }),
   fetchShouldGenerateContinuation: vi.fn().mockResolvedValue({ shouldGenerate: false }),
-  resolveOrreryPageTextureIdentity: vi.fn().mockResolvedValue({
-    data: {
-      alignmentKey: 'forge4',
-      title: 'Forge Ember',
-      assetPngUrl: 'http://localhost:5001/assets/typewriter_page_images/film_page1.png',
-      assetStatus: 'premade'
-    },
-    error: null
-  }),
-  saveTypewriterVibeState: vi.fn().mockResolvedValue({ data: {}, error: null }),
   startTypewriterSession: vi.fn().mockResolvedValue({ data: { sessionId: 'test-session-id-123' }, error: null }),
 }));
 
@@ -54,8 +43,6 @@ import {
   fetchStorytellerTypewriterReply,
   fetchTypewriterReply,
   fetchShouldGenerateContinuation,
-  resolveOrreryPageTextureIdentity,
-  saveTypewriterVibeState,
   startTypewriterSession,
 } from './apiService';
 import { playEndOfPageSound, playPageIntroSound } from './utils';
@@ -180,16 +167,6 @@ describe('TypewriterFramework integration', () => {
     });
     fetchStorytellerTypewriterReply.mockResolvedValue({ data: { sequence: [] }, error: null });
     fetchTypewriterReply.mockResolvedValue({ data: { sequence: [] }, error: null });
-    resolveOrreryPageTextureIdentity.mockResolvedValue({
-      data: {
-        alignmentKey: 'forge4',
-        title: 'Forge Ember',
-        assetPngUrl: 'http://localhost:5001/assets/typewriter_page_images/film_page1.png',
-        assetStatus: 'premade'
-      },
-      error: null
-    });
-    saveTypewriterVibeState.mockResolvedValue({ data: {}, error: null });
     startTypewriterSession.mockResolvedValue({ data: { sessionId: 'test-session-id-123' }, error: null });
   });
 
@@ -263,79 +240,15 @@ describe('TypewriterFramework integration', () => {
     });
   });
 
-  test('orrery slide consumes radial stages, changes paper on a matching vibe, and resolves page texture identity', async () => {
-    const forgeVibe = ORRERY_VIBES.find((vibe) => vibe.id === 'forge_ember');
-    startTypewriterSession.mockResolvedValueOnce({
-      data: {
-        sessionId: 'test-session-id-123',
-        fragment: '',
-        worldState: {
-          orrery_radial_distance_budget: 2,
-          orrery_vector: {
-            verdant: 2,
-            warden: 2,
-            veil: 2,
-            forge: 2,
-            hollow: 2,
-            crown: 2,
-            rift: 2
-          }
-        }
-      },
-      error: null
-    });
-
+  test('does not render the retired orrery controls', async () => {
     render(<TypewriterFramework />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('orrery-slide-budget')).toHaveTextContent('2');
+      expect(screen.getByTestId('story-well')).toBeInTheDocument();
     });
 
-    const orrery = screen.getByTestId('orrery-control');
-    vi.spyOn(orrery, 'getBoundingClientRect').mockReturnValue({
-      left: 0,
-      top: 0,
-      right: 320,
-      bottom: 320,
-      width: 320,
-      height: 320,
-      x: 0,
-      y: 0,
-      toJSON: () => ({})
-    });
-
-    fireEvent.mouseDown(screen.getByTestId('orrery-figurine-forge'), { clientX: 122, clientY: 193 });
-    fireEvent.mouseMove(window, { clientX: 84, clientY: 211 });
-    fireEvent.mouseUp(window);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('orrery-slide-budget')).toHaveTextContent('0');
-      expect(screen.getByTestId('film-background-div')).toHaveStyle(`background-image: url(${forgeVibe.backgroundUrl})`);
-    });
-
-    expect(saveTypewriterVibeState).toHaveBeenCalledWith(
-      'test-session-id-123',
-      expect.objectContaining({
-        current_vibe: 'forge_ember',
-        orrery_radial_distance_budget: 0,
-        number_of_available_slides: 0,
-        orrery_vector: expect.objectContaining({
-          forge: 4
-        }),
-        orrery_positions: expect.objectContaining({
-          forge: expect.any(Number)
-        })
-      })
-    );
-
-    await waitFor(() => {
-      expect(resolveOrreryPageTextureIdentity).toHaveBeenCalledWith(
-        'test-session-id-123',
-        expect.objectContaining({
-          forge: 4
-        })
-      );
-    });
+    expect(screen.queryByTestId('orrery-control')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('orrery-slide-budget')).not.toBeInTheDocument();
   });
 
   test('story well lever navigation loads a place page with its cells and paper style', async () => {
@@ -497,7 +410,7 @@ describe('TypewriterFramework integration', () => {
     });
   });
 
-  test('turn page lever fetches next film image once lever is enabled', async () => {
+  test('story well turn page lever fetches the next page while keeping the well texture', async () => {
     fetchNextFilmImage.mockResolvedValue({ data: { image_url: 'new_page_specific.png' }, error: null });
     fetchShouldGenerateContinuation.mockResolvedValue({ shouldGenerate: false });
 
@@ -515,6 +428,7 @@ describe('TypewriterFramework integration', () => {
     }
 
     const lever = await screen.findByAltText('Lever level 4');
+    expect(screen.getByTestId('story-well-turn-page-lever')).toContainElement(lever);
     fireEvent.click(lever);
 
     act(() => {
@@ -524,11 +438,11 @@ describe('TypewriterFramework integration', () => {
     await waitFor(() => {
       expect(fetchNextFilmImage).toHaveBeenCalled();
       const nextSlide = screen.getByTestId('next-bg-slide');
-      expect(nextSlide).toHaveStyle('background-image: url("new_page_specific.png")');
+      expect(nextSlide).toHaveStyle('background-image: url("/textures/decor/film_frame_desert.png")');
     });
   });
 
-  test('top next control creates a new page and persists the full narrative across pages', async () => {
+  test('story well next control creates a new page and persists the full narrative across pages', async () => {
     fetchNextFilmImage.mockResolvedValue({ data: { image_url: 'new_page_specific.png' }, error: null });
     fetchShouldGenerateContinuation.mockResolvedValue({ shouldGenerate: false });
 
@@ -545,7 +459,7 @@ describe('TypewriterFramework integration', () => {
       });
     }
 
-    const nextButton = screen.getByRole('button', { name: /Next/i });
+    const nextButton = screen.getByTestId('story-well-page-next');
     await waitFor(() => {
       expect(nextButton).toBeEnabled();
     });
@@ -557,7 +471,7 @@ describe('TypewriterFramework integration', () => {
 
     await waitFor(() => {
       expect(fetchNextFilmImage).toHaveBeenCalledWith(expect.stringContaining('A A'), 'test-session-id-123');
-      expect(screen.getByText('Page 2 / 2')).toBeInTheDocument();
+      expect(screen.getByTestId('story-well-page-controls')).toHaveTextContent('Page 2/2');
     });
 
     const keyboardReady = await advanceUntil(

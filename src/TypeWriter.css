@@ -1056,7 +1056,8 @@
 
 .typewriter-story-cell .striker-cursor {
   margin-left: 0.1rem;
-  vertical-align: middle;
+  top: -0.5rem;
+  vertical-align: top;
 }
 
 .typewriter-story-cell--before {
@@ -1331,7 +1332,7 @@
 }
 
 /* Optional: lever scale up and drop-shadow for tactile presence */
-.turn-page-lever .lever-image {
+.turn-page-lever:not(.turn-page-lever--compact) .lever-image {
   width: 210px !important;
   height: 210px !important;
   max-width: 220px;

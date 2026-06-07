@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
-function TurnPageLever({ level, onPull, canPull, disabled }) {
+function TurnPageLever({
+  level,
+  onPull,
+  canPull,
+  disabled,
+  className = '',
+  size = 210,
+  label = 'Turn Page',
+  testId = 'turn-page-lever',
+}) {
   const leverImages = [
     '/textures/lever/lever_phase1.png',
     '/textures/lever/lever_phase2.png',
@@ -36,7 +45,7 @@ function TurnPageLever({ level, onPull, canPull, disabled }) {
   };
 
   return (
-    <div className="turn-page-lever" style={{ userSelect: 'none' }}>
+    <div className={`turn-page-lever ${className}`.trim()} style={{ userSelect: 'none' }} data-testid={testId}>
       <img
         src={leverImages[level]}
         alt={`Lever level ${level + 1}`}
@@ -46,8 +55,8 @@ function TurnPageLever({ level, onPull, canPull, disabled }) {
           resetting ? "lever-reset" : ""
         ].join(" ")}
         style={{
-          width: 210,
-          height: 210,
+          width: size,
+          height: size,
           opacity: disabled ? 0.35 : 1,
           cursor: canPull && !disabled ? "pointer" : "not-allowed",
           transition: 'filter 0.3s, opacity 0.3s'
@@ -68,7 +77,7 @@ function TurnPageLever({ level, onPull, canPull, disabled }) {
           userSelect: "none"
         }}
       >
-        Turn Page
+        {label}
       </div>
     </div>
   );

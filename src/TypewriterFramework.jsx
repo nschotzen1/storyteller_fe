@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef, useReducer, useCallback, useMemo } from 'react';
 import './TypeWriter.css';
-import TurnPageLever from './TurnPageLever.jsx';
 import Keyboard from './components/typewriter/Keyboard.jsx';
 import PaperDisplay from './components/typewriter/PaperDisplay.jsx';
-import PageNavigation from './components/typewriter/PageNavigation.jsx'; // Import the new PageNavigation component
-import OrreryComponent from './OrreryComponent.jsx';
 import StoryWell from './components/storywell/StoryWell.jsx';
 import { getRandomTexture, playKeySound, playEnterSound, playPageIntroSound, playXerofagHowl, playEndOfPageSound, countLines, playGhostWriterSound, ambientSoundManager, playPreGhostSound, fetchAndPlayElevenLabsTTS, playStorytellerKeyPressSound } from './utils.js';
 import {
@@ -14,15 +11,8 @@ import {
   fetchShouldGenerateContinuation,
   fetchStorytellerTypewriterReply,
   fetchTypewriterReply,
-  resolveOrreryPageTextureIdentity,
-  saveTypewriterVibeState,
   startTypewriterSession
 } from './apiService.js';
-import {
-  getOrreryVibeById,
-  normalizeOrrerySessionState,
-  ORRERY_INITIAL_RADIAL_DISTANCE_BUDGET
-} from './components/orrery/vibes.js';
 import {
   createStoryWellPageFromPlace,
   getStoryWellPlaceById,
@@ -91,22 +81,11 @@ const FILM_FLICKER_OVERLAY_GRADIENT = 'linear-gradient(90deg,rgba(0,0,0,0.09),rg
 const FILM_FLICKER_OVERLAY_OPACITY = 0.15;
 const FILM_FLICKER_OVERLAY_BLEND_MODE = 'multiply';
 const FILM_FLICKER_OVERLAY_ANIMATION = 'filmFlicker 1.1s infinite linear alternate';
-const PAGE_NAVIGATION_BUTTONS_TOP = '5.35rem';
-const PAGE_NAVIGATION_BUTTONS_Z_INDEX = 1300;
-const PAGE_NAVIGATION_BUTTONS_PADDING = '0 3vw';
-const PAGE_NAVIGATION_BUTTON_FONT_SIZE = 24; // pixels
-const PAGE_NAVIGATION_BUTTON_DISABLED_OPACITY = 0.3;
-const PAGE_COUNT_TEXT_COLOR = '#887';
-const PAGE_COUNT_TEXT_FONT_FAMILY = 'IBM Plex Mono, monospace';
-const PAGE_COUNT_TEXT_FONT_SIZE = 16; // pixels
 const GRIT_SHELL_OVERLAY_URL = '/textures/overlay_grit_shell.png';
 const FILM_BACKGROUND_Z_INDEX = 1;
 const FILM_BACKGROUND_OPACITY = 0.92;
 const TYPEWRITER_TEXT_Z_INDEX = 2;
 const SIGIL_IMAGE_URL = '/textures/sigil_storytellers_society.png';
-const TURN_PAGE_LEVER_BOTTOM = '48px';
-const TURN_PAGE_LEVER_LEFT = '5vw';
-const TURN_PAGE_LEVER_Z_INDEX = 50;
 const NEEDED_HEIGHT_OFFSET = 4; // pixels
 const STRIKER_CURSOR_OFFSET_LEFT = '-40px';
 
@@ -1470,9 +1449,6 @@ const TypewriterFramework = (props) => {
   // lastUserInputTime, responseQueued, lastGeneratedLength are now in ghostwriterState
   // Level: 0 = empty, 3 = full (ready for page turn)
   const [leverLevel, setLeverLevel] = useState(0);
-  const [orreryState, setOrreryState] = useState(() => normalizeOrrerySessionState({
-    orrery_radial_distance_budget: ORRERY_INITIAL_RADIAL_DISTANCE_BUDGET
-  }));
   const [currentFontStyles, setCurrentFontStyles] = useState(null);
   const [lastContinuationInsights, setLastContinuationInsights] = useState(null);
   const [lastContinuationTiming, setLastContinuationTiming] = useState(null);
@@ -1535,10 +1511,6 @@ const TypewriterFramework = (props) => {
         setSessionId(nextSessionId);
       }
 
-      const restoredOrreryState = normalizeOrrerySessionState(data?.worldState);
-      const restoredVibe = getOrreryVibeById(restoredOrreryState.current_vibe);
-      setOrreryState(restoredOrreryState);
-
       const restoredFragment = typeof data?.fragment === 'string'
         ? data.fragment
         : (typeof data?.initialFragment === 'string' ? data.initialFragment : null);
@@ -1548,18 +1520,6 @@ const TypewriterFramework = (props) => {
           ? data.entityKeys
           : [];
       setTypewriterTextKeys((prev) => mergeTypewriterTextKeys(prev, returnedTypewriterKeys));
-
-      const restoredPageTextureUrl = restoredOrreryState.page_texture_identity?.assetPngUrl || restoredVibe?.backgroundUrl;
-      if (restoredPageTextureUrl) {
-        setPages((prev) => {
-          if (!Array.isArray(prev) || !prev.length) return prev;
-          return prev.map((page, index) => (
-            index === 0
-              ? { ...page, filmBgUrl: restoredPageTextureUrl }
-              : page
-          ));
-        });
-      }
 
       if (error || typeof restoredFragment !== 'string') {
         setIsSessionReady(true);
@@ -1574,7 +1534,7 @@ const TypewriterFramework = (props) => {
           {
             ...prev[0],
             text: restoredFragment,
-            filmBgUrl: restoredVibe?.backgroundUrl || prev[0]?.filmBgUrl || DEFAULT_FILM_BG_URL,
+            filmBgUrl: prev[0]?.filmBgUrl || DEFAULT_FILM_BG_URL,
             pageStyleRanges: []
           }
         ];
@@ -1689,9 +1649,6 @@ const TypewriterFramework = (props) => {
     entityKeyTransactions.some((transaction) => transaction.status === 'rejected')
   ), [entityKeyTransactions]);
   const visibleGhostText = `${typingState.currentGhostText || ''}${typingState.sequenceUserText || ''}`;
-  const activeOrreryVibe = useMemo(() => (
-    getOrreryVibeById(orreryState.current_vibe)
-  ), [orreryState.current_vibe]);
   const persistedNarrativeText = useMemo(() => (
     buildTypewriterNarrativeFromPages(pages)
   ), [pages]);
@@ -2324,11 +2281,18 @@ const TypewriterFramework = (props) => {
           // Fetch next film image then prepare for slide
           fetchNextFilmImage(narrativeBeforeTurn, sessionId).then(data => {
             const newUrl = data?.data?.image_url || data?.data?.image_path || null;
-            const tunedTextureUrl = orreryState.page_texture_identity?.assetPngUrl || activeOrreryVibe?.backgroundUrl;
-            const newFilm = tunedTextureUrl || newUrl || DEFAULT_FILM_BG_URL;
+            const newFilm = activeStoryWellPlace?.textureUrl || newUrl || DEFAULT_FILM_BG_URL;
+            const nextPage = {
+              text: '',
+              filmBgUrl: newFilm,
+              pageStyleRanges: [],
+              pageFontStyles: activeStoryWellPlace?.font || null,
+              storyWellTitle: activeStoryWellPlace?.title || undefined,
+              storyWellDepth: activeStoryWellPlace?.depth,
+            };
             const nextPages = [
               ...pages.slice(0, currentPage + 1),
-              { text: '', filmBgUrl: newFilm, pageStyleRanges: [] }
+              nextPage
             ];
             const nextNarrativeCursorLength = buildTypewriterNarrativeFromPages(nextPages, {
               includeTrailingBlankPages: true
@@ -3239,67 +3203,6 @@ const TypewriterFramework = (props) => {
     handlePageTurnScroll();
   };
 
-  const handleOrrerySlideCommit = useCallback(({ positions, vector, vibe, radialDistanceCost = 1 }) => {
-    const availableRadialDistance = Math.max(0, Math.floor(Number(orreryState.orrery_radial_distance_budget) || 0));
-    const committedRadialDistance = Math.max(1, Math.floor(Number(radialDistanceCost) || 1));
-    if (availableRadialDistance <= 0 || committedRadialDistance > availableRadialDistance) return;
-
-    const nextOrreryState = normalizeOrrerySessionState({
-      ...orreryState,
-      current_vibe: vibe?.id || orreryState.current_vibe,
-      orrery_positions: positions,
-      orrery_vector: vector,
-      orrery_radial_distance_budget: availableRadialDistance - committedRadialDistance
-    });
-
-    setOrreryState(nextOrreryState);
-
-    const applyPageTexture = (backgroundUrl) => {
-      if (!backgroundUrl) return;
-      setPages((prev) => {
-        const updatedPages = [...prev];
-        const existingPage = updatedPages[currentPage] || {
-          text: '',
-          filmBgUrl: DEFAULT_FILM_BG_URL,
-          pageStyleRanges: []
-        };
-        updatedPages[currentPage] = {
-          ...existingPage,
-          filmBgUrl: vibe.backgroundUrl
-        };
-        pagesRef.current = updatedPages;
-        return updatedPages;
-      });
-    };
-
-    if (vibe?.backgroundUrl) {
-      applyPageTexture(vibe.backgroundUrl);
-    }
-
-    if (sessionId) {
-      saveTypewriterVibeState(sessionId, nextOrreryState).catch((error) => {
-        console.error('Error saving typewriter orrery vibe state:', error);
-      });
-      resolveOrreryPageTextureIdentity(sessionId, nextOrreryState.orrery_vector).then(({ data, error }) => {
-        if (error || !data) {
-          if (error) console.error('Error resolving Orrery page texture identity:', error);
-          return;
-        }
-        setOrreryState((prev) => normalizeOrrerySessionState({
-          ...prev,
-          current_vibe: data.alignmentKey || prev.current_vibe,
-          orrery_vector: data.vector || prev.orrery_vector,
-          page_texture_identity: data
-        }));
-        if (data.assetPngUrl) {
-          applyPageTexture(data.assetPngUrl);
-        }
-      }).catch((error) => {
-        console.error('Error resolving Orrery page texture identity:', error);
-      });
-    }
-  }, [currentPage, orreryState, sessionId]);
-
   const handleNextPageNavigation = () => {
     if (currentPage < pages.length - 1) {
       handleHistoryNavigation(currentPage + 1);
@@ -3319,24 +3222,6 @@ const TypewriterFramework = (props) => {
       onKeyDown={handleKeyDown}
       ref={containerRef}
     >
-      <PageNavigation
-        currentPage={currentPage}
-        totalPages={pages.length}
-        onPrevPage={() => handleHistoryNavigation(currentPage - 1)}
-        onNextPage={handleNextPageNavigation}
-        canCreateNextPage={canPullTurnPageLever}
-        isSliding={isSliding} // Directly from pageTransitionState
-        // Pass relevant styling constants
-        PAGE_NAVIGATION_BUTTONS_TOP={PAGE_NAVIGATION_BUTTONS_TOP}
-        PAGE_NAVIGATION_BUTTONS_Z_INDEX={PAGE_NAVIGATION_BUTTONS_Z_INDEX}
-        PAGE_NAVIGATION_BUTTONS_PADDING={PAGE_NAVIGATION_BUTTONS_PADDING}
-        PAGE_NAVIGATION_BUTTON_FONT_SIZE={PAGE_NAVIGATION_BUTTON_FONT_SIZE}
-        PAGE_NAVIGATION_BUTTON_DISABLED_OPACITY={PAGE_NAVIGATION_BUTTON_DISABLED_OPACITY}
-        PAGE_COUNT_TEXT_COLOR={PAGE_COUNT_TEXT_COLOR}
-        PAGE_COUNT_TEXT_FONT_FAMILY={PAGE_COUNT_TEXT_FONT_FAMILY}
-        PAGE_COUNT_TEXT_FONT_SIZE={PAGE_COUNT_TEXT_FONT_SIZE}
-      />
-
       <img
         src={GRIT_SHELL_OVERLAY_URL}
         alt="grit shell overlay"
@@ -3552,10 +3437,20 @@ const TypewriterFramework = (props) => {
         leverState={storyWellLeverState}
         writingAnchor={storyWellWritingAnchor}
         writingCells={orderedStoryWellCells}
+        pageIndex={currentPage}
+        pageCount={pages.length}
+        pageTurnLevel={leverLevel}
+        canGoPreviousPage={currentPage > 0}
+        canGoNextPage={currentPage < pages.length - 1}
+        canCreateNextPage={canPullTurnPageLever}
+        pageTurnDisabled={pageChangeInProgress || isSliding}
         disabled={pageTransitionState.pageChangeInProgress || pageTransitionState.isSliding || hasOpenEntityKeyTransaction}
         onLeverChange={handleStoryWellLeverChange}
         onWritingAnchorCellStep={handleStoryWellAnchorCellStep}
         onWritingAnchorPositionChange={handleStoryWellAnchorPositionChange}
+        onPreviousPage={() => handleHistoryNavigation(currentPage - 1)}
+        onNextPage={handleNextPageNavigation}
+        onTurnPage={handleCreateNextPage}
       />
 
       <PaperDisplay
@@ -3644,31 +3539,6 @@ const TypewriterFramework = (props) => {
         KEY_TILT_RANDOM_MIN={KEY_TILT_RANDOM_MIN}
         KEY_OFFSET_Y_RANDOM_MAX={KEY_OFFSET_Y_RANDOM_MAX}
         KEY_OFFSET_Y_RANDOM_MIN={KEY_OFFSET_Y_RANDOM_MIN}
-      />
-
-      <div
-        className="turn-page-lever-float"
-        style={{
-          position: 'absolute',
-          bottom: TURN_PAGE_LEVER_BOTTOM,
-          left: TURN_PAGE_LEVER_LEFT,
-          zIndex: TURN_PAGE_LEVER_Z_INDEX,
-          pointerEvents: 'auto', // so user can click/tap lever!
-        }}
-      >
-        <TurnPageLever
-          level={leverLevel}
-          canPull={canPullTurnPageLever}
-          disabled={pageChangeInProgress}
-          onPull={handleCreateNextPage}
-        />
-      </div>
-      <OrreryComponent
-        vector={orreryState.orrery_vector}
-        positions={orreryState.orrery_positions}
-        radialDistanceBudget={orreryState.orrery_radial_distance_budget}
-        currentVibe={activeOrreryVibe?.label || orreryState.page_texture_identity?.title || orreryState.current_vibe}
-        onSlideCommit={handleOrrerySlideCommit}
       />
 
     </div>
