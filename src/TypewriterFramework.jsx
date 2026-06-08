@@ -32,8 +32,9 @@ const TYPEWRITER_SKIN_ENABLED = true;
 const TYPEWRITER_SKIN_ASSET_URL = '/assets/typewriter/reference/typewriter_shell_concept_v1.png';
 const TYPEWRITER_SKIN_FRAME_HEIGHT = 360;
 const TYPEWRITER_SKIN_FILM_HEIGHT = 900;
-const TYPEWRITER_SKIN_TOP_OFFSET = 78;
+const TYPEWRITER_SKIN_TOP_OFFSET = 116;
 const TYPEWRITER_SKIN_BOTTOM_PADDING = 120;
+const TYPEWRITER_SKIN_INTRO_SCROLL_TARGET = 86;
 
 // Default values
 export const DEFAULT_FILM_BG_URL = '/textures/decor/film_frame_desert.png';
@@ -2067,7 +2068,10 @@ const TypewriterFramework = (props) => {
       }
     }, PAGE_INTRO_PREP_DELAY + STRIKER_INTRO_ANIMATION_DURATION);
     const timer = setTimeout(() => {
-      cinematicScrollTo(scrollRef, CINEMATIC_SCROLL_INTRO_SCROLL_TO_TOP_TIMEOUT, CINEMATIC_SCROLL_INTRO_DURATION);
+      const introScrollTarget = TYPEWRITER_SKIN_ENABLED
+        ? TYPEWRITER_SKIN_INTRO_SCROLL_TARGET
+        : CINEMATIC_SCROLL_INTRO_SCROLL_TO_TOP_TIMEOUT;
+      cinematicScrollTo(scrollRef, introScrollTarget, CINEMATIC_SCROLL_INTRO_DURATION);
       setTimeout(() => dispatchPageTransition({ type: pageTransitionActionTypes.SET_SCROLL_MODE, payload: { scrollMode: NORMAL_SCROLL_MODE } }), CINEMATIC_SCROLL_TO_NORMAL_MODE_TIMEOUT);
     }, CINEMATIC_SCROLL_INTRO_DELAY);
     return () => {
@@ -2100,6 +2104,7 @@ const TypewriterFramework = (props) => {
     // The original error was specifically for lastLineRef.current being null before scrollIntoView.
     if (!scrollRef.current) return;
     if (typingState.fadeState.isActive) return;
+    if (TYPEWRITER_SKIN_ENABLED) return;
 
     if (pageTransitionState.scrollMode === NORMAL_SCROLL_MODE) {
       requestAnimationFrame(() => {

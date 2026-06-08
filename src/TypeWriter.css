@@ -102,12 +102,29 @@
 }
 
 .typewriter-skin__paper-slot {
+  --typewriter-skin-paper-x: clamp(2.2rem, 5.1%, 4.4rem);
+  --typewriter-story-cell-left: var(--typewriter-skin-paper-x);
   left: 19.05%;
   top: 12.1%;
   width: 61.85%;
   height: 35.35%;
   overflow: hidden;
   border-radius: 0.45rem;
+  isolation: isolate;
+}
+
+.typewriter-skin__paper-slot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 50% 52%, rgba(230, 137, 28, 0.82), rgba(174, 80, 11, 0.9) 72%, rgba(94, 38, 9, 0.94)),
+    linear-gradient(180deg, rgba(235, 143, 34, 0.94), rgba(178, 79, 11, 0.94));
+  box-shadow:
+    inset 0 0 42px rgba(62, 21, 5, 0.5),
+    inset 0 10px 22px rgba(255, 180, 68, 0.1);
+  pointer-events: none;
 }
 
 .typewriter-skin__keyboard-slot {
@@ -168,6 +185,7 @@
   box-shadow:
     inset 0 0 42px rgba(0, 0, 0, 0.8),
     0 16px 28px rgba(0, 0, 0, 0.3);
+  opacity: 0;
   pointer-events: none;
 }
 
@@ -2008,6 +2026,8 @@
 
 /* --- Typewriter Skin Prototype Layout --- */
 .typewriter-skin__paper-slot .typewriter-paper-frame {
+  position: relative;
+  z-index: 1;
   width: 100% !important;
   height: 100% !important;
   max-height: none !important;
@@ -2024,18 +2044,17 @@
   width: 100% !important;
   height: 100% !important;
   max-height: none !important;
-  overflow-y: auto !important;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(133, 83, 34, 0.55) transparent;
+  overflow: hidden !important;
+  scrollbar-width: none;
 }
 
 .typewriter-skin__paper-slot .paper-scroll-area::-webkit-scrollbar {
-  width: 6px;
+  display: none;
+  width: 0;
 }
 
 .typewriter-skin__paper-slot .paper-scroll-area::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: rgba(133, 83, 34, 0.48);
+  background: transparent;
 }
 
 .typewriter-skin__paper-slot .paper-scroll-content {
@@ -2043,35 +2062,44 @@
 }
 
 .typewriter-skin__paper-slot .film-background {
-  opacity: 0.6 !important;
+  opacity: 0.82 !important;
   mix-blend-mode: multiply;
-  filter: sepia(0.2) saturate(0.86) brightness(1.08);
+  filter: sepia(0.16) saturate(0.94) brightness(1.03);
 }
 
 .typewriter-skin__paper-slot .typewriter-text.film-overlay-text {
-  padding-top: 78px !important;
-  padding-right: clamp(2.4rem, 5.2%, 4.8rem) !important;
+  position: relative;
+  z-index: 3;
+  padding-top: 116px !important;
+  padding-right: clamp(5.4rem, 10.6%, 7rem) !important;
   padding-bottom: 120px !important;
-  padding-left: clamp(2.4rem, 5.2%, 4.8rem) !important;
-  font-size: clamp(0.92rem, 1.18vw, 1.46rem) !important;
-  line-height: 1.9 !important;
+  padding-left: var(--typewriter-skin-paper-x) !important;
+  font-size: clamp(0.82rem, 1.06vw, 1.28rem) !important;
+  line-height: 1.82 !important;
 }
 
 .typewriter-skin__paper-slot .typewriter-line {
-  min-height: 1.9em;
-  line-height: 1.9;
+  min-height: 1.82em;
+  line-height: 1.82;
 }
 
 .typewriter-skin__paper-slot .typewriter-story-cell {
-  right: clamp(2.4rem, 5.2%, 4.8rem);
-  min-height: 1.9em;
-  line-height: 1.9;
+  right: clamp(5.4rem, 10.6%, 7rem);
+  min-height: 1.82em;
+  line-height: 1.82;
 }
 
 .typewriter-skin__paper-slot .striker-cursor {
-  width: clamp(42px, 4.3vw, 66px);
-  height: clamp(40px, 4.1vw, 64px);
-  top: 1.25rem;
+  width: clamp(32px, 3.1vw, 50px);
+  height: clamp(30px, 2.95vw, 48px);
+  top: 0.2rem;
+  left: -0.65rem;
+}
+
+.typewriter-skin__paper-slot .typewriter-story-cell .striker-cursor {
+  margin-left: 0.02rem;
+  top: 0.04rem;
+  vertical-align: text-bottom;
 }
 
 .typewriter-skin__keyboard-slot .keyboard-plate {
@@ -2143,29 +2171,42 @@
   pointer-events: none;
 }
 
+.typewriter-skin__storywell-slot .story-well-shell--skin-mounted .story-well-shadow,
+.typewriter-skin__storywell-slot .story-well-shell--skin-mounted .story-well-frame,
+.typewriter-skin__storywell-slot .story-well-shell--skin-mounted .story-well-basin,
+.typewriter-skin__storywell-slot .story-well-shell--skin-mounted .story-well-grid,
+.typewriter-skin__storywell-slot .story-well-shell--skin-mounted .story-well-glass {
+  display: none;
+}
+
 .typewriter-skin__storywell-slot .story-well-readout {
-  max-width: 44%;
+  max-width: 36%;
   margin: 0 0 0.18rem 0.2rem;
-  padding: 0.28rem 0.38rem;
-  opacity: 0.92;
+  padding: 0.2rem 0.3rem;
+  border-color: rgba(207, 164, 91, 0.2);
+  background: rgba(5, 4, 3, 0.46);
+  box-shadow: none;
+  opacity: 0.74;
 }
 
 .typewriter-skin__storywell-slot .story-well-readout strong {
-  font-size: clamp(0.48rem, 0.72vw, 0.7rem);
+  font-size: clamp(0.4rem, 0.58vw, 0.58rem);
 }
 
 .typewriter-skin__storywell-slot .story-well-readout span {
-  font-size: clamp(0.36rem, 0.52vw, 0.5rem);
+  font-size: clamp(0.3rem, 0.42vw, 0.42rem);
 }
 
 .typewriter-skin__storywell-slot .story-well-turn-page {
   position: absolute;
-  left: 33%;
-  top: -0.5%;
+  left: 31%;
+  top: 2%;
   z-index: 9;
-  width: 18%;
+  width: 12%;
   margin: 0;
-  transform: scale(0.58);
+  opacity: 0;
+  pointer-events: auto;
+  transform: scale(0.42);
   transform-origin: top center;
 }
 
@@ -2182,22 +2223,23 @@
 
 .typewriter-skin__storywell-slot .story-well-writing-controls {
   position: absolute;
-  left: 1.8%;
-  top: 73%;
+  left: 7.8%;
+  top: 76.5%;
   z-index: 10;
-  grid-template-columns: 1.25rem minmax(1.8rem, 2.1rem) minmax(2.45rem, auto) minmax(2.45rem, auto) 1.25rem;
-  width: 57%;
+  grid-template-columns: 1.05rem minmax(1.5rem, 1.9rem) minmax(2.1rem, auto) minmax(2.1rem, auto) 1.05rem;
+  width: 46%;
   margin: 0;
-  padding: 0.14rem;
-  gap: 0.12rem;
+  padding: 0.1rem;
+  gap: 0.08rem;
   transform: none;
-  opacity: 0.94;
+  opacity: 0.82;
 }
 
 .typewriter-skin__storywell-slot .story-well-writing-button {
-  height: 1.28rem;
-  padding: 0 0.22rem;
-  font-size: clamp(0.43rem, 0.58vw, 0.6rem);
+  height: 1.05rem;
+  padding: 0 0.16rem;
+  border-radius: 0.24rem;
+  font-size: clamp(0.36rem, 0.48vw, 0.5rem);
 }
 
 .typewriter-skin__storywell-slot .story-well-writing-button--slot {
@@ -2206,16 +2248,17 @@
 
 .typewriter-skin__storywell-slot .story-well-writing-target {
   align-items: center;
-  font-size: clamp(0.36rem, 0.48vw, 0.48rem);
+  font-size: clamp(0.3rem, 0.38vw, 0.42rem);
   text-align: center;
 }
 
 .typewriter-skin__storywell-slot .story-well-device {
   position: absolute;
-  left: 1%;
-  bottom: -6%;
+  left: 23%;
+  bottom: -4.8%;
   z-index: 3;
-  width: 86%;
+  width: 82%;
+  filter: none;
 }
 
 .typewriter-skin__storywell-slot .story-well-shadow {
@@ -2235,7 +2278,7 @@
 }
 
 .typewriter-skin__storywell-slot .story-well-cells {
-  inset: 26%;
+  inset: 30%;
 }
 
 .typewriter-skin__storywell-slot .story-well-glass {
@@ -2243,10 +2286,15 @@
 }
 
 .typewriter-skin__storywell-slot .story-well-cell {
-  max-width: 48%;
-  padding: 0.16rem 0.2rem 0.14rem;
-  font-size: clamp(0.24rem, 0.48vw, 0.42rem);
-  transform: translate(-50%, -50%) scale(calc(0.68 + var(--cell-depth) * 0.035));
+  max-width: 54%;
+  padding: 0.12rem 0.16rem 0.1rem;
+  border-color: rgba(229, 195, 134, 0.48);
+  background:
+    linear-gradient(180deg, rgba(239, 217, 175, 0.88), rgba(183, 147, 91, 0.74)),
+    radial-gradient(circle at 35% 28%, rgba(255, 249, 217, 0.5), transparent 52%);
+  font-size: clamp(0.2rem, 0.38vw, 0.34rem);
+  opacity: calc(0.58 + var(--cell-depth) * 0.07);
+  transform: translate(-50%, -50%) scale(calc(0.64 + var(--cell-depth) * 0.035));
 }
 
 .typewriter-skin__storywell-slot .story-well-cell--active {
@@ -2260,26 +2308,38 @@
 
 .typewriter-skin__storywell-slot .story-well-lever {
   z-index: 8;
-  width: clamp(32px, 3.5vw, 48px);
-  height: clamp(32px, 3.5vw, 48px);
+  width: clamp(34px, 4.3vw, 58px);
+  height: clamp(34px, 4.3vw, 58px);
+  opacity: 0.2;
+  transition:
+    filter 140ms ease,
+    opacity 140ms ease;
+}
+
+.typewriter-skin__storywell-slot .story-well-lever:hover,
+.typewriter-skin__storywell-slot .story-well-lever:focus-visible {
+  opacity: 0.62;
 }
 
 .typewriter-skin__storywell-slot .story-well-lever__socket {
-  inset: 4px;
-  background:
-    radial-gradient(circle at 42% 38%, rgba(198, 140, 73, 0.32), rgba(26, 17, 12, 0.74) 45%, rgba(3, 3, 3, 0.84) 78%),
-    repeating-conic-gradient(from 0deg, rgba(235, 188, 112, 0.16) 0deg 3deg, transparent 3deg 18deg);
+  inset: 10px;
+  border-color: rgba(255, 193, 96, 0.2);
+  background: rgba(5, 3, 2, 0.16);
+  box-shadow: none;
 }
 
 .typewriter-skin__storywell-slot .story-well-lever__handle {
-  width: clamp(8px, 0.82vw, 12px);
-  height: clamp(31px, 3.25vw, 45px);
+  width: clamp(5px, 0.46vw, 8px);
+  height: clamp(22px, 2.2vw, 34px);
+  opacity: 0.74;
 }
 
 .typewriter-skin__storywell-slot .story-well-lever__sigil {
-  width: clamp(14px, 1.38vw, 18px);
-  height: clamp(14px, 1.38vw, 18px);
-  font-size: clamp(0.48rem, 0.64vw, 0.66rem);
+  width: clamp(11px, 1.05vw, 15px);
+  height: clamp(11px, 1.05vw, 15px);
+  border-color: rgba(248, 213, 151, 0.18);
+  background: rgba(4, 3, 3, 0.34);
+  font-size: clamp(0.36rem, 0.48vw, 0.5rem);
 }
 
 .typewriter-skin__sigil-slot .storyteller-sigil {

@@ -652,7 +652,7 @@ const PaperDisplay = ({
                 isActive ? 'typewriter-story-cell--active' : ''
               ].filter(Boolean).join(' ')}
               style={{
-                left: `calc(5rem + ${cell.indentCh}ch)`,
+                left: `calc(var(--typewriter-story-cell-left, 5rem) + ${cell.indentCh}ch)`,
                 top: `calc(${TOP_OFFSET}px + ${cell.lineIndex} * ${STORY_CELL_LINE_ADVANCE_REM}rem)`,
                 '--story-cell-depth': depth,
                 ...cellFontStyle,
