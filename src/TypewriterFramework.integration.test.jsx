@@ -401,12 +401,12 @@ describe('TypewriterFramework integration', () => {
     const { container } = render(<TypewriterFramework />);
 
     expect(container.querySelector('.paper-scroll-area')).toHaveStyle({
-      height: '700px',
+      height: '360px',
       overflowY: 'auto',
     });
     expect(screen.getByTestId('paper-scroll-content')).toHaveStyle({
-      height: '1400px',
-      minHeight: '1400px',
+      height: '900px',
+      minHeight: '900px',
     });
   });
 

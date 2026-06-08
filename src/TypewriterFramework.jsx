@@ -28,6 +28,12 @@ const TOP_OFFSET = 260;
 const BOTTOM_PADDING = 220;
 const FRAME_HEIGHT = 700;
 export const MAX_LINES = Math.floor((FILM_HEIGHT - TOP_OFFSET - BOTTOM_PADDING) / LINE_HEIGHT);
+const TYPEWRITER_SKIN_ENABLED = true;
+const TYPEWRITER_SKIN_ASSET_URL = '/assets/typewriter/reference/typewriter_shell_concept_v1.png';
+const TYPEWRITER_SKIN_FRAME_HEIGHT = 360;
+const TYPEWRITER_SKIN_FILM_HEIGHT = 900;
+const TYPEWRITER_SKIN_TOP_OFFSET = 78;
+const TYPEWRITER_SKIN_BOTTOM_PADDING = 120;
 
 // Default values
 export const DEFAULT_FILM_BG_URL = '/textures/decor/film_frame_desert.png';
@@ -1679,9 +1685,16 @@ const TypewriterFramework = (props) => {
     }
     return keyTextures[index];
   });
-  const visibleLineCount = Math.min(countLines(pageText, visibleGhostText), MAX_LINES);
-  const neededHeight = TOP_OFFSET + visibleLineCount * LINE_HEIGHT + BOTTOM_PADDING + NEEDED_HEIGHT_OFFSET;
-  const scrollAreaHeight = Math.max(FILM_HEIGHT, neededHeight);
+  const activeFrameHeight = TYPEWRITER_SKIN_ENABLED ? TYPEWRITER_SKIN_FRAME_HEIGHT : FRAME_HEIGHT;
+  const activeFilmHeight = TYPEWRITER_SKIN_ENABLED ? TYPEWRITER_SKIN_FILM_HEIGHT : FILM_HEIGHT;
+  const activeTopOffset = TYPEWRITER_SKIN_ENABLED ? TYPEWRITER_SKIN_TOP_OFFSET : TOP_OFFSET;
+  const activeBottomPadding = TYPEWRITER_SKIN_ENABLED ? TYPEWRITER_SKIN_BOTTOM_PADDING : BOTTOM_PADDING;
+  const activeMaxLines = TYPEWRITER_SKIN_ENABLED
+    ? Math.max(1, Math.floor((activeFilmHeight - activeTopOffset - activeBottomPadding) / LINE_HEIGHT))
+    : MAX_LINES;
+  const visibleLineCount = Math.min(countLines(pageText, visibleGhostText), activeMaxLines);
+  const neededHeight = activeTopOffset + visibleLineCount * LINE_HEIGHT + activeBottomPadding + NEEDED_HEIGHT_OFFSET;
+  const scrollAreaHeight = Math.max(activeFilmHeight, neededHeight);
   const canPullTurnPageLever =
     leverLevel === LEVER_LEVEL_WORD_THRESHOLDS.length - 1
     && !pageChangeInProgress
@@ -2480,7 +2493,7 @@ const TypewriterFramework = (props) => {
     const fullCombinedText = pageText + ghostTextString;
     const currentLines = fullCombinedText.split('\n');
 
-    if (currentLines.length >= MAX_LINES && e.key === 'Enter') {
+    if (currentLines.length >= activeMaxLines && e.key === 'Enter') {
       e.preventDefault();
       return;
     }
@@ -3432,6 +3445,39 @@ const TypewriterFramework = (props) => {
         </div>
       ) : null}
 
+      <div className="typewriter-skin-board" data-testid="typewriter-skin">
+        <img
+          src={TYPEWRITER_SKIN_ASSET_URL}
+          alt=""
+          className="typewriter-skin-art"
+          aria-hidden="true"
+        />
+
+        <div className="typewriter-skin-page-controls" data-testid="story-well-page-controls">
+          <button
+            type="button"
+            className="typewriter-skin-page-button typewriter-skin-page-button--previous"
+            disabled={pageChangeInProgress || isSliding || currentPage <= 0}
+            onClick={() => handleHistoryNavigation(currentPage - 1)}
+            data-testid="story-well-page-prev"
+          >
+            Prev
+          </button>
+          <div className="typewriter-skin-page-count" aria-live="polite">
+            Page {currentPage + 1}/{pages.length}
+          </div>
+          <button
+            type="button"
+            className="typewriter-skin-page-button typewriter-skin-page-button--next"
+            disabled={pageChangeInProgress || isSliding || (currentPage >= pages.length - 1 && !canPullTurnPageLever)}
+            onClick={handleNextPageNavigation}
+            data-testid="story-well-page-next"
+          >
+            Next
+          </button>
+        </div>
+
+        <div className="typewriter-skin-slot typewriter-skin__storywell-slot">
       <StoryWell
         place={activeStoryWellPlace}
         leverState={storyWellLeverState}
@@ -3444,6 +3490,7 @@ const TypewriterFramework = (props) => {
         canGoNextPage={currentPage < pages.length - 1}
         canCreateNextPage={canPullTurnPageLever}
         pageTurnDisabled={pageChangeInProgress || isSliding}
+        showPageControls={false}
         disabled={pageTransitionState.pageChangeInProgress || pageTransitionState.isSliding || hasOpenEntityKeyTransaction}
         onLeverChange={handleStoryWellLeverChange}
         onWritingAnchorCellStep={handleStoryWellAnchorCellStep}
@@ -3451,8 +3498,11 @@ const TypewriterFramework = (props) => {
         onPreviousPage={() => handleHistoryNavigation(currentPage - 1)}
         onNextPage={handleNextPageNavigation}
         onTurnPage={handleCreateNextPage}
+        skinMounted={TYPEWRITER_SKIN_ENABLED}
       />
+        </div>
 
+        <div className="typewriter-skin-slot typewriter-skin__paper-slot">
       <PaperDisplay
         pageText={pageText}
         pageStyleRanges={pageStyleRanges}
@@ -3478,11 +3528,11 @@ const TypewriterFramework = (props) => {
         nextFilmBgUrl={nextFilmBgUrl}
         prevText={prevText}
         nextText={nextText}
-        MAX_LINES={MAX_LINES}
-        TOP_OFFSET={TOP_OFFSET}
-        BOTTOM_PADDING={BOTTOM_PADDING}
-        FRAME_HEIGHT={FRAME_HEIGHT}
-        FILM_HEIGHT={FILM_HEIGHT}
+        MAX_LINES={activeMaxLines}
+        TOP_OFFSET={activeTopOffset}
+        BOTTOM_PADDING={activeBottomPadding}
+        FRAME_HEIGHT={activeFrameHeight}
+        FILM_HEIGHT={activeFilmHeight}
         scrollAreaHeight={scrollAreaHeight}
         neededHeight={neededHeight}
         SLIDE_DURATION_MS={SLIDE_DURATION_MS}
@@ -3509,14 +3559,18 @@ const TypewriterFramework = (props) => {
         STRIKER_CURSOR_OFFSET_LEFT={STRIKER_CURSOR_OFFSET_LEFT}
         SLIDE_DIRECTION_LEFT={SLIDE_DIRECTION_LEFT}
       />
+        </div>
 
+        <div className="typewriter-skin-slot typewriter-skin__sigil-slot">
       <div className="storyteller-sigil">
         <img
           src={SIGIL_IMAGE_URL}
           alt="Storyteller's Society Sigil"
         />
       </div>
+        </div>
 
+        <div className="typewriter-skin-slot typewriter-skin__keyboard-slot">
       <Keyboard
         keys={keys}
         keyRows={KEY_ROWS}
@@ -3540,6 +3594,9 @@ const TypewriterFramework = (props) => {
         KEY_OFFSET_Y_RANDOM_MAX={KEY_OFFSET_Y_RANDOM_MAX}
         KEY_OFFSET_Y_RANDOM_MIN={KEY_OFFSET_Y_RANDOM_MIN}
       />
+        </div>
+
+      </div>
 
     </div>
   );

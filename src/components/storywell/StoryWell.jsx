@@ -25,6 +25,8 @@ function StoryWell({
   canGoNextPage = false,
   canCreateNextPage = false,
   pageTurnDisabled = false,
+  showPageControls = true,
+  skinMounted = false,
   disabled = false,
   onLeverChange,
   onWritingAnchorCellStep,
@@ -38,6 +40,7 @@ function StoryWell({
   const activeWritingCellIndex = orderedWritingCells.findIndex((cell) => cell.id === writingAnchor?.cellId);
   const writingPosition = writingAnchor?.position === 'before' ? 'before' : 'after';
   const activeWritingCell = activeWritingCellIndex >= 0 ? orderedWritingCells[activeWritingCellIndex] : orderedWritingCells[0];
+  const activeWritingCellId = activeWritingCell?.id || writingAnchor?.cellId || null;
   const canStepPrevious = activeWritingCellIndex > 0;
   const canStepNext = activeWritingCellIndex >= 0 && activeWritingCellIndex < orderedWritingCells.length - 1;
   const pageControlsDisabled = disabled || pageTurnDisabled;
@@ -47,34 +50,40 @@ function StoryWell({
   const normalizedPageCount = Math.max(1, Number(pageCount) || 1);
 
   return (
-    <section className="story-well-shell" aria-label="StoryWell" data-testid="story-well">
+    <section
+      className={`story-well-shell${skinMounted ? ' story-well-shell--skin-mounted' : ''}`}
+      aria-label="StoryWell"
+      data-testid="story-well"
+    >
       <div className="story-well-readout" aria-live="polite">
         <strong>{place?.title || 'StoryWell'}</strong>
         <span>{place?.textureId || 'untuned'}</span>
       </div>
-      <div className="story-well-page-controls" data-testid="story-well-page-controls">
-        <button
-          type="button"
-          className="story-well-page-button"
-          disabled={previousPageDisabled}
-          onClick={() => onPreviousPage?.()}
-          data-testid="story-well-page-prev"
-        >
-          Prev
-        </button>
-        <div className="story-well-page-count" aria-live="polite">
-          Page {normalizedPageIndex + 1}/{normalizedPageCount}
+      {showPageControls ? (
+        <div className="story-well-page-controls" data-testid="story-well-page-controls">
+          <button
+            type="button"
+            className="story-well-page-button"
+            disabled={previousPageDisabled}
+            onClick={() => onPreviousPage?.()}
+            data-testid="story-well-page-prev"
+          >
+            Prev
+          </button>
+          <div className="story-well-page-count" aria-live="polite">
+            Page {normalizedPageIndex + 1}/{normalizedPageCount}
+          </div>
+          <button
+            type="button"
+            className="story-well-page-button"
+            disabled={nextPageDisabled}
+            onClick={() => onNextPage?.()}
+            data-testid="story-well-page-next"
+          >
+            Next
+          </button>
         </div>
-        <button
-          type="button"
-          className="story-well-page-button"
-          disabled={nextPageDisabled}
-          onClick={() => onNextPage?.()}
-          data-testid="story-well-page-next"
-        >
-          Next
-        </button>
-      </div>
+      ) : null}
       <div className="story-well-turn-page" data-testid="story-well-turn-page">
         <TurnPageLever
           level={pageTurnLevel}
@@ -162,12 +171,13 @@ function StoryWell({
           {cells.map((cell) => (
             <div
               key={cell.id}
-              className={`story-well-cell story-well-cell--${cell.type || 'fragment'}`}
+              className={`story-well-cell story-well-cell--${cell.type || 'fragment'}${cell.id === activeWritingCellId ? ' story-well-cell--active' : ''}`}
               style={{
                 left: `${clampUnit(cell.x) * 100}%`,
                 top: `${clampUnit(cell.y) * 100}%`,
                 '--cell-depth': Math.max(1, Math.min(6, Number(cell.depth) || 1)),
               }}
+              data-active={cell.id === activeWritingCellId ? 'true' : undefined}
               data-testid={`story-well-cell-${cell.id}`}
             >
               <span>{cell.text}</span>
