@@ -1,0 +1,838 @@
+{
+  "metadata": {
+    "generated_at": "2026-06-11T08:25:46.483864+00:00",
+    "requested_count": 50,
+    "actual_count": 50,
+    "min_chars": 320,
+    "max_chars": 950,
+    "seed": "fantasy-adventure-50",
+    "source_policy": "Default online sources are public-domain Project Gutenberg texts. Most requested modern fantasy authors are not downloaded by this script; add rights-cleared .txt files with --local-text-dir if you have permission to store excerpts from those works.",
+    "requested_authors": [
+      "J. R. R. Tolkien",
+      "George R. R. Martin",
+      "Brandon Sanderson",
+      "Robin Hobb",
+      "Terry Pratchett",
+      "Ursula K. Le Guin",
+      "Robert Jordan",
+      "Neil Gaiman",
+      "Andrzej Sapkowski",
+      "Joe Abercrombie",
+      "Patrick Rothfuss",
+      "Guy Gavriel Kay",
+      "N. K. Jemisin",
+      "Steven Erikson",
+      "Brandon Mull",
+      "Sarah J. Maas",
+      "Raymond E. Feist",
+      "Scott Lynch",
+      "Anne McCaffrey",
+      "Susanna Clarke",
+      "Ernst Hemmingway"
+    ],
+    "requested_author_note": "The provided list is retained for tracking. The misspelled 'Ernst Hemmingway' is treated as Ernest Hemingway only when public-domain Gutenberg sources are available.",
+    "warnings": []
+  },
+  "excerpts": [
+    {
+      "id": "pg-11-001",
+      "title": "Alice's Adventures in Wonderland",
+      "author": "Lewis Carroll",
+      "source_type": "gutenberg",
+      "paragraph_index": 46,
+      "text": "Alice took up the fan and gloves, and, as the hall was very hot, she kept fanning herself all the time she went on talking: \"Dear, dear! How queer everything is to-day! And yesterday things went on just as usual. I wonder if I've been changed in the night? Let me think: was I the same when I got up this morning? I almost think I can remember feeling a little different. But if I'm not the same, the next question is, Who in the world am I? Ah, _that's_ the great puzzle!\" And she began thinking over all the children she knew that were of the same age as herself, to see if she could have been changed for any of them.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 11,
+      "source_url": "https://www.gutenberg.org/ebooks/11",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "lewis-carroll-alice-s-adventures-in-wonderland"
+    },
+    {
+      "id": "pg-12-002",
+      "title": "Through the Looking-Glass",
+      "author": "Lewis Carroll",
+      "source_type": "gutenberg",
+      "paragraph_index": 809,
+      "text": "So they shook hands, and then the Knight rode slowly away into the forest. \"It won't take long to see him _off_, I expect,\" Alice said to herself, as she stood watching him. \"There he goes! Right on his head as usual! However, he gets on again pretty easily--that comes of having so many things hung round the horse--\" So she went on talking to herself, as she watched the horse walking leisurely along the road, and the Knight tumbling off, first on one side and then on the other. After the fourth or fifth tumble he reached the turn, and then she waved her handkerchief to him, and waited till he was out of sight.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 12,
+      "source_url": "https://www.gutenberg.org/ebooks/12",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "lewis-carroll-through-the-looking-glass"
+    },
+    {
+      "id": "pg-16-003",
+      "title": "Peter Pan",
+      "author": "J. M. Barrie",
+      "source_type": "gutenberg",
+      "paragraph_index": 5,
+      "text": "Chapter I. PETER BREAKS THROUGH Chapter II. THE SHADOW Chapter III. COME AWAY, COME AWAY! Chapter IV. THE FLIGHT Chapter V. THE ISLAND COME TRUE Chapter VI. THE LITTLE HOUSE Chapter VII. THE HOME UNDER THE GROUND Chapter VIII. THE MERMAIDS' LAGOON Chapter IX. THE NEVER BIRD Chapter X. THE HAPPY HOME Chapter XI. WENDY'S STORY Chapter XII. THE CHILDREN ARE CARRIED OFF Chapter XIII. DO YOU BELIEVE IN FAIRIES? Chapter XIV. THE PIRATE SHIP Chapter XV. \"HOOK OR ME THIS TIME\" Chapter XVI. THE RETURN HOME Chapter XVII. WHEN WENDY GREW UP",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 16,
+      "source_url": "https://www.gutenberg.org/ebooks/16",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "j-m-barrie-peter-pan"
+    },
+    {
+      "id": "pg-55-004",
+      "title": "The Wonderful Wizard of Oz",
+      "author": "L. Frank Baum",
+      "source_type": "gutenberg",
+      "paragraph_index": 326,
+      "text": "This adventure made the travelers more anxious than ever to get out of the forest, and they walked so fast that Dorothy became tired, and had to ride on the Lion's back. To their great joy the trees became thinner the farther they advanced, and in the afternoon they suddenly came upon a broad river, flowing swiftly just before them. On the other side of the water they could see the road of yellow brick running through a beautiful country, with green meadows dotted with bright flowers and all the road bordered with trees hanging full of delicious fruits. They were greatly pleased to see this delightful country before them.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 55,
+      "source_url": "https://www.gutenberg.org/ebooks/55",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "l-frank-baum-the-wonderful-wizard-of-oz"
+    },
+    {
+      "id": "pg-54-005",
+      "title": "The Marvelous Land of Oz",
+      "author": "L. Frank Baum",
+      "source_type": "gutenberg",
+      "paragraph_index": 1103,
+      "text": "\"This,\" said the Gump, in a squeaky voice not at all proportioned to the size of its great body, \"is the most novel experience I ever heard of. The last thing I remember distinctly is walking through the forest and hearing a loud noise. Something probably killed me then, and it certainly ought to have been the end of me. Yet here I am, alive again, with four monstrous wings and a body which I venture to say would make any respectable animal or fowl weep with shame to own. What does it all mean? Am I a Gump, or am I a juggernaut?\" The creature, as it spoke, wiggled its chin whiskers in a very comical manner.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 54,
+      "source_url": "https://www.gutenberg.org/ebooks/54",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "l-frank-baum-the-marvelous-land-of-oz"
+    },
+    {
+      "id": "pg-289-006",
+      "title": "The Wind in the Willows",
+      "author": "Kenneth Grahame",
+      "source_type": "gutenberg",
+      "paragraph_index": 630,
+      "text": "\"Southwards we sailed again at last,\" continued the Sea Rat, \"coasting down the Italian shore, till finally we made Palermo, and there I quitted for a long, happy spell on shore. I never stick too long to one ship; one gets narrow-minded and prejudiced. Besides, Sicily is one of my happy hunting-grounds. I know everybody there, and their ways just suit me. I spent many jolly weeks in the island, staying with friends up country. When I grew restless again I took advantage of a ship that was trading to Sardinia and Corsica; and very glad I was to feel the fresh breeze and the sea-spray in my face once more.\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 289,
+      "source_url": "https://www.gutenberg.org/ebooks/289",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "kenneth-grahame-the-wind-in-the-willows"
+    },
+    {
+      "id": "pg-67138-007",
+      "title": "The Sun Also Rises",
+      "author": "Ernest Hemingway",
+      "source_type": "gutenberg",
+      "paragraph_index": 3102,
+      "text": "We drove out along the coast road. There was the green of the headlands, the white, red-roofed villas, patches of forest, and the ocean very blue with the tide out and the water curling far out along the beach. We drove through Saint Jean de Luz and passed through villages farther down the coast. Back of the rolling country we were going through we saw the mountains we had come over from Pamplona. The road went on ahead. Bill looked at his watch. It was time for us to go back. He knocked on the glass and told the driver to turn around. The driver backed the car out into the grass to turn it. In back of us were the woods, below a stretch of meadow, then the sea.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 67138,
+      "source_url": "https://www.gutenberg.org/ebooks/67138",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "ernest-hemingway-the-sun-also-rises"
+    },
+    {
+      "id": "pg-69683-008",
+      "title": "Men Without Women",
+      "author": "Ernest Hemingway",
+      "source_type": "gutenberg",
+      "paragraph_index": 981,
+      "text": "There was a sign with a picture of an S-turn and Svolta Pericolosa. The road curved around the headland and the wind blew through the crack in the wind-shield. Below the cape was a flat stretch beside the sea. The wind had dried the mud and the wheels were beginning to lift dust. On the flat road we passed a Fascist riding a bicycle, a heavy revolver in a holster on his back. He held the middle of the road on his bicycle and we turned out for him. He looked up at us as we passed. Ahead there was a railway crossing, and as we came toward it the gates went down.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 69683,
+      "source_url": "https://www.gutenberg.org/ebooks/69683",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "ernest-hemingway-men-without-women"
+    },
+    {
+      "id": "pg-708-009",
+      "title": "The Princess and the Goblin",
+      "author": "George MacDonald",
+      "source_type": "gutenberg",
+      "paragraph_index": 1206,
+      "text": "The next morning the sun rose so bright that Irene said the rain had washed his face and let the light out clean. The torrents were still roaring down the side of the mountain, but they were so much smaller as not to be dangerous in the daylight. After an early breakfast, Peter went to his work and Curdie and his mother set out to take the princess home. They had difficulty in getting her dry across the streams, and Curdie had again and again to carry her, but at last they got safe on the broader part of the road, and walked gently down towards the king's house. And what should they see as they turned the last corner but the last of the king's troop riding through the gate!",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 708,
+      "source_url": "https://www.gutenberg.org/ebooks/708",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "george-macdonald-the-princess-and-the-goblin"
+    },
+    {
+      "id": "pg-709-010",
+      "title": "The Princess and Curdie",
+      "author": "George MacDonald",
+      "source_type": "gutenberg",
+      "paragraph_index": 1024,
+      "text": "In full panic fled the invaders, sweeping down their tents, stumbling over their baggage, trampling on their dead and wounded, ceaselessly pursued and buffeted by the white-winged army of heaven. Homeward they rushed the road they had come, straight for the borders, many dropping from pure fatigue, and lying where they fell. And still the pigeons were in their necks as they ran. At length to the eyes of the king and his army nothing was visible save a dust cloud below, and a bird cloud above. Before night the bird cloud came back, flying high over Gwyntystorm. Sinking swiftly, it disappeared among the ancient roofs of the palace.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 709,
+      "source_url": "https://www.gutenberg.org/ebooks/709",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "george-macdonald-the-princess-and-curdie"
+    },
+    {
+      "id": "pg-325-011",
+      "title": "Phantastes",
+      "author": "George MacDonald",
+      "source_type": "gutenberg",
+      "paragraph_index": 261,
+      "text": "\"So, then, as darkness had no beginning, neither will it ever have an end. So, then, is it eternal. The negation of aught else, is its affirmation. Where the light cannot come, there abideth the darkness. The light doth but hollow a mine out of the infinite extension of the darkness. And ever upon the steps of the light treadeth the darkness; yea, springeth in fountains and wells amidst it, from the secret channels of its mighty sea. Truly, man is but a passing flame, moving unquietly amid the surrounding rest of night; without which he yet could not be, and whereof he is in part compounded.\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 325,
+      "source_url": "https://www.gutenberg.org/ebooks/325",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "george-macdonald-phantastes"
+    },
+    {
+      "id": "pg-561-012",
+      "title": "The Further Adventures of Robinson Crusoe",
+      "author": "Daniel Defoe",
+      "source_type": "gutenberg",
+      "paragraph_index": 17,
+      "text": "It was now the beginning of the year 1693, when my nephew, whom, as I have observed before, I had brought up to the sea, and had made him commander of a ship, was come home from a short voyage to Bilbao, being the first he had made. He came to me, and told me that some merchants of his acquaintance had been proposing to him to go a voyage for them to the East Indies, and to China, as private traders. \"And now, uncle,\" says he, \"if you will go to sea with me, I will engage to land you upon your old habitation in the island; for we are to touch at the Brazils.\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 561,
+      "source_url": "https://www.gutenberg.org/ebooks/561",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "daniel-defoe-the-further-adventures-of-robinson-crusoe"
+    },
+    {
+      "id": "pg-3055-013",
+      "title": "The Wood Beyond the World",
+      "author": "William Morris",
+      "source_type": "gutenberg",
+      "paragraph_index": 399,
+      "text": "She made no stay then till she was but three paces from him, and then she stooped down and made the sign to him, and then spake to him breathlessly, and said: \"Hearken! but speak not till I have done: I bade thee to-night's meeting because I saw that there was one anigh whom I must needs beguile. But by thine oath, and thy love, and all that thou art, I adjure thee come not unto me this night as I bade thee! but be hidden in the hazel-copse outside the house, as it draws toward midnight, and abide me there. Dost thou hearken, and wilt thou? Say yes or no in haste, for I may not tarry a moment of time. Who knoweth what is behind me?\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 3055,
+      "source_url": "https://www.gutenberg.org/ebooks/3055",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "william-morris-the-wood-beyond-the-world"
+    },
+    {
+      "id": "pg-169-014",
+      "title": "The Well at the World's End",
+      "author": "William Morris",
+      "source_type": "gutenberg",
+      "paragraph_index": 2234,
+      "text": "Then he lay back again, and turned his head as well as he could toward the cavern in the cliff. But Ralph deemed he had heard his voice before, and his heart was softened toward him, he knew not why; but he said: \"Yea, but wherefore didst thou fall upon the Lady?\" The wild-man strove with his weakness, and said angrily: \"What did another woman there?\" Then he said in a calmer but weaker voice: \"Nay, my wits shall wander no more from me; we will make the journey together, I and my wits. But O, young man, this I will say if I can. Thou fleddest from her and forgattest her. I came to her and forgat all but her; yea, my very life I forgat.\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 169,
+      "source_url": "https://www.gutenberg.org/ebooks/169",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "william-morris-the-well-at-the-world-s-end"
+    },
+    {
+      "id": "pg-2565-015",
+      "title": "The Story of the Glittering Plain",
+      "author": "William Morris",
+      "source_type": "gutenberg",
+      "paragraph_index": 339,
+      "text": "Said Hallblithe: \"I came hither seeking no gifts, but to have mine own again; and that is the bodily love of my troth-plight maiden. They stole her from me, and me from her; for she loved me. I went down to the sea- side and found her not, nor the ship which had borne her away. I sailed from thence to the Isle of Ransom, for they told me that there I should buy her for a price; neither was her body there. But her image came to me in a dream of the night, and bade me seek to her hither. Therefore, O King, if she be here in the land, show me how I shall find her, and if she be not here, show me how I may depart to seek her otherwhere. This is all my asking.\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 2565,
+      "source_url": "https://www.gutenberg.org/ebooks/2565",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "william-morris-the-story-of-the-glittering-plain"
+    },
+    {
+      "id": "pg-2885-016",
+      "title": "The House of the Wolfings",
+      "author": "William Morris",
+      "source_type": "gutenberg",
+      "paragraph_index": 721,
+      "text": "\"Ye tarry, Bears of Battle! ye linger, Sons of the Worm! Ye crouch adown, O kindreds, from the gathering of the storm! Ye say, it shall soon pass over and we shall fare afield And reap the wheat with the war-sword and winnow in the shield. But where shall be the corner wherein ye then shall abide, And where shall be the woodland where the whelps of the bears shall hide When 'twixt the snowy mountains and the edges of the sea These men have swept the wild-wood and the fields where men may be Of every living sword-blade, and every quivering spear, And in the southland cities the yoke of slaves ye bear? Lo ye! whoever follows I fare to sow the seed Of the days to be hereafter and the deed that comes of deed.\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 2885,
+      "source_url": "https://www.gutenberg.org/ebooks/2885",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "william-morris-the-house-of-the-wolfings"
+    },
+    {
+      "id": "pg-7477-017",
+      "title": "The Book of Wonder",
+      "author": "Lord Dunsany",
+      "source_type": "gutenberg",
+      "paragraph_index": 64,
+      "text": "It is a long journey from London to World's End, and Pombo had no money left, yet within five weeks he was strolling along Last Street; but how he contrived to get there I will not say, for it was not entirely honest. And Pombo found the well at the end of the garden beyond the end house of Last Street, and many thoughts ran through his mind as he hung by his hands from the edge, but chiefest of all those thoughts was one that said the gods were laughing at him through the mouth of the arch-idolater, their prophet, and the thought beat in his head till it ached like his wrists ... and then he found the step.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 7477,
+      "source_url": "https://www.gutenberg.org/ebooks/7477",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "lord-dunsany-the-book-of-wonder"
+    },
+    {
+      "id": "pg-8129-018",
+      "title": "A Dreamer's Tales",
+      "author": "Lord Dunsany",
+      "source_type": "gutenberg",
+      "paragraph_index": 432,
+      "text": "When they had come through the long town's empty streets to the locked gate at the end, only fifteen were left. When they had broken down the gate there were only ten alive. Three more were killed as they went up the slope, and two as they passed near the terrible cavern. Fate let the rest go some way down the mountain upon the other side, and then took three of them. Camorak and Arleon alone were left alive. And night came down on the valley to which they had come, and was lit by flashes from the fatal mountain; and the two mourned for their comrades all night long.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 8129,
+      "source_url": "https://www.gutenberg.org/ebooks/8129",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "lord-dunsany-a-dreamer-s-tales"
+    },
+    {
+      "id": "pg-8395-019",
+      "title": "The Gods of Pegana",
+      "author": "Lord Dunsany",
+      "source_type": "gutenberg",
+      "paragraph_index": 402,
+      "text": "His face was marked by the sign and the seal of exceeding many years, and there was yet vigour in his frame. These be the words of the prophet that he wrote in his book: \"I said: 'Who art thou that bemoans beside the river?' And he answered: 'I am the fool.' I said: 'Upon thy brow are the marks of wisdom such as is stored in books.' He said: 'I am Zodrak. Thousands of years ago I tended sheep upon a hill that sloped towards the sea. The gods have many moods. Thousands of years ago They were in a mirthful mood. They said: 'Let Us call up a man before Us that We may laugh in Pegana.'\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 8395,
+      "source_url": "https://www.gutenberg.org/ebooks/8395",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "lord-dunsany-the-gods-of-pegana"
+    },
+    {
+      "id": "pg-8183-020",
+      "title": "Time and the Gods",
+      "author": "Lord Dunsany",
+      "source_type": "gutenberg",
+      "paragraph_index": 472,
+      "text": "\"We are older than always, and know not whence we came, but we are the people of Time, and here from the Edge of Everything he sends out his hours to assail the world, and you may never conquer Time.\" But the King went back to his armies, and pointed towards the castle on the hill and told them that at last they had found the Enemy of the Earth; and they that were older than always went back slowly into their houses with the creaking of olden doors. And there they went across the fields and passed the village. From one of his towers Time eyed them all the while, and in battle order they closed in on the steep hill as Time sat still in his great tower and watched.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 8183,
+      "source_url": "https://www.gutenberg.org/ebooks/8183",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "lord-dunsany-time-and-the-gods"
+    },
+    {
+      "id": "pg-778-021",
+      "title": "Five Children and It",
+      "author": "E. Nesbit",
+      "source_type": "gutenberg",
+      "paragraph_index": 547,
+      "text": "'Wings?' it said. 'I should think you might do worse. Only, take care you aren't flying high at sunset. There was a little Ninevite boy I heard of once. He was one of King Sennacherib's sons, and a traveller brought him a Psammead. He used to keep it in a box of sand on the palace terrace. It was a dreadful degradation for one of us, of course; still the boy was the Assyrian King's son. And one day he wished for wings and got them. But he forgot that they would turn into stone at sunset, and when they did he fell slap on to one of the winged lions at the top of his father's great staircase; and what with HIS stone wings and the lions' stone wings - well, it's not a pretty story! But I believe the boy enjoyed himself very much till then.'",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 778,
+      "source_url": "https://www.gutenberg.org/ebooks/778",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "e-nesbit-five-children-and-it"
+    },
+    {
+      "id": "pg-23661-022",
+      "title": "The Book of Dragons",
+      "author": "E. Nesbit",
+      "source_type": "gutenberg",
+      "paragraph_index": 569,
+      "text": "The next day his plan was all arranged. He took the poor Princess to the Lone Tower, which stands on an island in the sea, a thousand miles from everywhere. He gave her a dowry, and settled a handsome income on her. He engaged a competent dragon to look after her, and also a respectable griffin whose birth and upbringing he knew all about. And he said: \"Here you shall stay, my dear, respectful daughter, till the clever man comes to marry you. He'll have to be clever enough to sail a ship through the Nine Whirlpools that spin around the island, and to kill the dragon and the griffin. Till he comes you'll never get any older or any wiser. No doubt he will soon come. You can employ yourself in embroidering your wedding gown. I wish you joy, my dutiful child.\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 23661,
+      "source_url": "https://www.gutenberg.org/ebooks/23661",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "e-nesbit-the-book-of-dragons"
+    },
+    {
+      "id": "pg-34219-023",
+      "title": "The Enchanted Castle",
+      "author": "E. Nesbit",
+      "source_type": "gutenberg",
+      "paragraph_index": 797,
+      "text": "There certainly was. For this castle happened to be--but it would not be fair to Gerald to tell you more about it than he knew on that night when he went alone and invisible through the shadowy great grounds of it to look for the open window of the panelled room. He knew that night no more than I have told you; but as he went along the dewy lawns and through the groups of shrubs and trees, where pools lay like giant looking-glasses reflecting the quiet stars, and the white limbs of statues gleamed against a background of shadow, he began to feel--well, not excited, not surprised, not anxious, but--different.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 34219,
+      "source_url": "https://www.gutenberg.org/ebooks/34219",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "e-nesbit-the-enchanted-castle"
+    },
+    {
+      "id": "pg-837-024",
+      "title": "The Story of the Amulet",
+      "author": "E. Nesbit",
+      "source_type": "gutenberg",
+      "paragraph_index": 1380,
+      "text": "The hills around were black with people fleeing from the villages to the mountains. And even as they fled thin smoke broke from the great white peak, and then a faint flash of flame. Then the volcano began to throw up its mysterious fiery inside parts. The earth trembled; ashes and sulphur showered down; a rain of fine pumice-stone fell like snow on all the dry land. The elephants from the forest rushed up towards the peaks; great lizards thirty yards long broke from the mountain pools and rushed down towards the sea. The snows melted and rushed down, first in avalanches, then in roaring torrents. Great rocks cast up by the volcano fell splashing in the sea miles away.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 837,
+      "source_url": "https://www.gutenberg.org/ebooks/837",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "e-nesbit-the-story-of-the-amulet"
+    },
+    {
+      "id": "pg-503-025",
+      "title": "The Blue Fairy Book",
+      "author": "Andrew Lang",
+      "source_type": "gutenberg",
+      "paragraph_index": 302,
+      "text": "He had hardly spoken these words when the lid of the box fell back on the floor with a terrible noise, and to their horror out sprang the Yellow Dwarf, mounted upon a great Spanish cat. \"Rash youth!\" he cried, rushing between the Fairy of the Desert and the King. \"Dare to lay a finger upon this illustrious Fairy! Your quarrel is with me only. I am your enemy and your rival. That faithless Princess who would have married you is promised to me. See if she has not upon her finger a ring made of one of my hairs. Just try to take it off, and you will soon find out that I am more powerful than you are!\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 503,
+      "source_url": "https://www.gutenberg.org/ebooks/503",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "andrew-lang-the-blue-fairy-book"
+    },
+    {
+      "id": "pg-540-026",
+      "title": "The Red Fairy Book",
+      "author": "Andrew Lang",
+      "source_type": "gutenberg",
+      "paragraph_index": 2204,
+      "text": "'The wood that you saw in your dream is not far from here,' said the old man. 'It is in the depth of the forest, and this road will lead you there. You will come to a vast park surrounded by high walls. In the middle of the park is a castle, where dwells a horrible witch who allows no living being to enter the doors. Behind the castle is the orange grove. Follow the wall till you come to a heavy iron gate. Don't try to press it open, but oil the hinges with this,' and the old man gave him a small bottle.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 540,
+      "source_url": "https://www.gutenberg.org/ebooks/540",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "andrew-lang-the-red-fairy-book"
+    },
+    {
+      "id": "pg-2591-027",
+      "title": "Grimms' Fairy Tales",
+      "author": "Jacob Grimm and Wilhelm Grimm",
+      "source_type": "gutenberg",
+      "paragraph_index": 839,
+      "text": "'False and fickle one!' said he. 'One indeed came who set thee free, and he is now near thee again; but how have you used him? Ought he to have had such treatment from thee?' Then he went out and sent away the company, and said the wedding was at an end, for that he was come back to the kingdom. But the princes, peers, and great men mocked at him. However, he would enter into no parley with them, but only asked them if they would go in peace or not. Then they turned upon him and tried to seize him; but he drew his sword. 'Heads Off!' cried he; and with the word the traitors' heads fell before him, and Heinel was once more king of the Golden Mountain.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 2591,
+      "source_url": "https://www.gutenberg.org/ebooks/2591",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "jacob-grimm-and-wilhelm-grimm-grimms-fairy-tales"
+    },
+    {
+      "id": "pg-829-028",
+      "title": "Gulliver's Travels",
+      "author": "Jonathan Swift",
+      "source_type": "gutenberg",
+      "paragraph_index": 415,
+      "text": "My journey was without any accident or adventure worth relating. When I arrived at the port of Maldonada (for so it is called) there was no ship in the harbour bound for Luggnagg, nor likely to be in some time. The town is about as large as Portsmouth. I soon fell into some acquaintance, and was very hospitably received. A gentleman of distinction said to me, \"that since the ships bound for Luggnagg could not be ready in less than a month, it might be no disagreeable amusement for me to take a trip to the little island of Glubbdubdrib, about five leagues off to the south-west.\" He offered himself and a friend to accompany me, and that I should be provided with a small convenient bark for the voyage.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 829,
+      "source_url": "https://www.gutenberg.org/ebooks/829",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "jonathan-swift-gulliver-s-travels"
+    },
+    {
+      "id": "pg-86-029",
+      "title": "A Connecticut Yankee in King Arthur's Court",
+      "author": "Mark Twain",
+      "source_type": "gutenberg",
+      "paragraph_index": 225,
+      "text": "Merlin's stock was flat. The king wanted to stop his wages; he even wanted to banish him, but I interfered. I said he would be useful to work the weather, and attend to small matters like that, and I would give him a lift now and then when his poor little parlor-magic soured on him. There wasn't a rag of his tower left, but I had the government rebuild it for him, and advised him to take boarders; but he was too high-toned for that. And as for being grateful, he never even said thank you. He was a rather hard lot, take him how you might; but then you couldn't fairly expect a man to be sweet that had been set back so.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 86,
+      "source_url": "https://www.gutenberg.org/ebooks/86",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "mark-twain-a-connecticut-yankee-in-king-arthur-s-court"
+    },
+    {
+      "id": "pg-41-030",
+      "title": "The Legend of Sleepy Hollow",
+      "author": "Washington Irving",
+      "source_type": "gutenberg",
+      "paragraph_index": 5,
+      "text": "I recollect that, when a stripling, my first exploit in squirrel-shooting was in a grove of tall walnut-trees that shades one side of the valley. I had wandered into it at noontime, when all nature is peculiarly quiet, and was startled by the roar of my own gun, as it broke the Sabbath stillness around and was prolonged and reverberated by the angry echoes. If ever I should wish for a retreat whither I might steal from the world and its distractions, and dream quietly away the remnant of a troubled life, I know of none more promising than this little valley.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 41,
+      "source_url": "https://www.gutenberg.org/ebooks/41",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "washington-irving-the-legend-of-sleepy-hollow"
+    },
+    {
+      "id": "pg-201-031",
+      "title": "Flatland",
+      "author": "Edwin A. Abbott",
+      "source_type": "gutenberg",
+      "paragraph_index": 357,
+      "text": "A convulsive shudder ran through the Sphere. \"This must not be,\" I thought I heard him say: \"either he must listen to reason, or I must have recourse to the last resource of civilization.\" Then, addressing me in a louder tone, he hurriedly exclaimed, \"Listen: no stranger must witness what you have witnessed. Send your Wife back at once, before she enters the apartment. The Gospel of Three Dimensions must not be thus frustrated. Not thus must the fruits of one thousand years of waiting be thrown away. I hear her coming. Back! back! Away from me, or you must go with me--whither you know not--into the Land of Three Dimensions!\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 201,
+      "source_url": "https://www.gutenberg.org/ebooks/201",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "edwin-a-abbott-flatland"
+    },
+    {
+      "id": "pg-35-032",
+      "title": "The Time Machine",
+      "author": "H. G. Wells",
+      "source_type": "gutenberg",
+      "paragraph_index": 313,
+      "text": "The Time Traveller put his hand to his head. He spoke like one who was trying to keep hold of an idea that eluded him. \"They were put into my pocket by Weena, when I travelled into Time.\" He stared round the room. \"I'm damned if it isn't all going. This room and you and the atmosphere of every day is too much for my memory. Did I ever make a Time Machine, or a model of a Time Machine? Or is it all only a dream? They say life is a dream, a precious poor dream at times--but I can't stand another that won't fit. It's madness. And where did the dream come from? … I must look at that machine. If there is one!\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 35,
+      "source_url": "https://www.gutenberg.org/ebooks/35",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "h-g-wells-the-time-machine"
+    },
+    {
+      "id": "pg-36-033",
+      "title": "The War of the Worlds",
+      "author": "H. G. Wells",
+      "source_type": "gutenberg",
+      "paragraph_index": 863,
+      "text": "In South Kensington the streets were clear of dead and of black powder. It was near South Kensington that I first heard the howling. It crept almost imperceptibly upon my senses. It was a sobbing alternation of two notes, \"Ulla, ulla, ulla, ulla,\" keeping on perpetually. When I passed streets that ran northward it grew in volume, and houses and buildings seemed to deaden and cut it off again. It came in a full tide down Exhibition Road. I stopped, staring towards Kensington Gardens, wondering at this strange, remote wailing. It was as if that mighty desert of houses had found a voice for its fear and solitude.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 36,
+      "source_url": "https://www.gutenberg.org/ebooks/36",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "h-g-wells-the-war-of-the-worlds"
+    },
+    {
+      "id": "pg-159-034",
+      "title": "The Island of Doctor Moreau",
+      "author": "H. G. Wells",
+      "source_type": "gutenberg",
+      "paragraph_index": 751,
+      "text": "In the evening I started, and drove out to sea before a gentle wind from the southwest, slowly, steadily; and the island grew smaller and smaller, and the lank spire of smoke dwindled to a finer and finer line against the hot sunset. The ocean rose up around me, hiding that low, dark patch from my eyes. The daylight, the trailing glory of the sun, went streaming out of the sky, was drawn aside like some luminous curtain, and at last I looked into the blue gulf of immensity which the sunshine hides, and saw the floating hosts of the stars. The sea was silent, the sky was silent. I was alone with the night and silence.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 159,
+      "source_url": "https://www.gutenberg.org/ebooks/159",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "h-g-wells-the-island-of-doctor-moreau"
+    },
+    {
+      "id": "pg-5230-035",
+      "title": "The Invisible Man",
+      "author": "H. G. Wells",
+      "source_type": "gutenberg",
+      "paragraph_index": 1073,
+      "text": "For a space Kemp remained staring at the quiet carelessness of Adye's attitude. The afternoon was very hot and still, nothing seemed stirring in all the world save a couple of yellow butterflies chasing each other through the shrubbery between the house and the road gate. Adye lay on the lawn near the gate. The blinds of all the villas down the hill-road were drawn, but in one little green summer-house was a white figure, apparently an old man asleep. Kemp scrutinised the surroundings of the house for a glimpse of the revolver, but it had vanished. His eyes came back to Adye. The game was opening well.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 5230,
+      "source_url": "https://www.gutenberg.org/ebooks/5230",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "h-g-wells-the-invisible-man"
+    },
+    {
+      "id": "pg-62-036",
+      "title": "A Princess of Mars",
+      "author": "Edgar Rice Burroughs",
+      "source_type": "gutenberg",
+      "paragraph_index": 737,
+      "text": "The letter I bore from them gained me immediate entrance to the vast, walled city. It was still very early in the morning and the streets were practically deserted. The residences, raised high upon their metal columns, resembled huge rookeries, while the uprights themselves presented the appearance of steel tree trunks. The shops as a rule were not raised from the ground nor were their doors bolted or barred, since thievery is practically unknown upon Barsoom. Assassination is the ever-present fear of all Barsoomians, and for this reason alone their homes are raised high above the ground at night, or in times of danger.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 62,
+      "source_url": "https://www.gutenberg.org/ebooks/62",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "edgar-rice-burroughs-a-princess-of-mars"
+    },
+    {
+      "id": "pg-64-037",
+      "title": "The Gods of Mars",
+      "author": "Edgar Rice Burroughs",
+      "source_type": "gutenberg",
+      "paragraph_index": 843,
+      "text": "\"Oh, do not leave me in this terrible place,\" she begged. \"Forgive the things I said to you, my Prince. I did not mean them. Only take me away with you. Let me share your imprisonment on Shador.\" Her words were an almost incoherent volley of thoughts, so rapidly she spoke. \"You did not understand the honour that I did you. Among the therns there is no marriage or giving in marriage, as among the lower orders of the outer world. We might have lived together for ever in love and happiness. We have both looked upon Issus and in a year we die. Let us live that year at least together in what measure of joy remains for the doomed.\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 64,
+      "source_url": "https://www.gutenberg.org/ebooks/64",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "edgar-rice-burroughs-the-gods-of-mars"
+    },
+    {
+      "id": "pg-68-038",
+      "title": "The Warlord of Mars",
+      "author": "Edgar Rice Burroughs",
+      "source_type": "gutenberg",
+      "paragraph_index": 295,
+      "text": "Matai Shang rose and, leaning over the edge of the balcony, gave voice to the weird call that I had heard from the lips of the priests upon the tiny balcony upon the face of the Golden Cliffs overlooking the Valley Dor, when, in times past, they called the fearsome white apes and the hideous plant men to the feast of victims floating down the broad bosom of the mysterious Iss toward the silian-infested waters of the Lost Sea of Korus. \"Let loose the death!\" he cried, and immediately a dozen doors in the base of the tower swung open, and a dozen grim and terrible banths sprang into the arena.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 68,
+      "source_url": "https://www.gutenberg.org/ebooks/68",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "edgar-rice-burroughs-the-warlord-of-mars"
+    },
+    {
+      "id": "pg-78-039",
+      "title": "Tarzan of the Apes",
+      "author": "Edgar Rice Burroughs",
+      "source_type": "gutenberg",
+      "paragraph_index": 4,
+      "text": "CHAPTER I. Out to Sea CHAPTER II. The Savage Home CHAPTER III. Life and Death CHAPTER IV. The Apes CHAPTER V. The White Ape CHAPTER VI. Jungle Battles CHAPTER VII. The Light of Knowledge CHAPTER VIII. The Tree-top Hunter CHAPTER IX. Man and Man CHAPTER X. The Fear-Phantom CHAPTER XI. \"King of the Apes\" CHAPTER XII. Man's Reason CHAPTER XIII. His Own Kind CHAPTER XIV. At the Mercy of the Jungle CHAPTER XV. The Forest God CHAPTER XVI. \"Most Remarkable\" CHAPTER XVII. Burials CHAPTER XVIII. The Jungle Toll CHAPTER XIX. The Call of the Primitive CHAPTER XX. Heredity CHAPTER XXI. The Village of Torture CHAPTER XXII. The Search Party CHAPTER XXIII. Brother Men CHAPTER XXIV. Lost Treasure CHAPTER XXV. The Outpost of the World CHAPTER XXVI. The Height of Civilization CHAPTER XXVII. The Giant Again CHAPTER XXVIII. Conclusion",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 78,
+      "source_url": "https://www.gutenberg.org/ebooks/78",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "edgar-rice-burroughs-tarzan-of-the-apes"
+    },
+    {
+      "id": "pg-81-040",
+      "title": "The Return of Tarzan",
+      "author": "Edgar Rice Burroughs",
+      "source_type": "gutenberg",
+      "paragraph_index": 728,
+      "text": "\"When Lieutenant Gernois returned and reported that he had not found you at the spot that you had chosen to remain while the detachment was scouting, I was filled with alarm. We searched the mountain for days. Then came word that you had been killed and eaten by a lion. As proof your gun was brought to us. Your horse had returned to camp the second day after your disappearance. We could not doubt. Lieutenant Gernois was grief-stricken--he took all the blame upon himself. It was he who insisted on carrying on the search himself. It was he who found the Arab with your gun. He will be delighted to know that you are safe.\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 81,
+      "source_url": "https://www.gutenberg.org/ebooks/81",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "edgar-rice-burroughs-the-return-of-tarzan"
+    },
+    {
+      "id": "pg-551-041",
+      "title": "The Land That Time Forgot",
+      "author": "Edgar Rice Burroughs",
+      "source_type": "gutenberg",
+      "paragraph_index": 446,
+      "text": "That night the clouds broke, and the moon shone down upon our little ledge; and there, hand in hand, we turned our faces toward heaven and plighted our troth beneath the eyes of God. No human agency could have married us more sacredly than we are wed. We are man and wife, and we are content. If God wills it, we shall live out our lives here. If He wills otherwise, then this manuscript which I shall now consign to the inscrutable forces of the sea shall fall into friendly hands. However, we are each without hope. And so we say good-bye in this, our last message to the world beyond the barrier cliffs.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 551,
+      "source_url": "https://www.gutenberg.org/ebooks/551",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "edgar-rice-burroughs-the-land-that-time-forgot"
+    },
+    {
+      "id": "pg-552-042",
+      "title": "The People That Time Forgot",
+      "author": "Edgar Rice Burroughs",
+      "source_type": "gutenberg",
+      "paragraph_index": 290,
+      "text": "\"The dog is not Du-seen's,\" I replied. \"He belongs to my friend, as I told you, and he prefers to stay with me until his master is found.\" And I turned again to resume my way. I had taken but a few steps when I heard a commotion behind me, and at the same moment a man leaned close and whispered \"Kazar!\" close to my ear--kazar, the Caspakian equivalent of beware. It was To-mar. As he spoke, he turned quickly away as though loath to have others see that he knew me, and at the same instant I wheeled to discover Du-seen striding rapidly after me. Al-tan followed him, and it was evident that both were angry.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 552,
+      "source_url": "https://www.gutenberg.org/ebooks/552",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "edgar-rice-burroughs-the-people-that-time-forgot"
+    },
+    {
+      "id": "pg-553-043",
+      "title": "Out of Time's Abyss",
+      "author": "Edgar Rice Burroughs",
+      "source_type": "gutenberg",
+      "paragraph_index": 529,
+      "text": "He bent low and raised the tear-stained face to his own. \"No, Co-Tan,\" he said, \"I am not going away from you--for you are going with me. You are going back to my own country to be my wife. Tell me that you will, Co-Tan.\" And he bent still lower yet from his height and kissed her lips. Nor did he need more than the wonderful new light in her eyes to tell him that she would go to the end of the world with him if he would but take her. And then the gun-crew came up from below again to fire a signal shot, and the two were brought down from the high heaven of their new happiness to the scarred and weather-beaten deck of the U-33.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 553,
+      "source_url": "https://www.gutenberg.org/ebooks/553",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "edgar-rice-burroughs-out-of-time-s-abyss"
+    },
+    {
+      "id": "pg-2166-044",
+      "title": "King Solomon's Mines",
+      "author": "H. Rider Haggard",
+      "source_type": "gutenberg",
+      "paragraph_index": 963,
+      "text": "\"O chiefs, captains, soldiers, and people, ye have heard my words. Now must ye make choice between me and him who sits upon my throne, the uncle who killed his brother, and hunted his brother's child forth to die in the cold and the night. That I am indeed the king these\"--pointing to the chiefs--\"can tell you, for they have seen the snake about my middle. If I were not the king, would these white men be on my side with all their magic? Tremble, chiefs, captains, soldiers, and people! Is not the darkness they have brought upon the land to confound Twala and cover our flight, darkness even in the hour of the full moon, yet before your eyes?\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 2166,
+      "source_url": "https://www.gutenberg.org/ebooks/2166",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "h-rider-haggard-king-solomon-s-mines"
+    },
+    {
+      "id": "pg-3155-045",
+      "title": "She",
+      "author": "H. Rider Haggard",
+      "source_type": "gutenberg",
+      "paragraph_index": 6,
+      "text": "INTRODUCTION I. MY VISITOR II. THE YEARS ROLL BY III. THE SHERD OF AMENARTAS IV. THE SQUALL V. THE HEAD OF THE ETHIOPIAN VI. AN EARLY CHRISTIAN CEREMONY VII. USTANE SINGS VIII. THE FEAST, AND AFTER! IX. A LITTLE FOOT X. SPECULATIONS XI. THE PLAIN OF KÔR XII. \"SHE\" XIII. AYESHA UNVEILS XIV. A SOUL IN HELL XV. AYESHA GIVES JUDGMENT XVI. THE TOMBS OF KÔR XVII. THE BALANCE TURNS XVIII. \"GO, WOMAN!\" XIX. \"GIVE ME A BLACK GOAT!\" XX. TRIUMPH XXI. THE DEAD AND LIVING MEET XXII. JOB HAS A PRESENTIMENT XXIII. THE TEMPLE OF TRUTH XXIV. WALKING THE PLANK XXV. THE SPIRIT OF LIFE XXVI. WHAT WE SAW XXVII. WE LEAP XXVIII. OVER THE MOUNTAIN",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 3155,
+      "source_url": "https://www.gutenberg.org/ebooks/3155",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "h-rider-haggard-she"
+    },
+    {
+      "id": "pg-711-046",
+      "title": "Allan Quatermain",
+      "author": "H. Rider Haggard",
+      "source_type": "gutenberg",
+      "paragraph_index": 742,
+      "text": "\"'Incubu,' she said at length, 'wouldst thou be a king? Listen, wouldst thou be a king? Behold, stranger, I am minded to make thee king of all Zu-Vendis, ay and husband of Sorais of the Night. Nay, peace and hear me. To no man among my people had I thus opened out my secret heart, but thou art an outlander and therefore I speak without shame, knowing all I have to offer and how hard it had been thee to ask. See, a crown lies at thy feet, my lord Incubu, and with that fortune a woman whom some have wished to woo. Now mayst thou answer, oh my chosen, and soft shall thy words fall upon mine ears.'",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 711,
+      "source_url": "https://www.gutenberg.org/ebooks/711",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "h-rider-haggard-allan-quatermain"
+    },
+    {
+      "id": "pg-139-047",
+      "title": "The Lost World",
+      "author": "Arthur Conan Doyle",
+      "source_type": "gutenberg",
+      "paragraph_index": 10,
+      "text": "I. \"THERE ARE HEROISMS ALL ROUND US\" II. \"TRY YOUR LUCK WITH PROFESSOR CHALLENGER\" III. \"HE IS A PERFECTLY IMPOSSIBLE PERSON\" IV. \"IT'S JUST THE VERY BIGGEST THING IN THE WORLD\" V. \"QUESTION!\" VI. \"I WAS THE FLAIL OF THE LORD\" VII. \"TO-MORROW WE DISAPPEAR INTO THE UNKNOWN\" VIII. \"THE OUTLYING PICKETS OF THE NEW WORLD\" IX. \"WHO COULD HAVE FORESEEN IT?\" X. \"THE MOST WONDERFUL THINGS HAVE HAPPENED\" XI. \"FOR ONCE I WAS THE HERO\" XII. \"IT WAS DREADFUL IN THE FOREST\" XIII. \"A SIGHT I SHALL NEVER FORGET\" XIV. \"THOSE WERE THE REAL CONQUESTS\" XV. \"OUR EYES HAVE SEEN GREAT WONDERS\" XVI. \"A PROCESSION! A PROCESSION!\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 139,
+      "source_url": "https://www.gutenberg.org/ebooks/139",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "arthur-conan-doyle-the-lost-world"
+    },
+    {
+      "id": "pg-1268-048",
+      "title": "The Mysterious Island",
+      "author": "Jules Verne",
+      "source_type": "gutenberg",
+      "paragraph_index": 641,
+      "text": "The night was beautiful and still, the darkness was not yet deep. Cyrus Harding and the boy walked near each other, without speaking. In some places the plateau opened before them, and they passed without hindrance. In others, obstructed by rocks, there was only a narrow path, in which two persons could not walk abreast. After a walk of twenty minutes, Cyrus Harding and Herbert were obliged to stop. From this point the slope of the two cones became one. No shoulder here separated the two parts of the mountain. The slope, being inclined almost seventy degrees, the path became impracticable.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 1268,
+      "source_url": "https://www.gutenberg.org/ebooks/1268",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "jules-verne-the-mysterious-island"
+    },
+    {
+      "id": "pg-164-049",
+      "title": "Twenty Thousand Leagues under the Seas",
+      "author": "Jules Verne",
+      "source_type": "gutenberg",
+      "paragraph_index": 1751,
+      "text": "We had now arrived on the first platform, where other surprises awaited me. Before us lay some picturesque ruins, which betrayed the hand of man and not that of the Creator. There were vast heaps of stone, amongst which might be traced the vague and shadowy forms of castles and temples, clothed with a world of blossoming zoophytes, and over which, instead of ivy, sea-weed and fucus threw a thick vegetable mantle. But what was this portion of the globe which had been swallowed by cataclysms? Who had placed those rocks and stones like cromlechs of prehistoric times? Where was I? Whither had Captain Nemo's fancy hurried me?",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 164,
+      "source_url": "https://www.gutenberg.org/ebooks/164",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "jules-verne-twenty-thousand-leagues-under-the-seas"
+    },
+    {
+      "id": "pg-103-050",
+      "title": "Around the World in Eighty Days",
+      "author": "Jules Verne",
+      "source_type": "gutenberg",
+      "paragraph_index": 1372,
+      "text": "The prairie, across which the sledge was moving in a straight line, was as flat as a sea. It seemed like a vast frozen lake. The railroad which ran through this section ascended from the south-west to the north-west by Great Island, Columbus, an important Nebraska town, Schuyler, and Fremont, to Omaha. It followed throughout the right bank of the Platte River. The sledge, shortening this route, took a chord of the arc described by the railway. Mudge was not afraid of being stopped by the Platte River, because it was frozen. The road, then, was quite clear of obstacles, and Phileas Fogg had but two things to fear--an accident to the sledge, and a change or calm in the wind.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "gutenberg_id": 103,
+      "source_url": "https://www.gutenberg.org/ebooks/103",
+      "license_note": "Public domain in the United States via Project Gutenberg.",
+      "attribution_key": "jules-verne-around-the-world-in-eighty-days"
+    }
+  ]
+}

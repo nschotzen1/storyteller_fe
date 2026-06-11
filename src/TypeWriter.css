@@ -73,15 +73,15 @@
 .typewriter-skin-board {
   position: relative;
   z-index: 20;
-  width: min(100vw, calc(100vh * 1672 / 941));
-  max-width: 1672px;
-  aspect-ratio: 1672 / 941;
+  width: min(100vw, calc(100vh * 1619 / 971));
+  max-width: 1619px;
+  aspect-ratio: 1619 / 971;
   flex: 0 0 auto;
   isolation: isolate;
 }
 
 .typewriter-container--embedded .typewriter-skin-board {
-  width: min(100%, calc(100vh * 1672 / 941));
+  width: min(100%, calc(100vh * 1619 / 971));
   max-height: 100%;
 }
 
@@ -102,12 +102,12 @@
 }
 
 .typewriter-skin__paper-slot {
-  --typewriter-skin-paper-x: clamp(2.2rem, 5.1%, 4.4rem);
+  --typewriter-skin-paper-x: clamp(2rem, 4.4%, 4rem);
   --typewriter-story-cell-left: var(--typewriter-skin-paper-x);
-  left: 19.05%;
-  top: 12.1%;
-  width: 61.85%;
-  height: 35.35%;
+  left: 17.3%;
+  top: 10.45%;
+  width: 65.75%;
+  height: 44.95%;
   overflow: hidden;
   border-radius: 0.45rem;
   isolation: isolate;
@@ -128,11 +128,11 @@
 }
 
 .typewriter-skin__keyboard-slot {
-  left: 35.7%;
-  top: 55.8%;
+  left: 34.6%;
+  top: 61.1%;
   z-index: 26;
-  width: 43.2%;
-  height: 29.2%;
+  width: 48.4%;
+  height: 25.2%;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -148,15 +148,10 @@
   bottom: 12%;
   left: -2.8%;
   z-index: 0;
-  border: 1px solid rgba(124, 84, 42, 0.42);
+  border: 1px solid transparent;
   border-radius: 1.15rem 1.15rem 0.68rem 0.68rem;
-  background:
-    radial-gradient(ellipse at 50% 18%, rgba(99, 59, 24, 0.42), transparent 46%),
-    linear-gradient(180deg, rgba(28, 21, 15, 0.98), rgba(9, 8, 7, 0.98) 54%, rgba(5, 5, 5, 0.99));
-  box-shadow:
-    inset 0 1px 0 rgba(238, 181, 91, 0.14),
-    inset 0 18px 36px rgba(0, 0, 0, 0.78),
-    0 12px 22px rgba(0, 0, 0, 0.34);
+  background: transparent;
+  box-shadow: none;
   pointer-events: none;
 }
 
@@ -2125,9 +2120,119 @@
 .typewriter-skin__keyboard-slot .typewriter-key-wrapper {
   width: clamp(31px, 3.18vw, 58px);
   height: clamp(31px, 3.18vw, 58px);
+  cursor: pointer;
+  filter: none;
+  isolation: isolate;
+}
+
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper::after,
+.typewriter-skin__keyboard-slot .spacebar-wrapper::after {
+  content: "";
+  position: absolute;
+  inset: -10%;
+  z-index: 0;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255, 238, 166, 0.92), rgba(255, 177, 61, 0.48) 38%, rgba(255, 83, 23, 0.14) 64%, transparent 78%);
+  box-shadow:
+    0 0 18px rgba(255, 173, 59, 0.58),
+    0 0 32px rgba(255, 89, 24, 0.28),
+    inset 0 0 14px rgba(255, 239, 172, 0.3);
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper.key-circuit-trail::after,
+.typewriter-skin__keyboard-slot .spacebar-wrapper.key-circuit-trail::after {
+  opacity: 0.28;
+  transform: scale(0.78);
+}
+
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper.key-circuit-active::after,
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper.key-pressed::after,
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper.ghost-key-glow::after,
+.typewriter-skin__keyboard-slot .spacebar-wrapper.key-circuit-active::after,
+.typewriter-skin__keyboard-slot .spacebar-wrapper.key-pressed::after,
+.typewriter-skin__keyboard-slot .spacebar-wrapper.ghost-key-glow::after {
+  opacity: 1;
+  animation: keyCircuitGlow 460ms ease-out both;
+}
+
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper.key-circuit-active::after,
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper.key-pressed::after,
+.typewriter-skin__keyboard-slot .spacebar-wrapper.key-circuit-active::after,
+.typewriter-skin__keyboard-slot .spacebar-wrapper.key-pressed::after {
+  transform: scale(0.88);
+}
+
+.typewriter-skin__keyboard-slot .typewriter-key-img,
+.typewriter-skin__keyboard-slot .spacebar-img {
+  position: relative;
+  z-index: 1;
+  opacity: 0.86;
   filter:
-    drop-shadow(0 4px 7px rgba(0, 0, 0, 0.58))
-    drop-shadow(0 0 4px rgba(206, 137, 54, 0.08));
+    brightness(0.92)
+    contrast(1.12)
+    saturate(0.88)
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
+  transform: scale(0.96);
+  transition:
+    opacity 180ms ease,
+    filter 180ms ease,
+    transform 180ms ease;
+}
+
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper.key-circuit-trail .typewriter-key-img,
+.typewriter-skin__keyboard-slot .spacebar-wrapper.key-circuit-trail .spacebar-img {
+  opacity: 0.94;
+  filter:
+    brightness(1.08)
+    contrast(1.18)
+    saturate(0.95)
+    drop-shadow(0 0 4px rgba(255, 173, 61, 0.28));
+  transform: scale(0.98);
+}
+
+.typewriter-skin__keyboard-slot .typewriter-text-key-wrapper.key-circuit-trail::after {
+  opacity: 0.22;
+  transform: scale(0.82);
+}
+
+.typewriter-skin__keyboard-slot .typewriter-text-key-wrapper.key-circuit-trail .typewriter-key-img {
+  opacity: 0.96;
+  filter:
+    brightness(1.16)
+    contrast(1.32)
+    saturate(1.04)
+    drop-shadow(0 0 4px rgba(255, 181, 70, 0.34));
+  transform: scale(1);
+}
+
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper.key-circuit-active .typewriter-key-img,
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper.key-pressed .typewriter-key-img,
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper.ghost-key-glow .typewriter-key-img,
+.typewriter-skin__keyboard-slot .spacebar-wrapper.key-circuit-active .spacebar-img,
+.typewriter-skin__keyboard-slot .spacebar-wrapper.key-pressed .spacebar-img,
+.typewriter-skin__keyboard-slot .spacebar-wrapper.ghost-key-glow .spacebar-img {
+  opacity: 0.98;
+  filter:
+    brightness(1.28)
+    contrast(1.42)
+    saturate(1.03)
+    drop-shadow(0 0 4px rgba(255, 183, 68, 0.46));
+  transform: scale(1);
+  animation: keyFacePulse 460ms ease-out both;
+}
+
+.typewriter-skin__keyboard-slot .typewriter-text-key-wrapper.key-circuit-active .typewriter-key-img,
+.typewriter-skin__keyboard-slot .typewriter-text-key-wrapper.key-pressed .typewriter-key-img,
+.typewriter-skin__keyboard-slot .typewriter-text-key-wrapper.ghost-key-glow .typewriter-key-img {
+  opacity: 1;
+  transform: scale(1.04);
 }
 
 .typewriter-skin__keyboard-slot .typewriter-text-key-wrapper {
@@ -2135,9 +2240,33 @@
   height: clamp(31px, 3.18vw, 58px);
 }
 
+.typewriter-skin__keyboard-slot .typewriter-text-key-wrapper::after {
+  border-radius: 0.5rem;
+}
+
 .typewriter-skin__keyboard-slot .typewriter-text-key-label {
+  z-index: 3;
   inset: 20% 10%;
   font-size: clamp(0.42rem, 0.62vw, 0.72rem);
+  color: rgba(255, 225, 158, 0.76);
+  opacity: 0.68;
+  text-shadow:
+    0 0 3px rgba(255, 186, 81, 0.28),
+    0 0 9px rgba(255, 115, 31, 0.14);
+  transition:
+    opacity 180ms ease,
+    filter 180ms ease;
+}
+
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper.key-circuit-trail .typewriter-text-key-label {
+  opacity: 0.82;
+}
+
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper.key-circuit-active .typewriter-text-key-label,
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper.key-pressed .typewriter-text-key-label,
+.typewriter-skin__keyboard-slot .typewriter-key-wrapper.ghost-key-glow .typewriter-text-key-label {
+  opacity: 1;
+  filter: brightness(1.18);
 }
 
 .typewriter-skin__keyboard-slot .typewriter-text-key-row {
@@ -2156,10 +2285,71 @@
   height: clamp(32px, 3.45vw, 58px);
 }
 
+.typewriter-skin__keyboard-slot .spacebar-wrapper::before {
+  display: none;
+}
+
+.typewriter-skin__keyboard-slot .spacebar-wrapper::after {
+  inset: 6% 2%;
+  border-radius: 0.5rem;
+}
+
 .typewriter-skin__keyboard-slot .spacebar-img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+@keyframes keyCircuitGlow {
+  0% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+
+  28% {
+    opacity: 1;
+    transform: scale(0.86);
+  }
+
+  100% {
+    opacity: 0.3;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes keyFacePulse {
+  0% {
+    opacity: 0.98;
+    transform: scale(0.98);
+    filter:
+      blur(0.25px)
+      brightness(1.42)
+      contrast(1.18)
+      saturate(1.1)
+      drop-shadow(0 0 10px rgba(255, 183, 68, 0.7));
+  }
+
+  18% {
+    opacity: 1;
+    transform: scale(1.04);
+    filter:
+      blur(0)
+      brightness(1.5)
+      contrast(1.22)
+      saturate(1.08)
+      drop-shadow(0 0 7px rgba(255, 183, 68, 0.58));
+  }
+
+  100% {
+    opacity: 0.98;
+    transform: scale(1);
+    filter:
+      blur(0)
+      brightness(1.18)
+      contrast(1.5)
+      saturate(1.02)
+      drop-shadow(0 0 2px rgba(255, 183, 68, 0.35));
+  }
 }
 
 .typewriter-skin__storywell-slot .story-well-shell {
