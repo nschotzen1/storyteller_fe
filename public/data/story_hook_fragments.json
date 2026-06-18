@@ -1,0 +1,6590 @@
+{
+  "metadata": {
+    "generated_at": "2026-06-11T17:26:21.864031+00:00",
+    "requested_count": 500,
+    "actual_count": 500,
+    "seed": 20260611,
+    "min_words": 2,
+    "max_words": 10,
+    "include_previews": true,
+    "method": "original template generation from corpus-weighted fantasy/adventure vocabulary; hooks are not copied source excerpts",
+    "source_counts": {
+      "public/data/reddit_fantasy_evocative_excerpts.json": 15,
+      "public/data/fantasy_adventure_local_examples.json": 50,
+      "public/data/fantasy_adventure_excerpts.json": 50,
+      "public/data/fantasy_book_cafe_excerpt_sources.json": 17
+    },
+    "ingredient_counts": {
+      "adjectives": 33,
+      "places": 24,
+      "objects": 35,
+      "creatures": 10,
+      "people": 18,
+      "verbs": 22,
+      "object_verbs": 9,
+      "past_verbs": 12,
+      "times": 8,
+      "sounds": 9,
+      "mysteries": 10,
+      "hiding_places": 10
+    },
+    "kind_counts": {
+      "unfinished_clause": 62,
+      "command": 24,
+      "image_fragment": 179,
+      "mystery": 148,
+      "rule": 14,
+      "threshold": 73
+    },
+    "mood_counts": {
+      "threshold": 34,
+      "urgent": 24,
+      "wonder": 35,
+      "secret": 52,
+      "uncanny": 133,
+      "mystery": 14,
+      "arrival": 16,
+      "beyond": 31,
+      "discovery": 45,
+      "journey": 31,
+      "forgotten": 14,
+      "omen": 25,
+      "lastness": 46
+    }
+  },
+  "hooks": [
+    {
+      "id": "story-hook-443d7b16b0a15c",
+      "text": "It was almost night when they",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "time": "night",
+        "subject": "they"
+      },
+      "ordinal": 1
+    },
+    {
+      "id": "story-hook-4899f102f939f7",
+      "text": "\"Run! Run, and don't stop until you reach the river",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 7,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Run",
+        "verb": "stop",
+        "place": "river"
+      },
+      "ordinal": 2
+    },
+    {
+      "id": "story-hook-da33b79ebf06bb",
+      "text": "An oak tree, ancient and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "noun": "oak tree",
+        "adjective": "ancient"
+      },
+      "ordinal": 3
+    },
+    {
+      "id": "story-hook-aeff97b351c540",
+      "text": "The scribe lied about the oath because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "scribe",
+        "mystery": "oath"
+      },
+      "ordinal": 4
+    },
+    {
+      "id": "story-hook-510af65c61264d",
+      "text": "The serpent at the window was ruined, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "serpent",
+        "adjective": "ruined"
+      },
+      "ordinal": 5
+    },
+    {
+      "id": "story-hook-bd625fae48e076",
+      "text": "The map ended at the door, but",
+      "kind": "mystery",
+      "mood": "threshold",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "place": "door"
+      },
+      "ordinal": 6
+    },
+    {
+      "id": "story-hook-40dc5f364b6124",
+      "text": "The apprentice had only one rule:",
+      "kind": "rule",
+      "mood": "mystery",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "person": "apprentice"
+      },
+      "ordinal": 7
+    },
+    {
+      "id": "story-hook-51cf5a5baa24a7",
+      "text": "At the edge of the pass, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 4,
+      "word_count": 7,
+      "ingredients": {
+        "place": "pass"
+      },
+      "ordinal": 8
+    },
+    {
+      "id": "story-hook-98421dc273eede",
+      "text": "The wolf at the window was dark, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "wolf",
+        "adjective": "dark"
+      },
+      "ordinal": 9
+    },
+    {
+      "id": "story-hook-5b9ce1de087f5d",
+      "text": "Beyond the valley, something woke",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "valley",
+        "verb": "woke"
+      },
+      "ordinal": 10
+    },
+    {
+      "id": "story-hook-acf2221afa5961",
+      "text": "The king found the mask under the iron gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "mask",
+        "adjective": "iron",
+        "hiding_place": "gate"
+      },
+      "ordinal": 11
+    },
+    {
+      "id": "story-hook-da10460a82b39f",
+      "text": "Between the harbor and the river,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "harbor",
+        "second_place": "river"
+      },
+      "ordinal": 12
+    },
+    {
+      "id": "story-hook-fd8069a4056f4a",
+      "text": "A letter, dead and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "letter",
+        "adjective": "dead"
+      },
+      "ordinal": 13
+    },
+    {
+      "id": "story-hook-e5b54a6408d497",
+      "text": "At the edge of the city, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 4,
+      "word_count": 7,
+      "ingredients": {
+        "place": "city"
+      },
+      "ordinal": 14
+    },
+    {
+      "id": "story-hook-3a7b70f45ead6b",
+      "text": "The map ended at the tower, but",
+      "kind": "mystery",
+      "mood": "threshold",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "place": "tower"
+      },
+      "ordinal": 15
+    },
+    {
+      "id": "story-hook-1bf7701ca6a9ad",
+      "text": "At the edge of the wood, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 4,
+      "word_count": 7,
+      "ingredients": {
+        "place": "wood"
+      },
+      "ordinal": 16
+    },
+    {
+      "id": "story-hook-5b73c7da6352f2",
+      "text": "When the cloak began to split,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "cloak",
+        "verb": "split"
+      },
+      "ordinal": 17
+    },
+    {
+      "id": "story-hook-a1e135ef1abf23",
+      "text": "The map ended at the wall, but",
+      "kind": "mystery",
+      "mood": "threshold",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "place": "wall"
+      },
+      "ordinal": 18
+    },
+    {
+      "id": "story-hook-275da9350889fc",
+      "text": "When the book began to split,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "book",
+        "verb": "split"
+      },
+      "ordinal": 19
+    },
+    {
+      "id": "story-hook-7024d655958c1c",
+      "text": "The stranger had only one rule:",
+      "kind": "rule",
+      "mood": "mystery",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "person": "stranger"
+      },
+      "ordinal": 20
+    },
+    {
+      "id": "story-hook-3e410fdfc98c95",
+      "text": "At the edge of the well, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 4,
+      "word_count": 7,
+      "ingredients": {
+        "place": "well"
+      },
+      "ordinal": 21
+    },
+    {
+      "id": "story-hook-b02ad30b17545a",
+      "text": "The old cloak opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "old",
+        "noun": "cloak"
+      },
+      "ordinal": 22
+    },
+    {
+      "id": "story-hook-3d788fce8dce1a",
+      "text": "The map ended at the mountain, but",
+      "kind": "mystery",
+      "mood": "threshold",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "place": "mountain"
+      },
+      "ordinal": 23
+    },
+    {
+      "id": "story-hook-0851f597b20bec",
+      "text": "Between the well and the river,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "well",
+        "second_place": "river"
+      },
+      "ordinal": 24
+    },
+    {
+      "id": "story-hook-20b1c658165f26",
+      "text": "A key, dark and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "key",
+        "adjective": "dark"
+      },
+      "ordinal": 25
+    },
+    {
+      "id": "story-hook-8e9295bbefde19",
+      "text": "The nameless lantern opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "nameless",
+        "noun": "lantern"
+      },
+      "ordinal": 26
+    },
+    {
+      "id": "story-hook-225284f35977f6",
+      "text": "Everyone heard the voice; only the stranger",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "voice",
+        "subject": "the stranger"
+      },
+      "ordinal": 27
+    },
+    {
+      "id": "story-hook-51ea8fe0c2c658",
+      "text": "A shadow, black and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "shadow",
+        "adjective": "black"
+      },
+      "ordinal": 28
+    },
+    {
+      "id": "story-hook-9b2a6503b18781",
+      "text": "A lantern, old and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "lantern",
+        "adjective": "old"
+      },
+      "ordinal": 29
+    },
+    {
+      "id": "story-hook-5cf7f4b9180d02",
+      "text": "The ancient map opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "ancient",
+        "noun": "map"
+      },
+      "ordinal": 30
+    },
+    {
+      "id": "story-hook-09c7e3e1451c11",
+      "text": "No one near the road remembered why",
+      "kind": "mystery",
+      "mood": "forgotten",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "place": "road"
+      },
+      "ordinal": 31
+    },
+    {
+      "id": "story-hook-4557f765a38f09",
+      "text": "Before the voices rang, the child",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "voice",
+        "person": "child"
+      },
+      "ordinal": 32
+    },
+    {
+      "id": "story-hook-45559505cc7a6e",
+      "text": "It was almost night when someone",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "time": "night",
+        "subject": "someone"
+      },
+      "ordinal": 33
+    },
+    {
+      "id": "story-hook-da9f724d574a23",
+      "text": "The map ended at the river, but",
+      "kind": "mystery",
+      "mood": "threshold",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "place": "river"
+      },
+      "ordinal": 34
+    },
+    {
+      "id": "story-hook-1e70cfc1f68987",
+      "text": "It was almost dusk when they",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "time": "dusk",
+        "subject": "they"
+      },
+      "ordinal": 35
+    },
+    {
+      "id": "story-hook-ee04a03da4a379",
+      "text": "Between the river and the mountain,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "river",
+        "second_place": "mountain"
+      },
+      "ordinal": 36
+    },
+    {
+      "id": "story-hook-75317e94c713fc",
+      "text": "At the edge of the gate, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "place": "gate"
+      },
+      "ordinal": 37
+    },
+    {
+      "id": "story-hook-04fd0aec0e12f9",
+      "text": "The strange sword opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "strange",
+        "noun": "sword"
+      },
+      "ordinal": 38
+    },
+    {
+      "id": "story-hook-7466bb7f0500b5",
+      "text": "The dog at the window was distant, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "dog",
+        "adjective": "distant"
+      },
+      "ordinal": 39
+    },
+    {
+      "id": "story-hook-4486eba858df56",
+      "text": "No one near the castle remembered why",
+      "kind": "mystery",
+      "mood": "forgotten",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "place": "castle"
+      },
+      "ordinal": 40
+    },
+    {
+      "id": "story-hook-36436b7f5568cf",
+      "text": "It was almost night when the king",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "time": "night",
+        "subject": "the king"
+      },
+      "ordinal": 41
+    },
+    {
+      "id": "story-hook-f520e4435d74aa",
+      "text": "The crown was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "crown"
+      },
+      "ordinal": 42
+    },
+    {
+      "id": "story-hook-098f6de92ae55b",
+      "text": "The child had only one rule:",
+      "kind": "rule",
+      "mood": "mystery",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "person": "child"
+      },
+      "ordinal": 43
+    },
+    {
+      "id": "story-hook-8f4a42f190c182",
+      "text": "Between the city and the shore,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "city",
+        "second_place": "shore"
+      },
+      "ordinal": 44
+    },
+    {
+      "id": "story-hook-a8d529b6e12500",
+      "text": "Beyond the river, something rose",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "river",
+        "verb": "rose"
+      },
+      "ordinal": 45
+    },
+    {
+      "id": "story-hook-fb20450589ef08",
+      "text": "When the stone began to open,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "stone",
+        "verb": "open"
+      },
+      "ordinal": 46
+    },
+    {
+      "id": "story-hook-817b514b54d5a3",
+      "text": "Beyond the well, something fell",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "well",
+        "verb": "fell"
+      },
+      "ordinal": 47
+    },
+    {
+      "id": "story-hook-e72683aa811afb",
+      "text": "The pilgrim found the lantern under the bright gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "pilgrim",
+        "thing": "lantern",
+        "adjective": "bright",
+        "hiding_place": "gate"
+      },
+      "ordinal": 48
+    },
+    {
+      "id": "story-hook-01d00c37bc2f61",
+      "text": "The cracked cloak opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "cracked",
+        "noun": "cloak"
+      },
+      "ordinal": 49
+    },
+    {
+      "id": "story-hook-c278afa08cdd34",
+      "text": "The king lied about the sign because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "king",
+        "mystery": "sign"
+      },
+      "ordinal": 50
+    },
+    {
+      "id": "story-hook-572742eafab6dd",
+      "text": "The dog at the window was black, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "dog",
+        "adjective": "black"
+      },
+      "ordinal": 51
+    },
+    {
+      "id": "story-hook-1ead373e1bdb75",
+      "text": "Everyone heard the cry; only the child",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "cry",
+        "subject": "the child"
+      },
+      "ordinal": 52
+    },
+    {
+      "id": "story-hook-9577d347401e13",
+      "text": "When the stone began to sing,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "stone",
+        "verb": "sing"
+      },
+      "ordinal": 53
+    },
+    {
+      "id": "story-hook-82638202a3e6bf",
+      "text": "The queen lied about the door because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "person": "queen",
+        "mystery": "door"
+      },
+      "ordinal": 54
+    },
+    {
+      "id": "story-hook-3d77effca8158c",
+      "text": "The red feather opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "red",
+        "noun": "feather"
+      },
+      "ordinal": 55
+    },
+    {
+      "id": "story-hook-94855cdedef204",
+      "text": "The soldier had only one rule:",
+      "kind": "rule",
+      "mood": "mystery",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "person": "soldier"
+      },
+      "ordinal": 56
+    },
+    {
+      "id": "story-hook-cb88a3cf386098",
+      "text": "The traveler found the lantern under the strange floor",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "traveler",
+        "thing": "lantern",
+        "adjective": "strange",
+        "hiding_place": "floor"
+      },
+      "ordinal": 57
+    },
+    {
+      "id": "story-hook-1841e5f76fe929",
+      "text": "Between the gate and the mountain,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "gate",
+        "second_place": "mountain"
+      },
+      "ordinal": 58
+    },
+    {
+      "id": "story-hook-fc4bec36f19f8e",
+      "text": "When the coin began to sing,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "coin",
+        "verb": "sing"
+      },
+      "ordinal": 59
+    },
+    {
+      "id": "story-hook-4106d1a42ed3d1",
+      "text": "\"Wait! Wait, and don't speak until you reach the door",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 7,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Wait",
+        "verb": "speak",
+        "place": "door"
+      },
+      "ordinal": 60
+    },
+    {
+      "id": "story-hook-c595cc4856f27d",
+      "text": "Between the road and the gate,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "road",
+        "second_place": "gate"
+      },
+      "ordinal": 61
+    },
+    {
+      "id": "story-hook-5fe55081819570",
+      "text": "No one near the forest remembered why",
+      "kind": "mystery",
+      "mood": "forgotten",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "place": "forest"
+      },
+      "ordinal": 62
+    },
+    {
+      "id": "story-hook-ff129415633779",
+      "text": "Everyone heard the whisper; only the witch",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "whisper",
+        "subject": "the witch"
+      },
+      "ordinal": 63
+    },
+    {
+      "id": "story-hook-7356ad8b7ab862",
+      "text": "Everyone heard the knock; only the guard",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "knock",
+        "subject": "the guard"
+      },
+      "ordinal": 64
+    },
+    {
+      "id": "story-hook-dc31e70ea2725b",
+      "text": "The last lantern before the wall",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "lantern",
+        "place": "wall"
+      },
+      "ordinal": 65
+    },
+    {
+      "id": "story-hook-c209c8b7caf729",
+      "text": "\"Hide! Hide, and don't sleep until you reach the castle",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 6,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Hide",
+        "verb": "sleep",
+        "place": "castle"
+      },
+      "ordinal": 66
+    },
+    {
+      "id": "story-hook-13a11415a5396c",
+      "text": "\"Wait! Wait, and don't speak until you reach the valley",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 6,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Wait",
+        "verb": "speak",
+        "place": "valley"
+      },
+      "ordinal": 67
+    },
+    {
+      "id": "story-hook-b04452c0a3f82c",
+      "text": "The queen lied about the road because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "person": "queen",
+        "mystery": "road"
+      },
+      "ordinal": 68
+    },
+    {
+      "id": "story-hook-6f4992a1802802",
+      "text": "Beyond the pass, something stirred",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "pass",
+        "verb": "stirred"
+      },
+      "ordinal": 69
+    },
+    {
+      "id": "story-hook-505531d8709f53",
+      "text": "The witch lied about the sign because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "witch",
+        "mystery": "sign"
+      },
+      "ordinal": 70
+    },
+    {
+      "id": "story-hook-a921bf24f8b59c",
+      "text": "The witch lied about the oath because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "witch",
+        "mystery": "oath"
+      },
+      "ordinal": 71
+    },
+    {
+      "id": "story-hook-771392cac14dad",
+      "text": "The last stone before the river",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "stone",
+        "place": "river"
+      },
+      "ordinal": 72
+    },
+    {
+      "id": "story-hook-ef7e12ebe4d0e1",
+      "text": "The traveler had only one rule:",
+      "kind": "rule",
+      "mood": "mystery",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "person": "traveler"
+      },
+      "ordinal": 73
+    },
+    {
+      "id": "story-hook-fbd4a2ce593516",
+      "text": "Before the cries rang, the witch",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "cry",
+        "person": "witch"
+      },
+      "ordinal": 74
+    },
+    {
+      "id": "story-hook-979f3058c0cf82",
+      "text": "The king lied about the road because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "person": "king",
+        "mystery": "road"
+      },
+      "ordinal": 75
+    },
+    {
+      "id": "story-hook-c93f9b705ad342",
+      "text": "Before the bells rang, the king",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "bell",
+        "person": "king"
+      },
+      "ordinal": 76
+    },
+    {
+      "id": "story-hook-ff09c55a6ac2b5",
+      "text": "The last ring before the river",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "ring",
+        "place": "river"
+      },
+      "ordinal": 77
+    },
+    {
+      "id": "story-hook-211f47a298127e",
+      "text": "The last cloak before the mountain",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "cloak",
+        "place": "mountain"
+      },
+      "ordinal": 78
+    },
+    {
+      "id": "story-hook-8dc6a31df9c686",
+      "text": "The serpent at the window was quiet, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "serpent",
+        "adjective": "quiet"
+      },
+      "ordinal": 79
+    },
+    {
+      "id": "story-hook-2c3e7c1f594b08",
+      "text": "The cloak was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "cloak"
+      },
+      "ordinal": 80
+    },
+    {
+      "id": "story-hook-9cc81119fbf84e",
+      "text": "The map was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "map"
+      },
+      "ordinal": 81
+    },
+    {
+      "id": "story-hook-3b49cbc0dcb864",
+      "text": "The sailor found the stone under the crimson floor",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "sailor",
+        "thing": "stone",
+        "adjective": "crimson",
+        "hiding_place": "floor"
+      },
+      "ordinal": 82
+    },
+    {
+      "id": "story-hook-d377b25ec596db",
+      "text": "The last stone before the well",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "stone",
+        "place": "well"
+      },
+      "ordinal": 83
+    },
+    {
+      "id": "story-hook-338f55106ad5e3",
+      "text": "It was almost night when the witch",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "time": "night",
+        "subject": "the witch"
+      },
+      "ordinal": 84
+    },
+    {
+      "id": "story-hook-0b9636501dff2f",
+      "text": "Everyone heard the whisper; only the stranger",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "whisper",
+        "subject": "the stranger"
+      },
+      "ordinal": 85
+    },
+    {
+      "id": "story-hook-64da84277430af",
+      "text": "The king had only one rule:",
+      "kind": "rule",
+      "mood": "mystery",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "person": "king"
+      },
+      "ordinal": 86
+    },
+    {
+      "id": "story-hook-bac57594183ec8",
+      "text": "The king found the rope under the old gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "rope",
+        "adjective": "old",
+        "hiding_place": "gate"
+      },
+      "ordinal": 87
+    },
+    {
+      "id": "story-hook-a2dd96207f7f74",
+      "text": "The last banner before the road",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "banner",
+        "place": "road"
+      },
+      "ordinal": 88
+    },
+    {
+      "id": "story-hook-87b6f91c0a5de0",
+      "text": "A sail, dead and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "sail",
+        "adjective": "dead"
+      },
+      "ordinal": 89
+    },
+    {
+      "id": "story-hook-fa6844431f52af",
+      "text": "Between the road and the city,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "road",
+        "second_place": "city"
+      },
+      "ordinal": 90
+    },
+    {
+      "id": "story-hook-a7380c5ba1cc84",
+      "text": "The map ended at the forest, but",
+      "kind": "mystery",
+      "mood": "threshold",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "place": "forest"
+      },
+      "ordinal": 91
+    },
+    {
+      "id": "story-hook-7870e16ea699d9",
+      "text": "The horse at the window was pale, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "horse",
+        "adjective": "pale"
+      },
+      "ordinal": 92
+    },
+    {
+      "id": "story-hook-29e1b52a8586c3",
+      "text": "A bottle, strange and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "bottle",
+        "adjective": "strange"
+      },
+      "ordinal": 93
+    },
+    {
+      "id": "story-hook-77e5b9de8fbbb3",
+      "text": "Everyone heard the voice; only the child",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "voice",
+        "subject": "the child"
+      },
+      "ordinal": 94
+    },
+    {
+      "id": "story-hook-e2d4e709f4343b",
+      "text": "\"Wait! Wait, and don't sleep until you reach the road",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 7,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Wait",
+        "verb": "sleep",
+        "place": "road"
+      },
+      "ordinal": 95
+    },
+    {
+      "id": "story-hook-c9559fc79af99d",
+      "text": "The knife was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "knife"
+      },
+      "ordinal": 96
+    },
+    {
+      "id": "story-hook-d90cb9734a6b74",
+      "text": "No one near the river remembered why",
+      "kind": "mystery",
+      "mood": "forgotten",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "place": "river"
+      },
+      "ordinal": 97
+    },
+    {
+      "id": "story-hook-1a2f5264fd1e3b",
+      "text": "The soldier found the candle under the secret floor",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "soldier",
+        "thing": "candle",
+        "adjective": "secret",
+        "hiding_place": "floor"
+      },
+      "ordinal": 98
+    },
+    {
+      "id": "story-hook-522ee7f8ad4f67",
+      "text": "The king found the flame under the thin gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "flame",
+        "adjective": "thin",
+        "hiding_place": "gate"
+      },
+      "ordinal": 99
+    },
+    {
+      "id": "story-hook-9b1d1394230ecd",
+      "text": "The map ended at the valley, but",
+      "kind": "mystery",
+      "mood": "threshold",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "place": "valley"
+      },
+      "ordinal": 100
+    },
+    {
+      "id": "story-hook-f3cbaad7902ec6",
+      "text": "The serpent at the window was dark, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "serpent",
+        "adjective": "dark"
+      },
+      "ordinal": 101
+    },
+    {
+      "id": "story-hook-e8a2027aa2fcc5",
+      "text": "The banner was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "banner"
+      },
+      "ordinal": 102
+    },
+    {
+      "id": "story-hook-997ce18808f05d",
+      "text": "The crimson stone opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "crimson",
+        "noun": "stone"
+      },
+      "ordinal": 103
+    },
+    {
+      "id": "story-hook-a74485b5b88f2e",
+      "text": "\"Look! Look, and don't speak until you reach the city",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 6,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Look",
+        "verb": "speak",
+        "place": "city"
+      },
+      "ordinal": 104
+    },
+    {
+      "id": "story-hook-ec50052e80499b",
+      "text": "At the edge of the valley, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 4,
+      "word_count": 7,
+      "ingredients": {
+        "place": "valley"
+      },
+      "ordinal": 105
+    },
+    {
+      "id": "story-hook-5a445d631dd162",
+      "text": "A map, black and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "map",
+        "adjective": "black"
+      },
+      "ordinal": 106
+    },
+    {
+      "id": "story-hook-d23e89df47cb1a",
+      "text": "The king found the shadow under the hollow well",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "shadow",
+        "adjective": "hollow",
+        "hiding_place": "well"
+      },
+      "ordinal": 107
+    },
+    {
+      "id": "story-hook-5be9a3d71c264d",
+      "text": "Before the voices rang, the soldier",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "voice",
+        "person": "soldier"
+      },
+      "ordinal": 108
+    },
+    {
+      "id": "story-hook-edae09bae69ffd",
+      "text": "The dog at the window was dark, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "dog",
+        "adjective": "dark"
+      },
+      "ordinal": 109
+    },
+    {
+      "id": "story-hook-50f4ba585d2bbe",
+      "text": "Beyond the river, something fell",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "river",
+        "verb": "fell"
+      },
+      "ordinal": 110
+    },
+    {
+      "id": "story-hook-b7594a23423af2",
+      "text": "The last stone before the road",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "stone",
+        "place": "road"
+      },
+      "ordinal": 111
+    },
+    {
+      "id": "story-hook-99efebfee61dc3",
+      "text": "Before the horns rang, the messenger",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "horn",
+        "person": "messenger"
+      },
+      "ordinal": 112
+    },
+    {
+      "id": "story-hook-1c76011815d1e7",
+      "text": "Before the voices rang, the king",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "voice",
+        "person": "king"
+      },
+      "ordinal": 113
+    },
+    {
+      "id": "story-hook-90e2562315ab98",
+      "text": "The last key before the marsh",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "key",
+        "place": "marsh"
+      },
+      "ordinal": 114
+    },
+    {
+      "id": "story-hook-0e299f76745c98",
+      "text": "The child lied about the road because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "person": "child",
+        "mystery": "road"
+      },
+      "ordinal": 115
+    },
+    {
+      "id": "story-hook-d810b5e94600bd",
+      "text": "The king lied about the name because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "king",
+        "mystery": "name"
+      },
+      "ordinal": 116
+    },
+    {
+      "id": "story-hook-9f0c2e0b380f28",
+      "text": "Between the door and the forest,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "door",
+        "second_place": "forest"
+      },
+      "ordinal": 117
+    },
+    {
+      "id": "story-hook-379bea178ef222",
+      "text": "\"Listen! Listen, and don't stop until you reach the river",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 7,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Listen",
+        "verb": "stop",
+        "place": "river"
+      },
+      "ordinal": 118
+    },
+    {
+      "id": "story-hook-fb039911b7dc94",
+      "text": "Between the road and the well,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "road",
+        "second_place": "well"
+      },
+      "ordinal": 119
+    },
+    {
+      "id": "story-hook-8e367c526eec84",
+      "text": "The crow at the window was white, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "crow",
+        "adjective": "white"
+      },
+      "ordinal": 120
+    },
+    {
+      "id": "story-hook-e86171c2c2676d",
+      "text": "Beyond the well, something waited",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "well",
+        "verb": "waited"
+      },
+      "ordinal": 121
+    },
+    {
+      "id": "story-hook-4b95474c1ae6ce",
+      "text": "At the edge of the tower, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "place": "tower"
+      },
+      "ordinal": 122
+    },
+    {
+      "id": "story-hook-fb6ebb82fd969e",
+      "text": "When the box began to ring,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "box",
+        "verb": "ring"
+      },
+      "ordinal": 123
+    },
+    {
+      "id": "story-hook-3acc897a9ca177",
+      "text": "The rider found the horn under the old well",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "rider",
+        "thing": "horn",
+        "adjective": "old",
+        "hiding_place": "well"
+      },
+      "ordinal": 124
+    },
+    {
+      "id": "story-hook-2b630bfd9da4b5",
+      "text": "The last rope before the river",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "rope",
+        "place": "river"
+      },
+      "ordinal": 125
+    },
+    {
+      "id": "story-hook-0e00915bf0e030",
+      "text": "The sail was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "sail"
+      },
+      "ordinal": 126
+    },
+    {
+      "id": "story-hook-e809513e0f5c03",
+      "text": "Beyond the city, something rose",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "city",
+        "verb": "rose"
+      },
+      "ordinal": 127
+    },
+    {
+      "id": "story-hook-7fd33bdda0154a",
+      "text": "It was almost winter when the king",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "time": "winter",
+        "subject": "the king"
+      },
+      "ordinal": 128
+    },
+    {
+      "id": "story-hook-4a0325feac7fa3",
+      "text": "The last door before the road",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "door",
+        "place": "road"
+      },
+      "ordinal": 129
+    },
+    {
+      "id": "story-hook-45b3ce2ebb383f",
+      "text": "The quiet horn opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "quiet",
+        "noun": "horn"
+      },
+      "ordinal": 130
+    },
+    {
+      "id": "story-hook-9abe17f4fd69a7",
+      "text": "At the edge of the wall, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 4,
+      "word_count": 7,
+      "ingredients": {
+        "place": "wall"
+      },
+      "ordinal": 131
+    },
+    {
+      "id": "story-hook-39e396ecf08678",
+      "text": "The last song before the river",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "song",
+        "place": "river"
+      },
+      "ordinal": 132
+    },
+    {
+      "id": "story-hook-9f8efc8665b29b",
+      "text": "Everyone heard the voice; only the guard",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "voice",
+        "subject": "the guard"
+      },
+      "ordinal": 133
+    },
+    {
+      "id": "story-hook-f68bd681b5d01e",
+      "text": "Between the city and the road,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "city",
+        "second_place": "road"
+      },
+      "ordinal": 134
+    },
+    {
+      "id": "story-hook-3ab226ebf2b753",
+      "text": "The serpent at the window was nameless, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "serpent",
+        "adjective": "nameless"
+      },
+      "ordinal": 135
+    },
+    {
+      "id": "story-hook-4c778e7cdc454e",
+      "text": "A map, pale and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "map",
+        "adjective": "pale"
+      },
+      "ordinal": 136
+    },
+    {
+      "id": "story-hook-8c04b6b60746c6",
+      "text": "A shadow, secret and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "shadow",
+        "adjective": "secret"
+      },
+      "ordinal": 137
+    },
+    {
+      "id": "story-hook-66e1bb0a8a8c46",
+      "text": "When the stone began to ring,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "stone",
+        "verb": "ring"
+      },
+      "ordinal": 138
+    },
+    {
+      "id": "story-hook-f577f01cc546d7",
+      "text": "It was almost winter when someone",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "time": "winter",
+        "subject": "someone"
+      },
+      "ordinal": 139
+    },
+    {
+      "id": "story-hook-8757834dbf4559",
+      "text": "The serpent at the window was black, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "serpent",
+        "adjective": "black"
+      },
+      "ordinal": 140
+    },
+    {
+      "id": "story-hook-8df4be9a06eff7",
+      "text": "Beyond the hill, something whispered",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "hill",
+        "verb": "whispered"
+      },
+      "ordinal": 141
+    },
+    {
+      "id": "story-hook-4753bda4201f68",
+      "text": "The broken bottle opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "broken",
+        "noun": "bottle"
+      },
+      "ordinal": 142
+    },
+    {
+      "id": "story-hook-0a798e36ffb284",
+      "text": "It was almost morning when they",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "time": "morning",
+        "subject": "they"
+      },
+      "ordinal": 143
+    },
+    {
+      "id": "story-hook-ac349b795950dc",
+      "text": "Before the bells rang, the witch",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "bell",
+        "person": "witch"
+      },
+      "ordinal": 144
+    },
+    {
+      "id": "story-hook-5cae3815827ed2",
+      "text": "The shadow was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "shadow"
+      },
+      "ordinal": 145
+    },
+    {
+      "id": "story-hook-de64d3ec195e2e",
+      "text": "The messenger had only one rule:",
+      "kind": "rule",
+      "mood": "mystery",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "person": "messenger"
+      },
+      "ordinal": 146
+    },
+    {
+      "id": "story-hook-f4a163c9d8e984",
+      "text": "The pilgrim lied about the road because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "person": "pilgrim",
+        "mystery": "road"
+      },
+      "ordinal": 147
+    },
+    {
+      "id": "story-hook-c84e10d06b2500",
+      "text": "The bird at the window was old, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "bird",
+        "adjective": "old"
+      },
+      "ordinal": 148
+    },
+    {
+      "id": "story-hook-a99920618e1503",
+      "text": "When the spear began to split,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "spear",
+        "verb": "split"
+      },
+      "ordinal": 149
+    },
+    {
+      "id": "story-hook-eafeb40405bbcc",
+      "text": "The last lantern before the mountain",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "lantern",
+        "place": "mountain"
+      },
+      "ordinal": 150
+    },
+    {
+      "id": "story-hook-d7bfda0d9b9db3",
+      "text": "Between the river and the road,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "river",
+        "second_place": "road"
+      },
+      "ordinal": 151
+    },
+    {
+      "id": "story-hook-31d329bb02be09",
+      "text": "When the candle began to vanish,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "candle",
+        "verb": "vanish"
+      },
+      "ordinal": 152
+    },
+    {
+      "id": "story-hook-75ce015b80902f",
+      "text": "The dragon at the window was pale, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "dragon",
+        "adjective": "pale"
+      },
+      "ordinal": 153
+    },
+    {
+      "id": "story-hook-c5e4b55776ee0c",
+      "text": "The map ended at the keep, but",
+      "kind": "mystery",
+      "mood": "threshold",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "place": "keep"
+      },
+      "ordinal": 154
+    },
+    {
+      "id": "story-hook-aa4fc01b2bb10f",
+      "text": "No one near the gate remembered why",
+      "kind": "mystery",
+      "mood": "forgotten",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "place": "gate"
+      },
+      "ordinal": 155
+    },
+    {
+      "id": "story-hook-2e9f30a7a373b4",
+      "text": "The prisoner found the sword under the pale gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "prisoner",
+        "thing": "sword",
+        "adjective": "pale",
+        "hiding_place": "gate"
+      },
+      "ordinal": 156
+    },
+    {
+      "id": "story-hook-27680a70b865e6",
+      "text": "No one near the mountain remembered why",
+      "kind": "mystery",
+      "mood": "forgotten",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "place": "mountain"
+      },
+      "ordinal": 157
+    },
+    {
+      "id": "story-hook-2bccfb578b7611",
+      "text": "The stone was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "stone"
+      },
+      "ordinal": 158
+    },
+    {
+      "id": "story-hook-fe9b037a7b60a9",
+      "text": "Beyond the well, something shivered",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "well",
+        "verb": "shivered"
+      },
+      "ordinal": 159
+    },
+    {
+      "id": "story-hook-8fa1d3b6762b5a",
+      "text": "The rope was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "rope"
+      },
+      "ordinal": 160
+    },
+    {
+      "id": "story-hook-61c20232598bd6",
+      "text": "\"Wait! Wait, and don't speak until you reach the tower",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 7,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Wait",
+        "verb": "speak",
+        "place": "tower"
+      },
+      "ordinal": 161
+    },
+    {
+      "id": "story-hook-16b1047249af76",
+      "text": "Beyond the wall, something opened",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "wall",
+        "verb": "opened"
+      },
+      "ordinal": 162
+    },
+    {
+      "id": "story-hook-3b3bd735122f6c",
+      "text": "Beyond the road, something fell",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "road",
+        "verb": "fell"
+      },
+      "ordinal": 163
+    },
+    {
+      "id": "story-hook-94eef12672ebd9",
+      "text": "The fox at the window was old, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "fox",
+        "adjective": "old"
+      },
+      "ordinal": 164
+    },
+    {
+      "id": "story-hook-78239ed78eaad7",
+      "text": "When the map began to ring,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "map",
+        "verb": "ring"
+      },
+      "ordinal": 165
+    },
+    {
+      "id": "story-hook-f036fca8d226f9",
+      "text": "The dog at the window was ancient, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "dog",
+        "adjective": "ancient"
+      },
+      "ordinal": 166
+    },
+    {
+      "id": "story-hook-b55b286ff4c959",
+      "text": "The dark crown opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "dark",
+        "noun": "crown"
+      },
+      "ordinal": 167
+    },
+    {
+      "id": "story-hook-bf50e4ef83a42f",
+      "text": "Between the mountain and the keep,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "mountain",
+        "second_place": "keep"
+      },
+      "ordinal": 168
+    },
+    {
+      "id": "story-hook-c8385295122f6f",
+      "text": "The scribe found the spear under the pale floor",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "scribe",
+        "thing": "spear",
+        "adjective": "pale",
+        "hiding_place": "floor"
+      },
+      "ordinal": 169
+    },
+    {
+      "id": "story-hook-bcc6619886c185",
+      "text": "When the shadow began to burn,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "shadow",
+        "verb": "burn"
+      },
+      "ordinal": 170
+    },
+    {
+      "id": "story-hook-4a6e691a01693c",
+      "text": "Everyone heard the voice; only the witch",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "voice",
+        "subject": "the witch"
+      },
+      "ordinal": 171
+    },
+    {
+      "id": "story-hook-5d5f049db29e71",
+      "text": "The last stone before the valley",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "stone",
+        "place": "valley"
+      },
+      "ordinal": 172
+    },
+    {
+      "id": "story-hook-039fadd4105ec0",
+      "text": "A ring, white and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "ring",
+        "adjective": "white"
+      },
+      "ordinal": 173
+    },
+    {
+      "id": "story-hook-d398132e672995",
+      "text": "At the edge of the courtyard, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 4,
+      "word_count": 7,
+      "ingredients": {
+        "place": "courtyard"
+      },
+      "ordinal": 174
+    },
+    {
+      "id": "story-hook-65899d45ec42ad",
+      "text": "A mask, dark and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "mask",
+        "adjective": "dark"
+      },
+      "ordinal": 175
+    },
+    {
+      "id": "story-hook-0b0ada4269cb22",
+      "text": "The last spear before the pass",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "spear",
+        "place": "pass"
+      },
+      "ordinal": 176
+    },
+    {
+      "id": "story-hook-d36a34f6818d62",
+      "text": "At the edge of the marsh, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 4,
+      "word_count": 7,
+      "ingredients": {
+        "place": "marsh"
+      },
+      "ordinal": 177
+    },
+    {
+      "id": "story-hook-4f2289d800078a",
+      "text": "The king found the stone under the white table",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "stone",
+        "adjective": "white",
+        "hiding_place": "table"
+      },
+      "ordinal": 178
+    },
+    {
+      "id": "story-hook-bcf38d13d15aba",
+      "text": "No one near the tower remembered why",
+      "kind": "mystery",
+      "mood": "forgotten",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "place": "tower"
+      },
+      "ordinal": 179
+    },
+    {
+      "id": "story-hook-1ce9ad0892064c",
+      "text": "The oak tree was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "noun": "oak tree"
+      },
+      "ordinal": 180
+    },
+    {
+      "id": "story-hook-09c165ca12b04b",
+      "text": "The king found the bottle under the old stair",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "bottle",
+        "adjective": "old",
+        "hiding_place": "stair"
+      },
+      "ordinal": 181
+    },
+    {
+      "id": "story-hook-79e2bfb67283d1",
+      "text": "A feather, white and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "feather",
+        "adjective": "white"
+      },
+      "ordinal": 182
+    },
+    {
+      "id": "story-hook-ebdc29460f403d",
+      "text": "The lantern was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "lantern"
+      },
+      "ordinal": 183
+    },
+    {
+      "id": "story-hook-3ed2473284a65e",
+      "text": "The bird at the window was dark, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "bird",
+        "adjective": "dark"
+      },
+      "ordinal": 184
+    },
+    {
+      "id": "story-hook-2e90b74cc53c6a",
+      "text": "The ancient stone opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "ancient",
+        "noun": "stone"
+      },
+      "ordinal": 185
+    },
+    {
+      "id": "story-hook-8e92f7c0602dac",
+      "text": "The cold shadow opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "cold",
+        "noun": "shadow"
+      },
+      "ordinal": 186
+    },
+    {
+      "id": "story-hook-f03e3a2b0fbb59",
+      "text": "The horn was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "horn"
+      },
+      "ordinal": 187
+    },
+    {
+      "id": "story-hook-bc792270c52a83",
+      "text": "The last box before the road",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "box",
+        "place": "road"
+      },
+      "ordinal": 188
+    },
+    {
+      "id": "story-hook-4f94b77060b30c",
+      "text": "Between the mountain and the forest,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "mountain",
+        "second_place": "forest"
+      },
+      "ordinal": 189
+    },
+    {
+      "id": "story-hook-16fe9633e80eab",
+      "text": "Beyond the road, something rose",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "road",
+        "verb": "rose"
+      },
+      "ordinal": 190
+    },
+    {
+      "id": "story-hook-feafed97012f5b",
+      "text": "The king found the cloak under the white well",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "cloak",
+        "adjective": "white",
+        "hiding_place": "well"
+      },
+      "ordinal": 191
+    },
+    {
+      "id": "story-hook-4f98b6295cba88",
+      "text": "\"Hide! Hide, and don't speak until you reach the well",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 6,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Hide",
+        "verb": "speak",
+        "place": "well"
+      },
+      "ordinal": 192
+    },
+    {
+      "id": "story-hook-1bd3597ee1c4b3",
+      "text": "The last stone before the bridge",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "stone",
+        "place": "bridge"
+      },
+      "ordinal": 193
+    },
+    {
+      "id": "story-hook-e75ce906ba13ef",
+      "text": "The traveler found the shadow under the old gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "traveler",
+        "thing": "shadow",
+        "adjective": "old",
+        "hiding_place": "gate"
+      },
+      "ordinal": 194
+    },
+    {
+      "id": "story-hook-f27501d7a57a87",
+      "text": "The box was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "box"
+      },
+      "ordinal": 195
+    },
+    {
+      "id": "story-hook-f77c4cbfd33048",
+      "text": "It was almost dawn when the witch",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "time": "dawn",
+        "subject": "the witch"
+      },
+      "ordinal": 196
+    },
+    {
+      "id": "story-hook-c3a9174651aaa0",
+      "text": "When the crown began to split,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "crown",
+        "verb": "split"
+      },
+      "ordinal": 197
+    },
+    {
+      "id": "story-hook-a74108a2de0914",
+      "text": "The old sail opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "old",
+        "noun": "sail"
+      },
+      "ordinal": 198
+    },
+    {
+      "id": "story-hook-f60a488c97323d",
+      "text": "Before the songs rang, the sailor",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "song",
+        "person": "sailor"
+      },
+      "ordinal": 199
+    },
+    {
+      "id": "story-hook-14ea9589656d5a",
+      "text": "The last door before the pass",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "door",
+        "place": "pass"
+      },
+      "ordinal": 200
+    },
+    {
+      "id": "story-hook-11243ddb1e6b63",
+      "text": "The traveler found the stone under the golden roots",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "traveler",
+        "thing": "stone",
+        "adjective": "golden",
+        "hiding_place": "roots"
+      },
+      "ordinal": 201
+    },
+    {
+      "id": "story-hook-5d28d13e58e452",
+      "text": "The last torch before the mountain",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "torch",
+        "place": "mountain"
+      },
+      "ordinal": 202
+    },
+    {
+      "id": "story-hook-c688d0172c2cf3",
+      "text": "Before the drums rang, the prisoner",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "drum",
+        "person": "prisoner"
+      },
+      "ordinal": 203
+    },
+    {
+      "id": "story-hook-610332ef50bc25",
+      "text": "Before the drums rang, the king",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "drum",
+        "person": "king"
+      },
+      "ordinal": 204
+    },
+    {
+      "id": "story-hook-7cc6a92c8ac26a",
+      "text": "A box, dark and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "box",
+        "adjective": "dark"
+      },
+      "ordinal": 205
+    },
+    {
+      "id": "story-hook-c2b249205e3f8f",
+      "text": "Everyone heard the bell; only the child",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "bell",
+        "subject": "the child"
+      },
+      "ordinal": 206
+    },
+    {
+      "id": "story-hook-a3715f7aa26e56",
+      "text": "Beyond the mountain, something rose",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "mountain",
+        "verb": "rose"
+      },
+      "ordinal": 207
+    },
+    {
+      "id": "story-hook-edff4a69cf5650",
+      "text": "The queen lied about the secret because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "queen",
+        "mystery": "secret"
+      },
+      "ordinal": 208
+    },
+    {
+      "id": "story-hook-7296cec3ce8e0f",
+      "text": "At the edge of the keep, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 4,
+      "word_count": 7,
+      "ingredients": {
+        "place": "keep"
+      },
+      "ordinal": 209
+    },
+    {
+      "id": "story-hook-6a8e94ae57cc61",
+      "text": "The door was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "door"
+      },
+      "ordinal": 210
+    },
+    {
+      "id": "story-hook-9972c6ed5f8acd",
+      "text": "A rope, distant and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "rope",
+        "adjective": "distant"
+      },
+      "ordinal": 211
+    },
+    {
+      "id": "story-hook-71d6ea17db77c2",
+      "text": "No one near the pass remembered why",
+      "kind": "mystery",
+      "mood": "forgotten",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "place": "pass"
+      },
+      "ordinal": 212
+    },
+    {
+      "id": "story-hook-4c8417d4029fd4",
+      "text": "No one near the door remembered why",
+      "kind": "mystery",
+      "mood": "forgotten",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "place": "door"
+      },
+      "ordinal": 213
+    },
+    {
+      "id": "story-hook-b96c3c929c5244",
+      "text": "\"Wait! Wait, and don't speak until you reach the gate",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 7,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Wait",
+        "verb": "speak",
+        "place": "gate"
+      },
+      "ordinal": 214
+    },
+    {
+      "id": "story-hook-905451f7936f72",
+      "text": "The king found the window under the red gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "window",
+        "adjective": "red",
+        "hiding_place": "gate"
+      },
+      "ordinal": 215
+    },
+    {
+      "id": "story-hook-e3da2de96a1803",
+      "text": "The fox at the window was golden, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "fox",
+        "adjective": "golden"
+      },
+      "ordinal": 216
+    },
+    {
+      "id": "story-hook-a57aedde656482",
+      "text": "A flame, white and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "flame",
+        "adjective": "white"
+      },
+      "ordinal": 217
+    },
+    {
+      "id": "story-hook-b3f9d390ee0447",
+      "text": "A stone, dead and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "stone",
+        "adjective": "dead"
+      },
+      "ordinal": 218
+    },
+    {
+      "id": "story-hook-a530a3b36f1342",
+      "text": "The map ended at the gate, but",
+      "kind": "mystery",
+      "mood": "threshold",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "place": "gate"
+      },
+      "ordinal": 219
+    },
+    {
+      "id": "story-hook-50cbc7358444c3",
+      "text": "\"Run! Run, and don't speak until you reach the valley",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 6,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Run",
+        "verb": "speak",
+        "place": "valley"
+      },
+      "ordinal": 220
+    },
+    {
+      "id": "story-hook-81eb539156ee9e",
+      "text": "The last cloak before the river",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "cloak",
+        "place": "river"
+      },
+      "ordinal": 221
+    },
+    {
+      "id": "story-hook-9d2c876bef7f4e",
+      "text": "\"Wake! Wake, and don't sleep until you reach the road",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 7,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Wake",
+        "verb": "sleep",
+        "place": "road"
+      },
+      "ordinal": 222
+    },
+    {
+      "id": "story-hook-a62853ed8b12b3",
+      "text": "The last map before the harbor",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "map",
+        "place": "harbor"
+      },
+      "ordinal": 223
+    },
+    {
+      "id": "story-hook-db966a71ea6496",
+      "text": "When the shadow began to vanish,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "shadow",
+        "verb": "vanish"
+      },
+      "ordinal": 224
+    },
+    {
+      "id": "story-hook-4957ef22713fed",
+      "text": "Between the pass and the gate,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "pass",
+        "second_place": "gate"
+      },
+      "ordinal": 225
+    },
+    {
+      "id": "story-hook-5855b84e8d5fa3",
+      "text": "When the rope began to stir,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "rope",
+        "verb": "stir"
+      },
+      "ordinal": 226
+    },
+    {
+      "id": "story-hook-ab45b78b11a10b",
+      "text": "A letter, broken and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "letter",
+        "adjective": "broken"
+      },
+      "ordinal": 227
+    },
+    {
+      "id": "story-hook-22014aaeb3aaf6",
+      "text": "It was almost night when the heir",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "time": "night",
+        "subject": "the heir"
+      },
+      "ordinal": 228
+    },
+    {
+      "id": "story-hook-21db9998cf5a1e",
+      "text": "When the bell began to split,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "bell",
+        "verb": "split"
+      },
+      "ordinal": 229
+    },
+    {
+      "id": "story-hook-d4f523d53cc516",
+      "text": "Everyone heard the song; only the witch",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "song",
+        "subject": "the witch"
+      },
+      "ordinal": 230
+    },
+    {
+      "id": "story-hook-05bc8383ca218c",
+      "text": "The king found the book under the white well",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "book",
+        "adjective": "white",
+        "hiding_place": "well"
+      },
+      "ordinal": 231
+    },
+    {
+      "id": "story-hook-f58f5dadc1b41d",
+      "text": "The queen found the ring under the buried tower",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "queen",
+        "thing": "ring",
+        "adjective": "buried",
+        "hiding_place": "tower"
+      },
+      "ordinal": 232
+    },
+    {
+      "id": "story-hook-c376789f958fbd",
+      "text": "When the book began to ring,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "book",
+        "verb": "ring"
+      },
+      "ordinal": 233
+    },
+    {
+      "id": "story-hook-fbef721c4b3bb4",
+      "text": "Beyond the gate, something called",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "gate",
+        "verb": "called"
+      },
+      "ordinal": 234
+    },
+    {
+      "id": "story-hook-d96de76465d724",
+      "text": "Everyone heard the horn; only the stranger",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "horn",
+        "subject": "the stranger"
+      },
+      "ordinal": 235
+    },
+    {
+      "id": "story-hook-cc0303b287dcb1",
+      "text": "Between the castle and the mountain,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "castle",
+        "second_place": "mountain"
+      },
+      "ordinal": 236
+    },
+    {
+      "id": "story-hook-f57d882490bc00",
+      "text": "\"Listen! Listen, and don't stop until you reach the road",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 7,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Listen",
+        "verb": "stop",
+        "place": "road"
+      },
+      "ordinal": 237
+    },
+    {
+      "id": "story-hook-dd04f3dd2cd79d",
+      "text": "Everyone heard the bell; only the witch",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "bell",
+        "subject": "the witch"
+      },
+      "ordinal": 238
+    },
+    {
+      "id": "story-hook-b287be8deece5d",
+      "text": "Everyone heard the drum; only the guard",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "drum",
+        "subject": "the guard"
+      },
+      "ordinal": 239
+    },
+    {
+      "id": "story-hook-810114d7749733",
+      "text": "The dead stone opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "dead",
+        "noun": "stone"
+      },
+      "ordinal": 240
+    },
+    {
+      "id": "story-hook-b291a7d8b4555c",
+      "text": "When the door began to ring,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "door",
+        "verb": "ring"
+      },
+      "ordinal": 241
+    },
+    {
+      "id": "story-hook-1a6a0f78216f8a",
+      "text": "The golden rope opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "golden",
+        "noun": "rope"
+      },
+      "ordinal": 242
+    },
+    {
+      "id": "story-hook-23190dd5bdba47",
+      "text": "Between the road and the river,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "road",
+        "second_place": "river"
+      },
+      "ordinal": 243
+    },
+    {
+      "id": "story-hook-b9608f6608bc87",
+      "text": "A rope, broken and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "rope",
+        "adjective": "broken"
+      },
+      "ordinal": 244
+    },
+    {
+      "id": "story-hook-944e9e0ed502e4",
+      "text": "When the ring began to whisper,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "ring",
+        "verb": "whisper"
+      },
+      "ordinal": 245
+    },
+    {
+      "id": "story-hook-90ee08552d22f1",
+      "text": "The serpent at the window was dead, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "serpent",
+        "adjective": "dead"
+      },
+      "ordinal": 246
+    },
+    {
+      "id": "story-hook-c75a280908975a",
+      "text": "A rope, red and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "rope",
+        "adjective": "red"
+      },
+      "ordinal": 247
+    },
+    {
+      "id": "story-hook-ffe46f1e0b6198",
+      "text": "A banner, pale and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "banner",
+        "adjective": "pale"
+      },
+      "ordinal": 248
+    },
+    {
+      "id": "story-hook-91cd59f7d5a98e",
+      "text": "Between the mountain and the gate,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "mountain",
+        "second_place": "gate"
+      },
+      "ordinal": 249
+    },
+    {
+      "id": "story-hook-022d2cc3c8d41d",
+      "text": "The scribe lied about the road because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "person": "scribe",
+        "mystery": "road"
+      },
+      "ordinal": 250
+    },
+    {
+      "id": "story-hook-0509b58445b569",
+      "text": "A flame, quiet and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "flame",
+        "adjective": "quiet"
+      },
+      "ordinal": 251
+    },
+    {
+      "id": "story-hook-e3c9506d49bf51",
+      "text": "The last spear before the city",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "spear",
+        "place": "city"
+      },
+      "ordinal": 252
+    },
+    {
+      "id": "story-hook-b82079fe71227e",
+      "text": "Beyond the mountain, something fell",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "mountain",
+        "verb": "fell"
+      },
+      "ordinal": 253
+    },
+    {
+      "id": "story-hook-a755b3f73c1be9",
+      "text": "Before the footsteps rang, the apprentice",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "footstep",
+        "person": "apprentice"
+      },
+      "ordinal": 254
+    },
+    {
+      "id": "story-hook-51f2c2a5b28a9b",
+      "text": "A stone, black and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "stone",
+        "adjective": "black"
+      },
+      "ordinal": 255
+    },
+    {
+      "id": "story-hook-a5b6ad3b423c20",
+      "text": "It was almost night when the stranger",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "time": "night",
+        "subject": "the stranger"
+      },
+      "ordinal": 256
+    },
+    {
+      "id": "story-hook-25a66d12019cd2",
+      "text": "The last horn before the pass",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "horn",
+        "place": "pass"
+      },
+      "ordinal": 257
+    },
+    {
+      "id": "story-hook-9ddd8ad4d3b243",
+      "text": "The bird at the window was ancient, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "bird",
+        "adjective": "ancient"
+      },
+      "ordinal": 258
+    },
+    {
+      "id": "story-hook-e1fbb66293df15",
+      "text": "The last map before the river",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "map",
+        "place": "river"
+      },
+      "ordinal": 259
+    },
+    {
+      "id": "story-hook-47c052f9f2c162",
+      "text": "The witch had only one rule:",
+      "kind": "rule",
+      "mood": "mystery",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "person": "witch"
+      },
+      "ordinal": 260
+    },
+    {
+      "id": "story-hook-b7d9de2a82802c",
+      "text": "When the shadow began to split,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "shadow",
+        "verb": "split"
+      },
+      "ordinal": 261
+    },
+    {
+      "id": "story-hook-f7ac4bfabd3615",
+      "text": "At the edge of the river, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "place": "river"
+      },
+      "ordinal": 262
+    },
+    {
+      "id": "story-hook-977a6e12b7cf3b",
+      "text": "When the seal began to split,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "seal",
+        "verb": "split"
+      },
+      "ordinal": 263
+    },
+    {
+      "id": "story-hook-8d0eb5c614ee2a",
+      "text": "A flame, dead and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "flame",
+        "adjective": "dead"
+      },
+      "ordinal": 264
+    },
+    {
+      "id": "story-hook-02a1ed8264cc11",
+      "text": "Before the voices rang, the thief",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "voice",
+        "person": "thief"
+      },
+      "ordinal": 265
+    },
+    {
+      "id": "story-hook-97f577a37ff0be",
+      "text": "It was almost night when the queen",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "time": "night",
+        "subject": "the queen"
+      },
+      "ordinal": 266
+    },
+    {
+      "id": "story-hook-243230de8f3623",
+      "text": "Before the footsteps rang, the sailor",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "footstep",
+        "person": "sailor"
+      },
+      "ordinal": 267
+    },
+    {
+      "id": "story-hook-0e3f9a8826f12c",
+      "text": "The ancient rope opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "ancient",
+        "noun": "rope"
+      },
+      "ordinal": 268
+    },
+    {
+      "id": "story-hook-abba62b9252536",
+      "text": "The wolf at the window was red, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "wolf",
+        "adjective": "red"
+      },
+      "ordinal": 269
+    },
+    {
+      "id": "story-hook-a8e34eec45a961",
+      "text": "Between the castle and the river,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "castle",
+        "second_place": "river"
+      },
+      "ordinal": 270
+    },
+    {
+      "id": "story-hook-f56d0f6a33cffa",
+      "text": "The last stone before the gate",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "stone",
+        "place": "gate"
+      },
+      "ordinal": 271
+    },
+    {
+      "id": "story-hook-9d19b06f7a050b",
+      "text": "Everyone heard the cry; only the guard",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "cry",
+        "subject": "the guard"
+      },
+      "ordinal": 272
+    },
+    {
+      "id": "story-hook-584610820e9f7c",
+      "text": "The last ring before the gate",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "ring",
+        "place": "gate"
+      },
+      "ordinal": 273
+    },
+    {
+      "id": "story-hook-357091f4658e1a",
+      "text": "A horn, forgotten and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "horn",
+        "adjective": "forgotten"
+      },
+      "ordinal": 274
+    },
+    {
+      "id": "story-hook-311dba295b657f",
+      "text": "The map ended at the pass, but",
+      "kind": "mystery",
+      "mood": "threshold",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "place": "pass"
+      },
+      "ordinal": 275
+    },
+    {
+      "id": "story-hook-722b64dc6b628f",
+      "text": "At the edge of the mountain, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 4,
+      "word_count": 7,
+      "ingredients": {
+        "place": "mountain"
+      },
+      "ordinal": 276
+    },
+    {
+      "id": "story-hook-43e2c06f941fc8",
+      "text": "Between the river and the well,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "river",
+        "second_place": "well"
+      },
+      "ordinal": 277
+    },
+    {
+      "id": "story-hook-17b20d74a3225d",
+      "text": "\"Hide! Hide, and don't speak until you reach the crossroads",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 7,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Hide",
+        "verb": "speak",
+        "place": "crossroads"
+      },
+      "ordinal": 278
+    },
+    {
+      "id": "story-hook-f5e2b83dce6175",
+      "text": "Everyone heard the song; only the child",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "song",
+        "subject": "the child"
+      },
+      "ordinal": 279
+    },
+    {
+      "id": "story-hook-ffc18d88f47adc",
+      "text": "\"Hide! Hide, and don't stop until you reach the wall",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 6,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Hide",
+        "verb": "stop",
+        "place": "wall"
+      },
+      "ordinal": 280
+    },
+    {
+      "id": "story-hook-f1f6c656775c34",
+      "text": "The sailor found the shadow under the old well",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "sailor",
+        "thing": "shadow",
+        "adjective": "old",
+        "hiding_place": "well"
+      },
+      "ordinal": 281
+    },
+    {
+      "id": "story-hook-c4eeb815a4bcd4",
+      "text": "The king found the knife under the dark gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "knife",
+        "adjective": "dark",
+        "hiding_place": "gate"
+      },
+      "ordinal": 282
+    },
+    {
+      "id": "story-hook-7b53e174acde11",
+      "text": "The soldier lied about the door because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "person": "soldier",
+        "mystery": "door"
+      },
+      "ordinal": 283
+    },
+    {
+      "id": "story-hook-2f33ba7102598b",
+      "text": "The prisoner had only one rule:",
+      "kind": "rule",
+      "mood": "mystery",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "person": "prisoner"
+      },
+      "ordinal": 284
+    },
+    {
+      "id": "story-hook-fafc1f93cffc41",
+      "text": "The last ring before the keep",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "ring",
+        "place": "keep"
+      },
+      "ordinal": 285
+    },
+    {
+      "id": "story-hook-27d49aafbe1090",
+      "text": "The bird at the window was red, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "bird",
+        "adjective": "red"
+      },
+      "ordinal": 286
+    },
+    {
+      "id": "story-hook-c7b1821b534b31",
+      "text": "The map ended at the road, but",
+      "kind": "mystery",
+      "mood": "threshold",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "place": "road"
+      },
+      "ordinal": 287
+    },
+    {
+      "id": "story-hook-3b377764752627",
+      "text": "The horse at the window was white, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "horse",
+        "adjective": "white"
+      },
+      "ordinal": 288
+    },
+    {
+      "id": "story-hook-80b3e6aab18171",
+      "text": "The guard lied about the secret because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "guard",
+        "mystery": "secret"
+      },
+      "ordinal": 289
+    },
+    {
+      "id": "story-hook-a12515bf7a9243",
+      "text": "Before the bells rang, the stranger",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "bell",
+        "person": "stranger"
+      },
+      "ordinal": 290
+    },
+    {
+      "id": "story-hook-b232d51c4c816c",
+      "text": "Between the pass and the well,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "pass",
+        "second_place": "well"
+      },
+      "ordinal": 291
+    },
+    {
+      "id": "story-hook-bcda28011d3263",
+      "text": "Between the river and the shore,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "river",
+        "second_place": "shore"
+      },
+      "ordinal": 292
+    },
+    {
+      "id": "story-hook-4a9eebc5a5bd6a",
+      "text": "The wolf at the window was secret, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "wolf",
+        "adjective": "secret"
+      },
+      "ordinal": 293
+    },
+    {
+      "id": "story-hook-7aedd68624ee78",
+      "text": "Everyone heard the song; only the guard",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "song",
+        "subject": "the guard"
+      },
+      "ordinal": 294
+    },
+    {
+      "id": "story-hook-577544a17fcada",
+      "text": "The stranger found the ring under the forgotten gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "stranger",
+        "thing": "ring",
+        "adjective": "forgotten",
+        "hiding_place": "gate"
+      },
+      "ordinal": 295
+    },
+    {
+      "id": "story-hook-26f2787beb8dae",
+      "text": "The last rope before the valley",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "rope",
+        "place": "valley"
+      },
+      "ordinal": 296
+    },
+    {
+      "id": "story-hook-8b9355a08230a7",
+      "text": "The last shadow before the gate",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "shadow",
+        "place": "gate"
+      },
+      "ordinal": 297
+    },
+    {
+      "id": "story-hook-7fd5aa4cafe75e",
+      "text": "The soldier found the mirror under the old well",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "soldier",
+        "thing": "mirror",
+        "adjective": "old",
+        "hiding_place": "well"
+      },
+      "ordinal": 298
+    },
+    {
+      "id": "story-hook-75f10598d8863d",
+      "text": "The lonely ring opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "lonely",
+        "noun": "ring"
+      },
+      "ordinal": 299
+    },
+    {
+      "id": "story-hook-b1ea425da98250",
+      "text": "Between the tower and the pass,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "tower",
+        "second_place": "pass"
+      },
+      "ordinal": 300
+    },
+    {
+      "id": "story-hook-cc6014bbd3dd60",
+      "text": "The ruined horn opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "ruined",
+        "noun": "horn"
+      },
+      "ordinal": 301
+    },
+    {
+      "id": "story-hook-97c7508299e6b7",
+      "text": "The ancient candle opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "ancient",
+        "noun": "candle"
+      },
+      "ordinal": 302
+    },
+    {
+      "id": "story-hook-0fcd4034761779",
+      "text": "Beyond the forest, something vanished",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "forest",
+        "verb": "vanished"
+      },
+      "ordinal": 303
+    },
+    {
+      "id": "story-hook-d528b0e830d5d0",
+      "text": "Between the wall and the marsh,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "wall",
+        "second_place": "marsh"
+      },
+      "ordinal": 304
+    },
+    {
+      "id": "story-hook-019f601dec2016",
+      "text": "The last lantern before the valley",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "lantern",
+        "place": "valley"
+      },
+      "ordinal": 305
+    },
+    {
+      "id": "story-hook-4daabf09a1f9d7",
+      "text": "Everyone heard the footstep; only the stranger",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "footstep",
+        "subject": "the stranger"
+      },
+      "ordinal": 306
+    },
+    {
+      "id": "story-hook-b96cd80fd8e973",
+      "text": "The queen found the banner under the white threshold",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "queen",
+        "thing": "banner",
+        "adjective": "white",
+        "hiding_place": "threshold"
+      },
+      "ordinal": 307
+    },
+    {
+      "id": "story-hook-81c807e83cf6f9",
+      "text": "Between the castle and the gate,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "castle",
+        "second_place": "gate"
+      },
+      "ordinal": 308
+    },
+    {
+      "id": "story-hook-baa6b872181ef8",
+      "text": "A rope, dead and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "rope",
+        "adjective": "dead"
+      },
+      "ordinal": 309
+    },
+    {
+      "id": "story-hook-ea6f7f456744f6",
+      "text": "The dragon at the window was bright, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "dragon",
+        "adjective": "bright"
+      },
+      "ordinal": 310
+    },
+    {
+      "id": "story-hook-ef718bcd2cabfc",
+      "text": "The last horn before the gate",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "horn",
+        "place": "gate"
+      },
+      "ordinal": 311
+    },
+    {
+      "id": "story-hook-59e9115262526d",
+      "text": "\"Hide! Hide, and don't speak until you reach the forest",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 7,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Hide",
+        "verb": "speak",
+        "place": "forest"
+      },
+      "ordinal": 312
+    },
+    {
+      "id": "story-hook-733482d2d186af",
+      "text": "Beyond the pass, something rang",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "pass",
+        "verb": "rang"
+      },
+      "ordinal": 313
+    },
+    {
+      "id": "story-hook-5f2321c5e79a92",
+      "text": "Beyond the pass, something opened",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "pass",
+        "verb": "opened"
+      },
+      "ordinal": 314
+    },
+    {
+      "id": "story-hook-2f697bce1993ab",
+      "text": "The fox at the window was quiet, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "fox",
+        "adjective": "quiet"
+      },
+      "ordinal": 315
+    },
+    {
+      "id": "story-hook-ed7936cc987661",
+      "text": "When the stone began to stir,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "stone",
+        "verb": "stir"
+      },
+      "ordinal": 316
+    },
+    {
+      "id": "story-hook-6581361ac13d49",
+      "text": "The soldier found the letter under the distant gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "soldier",
+        "thing": "letter",
+        "adjective": "distant",
+        "hiding_place": "gate"
+      },
+      "ordinal": 317
+    },
+    {
+      "id": "story-hook-d2552efba086fc",
+      "text": "A crown, silver and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "crown",
+        "adjective": "silver"
+      },
+      "ordinal": 318
+    },
+    {
+      "id": "story-hook-99556c98db7d95",
+      "text": "The dragon at the window was quiet, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "dragon",
+        "adjective": "quiet"
+      },
+      "ordinal": 319
+    },
+    {
+      "id": "story-hook-e534016b2ae653",
+      "text": "The crow at the window was ancient, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "crow",
+        "adjective": "ancient"
+      },
+      "ordinal": 320
+    },
+    {
+      "id": "story-hook-78f6480a7e9d5a",
+      "text": "It was almost dusk when the scribe",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "time": "dusk",
+        "subject": "the scribe"
+      },
+      "ordinal": 321
+    },
+    {
+      "id": "story-hook-04efd28f75c9b3",
+      "text": "The king found the stone under the ruined tower",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "stone",
+        "adjective": "ruined",
+        "hiding_place": "tower"
+      },
+      "ordinal": 322
+    },
+    {
+      "id": "story-hook-7f9f6540cdb7e2",
+      "text": "The king found the stone under the golden well",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "stone",
+        "adjective": "golden",
+        "hiding_place": "well"
+      },
+      "ordinal": 323
+    },
+    {
+      "id": "story-hook-4df878a0fce349",
+      "text": "When the window began to ring,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "window",
+        "verb": "ring"
+      },
+      "ordinal": 324
+    },
+    {
+      "id": "story-hook-fd0758231cd952",
+      "text": "When the cloak began to sing,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "cloak",
+        "verb": "sing"
+      },
+      "ordinal": 325
+    },
+    {
+      "id": "story-hook-d75992eb480ba9",
+      "text": "At the edge of the castle, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 4,
+      "word_count": 7,
+      "ingredients": {
+        "place": "castle"
+      },
+      "ordinal": 326
+    },
+    {
+      "id": "story-hook-bef6d2d51d97a9",
+      "text": "Everyone heard the whisper; only the guard",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "whisper",
+        "subject": "the guard"
+      },
+      "ordinal": 327
+    },
+    {
+      "id": "story-hook-4fc46b1c57fade",
+      "text": "The stranger found the shadow under the moonlit floor",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "stranger",
+        "thing": "shadow",
+        "adjective": "moonlit",
+        "hiding_place": "floor"
+      },
+      "ordinal": 328
+    },
+    {
+      "id": "story-hook-0e581690c9bd3d",
+      "text": "Beyond the well, something vanished",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "well",
+        "verb": "vanished"
+      },
+      "ordinal": 329
+    },
+    {
+      "id": "story-hook-1812d4f312ddf0",
+      "text": "The old shadow opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "old",
+        "noun": "shadow"
+      },
+      "ordinal": 330
+    },
+    {
+      "id": "story-hook-a8ebbd4f1e924e",
+      "text": "No one near the bridge remembered why",
+      "kind": "mystery",
+      "mood": "forgotten",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "place": "bridge"
+      },
+      "ordinal": 331
+    },
+    {
+      "id": "story-hook-0b7be7def7bb1d",
+      "text": "When the seal began to burn,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "seal",
+        "verb": "burn"
+      },
+      "ordinal": 332
+    },
+    {
+      "id": "story-hook-7784128150e74b",
+      "text": "Everyone heard the horn; only the child",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "horn",
+        "subject": "the child"
+      },
+      "ordinal": 333
+    },
+    {
+      "id": "story-hook-3aa785b57b349c",
+      "text": "The ring was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "ring"
+      },
+      "ordinal": 334
+    },
+    {
+      "id": "story-hook-42e9e152915230",
+      "text": "The scribe lied about the name because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "scribe",
+        "mystery": "name"
+      },
+      "ordinal": 335
+    },
+    {
+      "id": "story-hook-380463a899092e",
+      "text": "\"Wait! Wait, and don't stop until you reach the river",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 7,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Wait",
+        "verb": "stop",
+        "place": "river"
+      },
+      "ordinal": 336
+    },
+    {
+      "id": "story-hook-4bc1be857ce941",
+      "text": "When the map began to open,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "map",
+        "verb": "open"
+      },
+      "ordinal": 337
+    },
+    {
+      "id": "story-hook-0ee58c452559e6",
+      "text": "The bell was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "bell"
+      },
+      "ordinal": 338
+    },
+    {
+      "id": "story-hook-3810221a9ed486",
+      "text": "The witness lied about the road because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "person": "witness",
+        "mystery": "road"
+      },
+      "ordinal": 339
+    },
+    {
+      "id": "story-hook-8f4cb6af41bc84",
+      "text": "Between the road and the valley,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "road",
+        "second_place": "valley"
+      },
+      "ordinal": 340
+    },
+    {
+      "id": "story-hook-79dd7e3a7b2cd7",
+      "text": "The old crown opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "old",
+        "noun": "crown"
+      },
+      "ordinal": 341
+    },
+    {
+      "id": "story-hook-744e0ed06470ed",
+      "text": "A ring, hollow and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "ring",
+        "adjective": "hollow"
+      },
+      "ordinal": 342
+    },
+    {
+      "id": "story-hook-2ad85da02d25d9",
+      "text": "Beyond the river, something opened",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "river",
+        "verb": "opened"
+      },
+      "ordinal": 343
+    },
+    {
+      "id": "story-hook-c1998ca1cc7804",
+      "text": "The king found the song under the buried floor",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "song",
+        "adjective": "buried",
+        "hiding_place": "floor"
+      },
+      "ordinal": 344
+    },
+    {
+      "id": "story-hook-83f1f7ea44ee52",
+      "text": "At the edge of the forest, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "place": "forest"
+      },
+      "ordinal": 345
+    },
+    {
+      "id": "story-hook-9782bb9108574d",
+      "text": "The key was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "key"
+      },
+      "ordinal": 346
+    },
+    {
+      "id": "story-hook-851b5a08e9e110",
+      "text": "\"Listen! Listen, and don't speak until you reach the mountain",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 6,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Listen",
+        "verb": "speak",
+        "place": "mountain"
+      },
+      "ordinal": 347
+    },
+    {
+      "id": "story-hook-3e08e05100a198",
+      "text": "Beyond the door, something vanished",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "door",
+        "verb": "vanished"
+      },
+      "ordinal": 348
+    },
+    {
+      "id": "story-hook-9e016a5b12bbf7",
+      "text": "No one near the shore remembered why",
+      "kind": "mystery",
+      "mood": "forgotten",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "place": "shore"
+      },
+      "ordinal": 349
+    },
+    {
+      "id": "story-hook-b07878c5d9f214",
+      "text": "\"Look! Look, and don't sleep until you reach the river",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 7,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Look",
+        "verb": "sleep",
+        "place": "river"
+      },
+      "ordinal": 350
+    },
+    {
+      "id": "story-hook-51d050c0d9b9ae",
+      "text": "No one near the market remembered why",
+      "kind": "mystery",
+      "mood": "forgotten",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "place": "market"
+      },
+      "ordinal": 351
+    },
+    {
+      "id": "story-hook-4c92296e2e74e0",
+      "text": "The crow at the window was crimson, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "crow",
+        "adjective": "crimson"
+      },
+      "ordinal": 352
+    },
+    {
+      "id": "story-hook-da060b3bc80b3e",
+      "text": "When the box began to split,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "box",
+        "verb": "split"
+      },
+      "ordinal": 353
+    },
+    {
+      "id": "story-hook-c1b5e97009255b",
+      "text": "The dragon at the window was secret, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "dragon",
+        "adjective": "secret"
+      },
+      "ordinal": 354
+    },
+    {
+      "id": "story-hook-f265237a8c919e",
+      "text": "When the stone began to wake,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "stone",
+        "verb": "wake"
+      },
+      "ordinal": 355
+    },
+    {
+      "id": "story-hook-abb9aae9f1b85e",
+      "text": "\"Look! Look, and don't stop until you reach the city",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 6,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Look",
+        "verb": "stop",
+        "place": "city"
+      },
+      "ordinal": 356
+    },
+    {
+      "id": "story-hook-a2942a3dd0c4f8",
+      "text": "The map ended at the well, but",
+      "kind": "mystery",
+      "mood": "threshold",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "place": "well"
+      },
+      "ordinal": 357
+    },
+    {
+      "id": "story-hook-abe414d8459a26",
+      "text": "Before the songs rang, the stranger",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "song",
+        "person": "stranger"
+      },
+      "ordinal": 358
+    },
+    {
+      "id": "story-hook-11eb6ed7708b2a",
+      "text": "The bottle was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "bottle"
+      },
+      "ordinal": 359
+    },
+    {
+      "id": "story-hook-34d06fd948e1fb",
+      "text": "The apprentice lied about the name because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "apprentice",
+        "mystery": "name"
+      },
+      "ordinal": 360
+    },
+    {
+      "id": "story-hook-972b613c8f9883",
+      "text": "Between the gate and the shore,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "gate",
+        "second_place": "shore"
+      },
+      "ordinal": 361
+    },
+    {
+      "id": "story-hook-f1c125034f64ad",
+      "text": "Before the horns rang, the pilgrim",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "horn",
+        "person": "pilgrim"
+      },
+      "ordinal": 362
+    },
+    {
+      "id": "story-hook-079a516637501c",
+      "text": "The thief lied about the secret because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "thief",
+        "mystery": "secret"
+      },
+      "ordinal": 363
+    },
+    {
+      "id": "story-hook-939329a2e5e25c",
+      "text": "It was almost morning when someone",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "time": "morning",
+        "subject": "someone"
+      },
+      "ordinal": 364
+    },
+    {
+      "id": "story-hook-fb3456a9270560",
+      "text": "The dragon at the window was white, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "dragon",
+        "adjective": "white"
+      },
+      "ordinal": 365
+    },
+    {
+      "id": "story-hook-14cdebb3973ba8",
+      "text": "The fox at the window was red, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "fox",
+        "adjective": "red"
+      },
+      "ordinal": 366
+    },
+    {
+      "id": "story-hook-a41994490cc4d1",
+      "text": "Beyond the road, something called",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "road",
+        "verb": "called"
+      },
+      "ordinal": 367
+    },
+    {
+      "id": "story-hook-b477c4d3a2ea6c",
+      "text": "The book was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "book"
+      },
+      "ordinal": 368
+    },
+    {
+      "id": "story-hook-0a988234faae9e",
+      "text": "When the rope began to sing,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "rope",
+        "verb": "sing"
+      },
+      "ordinal": 369
+    },
+    {
+      "id": "story-hook-54605d27ca970a",
+      "text": "Everyone heard the knock; only the child",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "knock",
+        "subject": "the child"
+      },
+      "ordinal": 370
+    },
+    {
+      "id": "story-hook-3ca6934867f4af",
+      "text": "The last book before the tower",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "book",
+        "place": "tower"
+      },
+      "ordinal": 371
+    },
+    {
+      "id": "story-hook-1c694784741293",
+      "text": "The last ring before the mountain",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "ring",
+        "place": "mountain"
+      },
+      "ordinal": 372
+    },
+    {
+      "id": "story-hook-00f6b05190dcb8",
+      "text": "Before the songs rang, the child",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "song",
+        "person": "child"
+      },
+      "ordinal": 373
+    },
+    {
+      "id": "story-hook-f0f6b4323d43f1",
+      "text": "The traveler lied about the name because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "traveler",
+        "mystery": "name"
+      },
+      "ordinal": 374
+    },
+    {
+      "id": "story-hook-77067360c3b876",
+      "text": "The lonely arrow opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "lonely",
+        "noun": "arrow"
+      },
+      "ordinal": 375
+    },
+    {
+      "id": "story-hook-25286e074ce4f6",
+      "text": "The soldier found the oak tree under the ancient gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 10,
+      "ingredients": {
+        "person": "soldier",
+        "thing": "oak tree",
+        "adjective": "ancient",
+        "hiding_place": "gate"
+      },
+      "ordinal": 376
+    },
+    {
+      "id": "story-hook-cc0e45fdd0fc13",
+      "text": "A letter, cold and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "letter",
+        "adjective": "cold"
+      },
+      "ordinal": 377
+    },
+    {
+      "id": "story-hook-84e06863e92cdc",
+      "text": "The hound at the window was dark, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "hound",
+        "adjective": "dark"
+      },
+      "ordinal": 378
+    },
+    {
+      "id": "story-hook-c57209ec641af0",
+      "text": "No one near the valley remembered why",
+      "kind": "mystery",
+      "mood": "forgotten",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "place": "valley"
+      },
+      "ordinal": 379
+    },
+    {
+      "id": "story-hook-84f553af004b62",
+      "text": "Beyond the road, something shivered",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "road",
+        "verb": "shivered"
+      },
+      "ordinal": 380
+    },
+    {
+      "id": "story-hook-ffd8c9ee607ee2",
+      "text": "It was almost spring when someone",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "time": "spring",
+        "subject": "someone"
+      },
+      "ordinal": 381
+    },
+    {
+      "id": "story-hook-b830e0a31ba14b",
+      "text": "The last crown before the river",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "crown",
+        "place": "river"
+      },
+      "ordinal": 382
+    },
+    {
+      "id": "story-hook-8bb8ec50935bf3",
+      "text": "Beyond the road, something waited",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "road",
+        "verb": "waited"
+      },
+      "ordinal": 383
+    },
+    {
+      "id": "story-hook-86232b0d71b9e7",
+      "text": "The map ended at the marsh, but",
+      "kind": "mystery",
+      "mood": "threshold",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "place": "marsh"
+      },
+      "ordinal": 384
+    },
+    {
+      "id": "story-hook-2f58c3758fc169",
+      "text": "When the key began to stir,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "key",
+        "verb": "stir"
+      },
+      "ordinal": 385
+    },
+    {
+      "id": "story-hook-7c9ece7cf09dda",
+      "text": "The last box before the river",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "box",
+        "place": "river"
+      },
+      "ordinal": 386
+    },
+    {
+      "id": "story-hook-5e8c52ba6a4724",
+      "text": "The sailor found the window under the white bridge",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "sailor",
+        "thing": "window",
+        "adjective": "white",
+        "hiding_place": "bridge"
+      },
+      "ordinal": 387
+    },
+    {
+      "id": "story-hook-a3f5beeb7730f6",
+      "text": "A feather, hollow and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "feather",
+        "adjective": "hollow"
+      },
+      "ordinal": 388
+    },
+    {
+      "id": "story-hook-7a2f2e80770773",
+      "text": "The dark box opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "dark",
+        "noun": "box"
+      },
+      "ordinal": 389
+    },
+    {
+      "id": "story-hook-5739704b03dc76",
+      "text": "When the stone began to vanish,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "stone",
+        "verb": "vanish"
+      },
+      "ordinal": 390
+    },
+    {
+      "id": "story-hook-1283b59d9ad20e",
+      "text": "The flame was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "flame"
+      },
+      "ordinal": 391
+    },
+    {
+      "id": "story-hook-77ea212c94d6e6",
+      "text": "The traveler found the stone under the lonely tower",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "traveler",
+        "thing": "stone",
+        "adjective": "lonely",
+        "hiding_place": "tower"
+      },
+      "ordinal": 392
+    },
+    {
+      "id": "story-hook-64e308946f579e",
+      "text": "The seal was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "seal"
+      },
+      "ordinal": 393
+    },
+    {
+      "id": "story-hook-d349809b2904b1",
+      "text": "The bright map opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "bright",
+        "noun": "map"
+      },
+      "ordinal": 394
+    },
+    {
+      "id": "story-hook-dfb64c502929b0",
+      "text": "The dead banner opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "dead",
+        "noun": "banner"
+      },
+      "ordinal": 395
+    },
+    {
+      "id": "story-hook-517a9d08724742",
+      "text": "The sailor lied about the road because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "person": "sailor",
+        "mystery": "road"
+      },
+      "ordinal": 396
+    },
+    {
+      "id": "story-hook-f878e782797e77",
+      "text": "The sailor found the map under the ruined threshold",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "sailor",
+        "thing": "map",
+        "adjective": "ruined",
+        "hiding_place": "threshold"
+      },
+      "ordinal": 397
+    },
+    {
+      "id": "story-hook-60a31a409ce176",
+      "text": "Between the courtyard and the well,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "courtyard",
+        "second_place": "well"
+      },
+      "ordinal": 398
+    },
+    {
+      "id": "story-hook-0afd9de0aa22b7",
+      "text": "Before the voices rang, the witch",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "voice",
+        "person": "witch"
+      },
+      "ordinal": 399
+    },
+    {
+      "id": "story-hook-366623fe88a409",
+      "text": "Beyond the keep, something fell",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "keep",
+        "verb": "fell"
+      },
+      "ordinal": 400
+    },
+    {
+      "id": "story-hook-c1b1c7d544df05",
+      "text": "Before the horns rang, the king",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "horn",
+        "person": "king"
+      },
+      "ordinal": 401
+    },
+    {
+      "id": "story-hook-98ca35583f075a",
+      "text": "\"Look! Look, and don't sleep until you reach the wood",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 6,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Look",
+        "verb": "sleep",
+        "place": "wood"
+      },
+      "ordinal": 402
+    },
+    {
+      "id": "story-hook-ec7f540334a7ce",
+      "text": "A stone, old and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "stone",
+        "adjective": "old"
+      },
+      "ordinal": 403
+    },
+    {
+      "id": "story-hook-d2f5e9e16371e1",
+      "text": "When the horn began to sing,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "horn",
+        "verb": "sing"
+      },
+      "ordinal": 404
+    },
+    {
+      "id": "story-hook-739a5731e63baf",
+      "text": "The rider had only one rule:",
+      "kind": "rule",
+      "mood": "mystery",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "person": "rider"
+      },
+      "ordinal": 405
+    },
+    {
+      "id": "story-hook-f62f4dae9f988e",
+      "text": "The black song opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "black",
+        "noun": "song"
+      },
+      "ordinal": 406
+    },
+    {
+      "id": "story-hook-5d59952c87ea06",
+      "text": "The sailor had only one rule:",
+      "kind": "rule",
+      "mood": "mystery",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "person": "sailor"
+      },
+      "ordinal": 407
+    },
+    {
+      "id": "story-hook-ed8fddb30ce0d5",
+      "text": "The last knife before the river",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "knife",
+        "place": "river"
+      },
+      "ordinal": 408
+    },
+    {
+      "id": "story-hook-da2600471a5e33",
+      "text": "The stranger found the window under the thin well",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "stranger",
+        "thing": "window",
+        "adjective": "thin",
+        "hiding_place": "well"
+      },
+      "ordinal": 409
+    },
+    {
+      "id": "story-hook-aa228ee3ce75bd",
+      "text": "When the knife began to ring,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "knife",
+        "verb": "ring"
+      },
+      "ordinal": 410
+    },
+    {
+      "id": "story-hook-e0faee1386d2e3",
+      "text": "The soldier lied about the sign because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "soldier",
+        "mystery": "sign"
+      },
+      "ordinal": 411
+    },
+    {
+      "id": "story-hook-1b337f5d5cf79d",
+      "text": "The soldier found the map under the forgotten gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "soldier",
+        "thing": "map",
+        "adjective": "forgotten",
+        "hiding_place": "gate"
+      },
+      "ordinal": 412
+    },
+    {
+      "id": "story-hook-3d97de1b3de25b",
+      "text": "The song was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "song"
+      },
+      "ordinal": 413
+    },
+    {
+      "id": "story-hook-cfa9d94d31a9c5",
+      "text": "When the window began to wake,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "window",
+        "verb": "wake"
+      },
+      "ordinal": 414
+    },
+    {
+      "id": "story-hook-0b34a82e5d60a8",
+      "text": "The queen had only one rule:",
+      "kind": "rule",
+      "mood": "mystery",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "person": "queen"
+      },
+      "ordinal": 415
+    },
+    {
+      "id": "story-hook-f28b55296560a9",
+      "text": "Before the songs rang, the witch",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "song",
+        "person": "witch"
+      },
+      "ordinal": 416
+    },
+    {
+      "id": "story-hook-0f556cc6ad4f26",
+      "text": "A lantern, thin and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "lantern",
+        "adjective": "thin"
+      },
+      "ordinal": 417
+    },
+    {
+      "id": "story-hook-a82edbe5973bc6",
+      "text": "Before the cries rang, the scribe",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "cry",
+        "person": "scribe"
+      },
+      "ordinal": 418
+    },
+    {
+      "id": "story-hook-7b3aa58361e83a",
+      "text": "Everyone heard the knock; only the stranger",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "knock",
+        "subject": "the stranger"
+      },
+      "ordinal": 419
+    },
+    {
+      "id": "story-hook-a8392bfe2b264c",
+      "text": "The last map before the shore",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "map",
+        "place": "shore"
+      },
+      "ordinal": 420
+    },
+    {
+      "id": "story-hook-dd6bec2a61c912",
+      "text": "When the book began to stir,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "book",
+        "verb": "stir"
+      },
+      "ordinal": 421
+    },
+    {
+      "id": "story-hook-32960088842e85",
+      "text": "Between the tower and the well,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "tower",
+        "second_place": "well"
+      },
+      "ordinal": 422
+    },
+    {
+      "id": "story-hook-b2e0522f58a232",
+      "text": "The last key before the gate",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "key",
+        "place": "gate"
+      },
+      "ordinal": 423
+    },
+    {
+      "id": "story-hook-32f239a3b4b94b",
+      "text": "The last map before the gate",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "map",
+        "place": "gate"
+      },
+      "ordinal": 424
+    },
+    {
+      "id": "story-hook-c23c148563c1f5",
+      "text": "The dog at the window was white, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "dog",
+        "adjective": "white"
+      },
+      "ordinal": 425
+    },
+    {
+      "id": "story-hook-31eb9b1f20dbd8",
+      "text": "The silver window opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "silver",
+        "noun": "window"
+      },
+      "ordinal": 426
+    },
+    {
+      "id": "story-hook-1ca6de803e7662",
+      "text": "The king found the book under the secret bridge",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "book",
+        "adjective": "secret",
+        "hiding_place": "bridge"
+      },
+      "ordinal": 427
+    },
+    {
+      "id": "story-hook-6ea1bf59eb11d1",
+      "text": "A rope, bright and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "rope",
+        "adjective": "bright"
+      },
+      "ordinal": 428
+    },
+    {
+      "id": "story-hook-48ee7e9b2bab7d",
+      "text": "The dog at the window was empty, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "dog",
+        "adjective": "empty"
+      },
+      "ordinal": 429
+    },
+    {
+      "id": "story-hook-f69099e4aa2e3d",
+      "text": "The sword was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "sword"
+      },
+      "ordinal": 430
+    },
+    {
+      "id": "story-hook-5e3bfd5a8775a7",
+      "text": "The pale box opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "pale",
+        "noun": "box"
+      },
+      "ordinal": 431
+    },
+    {
+      "id": "story-hook-574d24777127e0",
+      "text": "Beyond the gate, something rose",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "gate",
+        "verb": "rose"
+      },
+      "ordinal": 432
+    },
+    {
+      "id": "story-hook-d319f6cae32cc3",
+      "text": "\"Run! Run, and don't sleep until you reach the well",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 6,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Run",
+        "verb": "sleep",
+        "place": "well"
+      },
+      "ordinal": 433
+    },
+    {
+      "id": "story-hook-4b2ccaaaf1eb15",
+      "text": "A horn, broken and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "horn",
+        "adjective": "broken"
+      },
+      "ordinal": 434
+    },
+    {
+      "id": "story-hook-bf16649ef2d545",
+      "text": "The heir lied about the road because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "person": "heir",
+        "mystery": "road"
+      },
+      "ordinal": 435
+    },
+    {
+      "id": "story-hook-3390605fb80b95",
+      "text": "The last rope before the well",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "rope",
+        "place": "well"
+      },
+      "ordinal": 436
+    },
+    {
+      "id": "story-hook-e1adcfb2f6ff4c",
+      "text": "Before the voices rang, the queen",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "voice",
+        "person": "queen"
+      },
+      "ordinal": 437
+    },
+    {
+      "id": "story-hook-a862637486dc7e",
+      "text": "The dragon at the window was golden, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "dragon",
+        "adjective": "golden"
+      },
+      "ordinal": 438
+    },
+    {
+      "id": "story-hook-0745d50f8ea098",
+      "text": "The last bell before the valley",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "bell",
+        "place": "valley"
+      },
+      "ordinal": 439
+    },
+    {
+      "id": "story-hook-4e8e9476d4b942",
+      "text": "A torch, pale and",
+      "kind": "image_fragment",
+      "mood": "wonder",
+      "score": 6,
+      "word_count": 4,
+      "ingredients": {
+        "noun": "torch",
+        "adjective": "pale"
+      },
+      "ordinal": 440
+    },
+    {
+      "id": "story-hook-9609b94298f883",
+      "text": "The stranger lied about the road because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "person": "stranger",
+        "mystery": "road"
+      },
+      "ordinal": 441
+    },
+    {
+      "id": "story-hook-e5b144d73c7e78",
+      "text": "\"Wake! Wake, and don't sleep until you reach the threshold",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 6,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Wake",
+        "verb": "sleep",
+        "place": "threshold"
+      },
+      "ordinal": 442
+    },
+    {
+      "id": "story-hook-1c8824765499d1",
+      "text": "Between the wall and the river,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "wall",
+        "second_place": "river"
+      },
+      "ordinal": 443
+    },
+    {
+      "id": "story-hook-e7a1ae03724ee8",
+      "text": "The last book before the city",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "book",
+        "place": "city"
+      },
+      "ordinal": 444
+    },
+    {
+      "id": "story-hook-f08161f1f302e9",
+      "text": "The queen found the key under the quiet gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "queen",
+        "thing": "key",
+        "adjective": "quiet",
+        "hiding_place": "gate"
+      },
+      "ordinal": 445
+    },
+    {
+      "id": "story-hook-57edd1d89fc0aa",
+      "text": "The last book before the mountain",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "book",
+        "place": "mountain"
+      },
+      "ordinal": 446
+    },
+    {
+      "id": "story-hook-e031b30d82f0ad",
+      "text": "The silver song opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "silver",
+        "noun": "song"
+      },
+      "ordinal": 447
+    },
+    {
+      "id": "story-hook-50d048746bd364",
+      "text": "The king lied about the door because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "person": "king",
+        "mystery": "door"
+      },
+      "ordinal": 448
+    },
+    {
+      "id": "story-hook-84e146de3896eb",
+      "text": "Before the cries rang, the heir",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "cry",
+        "person": "heir"
+      },
+      "ordinal": 449
+    },
+    {
+      "id": "story-hook-d6653eda6203b6",
+      "text": "The serpent at the window was white, and",
+      "kind": "image_fragment",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 8,
+      "ingredients": {
+        "creature": "serpent",
+        "adjective": "white"
+      },
+      "ordinal": 450
+    },
+    {
+      "id": "story-hook-abedccc5449403",
+      "text": "Between the mountain and the city,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "mountain",
+        "second_place": "city"
+      },
+      "ordinal": 451
+    },
+    {
+      "id": "story-hook-ad423743ad12e7",
+      "text": "When the lantern began to stir,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "lantern",
+        "verb": "stir"
+      },
+      "ordinal": 452
+    },
+    {
+      "id": "story-hook-d6bbf0e97cee64",
+      "text": "The golden horn opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "golden",
+        "noun": "horn"
+      },
+      "ordinal": 453
+    },
+    {
+      "id": "story-hook-fad0f2ed84ad52",
+      "text": "At the edge of the shore, someone",
+      "kind": "unfinished_clause",
+      "mood": "arrival",
+      "score": 4,
+      "word_count": 7,
+      "ingredients": {
+        "place": "shore"
+      },
+      "ordinal": 454
+    },
+    {
+      "id": "story-hook-4aeb3372741d2e",
+      "text": "The ancient book opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "ancient",
+        "noun": "book"
+      },
+      "ordinal": 455
+    },
+    {
+      "id": "story-hook-5cf02b596b454b",
+      "text": "Before the knocks rang, the witness",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "knock",
+        "person": "witness"
+      },
+      "ordinal": 456
+    },
+    {
+      "id": "story-hook-99280193be2e08",
+      "text": "The heir had only one rule:",
+      "kind": "rule",
+      "mood": "mystery",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "person": "heir"
+      },
+      "ordinal": 457
+    },
+    {
+      "id": "story-hook-b10eeb1a7b96a6",
+      "text": "The thief lied about the sign because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "thief",
+        "mystery": "sign"
+      },
+      "ordinal": 458
+    },
+    {
+      "id": "story-hook-2c7df71d0a39fd",
+      "text": "The sailor found the box under the strange table",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "sailor",
+        "thing": "box",
+        "adjective": "strange",
+        "hiding_place": "table"
+      },
+      "ordinal": 459
+    },
+    {
+      "id": "story-hook-b5ba06f83e74d0",
+      "text": "When the door began to open,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "door",
+        "verb": "open"
+      },
+      "ordinal": 460
+    },
+    {
+      "id": "story-hook-761b03d4f43b67",
+      "text": "The last map before the wood",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "map",
+        "place": "wood"
+      },
+      "ordinal": 461
+    },
+    {
+      "id": "story-hook-c6958090e26a6a",
+      "text": "It was almost morning when the messenger",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "time": "morning",
+        "subject": "the messenger"
+      },
+      "ordinal": 462
+    },
+    {
+      "id": "story-hook-32e018cab8a4ce",
+      "text": "It was almost winter when the witch",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "time": "winter",
+        "subject": "the witch"
+      },
+      "ordinal": 463
+    },
+    {
+      "id": "story-hook-0a591ddc357c2d",
+      "text": "The king found the box under the strange floor",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "box",
+        "adjective": "strange",
+        "hiding_place": "floor"
+      },
+      "ordinal": 464
+    },
+    {
+      "id": "story-hook-d33dde00a16b41",
+      "text": "When the stone began to burn,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "stone",
+        "verb": "burn"
+      },
+      "ordinal": 465
+    },
+    {
+      "id": "story-hook-74767cd5c71485",
+      "text": "Beyond the road, something vanished",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "road",
+        "verb": "vanished"
+      },
+      "ordinal": 466
+    },
+    {
+      "id": "story-hook-7d43db02114a94",
+      "text": "The window was warm, although the",
+      "kind": "mystery",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "window"
+      },
+      "ordinal": 467
+    },
+    {
+      "id": "story-hook-b4a87f9e64e46f",
+      "text": "The apprentice lied about the curse because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "apprentice",
+        "mystery": "curse"
+      },
+      "ordinal": 468
+    },
+    {
+      "id": "story-hook-48d1a403585b6a",
+      "text": "It was almost sunrise when the queen",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "time": "sunrise",
+        "subject": "the queen"
+      },
+      "ordinal": 469
+    },
+    {
+      "id": "story-hook-fdabb1f9c3ff2a",
+      "text": "It was almost winter when the pilgrim",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "time": "winter",
+        "subject": "the pilgrim"
+      },
+      "ordinal": 470
+    },
+    {
+      "id": "story-hook-cc48e9d386f8ad",
+      "text": "The last thread before the well",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "thread",
+        "place": "well"
+      },
+      "ordinal": 471
+    },
+    {
+      "id": "story-hook-b156e25129dac6",
+      "text": "Between the door and the city,",
+      "kind": "image_fragment",
+      "mood": "journey",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "first_place": "door",
+        "second_place": "city"
+      },
+      "ordinal": 472
+    },
+    {
+      "id": "story-hook-8fe876a64501db",
+      "text": "When the lantern began to open,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "lantern",
+        "verb": "open"
+      },
+      "ordinal": 473
+    },
+    {
+      "id": "story-hook-e3040bcc7a1d2f",
+      "text": "It was almost winter when they",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "time": "winter",
+        "subject": "they"
+      },
+      "ordinal": 474
+    },
+    {
+      "id": "story-hook-2a351408b1fa2f",
+      "text": "Beyond the forest, something rose",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "forest",
+        "verb": "rose"
+      },
+      "ordinal": 475
+    },
+    {
+      "id": "story-hook-a55a5b8ad6265f",
+      "text": "The white letter opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "white",
+        "noun": "letter"
+      },
+      "ordinal": 476
+    },
+    {
+      "id": "story-hook-cc682a722a268c",
+      "text": "The scribe had only one rule:",
+      "kind": "rule",
+      "mood": "mystery",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "person": "scribe"
+      },
+      "ordinal": 477
+    },
+    {
+      "id": "story-hook-dce48741c7db94",
+      "text": "The pale shadow opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "pale",
+        "noun": "shadow"
+      },
+      "ordinal": 478
+    },
+    {
+      "id": "story-hook-de35591d18f976",
+      "text": "The king found the lantern under the white floor",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "lantern",
+        "adjective": "white",
+        "hiding_place": "floor"
+      },
+      "ordinal": 479
+    },
+    {
+      "id": "story-hook-8124bdb3975f48",
+      "text": "The last oak tree before the city",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "noun": "oak tree",
+        "place": "city"
+      },
+      "ordinal": 480
+    },
+    {
+      "id": "story-hook-cfd7ee4c537827",
+      "text": "The queen lied about the curse because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 6,
+      "word_count": 7,
+      "ingredients": {
+        "person": "queen",
+        "mystery": "curse"
+      },
+      "ordinal": 481
+    },
+    {
+      "id": "story-hook-eeedc4ce5d378d",
+      "text": "The last knife before the gate",
+      "kind": "image_fragment",
+      "mood": "lastness",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "knife",
+        "place": "gate"
+      },
+      "ordinal": 482
+    },
+    {
+      "id": "story-hook-657420548f4a7e",
+      "text": "The witch lied about the road because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "person": "witch",
+        "mystery": "road"
+      },
+      "ordinal": 483
+    },
+    {
+      "id": "story-hook-be197a80b2a5bd",
+      "text": "The witch found the mirror under the strange gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "witch",
+        "thing": "mirror",
+        "adjective": "strange",
+        "hiding_place": "gate"
+      },
+      "ordinal": 484
+    },
+    {
+      "id": "story-hook-e4eb6a27509c0f",
+      "text": "Before the knocks rang, the traveler",
+      "kind": "unfinished_clause",
+      "mood": "omen",
+      "score": 5,
+      "word_count": 6,
+      "ingredients": {
+        "sound": "knock",
+        "person": "traveler"
+      },
+      "ordinal": 485
+    },
+    {
+      "id": "story-hook-567e03b76a7e9b",
+      "text": "The queen found the box under the white well",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "queen",
+        "thing": "box",
+        "adjective": "white",
+        "hiding_place": "well"
+      },
+      "ordinal": 486
+    },
+    {
+      "id": "story-hook-38b0a0285d5670",
+      "text": "The king found the song under the forgotten table",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "king",
+        "thing": "song",
+        "adjective": "forgotten",
+        "hiding_place": "table"
+      },
+      "ordinal": 487
+    },
+    {
+      "id": "story-hook-477a9aa3e1e37d",
+      "text": "The thief found the lantern under the silver floor",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 4,
+      "word_count": 9,
+      "ingredients": {
+        "person": "thief",
+        "thing": "lantern",
+        "adjective": "silver",
+        "hiding_place": "floor"
+      },
+      "ordinal": 488
+    },
+    {
+      "id": "story-hook-76c09fea945035",
+      "text": "Beyond the mountain, something burned",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 5,
+      "word_count": 5,
+      "ingredients": {
+        "place": "mountain",
+        "verb": "burned"
+      },
+      "ordinal": 489
+    },
+    {
+      "id": "story-hook-fd5460de250002",
+      "text": "The thief found the door under the empty gate",
+      "kind": "mystery",
+      "mood": "discovery",
+      "score": 5,
+      "word_count": 9,
+      "ingredients": {
+        "person": "thief",
+        "thing": "door",
+        "adjective": "empty",
+        "hiding_place": "gate"
+      },
+      "ordinal": 490
+    },
+    {
+      "id": "story-hook-bc98ae59872e27",
+      "text": "The apprentice lied about the road because",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 7,
+      "word_count": 7,
+      "ingredients": {
+        "person": "apprentice",
+        "mystery": "road"
+      },
+      "ordinal": 491
+    },
+    {
+      "id": "story-hook-7b014dce810493",
+      "text": "Everyone heard the cry; only the witch",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "cry",
+        "subject": "the witch"
+      },
+      "ordinal": 492
+    },
+    {
+      "id": "story-hook-da7b6090530dc2",
+      "text": "\"Wait! Wait, and don't speak until you reach the shore",
+      "kind": "command",
+      "mood": "urgent",
+      "score": 6,
+      "word_count": 10,
+      "ingredients": {
+        "command": "Wait",
+        "verb": "speak",
+        "place": "shore"
+      },
+      "ordinal": 493
+    },
+    {
+      "id": "story-hook-5fb14fa251a97f",
+      "text": "When the horn began to open,",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 6,
+      "word_count": 6,
+      "ingredients": {
+        "noun": "horn",
+        "verb": "open"
+      },
+      "ordinal": 494
+    },
+    {
+      "id": "story-hook-f27aece6635427",
+      "text": "Everyone heard the footstep; only the child",
+      "kind": "mystery",
+      "mood": "secret",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "sound": "footstep",
+        "subject": "the child"
+      },
+      "ordinal": 495
+    },
+    {
+      "id": "story-hook-935af04e4c7488",
+      "text": "No one near the well remembered why",
+      "kind": "mystery",
+      "mood": "forgotten",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "place": "well"
+      },
+      "ordinal": 496
+    },
+    {
+      "id": "story-hook-309b0ff70a07f6",
+      "text": "Beyond the river, something woke",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "river",
+        "verb": "woke"
+      },
+      "ordinal": 497
+    },
+    {
+      "id": "story-hook-f79c11dee049e9",
+      "text": "Beyond the forest, something whispered",
+      "kind": "image_fragment",
+      "mood": "beyond",
+      "score": 6,
+      "word_count": 5,
+      "ingredients": {
+        "place": "forest",
+        "verb": "whispered"
+      },
+      "ordinal": 498
+    },
+    {
+      "id": "story-hook-116927ff5e45cc",
+      "text": "The pale rope opened only when",
+      "kind": "threshold",
+      "mood": "uncanny",
+      "score": 7,
+      "word_count": 6,
+      "ingredients": {
+        "adjective": "pale",
+        "noun": "rope"
+      },
+      "ordinal": 499
+    },
+    {
+      "id": "story-hook-a0c5c386fa709d",
+      "text": "It was almost spring when the witness",
+      "kind": "unfinished_clause",
+      "mood": "threshold",
+      "score": 5,
+      "word_count": 7,
+      "ingredients": {
+        "time": "spring",
+        "subject": "the witness"
+      },
+      "ordinal": 500
+    }
+  ]
+}

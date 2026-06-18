@@ -14,6 +14,7 @@ import hashlib
 import json
 import re
 import ssl
+import subprocess
 import sys
 import time
 import unicodedata
@@ -109,6 +110,10 @@ class TextSource:
     source_type: str
     gutenberg_id: int | None = None
     path: Path | None = None
+    inline_text: str | None = None
+    source_id: str = ""
+    session_id: str = ""
+    influences: tuple[str, ...] = ()
     expected_terms: tuple[str, ...] = ()
 
     @property
@@ -121,6 +126,8 @@ class TextSource:
     def key(self) -> str:
         if self.gutenberg_id is not None:
             return f"pg-{self.gutenberg_id}"
+        if self.source_type == "mongo":
+            return f"mongo-{self.source_id or slugify(self.session_id or self.title)}"
         return f"local-{slugify(str(self.path or self.title))}"
 
 
@@ -213,6 +220,26 @@ def parse_args() -> argparse.Namespace:
         "--local-text-dir",
         type=Path,
         help="Optional directory of rights-cleared .txt books to include.",
+    )
+    parser.add_argument(
+        "--mongo-uri",
+        help="Optional MongoDB URI to read local app-created narrative fragments from.",
+    )
+    parser.add_argument(
+        "--mongo-collection",
+        default="narrativefragments",
+        help="Mongo collection to read when --mongo-uri is set. Default: narrativefragments.",
+    )
+    parser.add_argument(
+        "--mongo-limit",
+        type=int,
+        default=250,
+        help="Maximum Mongo documents to inspect when --mongo-uri is set.",
+    )
+    parser.add_argument(
+        "--no-gutenberg",
+        action="store_true",
+        help="Do not use the built-in public-domain Gutenberg fallback sources.",
     )
     parser.add_argument("--min-chars", type=int, default=320, help="Minimum paragraph length.")
     parser.add_argument("--max-chars", type=int, default=950, help="Maximum paragraph length.")
@@ -311,6 +338,96 @@ def load_local_sources(local_text_dir: Path | None) -> list[TextSource]:
     return sources
 
 
+def load_mongo_sources(args: argparse.Namespace) -> tuple[list[TextSource], list[str]]:
+    if not args.mongo_uri:
+        return [], []
+
+    warnings: list[str] = []
+    collection = re.sub(r"[^a-zA-Z0-9_]", "", args.mongo_collection or "")
+    if not collection:
+        return [], ["Skipped Mongo import: invalid --mongo-collection."]
+
+    limit = max(args.count, min(max(1, args.mongo_limit), 5000))
+    script = f"""
+const collection = db.getCollection({json.dumps(collection)});
+const docs = collection
+  .find({{ fragment: {{ $type: "string", $ne: "" }} }}, {{ session_id: 1, fragment: 1, createdAt: 1, updatedAt: 1 }})
+  .sort({{ updatedAt: -1, createdAt: -1, _id: -1 }})
+  .limit({limit})
+  .toArray();
+const sessionIds = Array.from(new Set(docs.map((doc) => doc.session_id || "").filter(Boolean)));
+const influenceBySession = {{}};
+db.getCollection("storytellers")
+  .find({{
+    $or: [
+      {{ session_id: {{ $in: sessionIds }} }},
+      {{ sessionId: {{ $in: sessionIds }} }}
+    ]
+  }}, {{ session_id: 1, sessionId: 1, influences: 1, known_universes: 1 }})
+  .forEach((doc) => {{
+    const sessionId = doc.session_id || doc.sessionId || "";
+    if (!sessionId) return;
+    if (!influenceBySession[sessionId]) influenceBySession[sessionId] = new Set();
+    for (const value of [...(doc.influences || []), ...(doc.known_universes || [])]) {{
+      if (typeof value === "string" && value.trim()) influenceBySession[sessionId].add(value.trim());
+    }}
+  }});
+const payload = docs.map((doc) => ({{
+    id: String(doc._id),
+    session_id: doc.session_id || "",
+    fragment: doc.fragment || "",
+    influences: Array.from(influenceBySession[doc.session_id || ""] || []).sort().slice(0, 24),
+    createdAt: doc.createdAt ? doc.createdAt.toISOString() : "",
+    updatedAt: doc.updatedAt ? doc.updatedAt.toISOString() : ""
+  }}));
+print(JSON.stringify(payload));
+"""
+    try:
+        completed = subprocess.run(
+            ["mongosh", "--quiet", args.mongo_uri, "--eval", script],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+    except FileNotFoundError:
+        return [], ["Skipped Mongo import: mongosh is not installed or not on PATH."]
+    except subprocess.TimeoutExpired:
+        return [], ["Skipped Mongo import: mongosh query timed out."]
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or exc.stdout or str(exc)).strip()
+        return [], [f"Skipped Mongo import: {detail}"]
+
+    try:
+        docs = json.loads(completed.stdout.strip() or "[]")
+    except json.JSONDecodeError as exc:
+        return [], [f"Skipped Mongo import: could not parse mongosh JSON output: {exc}"]
+
+    sources: list[TextSource] = []
+    for doc in docs:
+        fragment = normalize_paragraph(str(doc.get("fragment", "")))
+        if not fragment:
+            continue
+        source_id = str(doc.get("id", "")).strip()
+        session_id = str(doc.get("session_id", "")).strip()
+        label = session_id or source_id or f"mongo-fragment-{len(sources) + 1}"
+        sources.append(
+            TextSource(
+                title=f"Local narrative fragment {label}",
+                author="Local app corpus",
+                source_type="mongo",
+                inline_text=fragment,
+                source_id=source_id,
+                session_id=session_id,
+                influences=tuple(str(value) for value in doc.get("influences", []) if str(value).strip()),
+            )
+        )
+
+    if not sources:
+        warnings.append(f"Mongo import found no string fragments in collection '{collection}'.")
+    return sources, warnings
+
+
 def strip_gutenberg_boilerplate(text: str) -> str:
     start_match = re.search(
         r"\*\*\*\s*START OF (?:THE|THIS) PROJECT GUTENBERG EBOOK.*?\*\*\*",
@@ -401,9 +518,42 @@ def is_clean_excerpt(paragraph: str, min_chars: int, max_chars: int) -> bool:
         return False
     if paragraph.count("|") or paragraph.count("_") > 4:
         return False
-    if len(paragraph.split()) < 55:
+    words = paragraph.split()
+    if len(words) < 55:
+        return False
+    lowered_words = [re.sub(r"[^a-z0-9'-]", "", word.lower()) for word in words]
+    meaningful_words = [word for word in lowered_words if word]
+    unique_words = set(meaningful_words)
+    if len(unique_words) < 24:
+        return False
+    if len(unique_words) / max(1, len(meaningful_words)) < 0.28:
+        return False
+    if re.search(r"\b(word|stage)[0-9]{2,}\b", lowered):
+        return False
+    if re.search(r"([a-zA-Z])\1{5,}", paragraph):
         return False
     return True
+
+
+def excerpt_variants(paragraph: str, min_chars: int, max_chars: int) -> list[str]:
+    if len(paragraph) <= max_chars:
+        return [paragraph]
+
+    sentences = re.split(r"(?<=[.!?])\s+", paragraph)
+    if len(sentences) < 2:
+        return []
+
+    variants: list[str] = []
+    for start in range(len(sentences)):
+        parts: list[str] = []
+        for sentence in sentences[start:]:
+            candidate = " ".join([*parts, sentence]).strip()
+            if len(candidate) > max_chars:
+                break
+            parts.append(sentence)
+            if len(candidate) >= min_chars:
+                variants.append(candidate)
+    return variants
 
 
 def stable_random(seed: str, *parts: object) -> float:
@@ -421,6 +571,8 @@ def score_paragraph(paragraph: str, source: TextSource, index: int, seed: str) -
 
 
 def source_text(source: TextSource, cache_dir: Path, context: ssl.SSLContext, timeout: int) -> str:
+    if source.inline_text is not None:
+        return source.inline_text
     if source.source_type == "local":
         if source.path is None:
             raise ValueError("Local source is missing path")
@@ -438,12 +590,13 @@ def ranked_source_candidates(
     candidates: list[tuple[float, int, str]] = []
     seen: set[str] = set()
     for index, paragraph in enumerate(split_paragraphs(text)):
-        fingerprint = hashlib.sha1(paragraph.lower().encode("utf-8")).hexdigest()
-        if fingerprint in seen:
-            continue
-        seen.add(fingerprint)
-        if is_clean_excerpt(paragraph, min_chars, max_chars):
-            candidates.append((score_paragraph(paragraph, source, index, seed), index, paragraph))
+        for variant in excerpt_variants(paragraph, min_chars, max_chars):
+            fingerprint = hashlib.sha1(variant.lower().encode("utf-8")).hexdigest()
+            if fingerprint in seen:
+                continue
+            seen.add(fingerprint)
+            if is_clean_excerpt(variant, min_chars, max_chars):
+                candidates.append((score_paragraph(variant, source, index, seed), index, variant))
     candidates.sort(key=lambda candidate: candidate[0], reverse=True)
     return candidates
 
@@ -468,6 +621,16 @@ def excerpt_record(source: TextSource, paragraph: str, paragraph_index: int, ord
                 "attribution_key": source_slug,
             }
         )
+    elif source.source_type == "mongo":
+        record.update(
+            {
+                "mongo_id": source.source_id,
+                "session_id": source.session_id,
+                "influences": list(source.influences),
+                "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+                "attribution_key": source_slug,
+            }
+        )
     else:
         record.update(
             {
@@ -481,8 +644,10 @@ def excerpt_record(source: TextSource, paragraph: str, paragraph_index: int, ord
 
 def collect_excerpts(args: argparse.Namespace) -> tuple[list[dict], list[str]]:
     context = build_ssl_context(args.insecure_tls)
-    sources = [*load_local_sources(args.local_text_dir), *PUBLIC_DOMAIN_GUTENBERG_SOURCES]
-    warnings: list[str] = []
+    mongo_sources, mongo_warnings = load_mongo_sources(args)
+    gutenberg_sources = [] if args.no_gutenberg else PUBLIC_DOMAIN_GUTENBERG_SOURCES
+    sources = [*mongo_sources, *load_local_sources(args.local_text_dir), *gutenberg_sources]
+    warnings: list[str] = [*mongo_warnings]
     all_ranked: list[tuple[TextSource, list[tuple[float, int, str]]]] = []
 
     total_sources = len(sources)
@@ -497,7 +662,8 @@ def collect_excerpts(args: argparse.Namespace) -> tuple[list[dict], list[str]]:
             if ranked:
                 all_ranked.append((source, ranked))
             else:
-                warnings.append(f"Skipped {source.key}: no clean paragraphs matched length filters.")
+                if source.source_type != "mongo":
+                    warnings.append(f"Skipped {source.key}: no clean paragraphs matched length filters.")
         except Exception as exc:
             warnings.append(f"Skipped {source.key} ({source.title}): {exc}")
         finally:

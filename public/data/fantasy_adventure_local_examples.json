@@ -1,0 +1,1237 @@
+{
+  "metadata": {
+    "generated_at": "2026-06-11T08:40:01.484384+00:00",
+    "requested_count": 50,
+    "actual_count": 50,
+    "min_chars": 320,
+    "max_chars": 950,
+    "seed": "fantasy-adventure-50",
+    "source_policy": "Default online sources are public-domain Project Gutenberg texts. Most requested modern fantasy authors are not downloaded by this script; add rights-cleared .txt files with --local-text-dir if you have permission to store excerpts from those works.",
+    "requested_authors": [
+      "J. R. R. Tolkien",
+      "George R. R. Martin",
+      "Brandon Sanderson",
+      "Robin Hobb",
+      "Terry Pratchett",
+      "Ursula K. Le Guin",
+      "Robert Jordan",
+      "Neil Gaiman",
+      "Andrzej Sapkowski",
+      "Joe Abercrombie",
+      "Patrick Rothfuss",
+      "Guy Gavriel Kay",
+      "N. K. Jemisin",
+      "Steven Erikson",
+      "Brandon Mull",
+      "Sarah J. Maas",
+      "Raymond E. Feist",
+      "Scott Lynch",
+      "Anne McCaffrey",
+      "Susanna Clarke",
+      "Ernst Hemmingway"
+    ],
+    "requested_author_note": "The provided list is retained for tracking. The misspelled 'Ernst Hemmingway' is treated as Ernest Hemingway only when public-domain Gutenberg sources are available.",
+    "warnings": []
+  },
+  "excerpts": [
+    {
+      "id": "mongo-6a24a8b748f91f593393228c-001",
+      "title": "Local narrative fragment 8bf7b402-37b2-481b-ba40-a8e3d0e98d6e",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "someon knew knew something heavy...bring it all in she sishe didn't say how it was there before...they didn't mean for it to be harmless they didn't mean for it to be free...but it wggroudplease iam sorry...I don't know what to dogrrrsjklkmnbfdhjssdfhjkklsaaasdfasdfhjlljhsdfjweusiasoshndsdfsnsdmf,smanssdfnmwernsasdfnwermsdf,amsdf Delya's sack hit the ground and split open and the redstone scattered like teeth across the tunnel floor. The Xerofag was closer now. They could feel it in the way the walls hummed a frequency just below hearing. Maret grabbed her wrist and pulled her past the Groan Junction where the rails twisted into themselves.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "6a24a8b748f91f593393228c",
+      "session_id": "8bf7b402-37b2-481b-ba40-a8e3d0e98d6e",
+      "influences": [
+        "Glitch and hauntology poetics",
+        "Glitch/noise poetry and digital art",
+        "H.P. Lovecraft",
+        "H.P. Lovecraft (cosmic dread and unnameable depths)",
+        "Hebrew folk motifs and liturgical cadence",
+        "Italo Calvino (invisible cities and fragmentary forms)",
+        "Italo Calvino (metafictional playfulness)",
+        "Jewish folklore and Midrashic reworkings",
+        "Jewish mysticism (Kabbalah)",
+        "Jorge Luis Borges",
+        "Jorge Luis Borges (labyrinthine myth and textual ghosts)",
+        "Jorge Luis Borges (labyrinthine text and recursive fables)",
+        "Liminal nightscapes — empty stations, corridors, and the spaces between words",
+        "Lovecraftian abyssal mythos (cities of half-remembered names)",
+        "Magical realism (night-time ordinary uncanny)",
+        "Minecraft/redstone engineering and subterranean mining lore",
+        "Oral-folk and cantor-led ritual spaces where letters are talismans",
+        "Post-cyberpunk neon warrens where scripts leak into flesh",
+        "Redstone Tunnels — mine-like circuits where wiring and ritual overlap",
+        "Redstone caverns and mined shafts (Minecraft-adjacent liminality)",
+        "Samuel Beckett",
+        "Samuel Beckett (elliptical, fractured voice and bleak humor)",
+        "Sandbox/digital mythologies (redstone/ore mechanics)",
+        "Surrealist poetry (sound as imagery)"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-8bf7b402-37b2-481b-ba40-a8e3d0e98d6e"
+    },
+    {
+      "id": "mongo-6a0e4d237d4419ea276887be-002",
+      "title": "Local narrative fragment 52646344-712b-4371-9d78-a3df4ae7c711",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "She keys the satchel and a thin card slides up by itself: a rough sketch of a dog straining at a tether, its eyes wrong, rope threaded with river-silt. The satchel stutters; another card half-appears, colder, titled The Xerofag. The card resists as she turns it; pale eyes materialize and fade. A hand of wind passes; everyone stills. She sets the Xerofag card on the stone where the girl will look. Then she turns, already moving toward the place the first card named. The clearing exhales. He reaches for the girl's shoulder and feels the orb's warmth settle between his ribs, the girl's humming slowing as he turns toward",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "6a0e4d237d4419ea276887be",
+      "session_id": "52646344-712b-4371-9d78-a3df4ae7c711",
+      "influences": [
+        "Algernon Blackwood",
+        "Angela Carter",
+        "Bogland Folk‑Horror",
+        "Brothers Grimm forests",
+        "Cormac McCarthy",
+        "Fairytale Realism",
+        "Gabriel García Márquez",
+        "Gaiman-esque dream-tinged towns",
+        "Japanese yūrei tales",
+        "Macondo (One Hundred Years of Solitude)",
+        "Magical realism",
+        "Neil Gaiman",
+        "Oral folktale tradition",
+        "Post‑Industrial Hinterlands",
+        "Quiet Domestic Noir",
+        "Shirley Jackson",
+        "Silent Hill",
+        "Southern Gothic",
+        "The Wicker Man / English moorland folk-horror",
+        "Traditional West African folktales",
+        "Twin Peaks",
+        "ecological/landscape-driven fiction",
+        "folk horror",
+        "folk-horror traditions"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-52646344-712b-4371-9d78-a3df4ae7c711"
+    },
+    {
+      "id": "mongo-6a0e30e34699c7ee3a1ab1e3-003",
+      "title": "Local narrative fragment 54fe7c37-23d1-4851-9cf1-ebaf658b5eab",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "At dusk the courier reached the wind-scoured pass below a rusted watchtower, carrying a rain-dark satchel sealed with ash. No one answered the signal bell, but boot prints ringed the threshold and vanished into the shale. When the courier touched the gate, a hidden mechanism groaned awake beneath the stone. The Cartographer entered the prose as pressure around the latch, not yet as a body. A thumb-wide crescent of dark wax had been pressed into the metal, too deliberate to be weather and too quiet to be warning. \"That mark makes the scene suspect the Xerofag,\" came the storyteller's low restraint, and the Wax Clerk became a name the room had almost hidden.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "6a0e30e34699c7ee3a1ab1e3",
+      "session_id": "54fe7c37-23d1-4851-9cf1-ebaf658b5eab",
+      "influences": [
+        "Angela Carter",
+        "Italo Calvino",
+        "Jeff VanderMeer",
+        "Jorge Luis Borges",
+        "Kelly Link",
+        "Registry of Rusted Gates",
+        "The Cartographer's Archive",
+        "The Courier Roads Between Passes",
+        "Waxledger Vaults",
+        "Xerofag Wastes"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-54fe7c37-23d1-4851-9cf1-ebaf658b5eab"
+    },
+    {
+      "id": "mongo-6a02f40031a4e6a49e40995b-004",
+      "title": "Local narrative fragment 1ebd30bf-0e7a-41a6-be15-3dcd8279bbab",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "It waasn't your usual caravan of fortune seekers, renegades or otherwise misfortunes. it was a princess, Iruwen, a minor noble house, but still, but still, she walked alone, sandals scuffing dust, a cold token hidden at her hip, memory heavy. she didn't carry a map, there was no need for a map in this part of Huyat desert. the road was once a running river, which dried up a few millenia ago, in the last age of the dragon king. old marker stones marked the distances to the next well, or shade, real oasises were scarce, but there was supposed to be one just a few miles ahead, she should reach there before night fall.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "6a02f40031a4e6a49e40995b",
+      "session_id": "1ebd30bf-0e7a-41a6-be15-3dcd8279bbab",
+      "influences": [
+        "Arabian Nights-style frame storytelling",
+        "Arabian folktales and desert ballads",
+        "Caravan Roads & Wasteland Markets (endless trade routes and roadside kingdoms)",
+        "Caravan and renegade itineraries across the salt plains",
+        "Folk-Urban Crossings (where village myth meets city intrigue)",
+        "House Iruwen (minor noble line)",
+        "Huyat Desert and the Road of Marker Stones",
+        "Medieval courtly tragedy",
+        "Minimalist lyrical prose (short, image-driven scenes)",
+        "Oral desert epics and caravan lore",
+        "Palace-as-Oasis (courts that function like shifting deserts of favors)",
+        "Runaway-Royalty Tales (princes and princesses walking away from thrones)",
+        "Sun-Struck Principalities (heat-baked courts where mirages are law)",
+        "The Last Age of the Dragon King",
+        "Ursula K. Le Guin's mythic economy",
+        "classical courtly romance",
+        "courtly romance and palace intrigue",
+        "courts of quiet violence and cold bargains",
+        "grim fairy tales",
+        "low-magic borderlands where memory has agency",
+        "magical realism and the uncanny in everyday life",
+        "measured modern mythmakers (quiet, character-first fantasy)",
+        "minor noble houses with heavy etiquette",
+        "oral storytelling rhythms and whispered asides"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-1ebd30bf-0e7a-41a6-be15-3dcd8279bbab"
+    },
+    {
+      "id": "mongo-69f3490eabe92b5f3e9a8a41-005",
+      "title": "Local narrative fragment 01694f11-6818-4a7c-bafb-2a7c4012e9f1",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "too slowly Boots whispered on damp, leaf-strewn path. But nothing prepared them for the view they saw when they finally rounded the ridge, and a ruined lighthouse hung suspended over a valley of lanterns. \"They didn't lie, there in the valley. it is quite breathtaking\", said Jino-rae, finally smiling even though she was hungry and sore They stood speechless as lanterns bobbed like captive stars; the lighthouse's cracked glass threw pale grids across Jino-rae's face. Boots reached for the nearest ragged rope ladder, both knowing the climb would decide everything. Boots' hand closed on the rope. I stepped from the fog.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69f3490eabe92b5f3e9a8a41",
+      "session_id": "01694f11-6818-4a7c-bafb-2a7c4012e9f1",
+      "influences": [
+        "Angela Carter",
+        "Angela Carter (folkloric reinvention and baroque detail)",
+        "Fogbound Coast (salted towns where lighthouses tell stories)",
+        "Fogport and other coastal towns",
+        "Gothic coastal folktales",
+        "Hayao Miyazaki",
+        "Hayao Miyazaki (wind-swept wonder and odd, living objects)",
+        "Invisible-Cities–style parables",
+        "Italo Calvino",
+        "Italo Calvino (fable logic and precise image-making)",
+        "Joseph Conrad (sea-worn psychology and moral weight)",
+        "Lantern Valley (a hollowed valley of captive lanterns and whispered bargains)",
+        "M. R. James (gentle, uncanny intrusions)",
+        "Neil Gaiman",
+        "North Atlantic folk songs",
+        "Shirley Jackson",
+        "The Drowned Codex",
+        "The Lantern Vale",
+        "The Lighthouse of Thin Stars (a ruin hanging over impossible geography)",
+        "The Merchant Seas (clockwork freighters and rope-sorcery)",
+        "The Mistbound Isles",
+        "The Ruined Lighthouse Sequence",
+        "gentle urban fantasy",
+        "maritime superstition"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-01694f11-6818-4a7c-bafb-2a7c4012e9f1"
+    },
+    {
+      "id": "mongo-69f27348da8c854a4a81e5f5-006",
+      "title": "Local narrative fragment 32dc02ca-4f4a-4360-b404-520e37641327",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "They were getting deeper and deeper into the marshes, the only solid path, was much longer, an unwinding serpent like path. A rotten plank split underfoot with a dry, splintering crack; cold, peaty water gurgled up and sucked her boot through, leaving a ragged board jammed half-submerged and the serpent path interrupted. \"You made it all the way here, better not sink when we're so close\", Elara thought to herself. Kinigo and his half-brother Miggs were very quiet since morning",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69f27348da8c854a4a81e5f5",
+      "session_id": "32dc02ca-4f4a-4360-b404-520e37641327",
+      "influences": [
+        "Algernon Blackwood",
+        "Angela Carter",
+        "Bayou/Southern Gothic backwoods",
+        "British fenland and Celtic bog-lore",
+        "Celtic fae and bog-myths",
+        "Dark fairytale courts",
+        "Dead Can Dance (ambient folk soundscapes)",
+        "Guillermo del Toro (mythic cinema)",
+        "Low-fantasy moral landscapes",
+        "M. R. James",
+        "M.R. James",
+        "Marshland and fenland ecologies",
+        "Rural folk-horror villages",
+        "Shirley Jackson",
+        "Small-town uncanny moderns",
+        "Southern Gothic atmospherics",
+        "Victorian Gothic streets and manor-ruins",
+        "Victorian supernatural tales",
+        "Weird/liminal folk-horror marshlands",
+        "traditional British and Irish marsh/folk ballads"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-32dc02ca-4f4a-4360-b404-520e37641327"
+    },
+    {
+      "id": "mongo-69eaa1a80516ea4f72d45470-007",
+      "title": "Local narrative fragment a84cf826-b992-4c58-b1cc-d49f4d3edfe0",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "the slope, that stretched before them was scarced of trees and only low bushes spotted the rocky slope. wind started blowing, it was then when A gust sheared at a limestone slab; it tore free, struck Tomas's knee, and he pitched, sending their only rope tumbling half the slope. \"we have to camp\", vigna stated in her bravest voice what they all knew Tomas screamed as his knee folded with a livid snap; he went still, fumbling uselessly for the rope now hanging from a thorned bush fifty feet below, and Vigna dropped her pack, slid a hand into the cord, and began to lower herself down. Night was coming quick. I saw the rope.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69eaa1a80516ea4f72d45470",
+      "session_id": "a84cf826-b992-4c58-b1cc-d49f4d3edfe0",
+      "influences": [
+        "Alpine survival thrillers",
+        "Amy Hempel",
+        "Annie Proulx",
+        "Annie Proulx (rural, elemental hardship)",
+        "Cormac McCarthy",
+        "Cormac McCarthy (sparse, landscape-driven syntax)",
+        "Daphne du Maurier",
+        "Ernest Hemingway (pared sentences,earned silence)",
+        "Flannery O'Connor",
+        "Joe Simpson (Touching the Void)",
+        "Jon Krakauer",
+        "Jon Krakauer (mountaineering reportage)",
+        "Minimalist cadence",
+        "Modern expedition memoir",
+        "Mythic-realism along cliff-edges",
+        "Pastoral realism",
+        "Rural gothic frontier towns",
+        "Southern Gothic",
+        "Tense short-form flash fiction",
+        "abandoned farmsteads and mud tracks",
+        "alpine survival fiction",
+        "borderland towns that remember every footstep",
+        "expedition journals and memoir",
+        "grim regional folklore"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-a84cf826-b992-4c58-b1cc-d49f4d3edfe0"
+    },
+    {
+      "id": "mongo-69d896bea66cd97ec7e2b57a-008",
+      "title": "Local narrative fragment d7cfc1d2-94ed-4fca-9d62-3128d75376af",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "But the cellar door opened.nobody was inside except for a few mice than squeaked their way to the holes in the crumbling walls. and Although everything was ready for him he knew that nothing would change in the near future He knelt and pressed his palm flat against the floor where the table had stood. The stone was warm. Something underneath was breathing. He remembered the stories about The Xerofag this mythic creature, --the Xerofag, which fed not on flesh but on the silence between heartbeats. \"It was from the far wall that I, Gideon Harrow, first saw it--the warmth in that stone. Stone holds cold the way a grudge holds a name.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69d896bea66cd97ec7e2b57a",
+      "session_id": "d7cfc1d2-94ed-4fca-9d62-3128d75376af",
+      "influences": [
+        "Angela Carter",
+        "Appalachian folk tales",
+        "Cosmic subterranean mythos",
+        "Edgar Allan Poe",
+        "Folk magic realism",
+        "Gothic domestic horror",
+        "H.P. Lovecraft",
+        "Italo Calvino",
+        "Rust-and-Stone Hinterlands",
+        "Shirley Jackson",
+        "Southern/Gothic domestic fiction",
+        "The Gideon Harrow Files",
+        "Thomas Ligotti",
+        "Urban uncanny",
+        "Victorian Gothic alleys",
+        "Victorian manor and crumbling estates",
+        "Xerofag Cycle",
+        "claustrophobic urban tenements",
+        "dream-logic domestic spaces",
+        "folk horror",
+        "folk-tale borderlands where houses remember",
+        "rural New England basements and cellars"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-d7cfc1d2-94ed-4fca-9d62-3128d75376af"
+    },
+    {
+      "id": "mongo-69c3eb019a54dc40f78a6a38-009",
+      "title": "Local narrative fragment 599be9af-caef-4643-bfde-cafabd675d3b",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "it was unthinkable. the farm wasn't small, and had plenty of places for a wolf to hide in like the root cellar beneath the old milking barn, or the hayloft where Harlan's youngest daughter slept through summers. Maren crouched at the last print and pressed her thumb into it. Still warm. The lantern on the barn nail fogged without wind, and a single translucent thumbprint appeared on its glass, smaller than any hand on that farm. \"It was then that I, Thatch Wren, took notice. Silas saw the print rise from below, and he was right to walk away -- but he missed the warmth. That heat Maren felt wasn't left by a wolf.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69c3eb019a54dc40f78a6a38",
+      "session_id": "599be9af-caef-4643-bfde-cafabd675d3b",
+      "influences": [
+        "Algernon Blackwood",
+        "Angela Carter",
+        "Angela Carter (fable and fairy-tale inversion)",
+        "Anthology of Murmured Testimonies",
+        "Appalachian folktales",
+        "Back Alleys of the Salt District",
+        "Backwoods moral landscapes",
+        "Barbara Kingsolver",
+        "Borderlands between mundane and fae",
+        "Borderlands of village superstition and modern skepticism",
+        "Cathedral of Tides",
+        "Children's fable realms with teeth",
+        "China Miéville",
+        "City of Corroded Gears",
+        "Clarice Lispector",
+        "Clockwork Archives",
+        "Contemporary folk-magic countryside",
+        "Cormac McCarthy",
+        "Cosmic-tinged small towns",
+        "David Lynch",
+        "Dream-logic suburbs",
+        "Flannery O'Connor",
+        "Fogbound Harbor of Argent",
+        "Gregorian chant"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-599be9af-caef-4643-bfde-cafabd675d3b"
+    },
+    {
+      "id": "mongo-69c3d75b3fde360560c96e18-010",
+      "title": "Local narrative fragment 34339704-5339-42ff-b109-570d6db6448c",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "It was getting darker by the minute, as they were slowly climbing the now very muddy path leading to the meadows, overlooking the snowy peaks in the ridge infront of them. the river, which was usually tame enough to wade, now swallowed the lower trail markers whole, leaving them only the ridge route -- and no way back. It was then that I, Mirella Kest, took notice. The lower trail markers were gone, not simply drowned but neatly erased as if someone had decided the river's claim for them. That erasure belongs to the Riverwardens. They map appetite as much as water; I have owed them a silence once. I brushed a frost from my sleeve and stepped away.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69c3d75b3fde360560c96e18",
+      "session_id": "34339704-5339-42ff-b109-570d6db6448c",
+      "influences": [
+        "Alderbound Cartographies",
+        "Ashen Ridge Chronicles",
+        "Cormac McCarthy (bleak, elemental prose)",
+        "Emily Brontë",
+        "Mirewood Meadows",
+        "Norse/Icelandic sagas",
+        "Ridge & Rime: Tales of the High Meadows",
+        "River of Thaw",
+        "Robert Frost",
+        "Robert Macfarlane (landscape lyricism)",
+        "Romanticism",
+        "Scandinavian folktale tradition",
+        "Ted Hughes",
+        "The Erasure Maps",
+        "The Long Mudroad",
+        "The Riverwardens Cycle",
+        "The Winter Ridge",
+        "W. G. Sebald",
+        "cartography and lost maps",
+        "cold-climate gothic and ecological fable",
+        "contemporary outdoor adventure with moral consequences",
+        "folk cartography and oral mountain lore",
+        "gothic nature-horror",
+        "isolation survival realism (modern and near-future)"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-34339704-5339-42ff-b109-570d6db6448c"
+    },
+    {
+      "id": "mongo-69c24e7134cb86a0c1b7c266-011",
+      "title": "Local narrative fragment 4d6ebdf3-d607-476f-807c-d9289739fd71",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "It was almost night as they finally reached the plateau. After climbing the treacherous path for the better part of the day, the pass was close by, and the river flowed like a silver serpent far below them It was then that I, Ashward Marrow, took notice. A length of braided rope, sodden with river-silt and knotted with a thin leather thong, snagged on the highest cairn and whipped like a white tongue in the wind. That rope answers to Maris Kest. She moves things below the pass that should not be borne. I brushed a line of ash across my palm and stepped back.c",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69c24e7134cb86a0c1b7c266",
+      "session_id": "4d6ebdf3-d607-476f-807c-d9289739fd71",
+      "influences": [
+        "Angela Carter",
+        "Borderlands of the Old Tongue",
+        "City of Underlights",
+        "Cormac McCarthy",
+        "Dashiell Hammett",
+        "Emily Brontë",
+        "Fabled Borderlands where spirits haunt burns and braids of water",
+        "Gothic Moors and ruined manors",
+        "Midnight Pass",
+        "N.K. Jemisin",
+        "Neon Wastes",
+        "Oral-fable hinterlands (grey villages, ash forests)",
+        "Post-apocalyptic riverlands",
+        "Raymond Chandler",
+        "Slavic and Celtic oral folklore",
+        "Ted Hughes",
+        "The Ash Archive",
+        "The Grey Pass",
+        "film noir",
+        "folk tale and oral epic traditions",
+        "hardboiled pulp fiction",
+        "ritual poetry"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-4d6ebdf3-d607-476f-807c-d9289739fd71"
+    },
+    {
+      "id": "mongo-69c131080af3386258bf4642-012",
+      "title": "Local narrative fragment e576e0e9-fe51-411f-863d-4e00cf50524a",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "It was not the first time they heard the sound. She remembered she heard it the first night when they arrived at the huge lake. it was a combination of wet stone grinding against itself and a child's laughter played backward, rising from beneath the dock.n It rose again, that same skitter of wet stone and a child's laugh untwining under wood -- it scraped the underside of the planks like an old tooth on old tooth. I press my palm to the mossed board between two rotted nails and push my shoulder into the piling; pondweed knits cold through my hair. I am Mara Underbough. The laugh is cut at the end, hemmed off -- that missing tail of sound sticks under the dock and tastes of sunken reeds. There is a Backspinner below. It keeps endings; it nibbles the last syllables of names and strings them like beads, and if it holds yours it will call you back wrong. I let the shadow take me; the dock exhales and closes.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69c131080af3386258bf4642",
+      "session_id": "e576e0e9-fe51-411f-863d-4e00cf50524a",
+      "influences": [
+        "Angela Carter",
+        "Dockside Murmurs",
+        "Hemlock Lake & Docks",
+        "Junji Ito (persistent, creeping imagery)",
+        "Kelly Link",
+        "Murkmere Lakes",
+        "Neil Gaiman",
+        "Salt-and-Reed Folktales",
+        "Shirley Jackson",
+        "Shirley Jackson (domestic uncanny)",
+        "Slavic water-spirit myths",
+        "Stephen King (small-town dread, auditory hauntings)",
+        "The Backspin Hour",
+        "The Backspinner's Knot",
+        "The Underbough Archives",
+        "Tidelocked Villages",
+        "coastal ballads and sea shanties",
+        "field recordings of creaking docks and underwater noise",
+        "folk horror",
+        "folk lullabies and backmasked recordings",
+        "liminal spaces and lakeside folklore",
+        "oral folk tales and lullabies"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-e576e0e9-fe51-411f-863d-4e00cf50524a"
+    },
+    {
+      "id": "mongo-69bbd72a0925c1dc9dbda051-013",
+      "title": "Local narrative fragment 495b3c83-e4a3-4021-88b1-1009a14125f5",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "It was getting darker by the minute, and they still didn't make it to the pass. Below them the river was like a silver serpent flowing to the grey nameless sea. As they moved I was there at the river's lip, a thin smear on the margin, watching the flash--the water's silver flank--catch the last light. That gleam makes my teeth ache. In the charts I keep (the quiet ones folded into a drawer), a river that shines like a serpent at dusk is where names wear thin. There is a thing for that: the Name-eel. It slips the current and the consonants alike, eating pass-names until a route becomes rumor. Mind the syllables as you climb. I fold myself back into the drawer and go.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69bbd72a0925c1dc9dbda051",
+      "session_id": "495b3c83-e4a3-4021-88b1-1009a14125f5",
+      "influences": [
+        "Cities Folded on Paper",
+        "Italo Calvino",
+        "Jorge Luis Borges",
+        "Neil Gaiman",
+        "The Cartographer's Dream",
+        "The Clockwork Harbor",
+        "The Library of Locked Drawers",
+        "The Salted Archipelago",
+        "Victorian-era mapmaking manuals",
+        "maritime folklore"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-495b3c83-e4a3-4021-88b1-1009a14125f5"
+    },
+    {
+      "id": "mongo-69af061d2a26ee84770729cb-014",
+      "title": "Local narrative fragment a6765071-0777-4c5d-831d-568a8677c271",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "\"When will they return?\" Jinuah was impatient. They were standing trying their best to shelter themselves from the fierce icy wind, behind the crumbling stone wall. it was getting dark, and they had to find real shelter soon before the strange night lights that seemed to emerge from the crimson lake would rise I am Eira Holloway. I leaned on the stone. Breath like pale smoke. Not yet--wait for the drift to pass. Those lights do not bloom from water. They swell from husks--red sacs that bob at the lake's throat. When the wind shears, the shells split. A slow ember unfurls into wings. They call themselves bloodmoths. They like heat. They like lost things. Stand low. Hold your warmth inside. Let the first hatches pass by on the high air.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69af061d2a26ee84770729cb",
+      "session_id": "a6765071-0777-4c5d-831d-568a8677c271",
+      "influences": [
+        "A Song of Ice and Fire",
+        "Angela Carter",
+        "Cormac McCarthy",
+        "Crimson Lake Borderlands",
+        "Emily Brontë",
+        "Gothic horror (mood-driven dread and domestic uncanny)",
+        "His Dark Materials",
+        "Lighthouses and Broken Walls Coastline",
+        "Neil Gaiman",
+        "Nordic folklore and coastal ballads",
+        "Original Gothic and Nordic-inspired worlds",
+        "The Frostbound Marches",
+        "The Ruined Hall of Nal",
+        "The Witcher",
+        "Ursula K. Le Guin",
+        "concise noir short fiction (sharp dialogue, clipped pacing)",
+        "dream-logic surrealists",
+        "folk superstition and ritual imagery"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-a6765071-0777-4c5d-831d-568a8677c271"
+    },
+    {
+      "id": "mongo-69ae1eea71dfa909ce784571-015",
+      "title": "Local narrative fragment fe7206ba-0f4b-4f23-b8be-9bdd02ccb888",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "I t wasn't the first time the old watchman saw the blue lights hovering in the distant sea, as he was standing in that small sea salted balcony of the lighthouse But it was the first time they had stopped moving -- and turned toward him. their movement was slow and at first he wasn't sure if they were indeed moving or maybe it was the motion in the sea and the waves. but after a few minutes of constant looking, in his trained eye, there wasn't any mistake they were heading toward him. This area of the port city, had been dark for eleven years -- since the night the trawler *Maren's Call* went down with its crew and its cargo, which the harbormaster had logged as 'textiles' and never opened for inspection. The watchman had signed that log. He had signed it without looking. And whatever was crossing the water toward him now had, it seemed, finally come to collect.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69ae1eea71dfa909ce784571",
+      "session_id": "fe7206ba-0f4b-4f23-b8be-9bdd02ccb888",
+      "influences": [
+        "Angela Carter (lyrical, uncanny transformations)",
+        "Ashen Cantos",
+        "Cosmic‑sea horror",
+        "Daphne du Maurier",
+        "Gothic coastal villages",
+        "H. P. Lovecraft (sea‑tinged cosmic dread)",
+        "M. R. James",
+        "Maritime folklore and sailors' yarns",
+        "Modern seaside noir",
+        "Oral seafaring legends and local superstition",
+        "The Last Plateau",
+        "Victorian maritime fiction",
+        "Voyager Myths",
+        "Yuradel Pass"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-fe7206ba-0f4b-4f23-b8be-9bdd02ccb888"
+    },
+    {
+      "id": "mongo-69adda3171dfa909ce78449f-016",
+      "title": "Local narrative fragment 75b3ba40-0acb-4928-b4e1-7cc7c8d78d38",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "t was the first day of winter, and all the mice attended the annual beginning of winter festival at the stump of the ancient oak. they brought all the absolute best of the summer findings, unusually huge grains and seeds, left over items of the big folk and three thimbles of blackberry wine, fermented in secret by old Maren, who had not attended a festival in eleven years. sdf sdfsdfsdfsdfsdfsdfsfsdfsdfffffsdfsdfsdfsdfffsdf",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69adda3171dfa909ce78449f",
+      "session_id": "75b3ba40-0acb-4928-b4e1-7cc7c8d78d38",
+      "influences": [
+        "Ashen Cantos",
+        "The Last Plateau",
+        "Voyager Myths",
+        "Yuradel Pass"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-75b3ba40-0acb-4928-b4e1-7cc7c8d78d38"
+    },
+    {
+      "id": "mongo-69ad76ab71dfa909ce7843e2-017",
+      "title": "Local narrative fragment 6c96ffb7-db79-4026-b734-eb764fafd297",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "It was the first day of winter, and all the mice attended the annual beginning of winter festival at the stump of the ancient oak. they brought all the absolute best of the summer findings, unusually huge grains and seeds, left over items of the big folk and three thimbles of blackberry wine, fermented in secret by old Maren, who had not attended a festival in eleven years",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69ad76ab71dfa909ce7843e2",
+      "session_id": "6c96ffb7-db79-4026-b734-eb764fafd297",
+      "influences": [
+        "Ashen Cantos",
+        "The Last Plateau",
+        "Voyager Myths",
+        "Yuradel Pass"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-6c96ffb7-db79-4026-b734-eb764fafd297"
+    },
+    {
+      "id": "mongo-69ad736971dfa909ce78430e-018",
+      "title": "Local narrative fragment 2348b5ae-4f33-4910-abf3-acb69afce5ba",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "It was the first day of winter, and as such, the annual festival was taking place in the village's main square. All mice of all ages atteneded, in the symbolic ceremony of placing precious trophies, findings, and other goodies in the granaries and shelters Elder Maren alone brought nothing -- her paws empty, her eyes fixed on the granary door someone had left unlatched. For the first time in her long full life she felt compelled to go inside, she smelled something in her stillacute sense of smell Not grain. Not rot. Not the cedar-and-dust smell of winters past. Something alive -- breathing -- pressed flat against the far wall behind the seed-barrels, trying to be still. Maren's paw found the latch before her mind gave permission. The door swung inward. The crowd's singing covered the sound.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69ad736971dfa909ce78430e",
+      "session_id": "2348b5ae-4f33-4910-abf3-acb69afce5ba",
+      "influences": [
+        "Ashen Cantos",
+        "The Last Plateau",
+        "Voyager Myths",
+        "Yuradel Pass"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-2348b5ae-4f33-4910-abf3-acb69afce5ba"
+    },
+    {
+      "id": "mongo-69a8c6e6dd88deaacce33502-019",
+      "title": "Local narrative fragment 6048d84c-09ca-4f92-a332-d4107db4369c",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "Three leopards had crossed the plate-trail last dusk; the canyon base was their first convergence point. Whoever was down there had maybe forty minutes before scent became sentence. He unhooked the descent rope from his belt and held it out without looking at Drevik. As he descended the cool night air, and the fierce winds up in the flat area near the \"plate\" ceased, and the warmth and stillness of the desert engulfed him. it was a long descent, around 30 meters. He lost his view of that somebody ..but he knew exactly where he was He touched down on the canyon floor and held still -- not listening, but smelling.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69a8c6e6dd88deaacce33502",
+      "session_id": "6048d84c-09ca-4f92-a332-d4107db4369c",
+      "influences": [
+        "Ashen Cantos",
+        "The Last Plateau",
+        "Voyager Myths",
+        "Yuradel Pass"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-6048d84c-09ca-4f92-a332-d4107db4369c"
+    },
+    {
+      "id": "mongo-69a8c5c4a6c39de2870fbf9f-020",
+      "title": "Local narrative fragment 776b5632-ada6-469c-a761-40ed6971221f",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "\"Run! you need to run, don't look back, until you reach the river!\" she took off her silver amulet, and put it in his hand. \"Now run!\" He ran. Behind him, he heard her say one more thing -- too quiet to catch -- and then the sound that followed was not her voice but the hollow knock of her knees hitting the frozen ground, and he did not look back, because she had made him promise, and because some part of him already knew the amulet was warm in his fist for a reason that had nothing to do with her body heat.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69a8c5c4a6c39de2870fbf9f",
+      "session_id": "776b5632-ada6-469c-a761-40ed6971221f",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-776b5632-ada6-469c-a761-40ed6971221f"
+    },
+    {
+      "id": "mongo-69a76d8b721d6b2c8891990d-021",
+      "title": "Local narrative fragment a6c3f7ab-2c52-4fc2-90c8-ed686f32e3df",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "The scent of damp earth mixed with wildflowers clung to her skin, a reminder of past storms reviving the soil. \\\\\\\\\\\"where was that boat hidden?\\\\\\\\\\\" she thought as she neared the shadowy bank of the river. \\\\\\\\\\\"that rotting dock, it had to be somewhere near.\\\\\\\\\\\". Her grandfather\\\\'s map, inked on deerskin, showed three willow trees twisted together - there! Through mist, their branches drooped like mourning veils. Through mist-threads, metal glinted: militia lanterns, searching downstream where smugglers\\\\' caves pockmarked limestone cliffs. Behind her, wolf-hounds bayed, their howls echoing off limestone walls.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69a76d8b721d6b2c8891990d",
+      "session_id": "a6c3f7ab-2c52-4fc2-90c8-ed686f32e3df",
+      "influences": [
+        "Ashen Cantos",
+        "The Riven Orrery",
+        "Voyager Myths"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-a6c3f7ab-2c52-4fc2-90c8-ed686f32e3df"
+    },
+    {
+      "id": "mongo-69a75d6b6a8aa7dfcc0733a9-022",
+      "title": "Local narrative fragment 2e2825e8-4db7-43e0-920b-fa2b59e66203",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "the river\\\\'s glittering against the sunset seemed to seep into her lungs and heart as she ran, way past the last house of the river, down the barren mill, and farther from the wheat fields. the barks that she heard close before now seemed distant. The scent of damp earth mixed with wildflowers clung to her skin, a reminder of past storms reviving the soil. \\\\\\\\\\\"where was that boat hidden?\\\\\\\\\\\" she thought as she neared the shadowy bank of the river. \\\\\\\\\\\"that rotting dock, it had to be somewhere near.\\\\\\\\\\\". Her grandfather\\\\'s map, inked on deerskin, showed three willow trees twisted together - there!",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "69a75d6b6a8aa7dfcc0733a9",
+      "session_id": "2e2825e8-4db7-43e0-920b-fa2b59e66203",
+      "influences": [
+        "Ashen Cantos",
+        "The Riven Orrery",
+        "Voyager Myths"
+      ],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-2e2825e8-4db7-43e0-920b-fa2b59e66203"
+    },
+    {
+      "id": "mongo-67aa7b7c8077e74e7f70f59f-023",
+      "title": "Local narrative fragment 7a93jmk4d78",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "There was a fallen tree at the middle of the path and the carriage had to stop The horses, uneasy, shifted their weight, they were crossing old \"monSea' woods\" on their way to a gathering of arcane scholars, secretly coming from all over the realm, trying to tell whatever each one knew about the rift that seemed to have appeaered over night along the current of the Yuradel river. A sudden chill descends, the horses neigh, breaths forming mist.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67aa7b7c8077e74e7f70f59f",
+      "session_id": "7a93jmk4d78",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-7a93jmk4d78"
+    },
+    {
+      "id": "mongo-67a2ac04708289daec63b2aa-024",
+      "title": "Local narrative fragment g4r3rj3s12p",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "he went past the last bend of the path leading back to the \\\\\\\"plate\\\\\\\" the area just in front of the main gate. it was a rather warm night, and the night sky was clear, endless stars in the vast heavens. there was no moon, not even Silveranu, the moon of the nomads. he was alert, obviously, but mostly from just feeling so close and so intuned with the night and the scarce vegetation, and the light wind blowing in this desert, in this shallow dry river bed he was walking in. and yet so close to the cliff. A soft glow emanated from just beyond the cliff's edge, the flicker of a campfire painting the rocks in a warm, inviting orange.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a2ac04708289daec63b2aa",
+      "session_id": "g4r3rj3s12p",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-g4r3rj3s12p"
+    },
+    {
+      "id": "mongo-67a2a0f1708289daec63b2a3-025",
+      "title": "Local narrative fragment 8p2rviv6b1",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "they slowly regained their breath as they finally reached the edge of the Volcano Crater. it was immense. they could hardly see the other edge infront of them, through the thick layers of fog that rested on the crater like a thick blanket. through which, they could get glimpses of what seemed to be like a lush jungle laying inside that crater. \"Now where are the stairs, Elivirio? you told us the stairs would be right here!\", Kimia was unable to hide her slight contempt which masked her panic. \"They're here\" elivirio retorded silently, his long black hair, braided, moving in the early evening's wind. \"we just need to find them\" Kimia shifted uneasily, pebbles skittering beneath her feet into the vast depths below. Ancient stone markers, half-buried in volcanic soil, caught her eye, their worn symbols barely visible.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a2a0f1708289daec63b2a3",
+      "session_id": "8p2rviv6b1",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-8p2rviv6b1"
+    },
+    {
+      "id": "mongo-67a29c61708289daec63b2a1-026",
+      "title": "Local narrative fragment etjui1gubsb",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "they slowly regained their breath as they finally reached the edge of the Volcano Crater. it was immense. they could hardly see the other edge infront of them, through the thick layers of fog that rested on the crater like a thick blanket. through which, they could get glimpses of what seemed to be like a lush jungle laying inside that crater. \"Now where are the stairs, Elivirio? you told us the stairs would be right here!\", Kimia was unable to hide her slight contempt which masked her panic. \"They're here\" elivirio retorded silently, his long black hair, braided, moving in the early evening's wind. \"we just need to find them\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a29c61708289daec63b2a1",
+      "session_id": "etjui1gubsb",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-etjui1gubsb"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041acaf-027",
+      "title": "Local narrative fragment t08b5xbsedc",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "she was of the selected few in the kingdom who had access to books, of course. buy fables, who knew, that one day they will have to resort to the fables for help. The stories had always mentioned a guardian at the mound's entrance, but none spoke of the bone-deep chill that preceded it. Her mount whinnied nervously, steam rising from its flanks as shadows began to coalesce. she uttered a few words, a prayer of solitude grief and hope, and then mounted off...securing her scared mare to a tree. \"you'll be alright, good Naya\" The air grew thick with an unnatural stillness, heavy with the scent of moss and ancient magic.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041acaf",
+      "session_id": "t08b5xbsedc",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-t08b5xbsedc"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041acad-028",
+      "title": "Local narrative fragment gioklwyu4ri",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "It was almost dark as they finally reached the old tracks. stepping out of the thicket and finally treading on even ground, not having to bend their heads or cut through these thorny bushes. it's been roughly 80 years since trains were seen on these tracks, but the gravel, and the steel beams were still there. they could travel much faster on the tracks. but they were much more revealed there, with little options to hide in case somebody comes,,and if their experience told them anything was that somebody was always coming.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041acad",
+      "session_id": "gioklwyu4ri",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-gioklwyu4ri"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041acab-029",
+      "title": "Local narrative fragment 76bdgem9mtl",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "it wasn't unusual for them to see wolf tracks so close to the farm, but this one was different , its grand size imprinting a distinct story on the soft soil\". soon rain will start falling and tracking it would be almost impossible, let alone the rising mist that will cover the lush Maru hills, up until the woods. no, tracking it would mean going now, before imnu returns from his morning attendance of the sheep. she'll have to go by hrself...",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041acab",
+      "session_id": "76bdgem9mtl",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-76bdgem9mtl"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041aca9-030",
+      "title": "Local narrative fragment azxt90n6mah",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "It was almost dark as they finally reached the twin summit pass. The rain was pricking their faces like needles, and the icy wind made it almost impossible to hear anything, and yet there was this howl carried through the wind. like a wolf's howl, no doubt, but it seemed not to be affected by the wind sound and the rain.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041aca9",
+      "session_id": "azxt90n6mah",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-azxt90n6mah"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041aca5-031",
+      "title": "Local narrative fragment 4y5eqt2akx4",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "You're welcome to stay here for as long as you need!' said the bearded man, as he secured the bar on the heavy wooden door. the cabin was dimly lit, it was adequately fit for a long stay. with canned goods on the shelves, he undoubtfully installed himself. a fading oil picture of a young beautiful, almost fragile woman with a young son, was the only decoration, and it emanates a sort of long sadness that was instilled in this man's worn face. \"you need to eat something, it must have been days for you out in the woods, climbing all the way to the plateaue.\" as Juiya, and Bren slowly regained their breath. Juiya still clutching tightly her shotgun, they thought. if this old man knows how bad things have changed since he last left the plateaue",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041aca5",
+      "session_id": "4y5eqt2akx4",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-4y5eqt2akx4"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041aca3-032",
+      "title": "Local narrative fragment we9jf70lcwb",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "they were moving fast through Ravenous path. noone ever travels the woods at night, fear of bandits, or fey folk, or worse. but this was an emergency, and she was an emissary of the true queen. she hoped the night creatures sensed that too. after two hours, just a few minutes after passing the ancient dru-mera oak a raven's harsh cry pierced the silence, its wings casting dragon-shaped shadows across frost-covered branches. there was something on the road ahead, blocking it Queen's guards lay scattered, their silver armor blackened, frost-patterns spreading from their wounds. Her amulet pulsed with warning.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041aca3",
+      "session_id": "we9jf70lcwb",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-we9jf70lcwb"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041aca1-033",
+      "title": "Local narrative fragment fpv8pw6ur8k",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "Run! Now! and don't look back until you reach the river The militia's torches flickered through morning mist. \"they cannot find her! they mustn't\". her Kina-ra master placed the round wooden ornated box in her backpack. \"it won't hatch until a month! now begone!\" Sulfur-scented steam vents hissed through bamboo groves while rebel signal-fires blazed on distant peaks. and she ran, oh yes, running she knew, better than most.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041aca1",
+      "session_id": "fpv8pw6ur8k",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-fpv8pw6ur8k"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac9f-034",
+      "title": "Local narrative fragment yio6m2zx40p",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "lightnings were already seen in the horizon, and they were coming their direction soon. The air grew thick with the scent of pine sap and wet stone, as scattered drops began falling, each hitting the rocks with an audible hiss. it was then when Hyi-ara spotted the cave, its entrance almost covered by an old lumpy pine tree. the shadows of the rocky mountain slope, made it almost impossible to spot. \"Shelter, at last!\", said Hyi-ara flatly. She yanked her mule's reins, noticing fresh claw marks on the limestone, still wet with something that smelled like fermented honey and rotting meat. \"we need fire here!",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac9f",
+      "session_id": "yio6m2zx40p",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-yio6m2zx40p"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac9d-035",
+      "title": "Local narrative fragment nmpccyi9zh",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "she grasped her amulet strongly, as the horses started gallopping. as the dusk turned to darkness, the wind ceased. they were moving fast through Ravenous path. noone ever travels the woods at night, fear of bandits, or fey folk, or worse. but this was an emergency, and she was an emissary of the true queen. she hoped the night creatures sensed that too. after two hours, just a few minutes aftger passing the ancient dru-mera oak",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac9d",
+      "session_id": "nmpccyi9zh",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-nmpccyi9zh"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac99-036",
+      "title": "Local narrative fragment jhr394klg4",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "not waking the other students laying in the bunks next to her As her bare feet touched the dew-kissed grass, the distant roar of the river promised refuge. Behind, the warm glow of lanterns hinted at a world she might never return to. Her fingers, still warm from touching the scroll's silk, found each memorized stone - three left, two right - while fragments of ancient text flickered through her mind with each measured step. who was she really? not even 17, a hardly a prodigy in anything, let alone Kangru-e'. why did the teacher choose her? and risked herslef all these years training her in secret.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac99",
+      "session_id": "jhr394klg4",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-jhr394klg4"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac89-037",
+      "title": "Local narrative fragment j4gakrtqsx",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "Spores danced like stars in Elm's lantern light as she wound her way through the phosphorescent caps of giant mushrooms. \"Three days until the Mind-Moth migration,\" she muttered, checking her aunt's brass chronometer. The carved insect wings on its face ticked backwards, counting down to the swarm. Above, through gaps in the mushroom canopy, the cavern's crystal ceiling pulsed with pale blue light - the Echo Crystals were growing restless. The Guild of Dream Cartographers would pay handsomely for fresh moth-silk, but only if she could reach the Cocooning Grounds before the Mindless Monks began their harvest.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac89",
+      "session_id": "j4gakrtqsx",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-j4gakrtqsx"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac87-038",
+      "title": "Local narrative fragment 7o8pzleitcx",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "The scent of damp earth mixed with wildflowers clung to her skin, a reminder of past storms reviving the soil. \\\\\"where was that boat hidden?\\\\\" she thought as she neared the shadowy bank of the river. \\\\\"that rotting dock, it had to be somewhere near.\\\\\". Her grandfather\\'s map, inked on deerskin, showed three willow trees twisted together - there! Through mist, their branches drooped like mourning veils. Through mist-threads, metal glinted: militia lanterns, searching downstream where smugglers\\' caves pockmarked limestone cliffs. Behind her, wolf-hounds bayed, their howls echoing off limestone walls.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac87",
+      "session_id": "7o8pzleitcx",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-7o8pzleitcx"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac85-039",
+      "title": "Local narrative fragment 5hek9eoh4rj",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "The scent of damp earth mixed with wildflowers clung to her skin, a reminder of past storms reviving the soil. \\\"where was that boat hidden?\\\" she thought as she neared the shadowy bank of the river. \\\"that rotting dock, it had to be somewhere near.\\\". Her grandfather's map, inked on deerskin, showed three willow trees twisted together - there! Through mist, their branches drooped like mourning veils. Through mist-threads, metal glinted: militia lanterns, searching downstream where smugglers' caves pockmarked limestone cliffs. Behind her, wolf-hounds bayed, their howls echoing off limestone walls.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac85",
+      "session_id": "5hek9eoh4rj",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-5hek9eoh4rj"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac83-040",
+      "title": "Local narrative fragment b699ogbfmko",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "It was still night as she rose from her bed, though she didn't sleep at all that night. Others stirred too, their movements precise, practiced. There was still time, at least 2 hours before their morning walking meditation in the misty pine forest surrounding their monastery, yet the gong sound was heard. Her bare feet found the familiar softness of her walking shoes beneath the bed. She reached down her bed. A small simple wooden box. She opened it. Two vials were inside, each one containing different colored liquid; one golden orange almost the color of sunset and one crystal blue. Others glanced at their boxes as well.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac83",
+      "session_id": "b699ogbfmko",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-b699ogbfmko"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac81-041",
+      "title": "Local narrative fragment jhpuh4ykyeq",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "It was still night as she rose from her bed, though she didn't sleep at all that night. Others stirred too, their movements precise, practiced. There was still time, at least 2 hours before their morning walking meditation in the misty pine forest surrounding their monastery, yet the gong sound was heard. Her bare feet found the familiar softness of her walking shoes beneath the bed. She reached down her bed. A small simple wooden box. She opened it. Two vials were inside, each one containing different colored liquid; one golden orange almost the color of sunset and one crystal blue.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac81",
+      "session_id": "jhpuh4ykyeq",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-jhpuh4ykyeq"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac7f-042",
+      "title": "Local narrative fragment u0crnjrg9q",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "Others stirred too, their movements precise, practiced. There was still time, at least 2 hours before their morning walking meditation in the misty pine forest surrounding their monastery, yet the gong sound was heard. Her bare feet found the familiar softness of her walking shoes beneath the bed. She reached down her bed. A small simple wooden box. She opened it. Two vials were inside, each one containing different colored liquid; one golden orange almost the color of sunset and one crystal blue. Others glanced at their boxes as well. But it was forbidden to show which colors you got today. Let alone telling what you drank.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac7f",
+      "session_id": "u0crnjrg9q",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-u0crnjrg9q"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac7b-043",
+      "title": "Local narrative fragment 35w670zo01",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "Cold beams of moonlight filtered through the creaking walls. Animal howls answered the wind's song. He strained to listen, muscles tense, eyes wide open., \"we can climb down the basement, if you want. but I don't think it's necessary. whatever it is out there, it has never dared stepping through the outside gate\" , but she hesitated. In the flickering light of the fire, his pale face was drawn and tense. The sound came again, louder, now accompanied by a metallic clinking and hushed murmur. She gripped his arm, skin prickling with fear. 'Maybe it's inside,' she whispered, staring at the trapdoor to the basement.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac7b",
+      "session_id": "35w670zo01",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-35w670zo01"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac79-044",
+      "title": "Local narrative fragment םqx5hgyori",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "his watch was just about to be over. he went past the last bend of the path leading back to the \\\\\\\"plate\\\\\\\" the area just in front of the main gate. it was a rather warm night, and the night sky was clear, endless stars in the vast heavens. there was no moon, not even Silveranu, the moon of the nomads. he was alert, obviously, but mostly from just feeling so close and so intuned with the night and the scarce vegetation, and the light wind blowing in this desert, in this shallow dry river bed he was walking in. and yet so close to the cliff. A soft glow emanated from just beyond the cliff's edge, the flicker of a campfire painting the rocks in a warm, inviting orange.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac79",
+      "session_id": "םqx5hgyori",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-qx5hgyori"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac77-045",
+      "title": "Local narrative fragment e2x8lvbk7nl",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "he went past the last bend of the path leading back to the \\\"plate\\\" the area just in front of the main gate. it was a rather warm night, and the night sky was clear, endless stars in the vast heavens. there was no moon, not even Silveranu, the moon of the nomads. he was alert, obviously, but mostly from just feeling so close and so intuned with the night and the scarce vegetation, and the light wind blowing in this desert, in this shallow dry river bed he was walking in. and yet so close to the cliff. A soft glow emanated from just beyond the cliff's edge, the flicker of a campfire painting the rocks in a warm, inviting orange.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac77",
+      "session_id": "e2x8lvbk7nl",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-e2x8lvbk7nl"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac75-046",
+      "title": "Local narrative fragment 157ouqegxdo",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "he went past the last bend of the path leading back to the \"plate\" the area just in front of the main gate. it was a rather warm night, and the night sky was clear, endless stars in the vast heavens. there was no moon, not even Silveranu, the moon of the nomads. he was alert, obviously, but mostly from just feeling so close and so intuned with the night and the scarce vegetation, and the light wind blowing in this desert, in this shallow dry river bed he was walking in. and yet so close to the cliff. A soft glow emanated from just beyond the cliff's edge, the flicker of a campfire painting the rocks in a warm, inviting orange.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac75",
+      "session_id": "157ouqegxdo",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-157ouqegxdo"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac73-047",
+      "title": "Local narrative fragment 7v22evp4zfc",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "Elizabeth opened her eyes and saw an elephant, the elephant had a red collar and a blue blanket on him It sniffed curiously at the dusty air and sneezed so hard that Elizabeth flew back a few meters. She glimpsed a map slipping from the elephant's blanket. She ran away with the map. As she unrolled the parchment, Elizabeth spotted a cryptic insignia--a stylized lotus at its heart.she was shocked to see the flower because she saw that flower in her house living room old painting. Suddenly, the ground trembled beneath her; footsteps approached. A deep rumble -- another elephant, but adorned with silver armor gleaming against the sunset.she She wanted to see if indeed the flower in the parchment is identical to the flower she has in the painting in her living room As she held the parchment closer, her shadow on the dirt mimicked a lotus blossom, stretching and contorting with the falling sun.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac73",
+      "session_id": "7v22evp4zfc",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-7v22evp4zfc"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac6f-048",
+      "title": "Local narrative fragment jz6842plam",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "it was immense. they could hardly see the other edge infront of them, through the thick layers of fog that rested on the crater like a thick blanket. Suddenly, the ground rumbled beneath their feet, a subtle yet ominous vibration. yes that ancient volcano was still vibrant, though it hadn't erupted for century. there was supposed to be a lush jungle sprawling with dense, tangled greenery, towering ferns inside the crater, and also, that fabled obisidian city built on the inside inclines of the crater They noticed footprints, not theirs, pressed deep into the moist soil, leading towards the vine-draped city remains.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac6f",
+      "session_id": "jz6842plam",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-jz6842plam"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac6b-049",
+      "title": "Local narrative fragment yuuu71hrjhp",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "\"run! don't stop until you leave the village and reach the riveR! they will try and follow you, but you're much faster than they are. don't worry, so much. you will make it. you have to!\" Behind her, the village flames reached for the stars, a pyre to lost innocence. Yes she torched the granary, the last granary. which means winter is going to be much harder now for them. but there wasn't sorry...oh no, she was not! Her breath turned to frost as she glanced back, a wolf's silhouette against fire. she clutched to the tome under her cloak. \"Torak will believe me. I just hope I will be able to bring it to him\" Eyes glinting in the dark, the wolves joined her, as silent allies carved from the night itself, recognizing a shared purpose.",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac6b",
+      "session_id": "yuuu71hrjhp",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-yuuu71hrjhp"
+    },
+    {
+      "id": "mongo-67a0ef532f5e0e2be041ac67-050",
+      "title": "Local narrative fragment 3jemi1k1xdi",
+      "author": "Local app corpus",
+      "source_type": "mongo",
+      "paragraph_index": 0,
+      "text": "It was almost midnight as the storyteller detective finally approached what seemed to be like a forgotten well whispering lost tales, surfacing within a hidden grove shrouded in mist. On a closer look, it appeared to be guarding a rusted, ornate lock without a key, it was a delicate glass vial containing a swirling mist, made of hand-blown glass, subtly tinted with colors shifting in the moonlight, such a ethereal object in the palm of the world's last secret, murmured the storyteller detective as he anchored his spectral mount, its essence flickering in and out of visibility. Then, taking a slender, silver whistle, cold and gleaming, he proceeded to place it against the lock, hoping for a mystical alignment. \"Now where that lost archive, a treasury of forgotten stories, might show its door?\"",
+      "tags": [
+        "fantasy",
+        "adventure"
+      ],
+      "mongo_id": "67a0ef532f5e0e2be041ac67",
+      "session_id": "3jemi1k1xdi",
+      "influences": [],
+      "license_note": "Local app-created narrative text. Verify reuse and redistribution rights before publishing.",
+      "attribution_key": "local-app-corpus-local-narrative-fragment-3jemi1k1xdi"
+    }
+  ]
+}
