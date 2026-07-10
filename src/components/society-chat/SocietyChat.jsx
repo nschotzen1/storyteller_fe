@@ -2,11 +2,11 @@ import React, { Fragment, useState } from 'react';
 import './SocietyChat.css';
 
 function bubbleClassName(entry) {
-  const classes = ['societyChatBubble', entry.role === 'player' ? 'fromPlayer' : 'fromSociety'];
+  const classes = ['societyChatBubble', entry.role === 'player' ? 'societyChatFromPlayer' : 'societyChatFromSociety'];
   const flags = entry.flags || {};
-  if (flags.flicker) classes.push('flicker');
-  if (flags.stutter) classes.push('stutter');
-  if (flags.misaligned) classes.push('misaligned');
+  if (flags.flicker) classes.push('societyChatFlicker');
+  if (flags.stutter) classes.push('societyChatStutter');
+  if (flags.misaligned) classes.push('societyChatMisaligned');
   return classes.join(' ');
 }
 

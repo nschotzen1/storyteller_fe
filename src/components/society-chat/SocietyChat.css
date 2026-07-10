@@ -41,13 +41,13 @@
   animation-delay: calc(var(--stagger, 0) * 0.35s);
 }
 
-.fromSociety { align-self: flex-start; background: #1d1d26; border-left: 2px solid #6b6046; }
-.fromPlayer { align-self: flex-end; background: #26221a; border-right: 2px solid #46536b; }
+.societyChatFromSociety { align-self: flex-start; background: #1d1d26; border-left: 2px solid #6b6046; }
+.societyChatFromPlayer { align-self: flex-end; background: #26221a; border-right: 2px solid #46536b; }
 
 /* broken-glyph motif: story matter under damage */
-.flicker { animation: societyArrive 0.5s ease-out both, societyFlicker 4s steps(2) infinite; }
-.stutter { animation: societyArrive 1.4s steps(6) both; }
-.misaligned { transform: skewX(-1.2deg); letter-spacing: 0.08em; word-spacing: 0.2em; }
+.societyChatFlicker { animation: societyArrive 0.5s ease-out both, societyFlicker 4s steps(2) infinite; }
+.societyChatStutter { animation: societyArrive 1.4s steps(6) both; }
+.societyChatMisaligned { transform: skewX(-1.2deg); letter-spacing: 0.08em; word-spacing: 0.2em; }
 
 .societyChatTimeJump {
   align-self: center;

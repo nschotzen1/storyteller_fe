@@ -19,8 +19,8 @@ describe('SocietyChat', () => {
   test('renders society and player bubbles with damage flags and timestamp jumps', () => {
     render(<SocietyChat messages={messages} question={null} busy={false} onRespond={() => {}} />);
     const first = screen.getByText('You are the author of record.');
-    expect(first.className).toContain('flicker');
-    expect(first.className).toContain('misaligned');
+    expect(first.className).toContain('societyChatFlicker');
+    expect(first.className).toContain('societyChatMisaligned');
     expect(screen.getByText('I am.')).toBeTruthy();
     expect(screen.getByText('three days later')).toBeTruthy();
   });
