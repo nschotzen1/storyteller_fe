@@ -6,15 +6,18 @@ import CurtainIntro from './CurtainIntro';
 import CurtainOutro from './CurtainOutro';
 import TypewriterAdminPage from './pages/TypewriterAdminPage';
 import TypewriterFramework from './TypewriterFramework';
+import EarlyDuskPage from './pages/EarlyDuskPage';
 
 const VIEW = {
   TYPEWRITER: 'typewriter',
-  STORY_ADMIN: 'story-admin'
+  STORY_ADMIN: 'story-admin',
+  EARLY_DUSK: 'early-dusk'
 };
 
 const VIEW_OPTIONS = [
   { id: VIEW.TYPEWRITER, label: 'Typewriter' },
-  { id: VIEW.STORY_ADMIN, label: 'Story Admin' }
+  { id: VIEW.STORY_ADMIN, label: 'Story Admin' },
+  { id: VIEW.EARLY_DUSK, label: 'Early Dusk' }
 ];
 
 const TYPEWRITER_CURTAIN_PHASE = {
@@ -112,6 +115,7 @@ function App() {
           </div>
         )}
         {view === VIEW.STORY_ADMIN && <TypewriterAdminPage />}
+        {view === VIEW.EARLY_DUSK && <EarlyDuskPage />}
       </main>
     </div>
   );
