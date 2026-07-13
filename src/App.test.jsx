@@ -26,6 +26,10 @@ vi.mock('./pages/TypewriterAdminPage', () => ({
   default: () => <div data-testid="story-admin-page">Story admin</div>
 }));
 
+vi.mock('./Messanger', () => ({
+  default: () => <div data-testid="messanger-page">Messenger</div>
+}));
+
 const renderAppAt = (search = '') => {
   const nextUrl = search ? `/${search.startsWith('?') ? search : `?${search}`}` : '/';
   window.history.replaceState({}, '', nextUrl);
@@ -76,5 +80,13 @@ describe('App typewriter workspace', () => {
 
     expect(screen.getByTestId('story-admin-page')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Story Admin' })).toHaveClass('active');
+  });
+
+  it('restores the legacy Messenger view and query alias', () => {
+    renderAppAt('?view=messenger');
+
+    expect(screen.getByTestId('messanger-page')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Messenger' })).toHaveClass('active');
+    expect(new URLSearchParams(window.location.search).get('view')).toBe('messanger');
   });
 });

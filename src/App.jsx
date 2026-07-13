@@ -7,16 +7,19 @@ import CurtainOutro from './CurtainOutro';
 import TypewriterAdminPage from './pages/TypewriterAdminPage';
 import TypewriterFramework from './TypewriterFramework';
 import EarlyDuskPage from './pages/EarlyDuskPage';
+import Messanger from './Messanger';
 
 const VIEW = {
   TYPEWRITER: 'typewriter',
   STORY_ADMIN: 'story-admin',
+  MESSANGER: 'messanger',
   EARLY_DUSK: 'early-dusk'
 };
 
 const VIEW_OPTIONS = [
   { id: VIEW.TYPEWRITER, label: 'Typewriter' },
   { id: VIEW.STORY_ADMIN, label: 'Story Admin' },
+  { id: VIEW.MESSANGER, label: 'Messenger' },
   { id: VIEW.EARLY_DUSK, label: 'Early Dusk' }
 ];
 
@@ -32,6 +35,9 @@ const readInitialView = () => {
   const requested = params.get('view');
   if (requested === 'typewriter-admin') {
     return VIEW.STORY_ADMIN;
+  }
+  if (requested === 'messenger') {
+    return VIEW.MESSANGER;
   }
   if (requested && Object.values(VIEW).includes(requested)) {
     return requested;
@@ -115,6 +121,7 @@ function App() {
           </div>
         )}
         {view === VIEW.STORY_ADMIN && <TypewriterAdminPage />}
+        {view === VIEW.MESSANGER && <Messanger />}
         {view === VIEW.EARLY_DUSK && <EarlyDuskPage />}
       </main>
     </div>

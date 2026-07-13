@@ -1,0 +1,637 @@
+.messangerScene {
+  --messanger-ink: #efe5d1;
+  --messanger-ink-dim: rgba(239, 229, 209, 0.66);
+  --messanger-brass: #c89b62;
+  --messanger-verdigris: #89d3be;
+  --messanger-crimson: #6e2a28;
+  --messanger-night: #07090b;
+  --messanger-night-soft: #111519;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 4.75rem 1rem 1rem;
+  color: var(--messanger-ink);
+  font-family: 'Space Mono', 'Azeret Mono', ui-monospace, monospace;
+  background:
+    linear-gradient(180deg, rgba(15, 17, 19, 0.96), rgba(3, 4, 5, 1)),
+    repeating-linear-gradient(90deg, rgba(255, 240, 214, 0.025) 0 1px, transparent 1px 7px);
+  overflow: hidden;
+  position: relative;
+}
+
+.messangerScene__grain,
+.messangerScene__veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.messangerScene__grain {
+  opacity: 0.16;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 3px 3px;
+}
+
+.messangerScene__veil {
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.08), transparent 24%, rgba(0, 0, 0, 0.34)),
+    linear-gradient(90deg, rgba(110, 42, 40, 0.12), transparent 28%, transparent 72%, rgba(137, 211, 190, 0.08));
+}
+
+.messangerFrame {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 540px);
+  margin: 0 auto;
+}
+
+.messangerUtilityBar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.7rem;
+}
+
+.messangerModeSwitch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(200, 155, 98, 0.28);
+  background: rgba(14, 15, 17, 0.94);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 247, 231, 0.08);
+  color: var(--messanger-ink);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.messangerModeSwitch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.messangerModeSwitch__track {
+  position: relative;
+  width: 3.4rem;
+  height: 1.8rem;
+  border-radius: 0.78rem;
+  border: 1px solid rgba(200, 155, 98, 0.22);
+  background: linear-gradient(180deg, rgba(105, 41, 38, 0.9), rgba(48, 18, 17, 0.95));
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.42);
+}
+
+.messangerModeSwitch__thumb {
+  position: absolute;
+  top: 0.16rem;
+  left: 0.2rem;
+  width: 1.24rem;
+  height: 1.24rem;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 244, 222, 0.96), rgba(198, 155, 98, 0.94));
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.32);
+  transition: transform 180ms ease;
+}
+
+.messangerModeSwitch input:checked + .messangerModeSwitch__track {
+  background: linear-gradient(180deg, rgba(54, 89, 79, 0.94), rgba(21, 41, 35, 0.98));
+  border-color: rgba(137, 211, 190, 0.28);
+}
+
+.messangerModeSwitch input:checked + .messangerModeSwitch__track .messangerModeSwitch__thumb {
+  transform: translateX(1.55rem);
+  background: linear-gradient(180deg, rgba(236, 255, 248, 0.96), rgba(137, 211, 190, 0.96));
+}
+
+.messangerModeSwitch__label {
+  min-width: 3.7rem;
+  color: rgba(239, 229, 209, 0.78);
+}
+
+.messangerPhone {
+  position: relative;
+  width: 100%;
+  padding: 18px 14px 14px;
+  border-radius: 2rem;
+  background:
+    linear-gradient(145deg, rgba(114, 88, 64, 0.98), rgba(41, 33, 30, 0.99) 22%, rgba(14, 15, 17, 1) 74%, rgba(94, 70, 54, 0.98)),
+    repeating-linear-gradient(90deg, rgba(255, 226, 181, 0.03) 0 1px, transparent 1px 11px);
+  border: 1px solid rgba(235, 197, 143, 0.26);
+  box-shadow:
+    0 34px 96px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(255, 235, 204, 0.12),
+    0 0 0 6px rgba(14, 11, 10, 0.34),
+    inset 0 1px 0 rgba(255, 250, 241, 0.2);
+}
+
+.messangerPhone__bezel {
+  position: absolute;
+  top: 17px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48%;
+  height: 25px;
+  border-radius: 0.7rem;
+  background: linear-gradient(180deg, rgba(37, 34, 31, 0.98), rgba(8, 8, 9, 0.98));
+  border: 1px solid rgba(255, 227, 179, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  z-index: 3;
+}
+
+.messangerPhone__camera,
+.messangerPhone__speaker {
+  border-radius: 999px;
+}
+
+.messangerPhone__camera {
+  width: 0.52rem;
+  height: 0.52rem;
+  background: var(--messanger-verdigris);
+  box-shadow: 0 0 8px rgba(137, 211, 190, 0.34);
+}
+
+.messangerPhone__speaker {
+  width: 4rem;
+  height: 0.32rem;
+  background: linear-gradient(180deg, rgba(111, 108, 102, 0.92), rgba(28, 28, 28, 0.98));
+}
+
+.messangerPhone__screen {
+  position: relative;
+  height: calc(100vh - 8.9rem);
+  min-height: 31rem;
+  max-height: 52rem;
+  border-radius: 1.45rem;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(11, 14, 17, 0.98), rgba(3, 5, 7, 1)),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 4px);
+  border: 1px solid rgba(255, 234, 196, 0.1);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 -80px 120px rgba(0, 0, 0, 0.34);
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+}
+
+.messangerPhone__homebar {
+  width: 7rem;
+  height: 0.48rem;
+  border-radius: 0.32rem;
+  border: 1px solid rgba(255, 232, 191, 0.1);
+  background: linear-gradient(180deg, rgba(74, 67, 59, 0.94), rgba(17, 18, 20, 0.98));
+  margin: 0.72rem auto 0.2rem;
+  opacity: 0.9;
+}
+
+.messangerStatusBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.95rem 1.3rem 0.55rem;
+  position: relative;
+  z-index: 1;
+  color: rgba(230, 244, 235, 0.88);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.messangerConsole {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.messangerConsole__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 0.25rem 1rem 0.95rem;
+}
+
+.messangerConsole__contact {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.76rem;
+}
+
+.messangerAvatar {
+  width: 3.2rem;
+  height: 3.2rem;
+  flex: 0 0 auto;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(137, 211, 190, 0.22);
+  background: linear-gradient(160deg, rgba(58, 88, 78, 0.98), rgba(18, 27, 32, 0.98));
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #eff6ee;
+  font-size: 0.92rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.messangerConsole__titles {
+  min-width: 0;
+}
+
+.messangerConsole__eyebrow {
+  color: rgba(239, 229, 209, 0.52);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.messangerConsole__titles h2 {
+  margin: 0.18rem 0 0;
+  color: #f4ead5;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.45rem, 2vw, 2rem);
+  line-height: 1;
+}
+
+.messangerConsole__titles p {
+  margin: 0.32rem 0 0;
+  color: var(--messanger-ink-dim);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.messangerConsole__status {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  padding-top: 0.12rem;
+}
+
+.messangerChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.85rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(200, 155, 98, 0.16);
+  background: rgba(255, 248, 237, 0.04);
+  color: rgba(239, 229, 209, 0.7);
+  font-size: 0.62rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.messangerChip.is-mock {
+  border-color: rgba(137, 211, 190, 0.24);
+  background: rgba(137, 211, 190, 0.08);
+  color: #b8f2df;
+}
+
+.messangerConsole__radioScale {
+  position: relative;
+  z-index: 1;
+  margin: 0 1rem 0.85rem;
+  height: 1.05rem;
+  border-radius: 999px;
+  border: 1px solid rgba(200, 155, 98, 0.12);
+  background:
+    linear-gradient(180deg, rgba(24, 28, 31, 0.9), rgba(10, 12, 14, 0.96)),
+    repeating-linear-gradient(90deg, rgba(255, 248, 233, 0.08) 0 1px, transparent 1px 14px);
+  overflow: hidden;
+}
+
+.messangerConsole__radioScaleDot,
+.messangerConsole__radioScaleNeedle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.messangerConsole__radioScaleDot {
+  left: 1rem;
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 50%;
+  background: #d3855e;
+  box-shadow: 0 0 10px rgba(211, 133, 94, 0.32);
+}
+
+.messangerConsole__radioScaleNeedle {
+  left: 61%;
+  width: 0.14rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 239, 210, 0.98), rgba(200, 155, 98, 0.98));
+  animation: messangerNeedleDrift 10s ease-in-out infinite;
+}
+
+.messangerThread {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.2rem 0.95rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.76rem;
+  background:
+    linear-gradient(180deg, rgba(13, 18, 22, 0.88), rgba(4, 6, 8, 0.94)),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.016) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+  background-size: auto, 24px 24px, 24px 24px;
+}
+
+.messangerThread__datePill {
+  align-self: center;
+  position: relative;
+  z-index: 1;
+  padding: 0.42rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(200, 155, 98, 0.12);
+  background: rgba(255, 250, 242, 0.04);
+  color: rgba(239, 229, 209, 0.48);
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.messangerBanner {
+  align-self: center;
+  position: relative;
+  z-index: 1;
+  max-width: min(92%, 28rem);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(200, 155, 98, 0.16);
+  background: rgba(12, 14, 16, 0.78);
+  color: rgba(239, 229, 209, 0.78);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.messangerBanner.is-error {
+  border-color: rgba(188, 78, 68, 0.42);
+  color: #f1b0a7;
+}
+
+.messangerMessage {
+  position: relative;
+  z-index: 1;
+  width: min(88%, 26rem);
+  padding: 0.72rem 0.78rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 244, 222, 0.08);
+  background: rgba(22, 25, 29, 0.88);
+  color: var(--messanger-ink);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
+}
+
+.messangerMessage--system {
+  align-self: flex-start;
+  border-top-left-radius: 0.28rem;
+  border-left-color: rgba(137, 211, 190, 0.34);
+}
+
+.messangerMessage--user {
+  align-self: flex-end;
+  border-top-right-radius: 0.28rem;
+  border-right-color: rgba(200, 155, 98, 0.42);
+  background: rgba(37, 31, 24, 0.9);
+}
+
+.messangerMessage.is-pending {
+  opacity: 0.68;
+}
+
+.messangerMessage__meta,
+.messangerMessage__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: rgba(239, 229, 209, 0.48);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.messangerMessage__body {
+  margin-top: 0.48rem;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  font-size: 0.9rem;
+}
+
+.messangerMessage__footer {
+  margin-top: 0.52rem;
+  justify-content: flex-end;
+}
+
+.messangerTyping {
+  align-self: flex-start;
+  display: inline-flex;
+  gap: 0.35rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(22, 25, 29, 0.84);
+}
+
+.messangerTyping span {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: var(--messanger-brass);
+  animation: messangerTypingPulse 1.1s infinite;
+}
+
+.messangerTyping span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.messangerTyping span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+.messangerComposer {
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border-top: 1px solid rgba(255, 244, 222, 0.08);
+  background: rgba(8, 10, 12, 0.94);
+}
+
+.messangerComposer__field {
+  flex: 1;
+  min-width: 0;
+}
+
+.messangerComposer textarea {
+  width: 100%;
+  min-height: 3rem;
+  max-height: 7.5rem;
+  resize: vertical;
+  box-sizing: border-box;
+  padding: 0.72rem 0.78rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(200, 155, 98, 0.2);
+  background: rgba(3, 5, 7, 0.98);
+  color: var(--messanger-ink);
+  font: inherit;
+  line-height: 1.4;
+}
+
+.messangerComposer textarea::placeholder {
+  color: rgba(239, 229, 209, 0.34);
+}
+
+.messangerComposer button {
+  min-width: 6.25rem;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid rgba(200, 155, 98, 0.34);
+  border-radius: 0.85rem;
+  background: linear-gradient(180deg, rgba(200, 155, 98, 0.95), rgba(117, 75, 43, 0.98));
+  color: #15110e;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.messangerComposer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.spin {
+  animation: messangerSpin 1s linear infinite;
+}
+
+@keyframes messangerSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes messangerTypingPulse {
+  0%, 100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes messangerNeedleDrift {
+  0%, 100% {
+    transform: translateY(-50%) translateX(-8px) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-50%) translateX(10px) rotate(2deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .messangerScene {
+    padding: 4.4rem 0.5rem 0.75rem;
+  }
+
+  .messangerFrame {
+    width: 100%;
+  }
+
+  .messangerPhone {
+    border-radius: 1.45rem;
+    padding: 12px 10px 10px;
+  }
+
+  .messangerPhone__screen {
+    border-radius: 1.1rem;
+  }
+
+  .messangerConsole__header {
+    flex-direction: column;
+  }
+
+  .messangerConsole__status {
+    justify-content: flex-start;
+  }
+
+  .messangerMessage {
+    width: 94%;
+  }
+
+  .messangerComposer {
+    flex-direction: column;
+  }
+
+  .messangerComposer button {
+    min-height: 2.8rem;
+  }
+}
+
+@media (max-height: 620px) {
+  .messangerScene {
+    padding-top: 3.9rem;
+  }
+
+  .messangerUtilityBar,
+  .messangerPhone__homebar,
+  .messangerConsole__radioScale {
+    display: none;
+  }
+
+  .messangerPhone {
+    padding: 10px;
+  }
+
+  .messangerPhone__screen {
+    height: calc(100vh - 5.1rem);
+    min-height: 0;
+  }
+
+  .messangerStatusBar {
+    padding: 0.72rem 1rem 0.42rem;
+  }
+
+  .messangerConsole__header {
+    padding-bottom: 0.65rem;
+  }
+
+  .messangerAvatar {
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 0.85rem;
+  }
+
+  .messangerConsole__titles h2 {
+    font-size: 1.25rem;
+  }
+
+  .messangerComposer {
+    padding: 0.58rem;
+  }
+
+  .messangerComposer textarea {
+    min-height: 2.45rem;
+    padding: 0.5rem 0.62rem;
+  }
+}
